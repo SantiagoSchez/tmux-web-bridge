@@ -1019,6 +1019,60 @@ body.dragging-host * {
 .term-copy .btn:last-child {
   padding: 0 12px;
 }
+/* Selection handles: a drop pointing at the end it moves, inside a bigger touch target. */
+.sel-handle {
+  position: absolute;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  touch-action: none;
+}
+.sel-handle.start {
+  transform: translateX(-100%);
+}
+.sel-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  background: var(--mauve);
+  box-shadow: 0 2px 6px #0006;
+}
+.sel-handle.start::after {
+  right: 0;
+  border-radius: 50% 0 50% 50%;
+}
+.sel-handle.end::after {
+  left: 0;
+  border-radius: 0 50% 50% 50%;
+}
+/* The line under the finger, enlarged, while selecting. */
+.loupe {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  padding: 6px 0.3em;
+  border-radius: 12px;
+  background: var(--surface0);
+  color: var(--text);
+  line-height: 1.3;
+  white-space: pre;
+  box-shadow: 0 6px 20px #0008;
+  pointer-events: none;
+}
+.loupe span {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+}
+.loupe .sel {
+  background: #62688099;
+}
+.loupe .cur {
+  outline: 2px solid var(--mauve);
+  outline-offset: -1px;
+}
 .term-box .xterm {
   height: 100%;
 }

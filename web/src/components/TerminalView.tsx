@@ -207,12 +207,37 @@ const LONG_PRESS_MS = 450;
 /** What ends a word for a long press: xterm's own separators plus the tmux pane border. */
 const WORD_SEPARATORS = ' ()[]{}\'"`,│';
 
+/** A touch selection, as linear buffer offsets (row * cols + col), both ends included. */
+type Range = [number, number];
+
+function screenRect(el: HTMLElement): DOMRect {
+  return ((el.querySelector('.xterm-screen') as HTMLElement | null) ?? el).getBoundingClientRect();
+}
+
 /** Buffer cell under a point of the screen, clamped to the visible rows. */
 function cellAt(el: HTMLElement, term: Terminal, x: number, y: number): { col: number; row: number } {
-  const r = ((el.querySelector('.xterm-screen') as HTMLElement | null) ?? el).getBoundingClientRect();
+  const r = screenRect(el);
   const col = Math.min(term.cols - 1, Math.max(0, Math.floor(((x - r.left) * term.cols) / r.width)));
   const row = Math.min(term.rows - 1, Math.max(0, Math.floor(((y - r.top) * term.rows) / r.height)));
   return { col, row: term.buffer.active.viewportY + row };
+}
+
+function offsetAt(el: HTMLElement, term: Terminal, x: number, y: number): number {
+  const { col, row } = cellAt(el, term, x, y);
+  return row * term.cols + col;
+}
+
+/** Where a buffer offset sits on the screen, in client coordinates. */
+function cellBox(el: HTMLElement, term: Terminal, p: number): { left: number; top: number; width: number; height: number } {
+  const r = screenRect(el);
+  const width = r.width / term.cols;
+  const height = r.height / term.rows;
+  const row = Math.floor(p / term.cols) - term.buffer.active.viewportY;
+  return { left: r.left + (p % term.cols) * width, top: r.top + row * height, width, height };
+}
+
+function selectRange(term: Terminal, [from, to]: Range): void {
+  term.select(from % term.cols, Math.floor(from / term.cols), to - from + 1);
 }
 
 /** First and last column of the word at a cell (just the cell when it is a space or a separator). */
@@ -234,48 +259,65 @@ function wordAt(term: Terminal, col: number, row: number): [number, number] {
   return [a, b];
 }
 
+interface TouchHandlers {
+  /** A tap (no drag). */
+  tap: () => void;
+  /** A scroll drag starts. */
+  scroll: () => void;
+  /** The drag scrolled one line (1 down, -1 up). */
+  line: (dir: 1 | -1) => void;
+  /** A long press selected, or its drag changed the selection. */
+  select: (range: Range) => void;
+  /** The finger while it selects (for the loupe); null once it lifts. */
+  finger: (at: { x: number; y: number; p: number } | null) => void;
+}
+
 /**
  * Touch scrolling. xterm.js ignores finger drags, and with tmux (mouse on) or a
  * full-screen TUI the terminal has no scrollback of its own: the drag becomes
- * wheel events, which tmux or the app (Claude Code) turn into scrolling. A tap
- * (no drag) calls onTap; a drag calls onScroll once, as it starts, and onLine for
- * every line it scrolls (1 down, -1 up).
+ * wheel events, which tmux or the app (Claude Code) turn into scrolling.
  *
  * A long press selects instead: it takes the word under the finger and dragging
  * extends the selection from it. A tap or a scroll drops the selection.
  */
-function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll: () => void, onLine: (dir: 1 | -1) => void): () => void {
+function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => void {
   let lastY = 0;
   let acc = 0;
   let dragging = false;
   let selecting = false;
+  let startAt = { x: 0, y: 0 };
   let press: ReturnType<typeof setTimeout> | undefined;
-  /** The long-pressed word, as linear cell offsets (row * cols + col). */
-  let anchor: [number, number] = [0, 0];
+  /** The long-pressed word. */
+  let anchor: Range = [0, 0];
   const lineHeight = () => Math.max(8, (el.querySelector('.xterm-screen') as HTMLElement | null)?.clientHeight ?? 0) / term.rows || 16;
   const selectTo = (x: number, y: number) => {
-    const { col, row } = cellAt(el, term, x, y);
-    const p = row * term.cols + col;
-    const from = Math.min(anchor[0], p);
-    const to = Math.max(anchor[1], p);
-    term.select(from % term.cols, Math.floor(from / term.cols), to - from + 1);
+    const p = offsetAt(el, term, x, y);
+    h.select([Math.min(anchor[0], p), Math.max(anchor[1], p)]);
+    h.finger({ x, y, p });
   };
   const cancelPress = () => {
     clearTimeout(press);
     press = undefined;
   };
+  const stopSelecting = () => {
+    if (selecting) h.finger(null);
+    selecting = false;
+    el.classList.remove('selecting');
+  };
   const start = (e: TouchEvent) => {
     cancelPress();
-    selecting = false;
+    stopSelecting();
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
     lastY = t.clientY;
     acc = 0;
     dragging = false;
     const { clientX: x, clientY: y } = t;
+    startAt = { x, y };
     press = setTimeout(() => {
       press = undefined;
       selecting = true;
+      el.classList.add('selecting');
       const { col, row } = cellAt(el, term, x, y);
       const [a, b] = wordAt(term, col, row);
       anchor = [row * term.cols + a, row * term.cols + b];
@@ -291,6 +333,8 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
       selectTo(t.clientX, t.clientY);
       return;
     }
+    // Moving, even sideways, is not a long press.
+    if (press && Math.hypot(t.clientX - startAt.x, t.clientY - startAt.y) > 10) cancelPress();
     acc += lastY - t.clientY;
     lastY = t.clientY;
     if (!dragging && Math.abs(acc) < 10) return;
@@ -298,7 +342,7 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
       cancelPress();
       // What was selected scrolls away under tmux: the selection would point at other text.
       term.clearSelection();
-      onScroll();
+      h.scroll();
     }
     dragging = true;
     e.preventDefault();
@@ -307,7 +351,7 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
     while (Math.abs(acc) >= step) {
       const dir = acc > 0 ? 1 : -1;
       acc -= dir * step;
-      onLine(dir);
+      h.line(dir);
       target.dispatchEvent(
         new WheelEvent('wheel', { deltaY: dir, deltaMode: WheelEvent.DOM_DELTA_LINE, clientX: t.clientX, clientY: t.clientY, bubbles: true, cancelable: true }),
       );
@@ -317,17 +361,17 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
     e.preventDefault(); // no synthetic mouse events: xterm must not grab the focus
     cancelPress();
     if (selecting) {
-      selecting = false;
+      stopSelecting();
       return;
     }
     if (dragging) return;
     // A tap with something selected just drops the selection.
     if (term.hasSelection()) term.clearSelection();
-    else onTap();
+    else h.tap();
   };
   const cancel = () => {
     cancelPress();
-    selecting = false;
+    stopSelecting();
   };
   // Android opens the context menu on a long press.
   const noMenu = (e: Event) => e.preventDefault();
@@ -344,6 +388,45 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
     el.removeEventListener('touchcancel', cancel);
     el.removeEventListener('contextmenu', noMenu);
   };
+}
+
+/** Cells the loupe shows around the finger. */
+const LOUPE_CELLS = 21;
+
+/**
+ * The line under the finger, enlarged above it (the finger hides what it selects):
+ * the selected cells shaded and the one under the finger outlined.
+ */
+function Loupe({ term, el, main, range, at }: { term: Terminal; el: HTMLElement; main: HTMLElement; range: Range; at: { x: number; y: number; p: number } }) {
+  const row = Math.floor(at.p / term.cols);
+  const col = at.p % term.cols;
+  const first = Math.max(0, Math.min(col - (LOUPE_CELLS >> 1), term.cols - LOUPE_CELLS));
+  const line = term.buffer.active.getLine(row);
+  const cells: ComponentChildren[] = [];
+  for (let c = first; c < Math.min(term.cols, first + LOUPE_CELLS); c++) {
+    const cell = line?.getCell(c);
+    const w = cell?.getWidth() ?? 1;
+    if (w === 0) continue;
+    const p = row * term.cols + c;
+    const cls = `${p >= range[0] && p <= range[1] ? 'sel' : ''} ${c === col || (w === 2 && c + 1 === col) ? 'cur' : ''}`;
+    cells.push(
+      <span key={c} class={cls} style={w === 2 ? { width: '2ch' } : undefined}>
+        {cell?.getChars() || ' '}
+      </span>,
+    );
+  }
+  const m = main.getBoundingClientRect();
+  const { height } = cellBox(el, term, at.p);
+  const fontSize = Math.round(term.options.fontSize! * 1.6);
+  const width = (LOUPE_CELLS + 1) * fontSize * 0.6;
+  const left = Math.max(4, Math.min(at.x - m.left - width / 2, m.width - width - 4));
+  const above = at.y - m.top - height * 2 - fontSize * 2.4;
+  const top = above >= 4 ? above : at.y - m.top + height * 2;
+  return (
+    <div class="loupe" style={{ left, top, fontSize, fontFamily: FONT_FAMILY }} aria-hidden="true">
+      {cells}
+    </div>
+  );
 }
 
 /**
@@ -368,8 +451,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
    */
   const [scrolledUp, setScrolledUp] = useState(0);
-  /** Text selected with a long press (touch only): shows the copy button. */
-  const [selected, setSelected] = useState(false);
+  const main = useRef<HTMLDivElement>(null);
+  /** What a long press selected (touch only): shows the handles and the copy button. */
+  const [range, setRange] = useState<Range | null>(null);
+  /** The finger while it selects or drags a handle: shows the loupe. */
+  const [finger, setFinger] = useState<{ x: number; y: number; p: number } | null>(null);
+  /** A handle being dragged: the other end of the selection, and from the finger to the dragged end. */
+  const handleDrag = useRef<{ fixed: number; dx: number; dy: number } | null>(null);
   const fontSize = prefs.value.termFontSize;
 
   const sendRaw = (d: string) => {
@@ -474,8 +562,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       }
       sendRaw(d);
     });
-    const selectionSub = term.onSelectionChange(() => setSelected(isTouch && term.hasSelection()));
+    const selectionSub = term.onSelectionChange(() => {
+      if (!term.hasSelection()) setRange(null);
+    });
     const resizeSub = term.onResize(({ cols, rows }) => {
+      // The selection is kept as offsets for the old width.
+      term.clearSelection();
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'r', cols, rows }));
     });
     let t: ReturnType<typeof setTimeout>;
@@ -484,7 +576,18 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       t = setTimeout(() => fit.fit(), 60);
     });
     ro.observe(box.current!);
-    const unbindTouch = isTouch ? bindTouch(box.current!, term, focusInput, hideKeyboard, (dir) => setScrolledUp((up) => Math.max(0, up - dir))) : () => {};
+    const unbindTouch = isTouch
+      ? bindTouch(box.current!, term, {
+          tap: focusInput,
+          scroll: hideKeyboard,
+          line: (dir) => setScrolledUp((up) => Math.max(0, up - dir)),
+          select: (r) => {
+            selectRange(term, r);
+            setRange(r);
+          },
+          finger: setFinger,
+        })
+      : () => {};
     const unbindInput = isTouch
       ? bindInputProxy(input.current!, sendRaw, () => modsRef.current, () => setMods(new Set()))
       : () => {};
@@ -524,6 +627,53 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     hideKeyboard();
     setScrolledUp(0);
     void hub.action(host.id, { op: 'scrollToEnd', pane: pane.id }).catch(() => {});
+  };
+
+  /**
+   * Selection handles: each one moves its end of the selection and the other end stays.
+   * The end keeps its distance to the finger, so grabbing the handle does not jump it.
+   */
+  const handleEvents = (end: 0 | 1) => ({
+    onTouchStart: (e: TouchEvent) => {
+      const term = termRef.current;
+      if (!term || !range || e.touches.length !== 1) return;
+      const t = e.touches[0];
+      const c = cellBox(box.current!, term, range[end]);
+      handleDrag.current = { fixed: range[1 - end], dx: c.left + c.width / 2 - t.clientX, dy: c.top + c.height / 2 - t.clientY };
+    },
+    onTouchMove: (e: TouchEvent) => {
+      const term = termRef.current;
+      const d = handleDrag.current;
+      if (!term || !d || e.touches.length !== 1) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const p = offsetAt(box.current!, term, t.clientX + d.dx, t.clientY + d.dy);
+      const r: Range = [Math.min(d.fixed, p), Math.max(d.fixed, p)];
+      selectRange(term, r);
+      setRange(r);
+      setFinger({ x: t.clientX, y: t.clientY, p });
+    },
+    onTouchEnd: (e: TouchEvent) => {
+      e.preventDefault();
+      handleDrag.current = null;
+      setFinger(null);
+    },
+    onTouchCancel: () => {
+      handleDrag.current = null;
+      setFinger(null);
+    },
+  });
+
+  /** A handle hangs from the bottom-left corner of the first cell, or the bottom-right one of the last. */
+  const handle = (end: 0 | 1) => {
+    const term = termRef.current;
+    if (!term || !range || !box.current || !main.current) return null;
+    const c = cellBox(box.current, term, range[end]);
+    const m = main.current.getBoundingClientRect();
+    const left = c.left - m.left + (end ? c.width : 0);
+    const top = c.top - m.top + c.height;
+    if (top < 0 || top > m.height) return null;
+    return <div class={`sel-handle ${end ? 'end' : 'start'}`} style={{ left, top }} aria-hidden="true" {...handleEvents(end)} />;
   };
 
   const copySelection = () => {
@@ -593,14 +743,19 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
 
   return (
     <div class="term">
-      <div class="term-main">
+      <div class="term-main" ref={main}>
         <div class="term-box" ref={box} />
         {(pane.inMode || scrolledUp > 0) && (
           <button class="fab" aria-label="Ir al final" title="Ir al final" onPointerDown={keepFocus} onClick={scrollToEnd}>
             <IconDown />
           </button>
         )}
-        {selected && (
+        {range && handle(0)}
+        {range && handle(1)}
+        {range && finger && termRef.current && box.current && main.current && (
+          <Loupe term={termRef.current} el={box.current} main={main.current} range={range} at={finger} />
+        )}
+        {range && (
           <div class="term-copy">
             <button class="btn btn-primary" onPointerDown={keepFocus} onClick={copySelection}>
               Copiar

@@ -34,6 +34,8 @@ export function Drawer() {
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (e.touches.length !== 1) return;
+      // Dragging a terminal selection handle near the edge.
+      if ((e.target as Element | null)?.closest?.('.sel-handle')) return;
       if (!drawerOpen.value && t.clientX > EDGE) return;
       if (drawerOpen.value && t.clientX > width()) return; // the backdrop handles taps
       start = { x: t.clientX, y: t.clientY };
@@ -46,6 +48,11 @@ export function Drawer() {
       const dy = t.clientY - start.y;
       if (horizontal === null) {
         if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        // A long press in the terminal turned this touch into a text selection.
+        if (document.querySelector('.term-box.selecting')) {
+          start = null;
+          return;
+        }
         horizontal = Math.abs(dx) > Math.abs(dy);
         if (!horizontal) {
           start = null;
