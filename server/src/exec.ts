@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { type ChildProcess, execFile } from 'node:child_process';
 import type { Config, HostConfig } from './config.js';
 
 // Non-interactive SSH sessions (and launchd/systemd) start with a bare PATH that
@@ -32,6 +32,16 @@ function localEnv(): NodeJS.ProcessEnv {
   delete env.TMUX;
   delete env.TMUX_PANE;
   return env;
+}
+
+/**
+ * Writes `input` to the child's stdin. A child that exits before reading it (tmux with
+ * no server, a dropped SSH) makes the write fail with EPIPE, and an unhandled stream
+ * error kills the whole hub: ignore it here, the execFile callback reports the real failure.
+ */
+function feedStdin(child: ChildProcess, input: string | Buffer): void {
+  child.stdin?.on('error', () => {});
+  child.stdin?.end(input);
 }
 
 export class TmuxError extends Error {
@@ -114,7 +124,7 @@ export class TmuxExec {
         if (err) reject(new TmuxError((stderr || err.message).trim().split('\n').slice(-3).join(' '), stderr ?? '', err.killed ? 'timeout' : ((err as { code?: number }).code ?? null)));
         else resolve(stdout);
       });
-      child.stdin?.end(input ?? '');
+      feedStdin(child, input ?? '');
     });
   }
 
@@ -136,7 +146,7 @@ export class TmuxExec {
         }
         resolve(stdout);
       });
-      child.stdin?.end(input ?? '');
+      feedStdin(child, input ?? '');
     });
   }
 }
