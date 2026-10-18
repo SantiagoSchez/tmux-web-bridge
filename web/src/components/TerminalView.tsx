@@ -464,6 +464,20 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
     const t = e.touches[0];
     if (press && t && Math.hypot(t.clientX - startAt.x, t.clientY - startAt.y) > 10) cancelPress();
   };
+  // Chrome on Android takes a long press released without moving as a tap, even with
+  // its touchend cancelled, and sends mouse events: xterm would send tmux a click,
+  // which counts as input and drops the selection. Right after a touch they are dropped.
+  let touchedAt = 0;
+  const touched = () => (touchedAt = performance.now());
+  const noMouse = (e: Event) => {
+    if (performance.now() - touchedAt > 800) return;
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const MOUSE = ['mousemove', 'mousedown', 'mouseup', 'click', 'dblclick'] as const;
+  for (const t of MOUSE) el.addEventListener(t, noMouse, true);
+  el.addEventListener('touchstart', touched, { capture: true, passive: true });
+  el.addEventListener('touchend', touched, { capture: true, passive: true });
   const opts = { capture: true, passive: true } as const;
   addEventListener('touchmove', watch, opts);
   addEventListener('touchend', cancelPress, opts);
@@ -480,6 +494,9 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
     el.removeEventListener('touchend', end);
     el.removeEventListener('touchcancel', cancel);
     el.removeEventListener('contextmenu', noMenu, true);
+    for (const t of MOUSE) el.removeEventListener(t, noMouse, true);
+    el.removeEventListener('touchstart', touched, true);
+    el.removeEventListener('touchend', touched, true);
     removeEventListener('touchmove', watch, opts);
     removeEventListener('touchend', cancelPress, opts);
     removeEventListener('touchcancel', cancelPress, opts);
