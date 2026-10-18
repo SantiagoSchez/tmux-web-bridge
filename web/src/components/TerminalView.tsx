@@ -380,8 +380,6 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
       selectTo(t.clientX, t.clientY);
       return;
     }
-    // Moving, even sideways, is not a long press.
-    if (press && Math.hypot(t.clientX - startAt.x, t.clientY - startAt.y) > 10) cancelPress();
     acc += lastY - t.clientY;
     lastY = t.clientY;
     if (!dragging && Math.abs(acc) < 10) return;
@@ -422,6 +420,16 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
   };
   // Android opens the context menu on a long press.
   const noMenu = (e: Event) => e.preventDefault();
+  // Moving, even sideways, is not a long press. Watched from the window, ahead of the
+  // drawer's edge swipe, which keeps its touches from ever reaching the terminal.
+  const watch = (e: TouchEvent) => {
+    const t = e.touches[0];
+    if (press && t && Math.hypot(t.clientX - startAt.x, t.clientY - startAt.y) > 10) cancelPress();
+  };
+  const opts = { capture: true, passive: true } as const;
+  addEventListener('touchmove', watch, opts);
+  addEventListener('touchend', cancelPress, opts);
+  addEventListener('touchcancel', cancelPress, opts);
   el.addEventListener('touchstart', start, { passive: true });
   el.addEventListener('touchmove', move, { passive: false });
   el.addEventListener('touchend', end, { passive: false });
@@ -434,6 +442,9 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
     el.removeEventListener('touchend', end);
     el.removeEventListener('touchcancel', cancel);
     el.removeEventListener('contextmenu', noMenu);
+    removeEventListener('touchmove', watch, opts);
+    removeEventListener('touchend', cancelPress, opts);
+    removeEventListener('touchcancel', cancelPress, opts);
   };
 }
 
