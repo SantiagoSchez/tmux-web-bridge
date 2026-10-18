@@ -1,4 +1,5 @@
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/types';
+import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
 import { applyHostOrder, dialog, hosts, multiHost, toast, wsStatus, type MenuItem } from './state';
 import { hub } from './ws';
@@ -6,16 +7,34 @@ import { hub } from './ws';
 // Tree actions shared by the list and the window view. Anything that destroys
 // something asks first.
 
-/** Opens the first window of a space as soon as it shows up in the tree (it was just created). */
-export function openSessionWhenReady(hostId: string, sessionId: string): void {
+/** Runs `then` as soon as a space just created shows up in the tree with its windows. */
+function whenSessionReady(hostId: string, sessionId: string, then: (s: SessionInfo) => void): void {
   const started = Date.now();
   const tick = () => {
     const s = hosts.value.find((h) => h.id === hostId)?.sessions.find((x) => x.id === sessionId);
-    const w = s?.windows.find((x) => x.active) ?? s?.windows[0];
-    if (w) openWindow(hostId, w.id);
+    if (s?.windows.length) then(s);
     else if (Date.now() - started < 5000) setTimeout(tick, 200);
   };
   tick();
+}
+
+/**
+ * A space just created shows unfolded, and so does its machine. Folds are kept by
+ * name: a space created again with the name of one folded before would stay folded.
+ */
+function unfold(hostId: string, s: SessionInfo): void {
+  const { collapsedHosts, collapsedSessions } = prefs.value;
+  const key = `${hostId}:${s.name}`;
+  if (collapsedHosts.includes(hostId)) setPref('collapsedHosts', collapsedHosts.filter((id) => id !== hostId));
+  if (collapsedSessions.includes(key)) setPref('collapsedSessions', collapsedSessions.filter((k) => k !== key));
+}
+
+/** Opens the first window of a space as soon as it shows up in the tree (it was just created). */
+export function openSessionWhenReady(hostId: string, sessionId: string): void {
+  whenSessionReady(hostId, sessionId, (s) => {
+    unfold(hostId, s);
+    openWindow(hostId, (s.windows.find((x) => x.active) ?? s.windows[0]).id);
+  });
 }
 
 export function newSession(host: HostInfo, plain = false): void {
@@ -32,7 +51,8 @@ export function newSession(host: HostInfo, plain = false): void {
     placeholder: 'Nombre (vacío = automático)',
     confirm: 'Crear',
     onSubmit: async (name) => {
-      await hub.action(host.id, { op: 'newSession', name: name || undefined });
+      const res = await hub.action<{ session: string }>(host.id, { op: 'newSession', name: name || undefined });
+      if (res?.session) whenSessionReady(host.id, res.session, (s) => unfold(host.id, s));
     },
   };
 }
