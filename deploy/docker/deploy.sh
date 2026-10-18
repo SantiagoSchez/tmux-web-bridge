@@ -4,7 +4,8 @@
 #
 # Copia el commit a `<stack>/app`, reconstruye la imagen y levanta el panel. Si la imagen
 # no compila, no toca el panel en marcha; si el panel nuevo no responde en /api/health,
-# vuelve a la imagen y al código anteriores. Avisa por `notify` si existe en el host.
+# vuelve a la imagen y al código anteriores. Avisa por `notify` (si existe en el host) solo
+# cuando algo falla: un despliegue correcto no manda nada.
 set -euo pipefail
 
 STACK=${TWB_STACK:-$HOME/docker/stacks/twb}
@@ -58,7 +59,6 @@ docker compose up -d twb
 if health; then
   docker image prune -f >/dev/null
   echo "Desplegado $sha"
-  avisar good "twb desplegado: $sha" "$subject"
   exit 0
 fi
 
