@@ -80,7 +80,7 @@ git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 ~/tmux-web-bridge/host-kit/install.sh --hub https://<url-del-panel> --host <id-en-config.yaml> --token <notifyToken>
 ```
 
-Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Para actualizar basta un `git pull` en el clon: un hook de git vuelve a aplicar el kit. Con `install.sh --check` se comprueba la conexión.
+Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para los siguientes `git pull`. Para actualizar basta un `git pull` en el clon: un hook de git vuelve a aplicar el kit. Con `install.sh --check` se comprueba la conexión.
 
 <details>
 <summary>Usar tu propia status line en vez de la del kit</summary>

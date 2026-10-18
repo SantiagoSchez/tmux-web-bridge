@@ -16,8 +16,14 @@
 #   hooks de git post-merge y post-rewrite del clon: tras cada pull vuelven a ejecutar este
 #   script (recarga el tmux.conf y fusiona los hooks de Claude si han cambiado)
 #
+# Los enlaces son relativos y el source-file usa ~: si ~/.scripts o ~/.tmux.conf viven en unos
+# dotfiles compartidos entre máquinas (Dropbox), valen en todas las que tengan el clon en el
+# mismo sitio de su $HOME.
+#
 # Opciones:
 #   --hub URL --host ID --token TOKEN   escribe notify.env (van juntas; sin ellas se conserva)
+#   --claude-dir DIR  configuración de Claude Code (por defecto $CLAUDE_CONFIG_DIR o ~/.claude);
+#                   se recuerda en ~/.config/tmux-web-bridge/claude-dir para los hooks de git
 #   --skip-tmux     no toca ~/.tmux.conf
 #   --skip-claude   no toca ~/.claude (hooks y status line)
 #   --check         solo comprueba la conexión con el servidor central
@@ -28,7 +34,8 @@ set -euo pipefail
 KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-web-bridge"
 ENV_FILE="$CONF_DIR/notify.env"
-HUB="" HOST_ID="" TOKEN="" SKIP_TMUX=0 SKIP_CLAUDE=0 CHECK_ONLY=0 QUIET=0
+CLAUDE_DIR_FILE="$CONF_DIR/claude-dir"
+HUB="" HOST_ID="" TOKEN="" CLAUDE_DIR="" SKIP_TMUX=0 SKIP_CLAUDE=0 CHECK_ONLY=0 QUIET=0
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 say() { printf '\033[1;35m›\033[0m %s\n' "$*"; }
@@ -41,11 +48,12 @@ while [ $# -gt 0 ]; do
         --hub) HUB="${2:-}"; shift 2 ;;
         --host) HOST_ID="${2:-}"; shift 2 ;;
         --token) TOKEN="${2:-}"; shift 2 ;;
+        --claude-dir) CLAUDE_DIR="${2:-}"; shift 2 ;;
         --skip-tmux) SKIP_TMUX=1; shift ;;
         --skip-claude) SKIP_CLAUDE=1; shift ;;
         --check) CHECK_ONLY=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,26p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
         *) die "Opción desconocida: $1" ;;
     esac
 done
@@ -80,13 +88,28 @@ command -v curl >/dev/null || die "Falta curl"
 TMUX_VER="$(tmux -V | grep -oE '[0-9]+\.[0-9]+' | head -1)"
 awk -v v="$TMUX_VER" 'BEGIN { exit !(v + 0 >= 3.2) }' || die "Hace falta tmux 3.2 o posterior (tienes $TMUX_VER)"
 
+# Ruta de $2 relativa a la carpeta $1 (las dos absolutas y sin enlaces).
+relpath() {
+    local from="$1" to="$2" up=""
+    while [ "$from" != / ] && [ "${to#"$from"/}" = "$to" ]; do
+        from="$(dirname "$from")"
+        up="../$up"
+    done
+    if [ "$from" = / ]; then printf '%s%s\n' "$up" "${to#/}"; else printf '%s%s\n' "$up" "${to#"$from"/}"; fi
+}
+
+# ~/algo en vez de /home/usuario/algo, para lo que se escribe en ficheros compartidos.
+tilde() { case "$1" in "$HOME"/*) printf '~/%s\n' "${1#"$HOME"/}" ;; *) printf '%s\n' "$1" ;; esac; }
+
 # Enlaza dst al fichero del kit. Lo que hubiera antes (un fichero, u otro enlace) se
 # guarda en .bak.<fecha>. Si dst vive en una carpeta enlazada (dotfiles), el enlace
-# queda allí.
+# queda allí, y por eso es relativo: se calcula desde la carpeta real, así que vale en
+# cualquier máquina que comparta esos dotfiles y tenga el clon en el mismo sitio.
 link() {
-    local src="$1" dst="$2"
+    local src="$1" dst="$2" rel
     mkdir -p "$(dirname "$dst")"
-    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    rel="$(relpath "$(cd -P "$(dirname "$dst")" && pwd)" "$(cd -P "$(dirname "$src")" && pwd)/$(basename "$src")")"
+    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$rel" ]; then
         same "Al día: $dst"
         return
     fi
@@ -94,8 +117,8 @@ link() {
         mv "$dst" "$dst.bak.$STAMP"
         say "Copia de seguridad: $dst.bak.$STAMP"
     fi
-    ln -s "$src" "$dst"
-    say "Enlazado: $dst → $src"
+    ln -s "$rel" "$dst"
+    say "Enlazado: $dst → $rel"
 }
 
 # ------------------------------------------------------------ scripts
@@ -130,7 +153,7 @@ chmod 600 "$ENV_FILE"
 if [ "$SKIP_TMUX" = 0 ]; then
     TMUX_CONF="$HOME/.tmux.conf"
     [ -f "$TMUX_CONF" ] || [ ! -f "$HOME/.config/tmux/tmux.conf" ] || TMUX_CONF="$HOME/.config/tmux/tmux.conf"
-    LINE="source-file $KIT/tmux.conf"
+    LINE="source-file $(tilde "$KIT")/tmux.conf"
     if [ -f "$TMUX_CONF" ] && grep -qxF "$LINE" "$TMUX_CONF"; then
         same "$TMUX_CONF ya carga el kit"
     elif [ -f "$TMUX_CONF" ] && grep -q 'source-file .*tmux-web-bridge.*tmux\.conf' "$TMUX_CONF"; then
@@ -153,21 +176,34 @@ fi
 
 # ------------------------------------------------------------ Claude Code
 if [ "$SKIP_CLAUDE" = 0 ]; then
-    link "$KIT/statusline.sh" "$HOME/.claude/scripts/statusline.sh"
-    SETTINGS="$HOME/.claude/settings.json"
-    mkdir -p "$HOME/.claude"
+    # Se recuerda el directorio: un pull desde un shell sin CLAUDE_CONFIG_DIR (el hook de git)
+    # no debe acabar escribiendo en el ~/.claude de otro Claude de la misma cuenta.
+    [ -n "$CLAUDE_DIR" ] || [ ! -f "$CLAUDE_DIR_FILE" ] || CLAUDE_DIR="$(cat "$CLAUDE_DIR_FILE")"
+    [ -n "$CLAUDE_DIR" ] || CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+    CLAUDE_DIR="${CLAUDE_DIR%/}"
+    case "$CLAUDE_DIR" in "~/"*) CLAUDE_DIR="$HOME/${CLAUDE_DIR#"~/"}" ;; esac
+    if [ "$CLAUDE_DIR" = "$HOME/.claude" ]; then
+        rm -f "$CLAUDE_DIR_FILE"
+    elif [ "$(cat "$CLAUDE_DIR_FILE" 2>/dev/null)" != "$CLAUDE_DIR" ]; then
+        printf '%s\n' "$CLAUDE_DIR" > "$CLAUDE_DIR_FILE"
+        say "Configuración de Claude Code en $CLAUDE_DIR (recordado en $CLAUDE_DIR_FILE)"
+    fi
+    link "$KIT/statusline.sh" "$CLAUDE_DIR/scripts/statusline.sh"
+    SETTINGS="$CLAUDE_DIR/settings.json"
+    STATUSLINE="$(tilde "$CLAUDE_DIR")/scripts/statusline.sh"
+    mkdir -p "$CLAUDE_DIR"
     [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
     # Quita los hooks anteriores de tmux-window-title.sh y añade los del kit (idempotente),
     # y apunta la status line al script del kit.
     tmp="$(mktemp)"
-    jq --slurpfile kit "$KIT/claude-hooks.json" '
+    jq --slurpfile kit "$KIT/claude-hooks.json" --arg statusline "$STATUSLINE" '
         .hooks = (.hooks // {})
         | reduce ($kit[0].hooks | to_entries[]) as $e (.;
             .hooks[$e.key] = (
                 ((.hooks[$e.key] // [])
                   | map(select(((.hooks // []) | map(.command // "") | any(test("tmux-window-title\\.sh"))) | not)))
                 + $e.value))
-        | .statusLine = { type: "command", command: "~/.claude/scripts/statusline.sh", padding: 0 }
+        | .statusLine = { type: "command", command: $statusline, padding: 0 }
     ' "$SETTINGS" > "$tmp"
     # Se compara el contenido, no el formato: si ya estaban (aunque en otro orden), no se reescribe.
     if [ "$(jq -S . "$tmp")" = "$(jq -S . "$SETTINGS")" ]; then
