@@ -318,17 +318,23 @@ function openLink(uri: string): void {
  */
 function linkAt(term: Terminal, col: number, row: number): ILink | undefined {
   const providers = (term as unknown as { _core?: { _linkProviderService?: { linkProviders?: ILinkProvider[] } } })._core?._linkProviderService?.linkProviders ?? [];
-  // Ranges are 1-based and include both ends; as offsets they compare across wrapped rows.
-  const offset = ({ x, y }: { x: number; y: number }) => (y - 1) * term.cols + x - 1;
   const p = row * term.cols + col;
   let found: ILink | undefined;
   for (const provider of providers) {
     provider.provideLinks(row + 1, (links) => {
-      found ??= links?.find(({ range }) => offset(range.start) <= p && p <= offset(range.end));
+      found ??= links?.find((link) => {
+        const [from, to] = linkRange(term, link);
+        return from <= p && p <= to;
+      });
     });
     if (found) return found;
   }
   return undefined;
+}
+
+/** The cells of a link, as a touch selection (its range is 1-based and includes both ends). */
+function linkRange(term: Terminal, { range: { start, end } }: ILink): Range {
+  return [(start.y - 1) * term.cols + start.x - 1, (end.y - 1) * term.cols + end.x - 1];
 }
 
 interface TouchHandlers {
@@ -349,8 +355,9 @@ interface TouchHandlers {
  * full-screen TUI the terminal has no scrollback of its own: the drag becomes
  * wheel events, which tmux or the app (Claude Code) turn into scrolling.
  *
- * A long press selects instead: it takes the word under the finger and dragging
- * extends the selection from it. A tap or a scroll drops the selection.
+ * A long press selects instead: it takes the word (or the whole link) under the
+ * finger and dragging extends the selection from it. A tap or a scroll drops the
+ * selection.
  */
 function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => void {
   let lastY = 0;
@@ -391,8 +398,9 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
       selecting = true;
       el.classList.add('selecting');
       const { col, row } = cellAt(el, term, x, y);
+      const link = linkAt(term, col, row);
       const [a, b] = wordAt(term, col, row);
-      anchor = [row * term.cols + a, row * term.cols + b];
+      anchor = link ? linkRange(term, link) : [row * term.cols + a, row * term.cols + b];
       selectTo(x, y);
       navigator.vibrate?.(10);
     }, LONG_PRESS_MS);
@@ -581,6 +589,15 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   }, [attempt]);
 
   function start(): () => void {
+    // xterm opens a link when the mouse goes down and up on it, even after a drag: a
+    // drag selects it instead (tmux copies what is dragged over).
+    let downAt = { x: 0, y: 0 };
+    const onMouseDown = (e: MouseEvent) => (downAt = { x: e.clientX, y: e.clientY });
+    box.current!.addEventListener('mousedown', onMouseDown, true);
+    const activate = (e: MouseEvent, uri: string) => {
+      if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
+      openLink(uri);
+    };
     const term = new Terminal({
       fontFamily: FONT_FAMILY,
       fontSize,
@@ -593,11 +610,11 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       // Option+drag selects text even while tmux has the mouse; Cmd+C copies it.
       macOptionClickForcesSelection: true,
       // OSC 8 links open like the others, without xterm's confirm().
-      linkHandler: { activate: (_e, uri) => openLink(uri) },
+      linkHandler: { activate },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.loadAddon(new WebLinksAddon((_e, uri) => openLink(uri)));
+    term.loadAddon(new WebLinksAddon(activate));
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider));
     const unicode = new Unicode11Addon();
     term.loadAddon(unicode);
@@ -693,6 +710,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     if (!isTouch) term.focus();
 
     return () => {
+      box.current?.removeEventListener('mousedown', onMouseDown, true);
       ro.disconnect();
       unbindTouch();
       unbindInput();
@@ -777,7 +795,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
 
   const copySelection = () => {
     const term = termRef.current;
-    const text = term?.getSelection() ?? '';
+    // Just a link selected: its URL (an OSC 8 link shows other text, a long URL wraps).
+    const link = term && range && linkAt(term, range[0] % term.cols, Math.floor(range[0] / term.cols));
+    const whole = link && linkRange(term, link);
+    const text = whole && whole[0] === range[0] && whole[1] === range[1] ? link.text : (term?.getSelection() ?? '');
     term?.clearSelection();
     if (text) void copyText(text);
   };
