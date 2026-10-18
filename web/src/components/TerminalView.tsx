@@ -240,6 +240,53 @@ function selectRange(term: Terminal, [from, to]: Range): void {
   term.select(from % term.cols, Math.floor(from / term.cols), to - from + 1);
 }
 
+/** How far from the cursor's row a tap still moves it (the line being typed, wrapped). */
+const CURSOR_ROWS = 8;
+
+/** Resolves once the cursor stops moving (true) or if it never moved (false). */
+function cursorSettled(term: Terminal): Promise<boolean> {
+  return new Promise((resolve) => {
+    let moved = false;
+    const done = () => {
+      sub.dispose();
+      clearTimeout(quiet);
+      clearTimeout(cap);
+      resolve(moved);
+    };
+    const sub = term.onCursorMove(() => {
+      moved = true;
+      clearTimeout(quiet);
+      quiet = setTimeout(done, 120);
+    });
+    let quiet = setTimeout(done, 400);
+    const cap = setTimeout(done, 1500);
+  });
+}
+
+/**
+ * Moves the cursor of the line being typed to the cell at a point, with ← and →. Never
+ * ↑ ↓: on the first line of Claude Code's prompt they browse its history instead. Across
+ * wrapped lines the distance is a guess (indents, wide characters), so it looks where
+ * the cursor landed and corrects, while that gets it closer.
+ */
+async function moveCursorTo(el: HTMLElement, term: Terminal, x: number, y: number, send: (d: string) => void): Promise<void> {
+  const b = term.buffer.active;
+  const { col, row } = cellAt(el, term, x, y);
+  const goal = (row - b.viewportY) * term.cols + col;
+  const at = () => b.cursorY * term.cols + b.cursorX;
+  if (Math.abs(row - b.viewportY - b.cursorY) > CURSOR_ROWS) return;
+  let best = Math.abs(goal - at());
+  for (let i = 0; i < 4 && best > 0; i++) {
+    const d = goal - at();
+    send((d > 0 ? '\x1b[C' : '\x1b[D').repeat(Math.min(Math.abs(d), 300)));
+    // Not moving at all: the cursor is already at the start or end of what can be edited.
+    if (!(await cursorSettled(term))) return;
+    const now = Math.abs(goal - at());
+    if (now >= best) return;
+    best = now;
+  }
+}
+
 /** First and last column of the word at a cell (just the cell when it is a space or a separator). */
 function wordAt(term: Terminal, col: number, row: number): [number, number] {
   const line = term.buffer.active.getLine(row);
@@ -260,8 +307,8 @@ function wordAt(term: Terminal, col: number, row: number): [number, number] {
 }
 
 interface TouchHandlers {
-  /** A tap (no drag). */
-  tap: () => void;
+  /** A tap (no drag), where the finger touched. */
+  tap: (x: number, y: number) => void;
   /** A scroll drag starts. */
   scroll: () => void;
   /** The drag scrolled one line (1 down, -1 up). */
@@ -367,7 +414,7 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
     if (dragging) return;
     // A tap with something selected just drops the selection.
     if (term.hasSelection()) term.clearSelection();
-    else h.tap();
+    else h.tap(startAt.x, startAt.y);
   };
   const cancel = () => {
     cancelPress();
@@ -451,6 +498,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
    */
   const [scrolledUp, setScrolledUp] = useState(0);
+  /** For the touch handlers, bound once per terminal: whether the pane shows its live end. */
+  const atEnd = useRef(true);
+  atEnd.current = !pane.inMode && scrolledUp === 0;
+  const movingCursor = useRef(false);
   const main = useRef<HTMLDivElement>(null);
   /** What a long press selected (touch only): shows the handles and the copy button. */
   const [range, setRange] = useState<Range | null>(null);
@@ -578,7 +629,14 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     ro.observe(box.current!);
     const unbindTouch = isTouch
       ? bindTouch(box.current!, term, {
-          tap: focusInput,
+          tap: (x, y) => {
+            // Typing (keyboard up, at the live end): a tap moves the cursor there.
+            const typing = document.activeElement === input.current && keyboardShown() && atEnd.current;
+            if (!typing) return focusInput();
+            if (movingCursor.current) return;
+            movingCursor.current = true;
+            void moveCursorTo(box.current!, term, x, y, sendRaw).finally(() => (movingCursor.current = false));
+          },
           scroll: hideKeyboard,
           line: (dir) => setScrolledUp((up) => Math.max(0, up - dir)),
           select: (r) => {
