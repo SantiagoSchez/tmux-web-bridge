@@ -423,7 +423,7 @@ function Loupe({ term, el, main, range, at }: { term: Terminal; el: HTMLElement;
   const above = at.y - m.top - height * 2 - fontSize * 2.4;
   const top = above >= 4 ? above : at.y - m.top + height * 2;
   return (
-    <div class="loupe" style={{ left, top, fontSize, fontFamily: FONT_FAMILY }} aria-hidden="true">
+    <div class="loupe" style={{ left: `${left}px`, top: `${top}px`, fontSize: `${fontSize}px`, fontFamily: FONT_FAMILY }} aria-hidden="true">
       {cells}
     </div>
   );
@@ -673,7 +673,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const left = c.left - m.left + (end ? c.width : 0);
     const top = c.top - m.top + c.height;
     if (top < 0 || top > m.height) return null;
-    return <div class={`sel-handle ${end ? 'end' : 'start'}`} style={{ left, top }} aria-hidden="true" {...handleEvents(end)} />;
+    return <div class={`sel-handle ${end ? 'end' : 'start'}`} style={{ left: `${left}px`, top: `${top}px` }} aria-hidden="true" {...handleEvents(end)} />;
   };
 
   const copySelection = () => {
