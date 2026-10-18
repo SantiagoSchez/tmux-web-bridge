@@ -451,8 +451,13 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
     cancelPress();
     stopSelecting();
   };
-  // Android opens the context menu on a long press.
-  const noMenu = (e: Event) => e.preventDefault();
+  // Android opens the context menu on a long press. Caught on the way down: xterm takes
+  // it as a right click and focuses its textarea, the phone keyboard goes away and the
+  // terminal resizes, which drops the selection just made.
+  const noMenu = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
   // Moving, even sideways, is not a long press. Watched from the window, ahead of the
   // drawer's edge swipe, which keeps its touches from ever reaching the terminal.
   const watch = (e: TouchEvent) => {
@@ -467,14 +472,14 @@ function bindTouch(el: HTMLElement, term: Terminal, h: TouchHandlers): () => voi
   el.addEventListener('touchmove', move, { passive: false });
   el.addEventListener('touchend', end, { passive: false });
   el.addEventListener('touchcancel', cancel);
-  el.addEventListener('contextmenu', noMenu);
+  el.addEventListener('contextmenu', noMenu, true);
   return () => {
     cancelPress();
     el.removeEventListener('touchstart', start);
     el.removeEventListener('touchmove', move);
     el.removeEventListener('touchend', end);
     el.removeEventListener('touchcancel', cancel);
-    el.removeEventListener('contextmenu', noMenu);
+    el.removeEventListener('contextmenu', noMenu, true);
     removeEventListener('touchmove', watch, opts);
     removeEventListener('touchend', cancelPress, opts);
     removeEventListener('touchcancel', cancelPress, opts);
