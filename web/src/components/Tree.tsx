@@ -1,7 +1,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
-import { hostMenu, killSession, killWindow, moveHost, newSession, sessionMenu, windowMenu } from '../menus';
+import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, sessionMenu, windowMenu } from '../menus';
 import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
 import { hosts, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
@@ -250,6 +250,9 @@ function SessionBlock({ host, session }: { host: HostInfo; session: SessionInfo 
           )}
           {session.attached > 0 && <span class="attached" title="Hay un cliente de tmux conectado" />}
         </button>
+        <button class="icon-btn small-btn" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
+          <IconPlus />
+        </button>
         <button class="icon-btn small-btn" aria-label={`Acciones de ${session.name}`} onClick={() => sessionMenu(host, session)}>
           <IconMore />
         </button>
@@ -289,6 +292,9 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
           {session.attached > 0 && <span class="attached" title="Hay un cliente de tmux conectado" />}
           {window.bell && <span class="flag flag-bell" title="Campana" />}
           {window.activity && <span class="flag flag-activity" title="Actividad" />}
+        </button>
+        <button class="win-act" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
+          <IconPlus />
         </button>
         <button class="win-act" aria-label={`Acciones de ${session.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
           <IconMore />
