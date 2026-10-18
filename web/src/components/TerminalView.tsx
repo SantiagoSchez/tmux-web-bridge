@@ -12,7 +12,7 @@ import { clientId, toast } from '../state';
 import { XTERM_THEME } from '../theme';
 import { hub } from '../ws';
 import { AttachButton } from './Attach';
-import { IconDown } from './icons';
+import { IconClose, IconDown } from './icons';
 
 interface Props {
   above?: ComponentChildren;
@@ -66,6 +66,15 @@ function macShortcut(e: KeyboardEvent): string | null {
   return null;
 }
 
+async function copyText(text: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Copiado al portapapeles (${text.length} caracteres)`);
+  } catch {
+    toast('El navegador no ha dejado copiar al portapapeles', 'error');
+  }
+}
+
 /**
  * OSC 52: tmux (set-clipboard on) sends what you copy in it to the terminal; this
  * puts it on the browser's clipboard. Reading the clipboard from the pane is denied.
@@ -78,12 +87,7 @@ const clipboardProvider: IClipboardProvider = {
     // One copy in tmux can emit OSC 52 more than once (set-clipboard + tmux-yank): act once.
     if (text === lastCopy.text && Date.now() - lastCopy.at < 1500) return;
     lastCopy = { text, at: Date.now() };
-    try {
-      await navigator.clipboard.writeText(text);
-      toast(`Copiado al portapapeles (${text.length} caracteres)`);
-    } catch {
-      toast('El navegador no ha dejado copiar al portapapeles', 'error');
-    }
+    await copyText(text);
   },
 };
 
@@ -199,31 +203,103 @@ function keyboardShown(): boolean {
   return h < fullHeight - 120;
 }
 
+const LONG_PRESS_MS = 450;
+/** What ends a word for a long press: xterm's own separators plus the tmux pane border. */
+const WORD_SEPARATORS = ' ()[]{}\'"`,│';
+
+/** Buffer cell under a point of the screen, clamped to the visible rows. */
+function cellAt(el: HTMLElement, term: Terminal, x: number, y: number): { col: number; row: number } {
+  const r = ((el.querySelector('.xterm-screen') as HTMLElement | null) ?? el).getBoundingClientRect();
+  const col = Math.min(term.cols - 1, Math.max(0, Math.floor(((x - r.left) * term.cols) / r.width)));
+  const row = Math.min(term.rows - 1, Math.max(0, Math.floor(((y - r.top) * term.rows) / r.height)));
+  return { col, row: term.buffer.active.viewportY + row };
+}
+
+/** First and last column of the word at a cell (just the cell when it is a space or a separator). */
+function wordAt(term: Terminal, col: number, row: number): [number, number] {
+  const line = term.buffer.active.getLine(row);
+  const inWord = (c: number) => {
+    const cell = line?.getCell(c);
+    if (!cell) return false;
+    // The second half of a wide character goes with the first.
+    if (cell.getWidth() === 0) return true;
+    const ch = cell.getChars();
+    return ch !== '' && !WORD_SEPARATORS.includes(ch);
+  };
+  if (!inWord(col)) return [col, col];
+  let a = col;
+  let b = col;
+  while (a > 0 && inWord(a - 1)) a--;
+  while (b < term.cols - 1 && inWord(b + 1)) b++;
+  return [a, b];
+}
+
 /**
  * Touch scrolling. xterm.js ignores finger drags, and with tmux (mouse on) or a
  * full-screen TUI the terminal has no scrollback of its own: the drag becomes
  * wheel events, which tmux or the app (Claude Code) turn into scrolling. A tap
  * (no drag) calls onTap; a drag calls onScroll once, as it starts, and onLine for
  * every line it scrolls (1 down, -1 up).
+ *
+ * A long press selects instead: it takes the word under the finger and dragging
+ * extends the selection from it. A tap or a scroll drops the selection.
  */
 function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll: () => void, onLine: (dir: 1 | -1) => void): () => void {
   let lastY = 0;
   let acc = 0;
   let dragging = false;
+  let selecting = false;
+  let press: ReturnType<typeof setTimeout> | undefined;
+  /** The long-pressed word, as linear cell offsets (row * cols + col). */
+  let anchor: [number, number] = [0, 0];
   const lineHeight = () => Math.max(8, (el.querySelector('.xterm-screen') as HTMLElement | null)?.clientHeight ?? 0) / term.rows || 16;
+  const selectTo = (x: number, y: number) => {
+    const { col, row } = cellAt(el, term, x, y);
+    const p = row * term.cols + col;
+    const from = Math.min(anchor[0], p);
+    const to = Math.max(anchor[1], p);
+    term.select(from % term.cols, Math.floor(from / term.cols), to - from + 1);
+  };
+  const cancelPress = () => {
+    clearTimeout(press);
+    press = undefined;
+  };
   const start = (e: TouchEvent) => {
+    cancelPress();
+    selecting = false;
     if (e.touches.length !== 1) return;
-    lastY = e.touches[0].clientY;
+    const t = e.touches[0];
+    lastY = t.clientY;
     acc = 0;
     dragging = false;
+    const { clientX: x, clientY: y } = t;
+    press = setTimeout(() => {
+      press = undefined;
+      selecting = true;
+      const { col, row } = cellAt(el, term, x, y);
+      const [a, b] = wordAt(term, col, row);
+      anchor = [row * term.cols + a, row * term.cols + b];
+      selectTo(x, y);
+      navigator.vibrate?.(10);
+    }, LONG_PRESS_MS);
   };
   const move = (e: TouchEvent) => {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
+    if (selecting) {
+      e.preventDefault();
+      selectTo(t.clientX, t.clientY);
+      return;
+    }
     acc += lastY - t.clientY;
     lastY = t.clientY;
     if (!dragging && Math.abs(acc) < 10) return;
-    if (!dragging) onScroll();
+    if (!dragging) {
+      cancelPress();
+      // What was selected scrolls away under tmux: the selection would point at other text.
+      term.clearSelection();
+      onScroll();
+    }
     dragging = true;
     e.preventDefault();
     const step = lineHeight();
@@ -239,15 +315,34 @@ function bindTouch(el: HTMLElement, term: Terminal, onTap: () => void, onScroll:
   };
   const end = (e: TouchEvent) => {
     e.preventDefault(); // no synthetic mouse events: xterm must not grab the focus
-    if (!dragging) onTap();
+    cancelPress();
+    if (selecting) {
+      selecting = false;
+      return;
+    }
+    if (dragging) return;
+    // A tap with something selected just drops the selection.
+    if (term.hasSelection()) term.clearSelection();
+    else onTap();
   };
+  const cancel = () => {
+    cancelPress();
+    selecting = false;
+  };
+  // Android opens the context menu on a long press.
+  const noMenu = (e: Event) => e.preventDefault();
   el.addEventListener('touchstart', start, { passive: true });
   el.addEventListener('touchmove', move, { passive: false });
   el.addEventListener('touchend', end, { passive: false });
+  el.addEventListener('touchcancel', cancel);
+  el.addEventListener('contextmenu', noMenu);
   return () => {
+    cancelPress();
     el.removeEventListener('touchstart', start);
     el.removeEventListener('touchmove', move);
     el.removeEventListener('touchend', end);
+    el.removeEventListener('touchcancel', cancel);
+    el.removeEventListener('contextmenu', noMenu);
   };
 }
 
@@ -273,6 +368,8 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
    */
   const [scrolledUp, setScrolledUp] = useState(0);
+  /** Text selected with a long press (touch only): shows the copy button. */
+  const [selected, setSelected] = useState(false);
   const fontSize = prefs.value.termFontSize;
 
   const sendRaw = (d: string) => {
@@ -377,6 +474,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       }
       sendRaw(d);
     });
+    const selectionSub = term.onSelectionChange(() => setSelected(isTouch && term.hasSelection()));
     const resizeSub = term.onResize(({ cols, rows }) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'r', cols, rows }));
     });
@@ -398,6 +496,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       unbindInput();
       clearTimeout(t);
       dataSub.dispose();
+      selectionSub.dispose();
       resizeSub.dispose();
       ws.close();
       term.dispose();
@@ -425,6 +524,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     hideKeyboard();
     setScrolledUp(0);
     void hub.action(host.id, { op: 'scrollToEnd', pane: pane.id }).catch(() => {});
+  };
+
+  const copySelection = () => {
+    const term = termRef.current;
+    const text = term?.getSelection() ?? '';
+    term?.clearSelection();
+    if (text) void copyText(text);
   };
 
   useEffect(() => {
@@ -493,6 +599,16 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
           <button class="fab" aria-label="Ir al final" title="Ir al final" onPointerDown={keepFocus} onClick={scrollToEnd}>
             <IconDown />
           </button>
+        )}
+        {selected && (
+          <div class="term-copy">
+            <button class="btn btn-primary" onPointerDown={keepFocus} onClick={copySelection}>
+              Copiar
+            </button>
+            <button class="btn" aria-label="Quitar la selección" title="Quitar la selección" onPointerDown={keepFocus} onClick={() => termRef.current?.clearSelection()}>
+              <IconClose />
+            </button>
+          </div>
         )}
       </div>
       {isTouch && (

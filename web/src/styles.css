@@ -998,6 +998,26 @@ body.dragging-host * {
   padding: 4px 0 0 6px;
   background: var(--base);
   overflow: hidden;
+  /* A long press selects in xterm: no native selection or callout on top. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* Copy what a long press selected. */
+.term-copy {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 3;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+.term-copy .btn {
+  box-shadow: 0 6px 20px #0006;
+}
+.term-copy .btn:last-child {
+  padding: 0 12px;
 }
 .term-box .xterm {
   height: 100%;
