@@ -1,0 +1,82 @@
+# Configuración del servidor central de tmux-web-bridge.
+# Cópialo a config.yaml (o apunta TMUX_WEB_CONFIG a otro fichero).
+
+listen:
+  host: 127.0.0.1   # con `tailscale serve`; detrás de otro proxy (p. ej. en Docker), 0.0.0.0
+  port: 7681
+
+auth:
+  # tailscale: se entra solo por `tailscale serve`, con tu identidad de la tailnet.
+  # password:  detrás de otro proxy (nginx...), con contraseña. Las cabeceras de Tailscale se ignoran.
+  method: tailscale
+  # Usuarios de Tailscale que pueden entrar (cabecera Tailscale-User-Login que añade
+  # tailscale serve). Vacío = cualquier usuario de la tailnet.
+  allowedLogins:
+    - tu-usuario@example.com
+  # Solo para desarrollo: aceptar peticiones sin cabeceras de Tailscale.
+  allowWithoutTailscale: false
+  # Con method: password. Genera el hash con: node server/dist/index.js hash-password
+  # (o, desde el repo: cd server && npx tsx src/index.ts hash-password)
+  # passwordHash: "scrypt$32768$8$1$..."
+  # sessionDays: 30   # la sesión caduca tras estos días sin abrir el panel
+
+# Proxies cuyas X-Forwarded-For/-Proto se creen (la IP real del cliente y si llegó por HTTPS).
+# Con method: password, la IP de tu proxy inverso.
+# trustProxy: [10.0.0.20]
+
+# Orígenes extra aceptados en WebSocket/POST (el propio host siempre se acepta).
+# Útil en desarrollo con Vite: http://localhost:5173
+allowedOrigins: []
+
+# Secreto que usan los scripts de cada máquina para POST /api/notify.
+# Genéralo con: openssl rand -hex 24
+notifyToken: cambia-esto
+
+# Opcional: puerto aparte que solo atiende POST /api/notify (con el token), para
+# máquinas que no están en la tailnet (p. ej. otros contenedores de la LAN).
+# notifyListen: { host: 0.0.0.0, port: 7682 }
+
+# Contacto VAPID para Web Push (cualquier mailto: vale).
+vapidSubject: mailto:tu-usuario@example.com
+
+# Directorio para claves VAPID y suscripciones push (relativo a este fichero).
+dataDir: ./data
+
+# Directorio de los sockets ControlMaster de SSH (ruta corta: límite de ~104 bytes).
+# ssh:
+#   controlDir: /tmp/tmux-web-bridge-1000
+
+pollIntervalMs: 1000     # cada cuánto se lee el árbol de tmux de cada máquina
+fallbackDelayMs: 4000    # espera al script del host antes de avisar solo por el cambio de emoji
+
+hosts:
+  # tmux en la propia máquina del servidor central, sin SSH.
+  - id: hub
+    name: Servidor
+    local: true
+
+  # Máquinas remotas por SSH. "ssh" puede ser un alias de ~/.ssh/config o usuario@host.
+  - id: mac
+    name: MacBook
+    ssh: santiago@macbook        # nombre MagicDNS de la tailnet
+    identityFile: ~/.ssh/tmux-web-bridge_ed25519
+    tmux: /opt/homebrew/bin/tmux # opcional: ruta de tmux si no está en el PATH
+    # socketName: trabajo        # opcional: servidor tmux no estándar (tmux -L trabajo)
+    # socketPath: /tmp/mi.sock   # opcional: o por ruta (tmux -S /tmp/mi.sock)
+
+  - id: wsl
+    name: PC (WSL)
+    ssh: santiago@pc-windows
+    port: 2222                   # sshd dentro de WSL
+    identityFile: ~/.ssh/tmux-web-bridge_ed25519
+    sshOptions: []               # opciones extra de ssh -o
+
+  # Un servidor para trabajar con Claude: «Nuevo space» abre un proyecto, como la función `c`.
+  - id: dev
+    name: Servidor
+    ssh: santiago@10.0.0.25
+    identityFile: ~/.ssh/tmux-web-bridge_ed25519
+    projects:
+      dir: ~/Dropbox/Documents/Proyectos   # cada carpeta es un proyecto (rutas de esa máquina)
+      shortcuts: ~/.c_dirs                 # opcional: atajos nombre="ruta" de `c`
+      command: claude                      # se escribe en el space nuevo (al salir queda la shell)

@@ -1,0 +1,25 @@
+# Despliega twb en el runner self-hosted del host que lo aloja (etiqueta `twb`) en cada
+# push a master. El trabajo está en deploy/docker/deploy.sh.
+name: deploy
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - 'host-kit/**'
+      - 'deploy/install-hub.sh'
+      - 'deploy/tmux-web-bridge.service'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-twb
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, twb]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - run: deploy/docker/deploy.sh

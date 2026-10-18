@@ -1,0 +1,13 @@
+{
+  "name": "tmux-web-bridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "start": "pnpm --filter server start",
+    "postinstall": "node scripts/fix-node-pty.mjs"
+  },
+  "packageManager": "pnpm@10.19.0"
+}

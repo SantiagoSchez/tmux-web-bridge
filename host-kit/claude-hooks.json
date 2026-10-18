@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh start \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state busy \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion|ExitPlanMode",
+        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state question \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion|ExitPlanMode",
+        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state busy \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|elicitation_dialog",
+        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state attention \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
+      }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state done \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh clear" }] }
+    ]
+  }
+}

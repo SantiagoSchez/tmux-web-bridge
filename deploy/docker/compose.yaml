@@ -1,0 +1,67 @@
+# twb (tmux web bridge) en Docker: el servidor central + Tailscale como contenedor auxiliar.
+#
+# Tailscale (modo userspace, sin /dev/net/tun) une el stack a la tailnet como un
+# dispositivo propio, para llegar por SSH a las máquinas de la tailnet a través de su
+# proxy SOCKS5 (ProxyCommand con nc, ver config.yaml). El servidor central comparte su red.
+#
+# El panel se publica en TWB_BIND:7681 para tu proxy inverso (nginx con tu certificado),
+# con contraseña (auth.method: password en config.yaml). Así se entra igual desde la
+# tailnet que desde la LAN. Alternativa sin contraseña, solo tailnet: tailscale serve
+# (ver el README).
+#
+# Primer arranque: pon en .env (modo 600) TS_HOSTNAME, TWB_BIND y una auth key de un solo
+# uso, no efímera y preaprobada (TS_AUTHKEY=tskey-auth-...). El login interactivo por URL
+# no funciona aquí: containerboot espera 60 s, se reinicia con otra clave de nodo y la URL
+# deja de valer. Después, "Disable key expiry" en el admin de Tailscale.
+
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: twb-tailscale
+    hostname: ${TS_HOSTNAME:-twb}
+    restart: unless-stopped
+    environment:
+      TS_HOSTNAME: ${TS_HOSTNAME:-twb}
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_AUTH_ONCE: "true"   # la clave solo se usa en el primer arranque
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_SOCKS5_SERVER: 127.0.0.1:1055
+      TS_SOCKET: /var/run/tailscale/tailscaled.sock
+      # Con tailscale serve en lugar de proxy: TS_SERVE_CONFIG: /config/serve.json
+      # (y el volumen ./serve.json:/config/serve.json:ro).
+    # Los puertos de la red compartida se publican en este servicio. Solo en la IP desde la
+    # que llega tu proxy: el panel en sí nunca en 0.0.0.0.
+    ports:
+      - "${TWB_BIND:-127.0.0.1}:7681:7681"
+      # Avisos de máquinas sin el proxy delante (notifyListen en config.yaml): solo /api/notify, con token.
+      - "${TWB_BIND:-127.0.0.1}:7682:7682"
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - ts-socket:/var/run/tailscale
+
+  twb:
+    build: ./app
+    image: twb:local
+    container_name: twb
+    restart: unless-stopped
+    network_mode: service:tailscale
+    # Comparte la red del contenedor de Tailscale: si este se reinicia, el panel se queda
+    # sin red y Docker no lo rearranca solo. `restart: true` lo reinicia con él.
+    depends_on:
+      tailscale:
+        condition: service_started
+        restart: true
+    environment:
+      TZ: ${TZ:-Europe/Madrid}
+      # Si Tailscale se reinicia por su cuenta, el panel se queda en una red muerta:
+      # el vigilante lo detecta (su proxy SOCKS deja de responder) y sale para que Docker lo rearranque.
+      WATCHDOG_TCP: 127.0.0.1:1055
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./data:/app/data
+      - ./ssh:/home/node/.ssh
+      - ts-socket:/var/run/tailscale
+
+volumes:
+  ts-socket:
