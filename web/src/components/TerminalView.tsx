@@ -2,7 +2,7 @@ import { ClipboardAddon, type ClipboardSelectionType, type IClipboardProvider } 
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { Terminal } from '@xterm/xterm';
+import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -306,6 +306,31 @@ function wordAt(term: Terminal, col: number, row: number): [number, number] {
   return [a, b];
 }
 
+/** A link of the terminal (a URL in the text or an OSC 8 one) opens in a new tab. */
+function openLink(uri: string): void {
+  window.open(uri, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * The link at a cell, for a tap: xterm only looks for links under the mouse. Asks its
+ * providers directly (the web links addon and its own OSC 8 one, not in the public
+ * API); both answer at once, so the link still opens inside the tap's gesture.
+ */
+function linkAt(term: Terminal, col: number, row: number): ILink | undefined {
+  const providers = (term as unknown as { _core?: { _linkProviderService?: { linkProviders?: ILinkProvider[] } } })._core?._linkProviderService?.linkProviders ?? [];
+  // Ranges are 1-based and include both ends; as offsets they compare across wrapped rows.
+  const offset = ({ x, y }: { x: number; y: number }) => (y - 1) * term.cols + x - 1;
+  const p = row * term.cols + col;
+  let found: ILink | undefined;
+  for (const provider of providers) {
+    provider.provideLinks(row + 1, (links) => {
+      found ??= links?.find(({ range }) => offset(range.start) <= p && p <= offset(range.end));
+    });
+    if (found) return found;
+  }
+  return undefined;
+}
+
 interface TouchHandlers {
   /** A tap (no drag), where the finger touched. */
   tap: (x: number, y: number) => void;
@@ -567,10 +592,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       macOptionIsMeta: false,
       // Option+drag selects text even while tmux has the mouse; Cmd+C copies it.
       macOptionClickForcesSelection: true,
+      // OSC 8 links open like the others, without xterm's confirm().
+      linkHandler: { activate: (_e, uri) => openLink(uri) },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
-    term.loadAddon(new WebLinksAddon());
+    term.loadAddon(new WebLinksAddon((_e, uri) => openLink(uri)));
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider));
     const unicode = new Unicode11Addon();
     term.loadAddon(unicode);
@@ -641,6 +668,9 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const unbindTouch = isTouch
       ? bindTouch(box.current!, term, {
           tap: (x, y) => {
+            const { col, row } = cellAt(box.current!, term, x, y);
+            const link = linkAt(term, col, row);
+            if (link) return link.activate(new MouseEvent('click'), link.text);
             // Typing (keyboard up, at the live end): a tap moves the cursor there.
             const typing = document.activeElement === input.current && keyboardShown() && atEnd.current;
             if (!typing) return focusInput();
