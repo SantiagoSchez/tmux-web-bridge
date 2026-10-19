@@ -811,13 +811,6 @@ body.dragging-host * {
 .layout.desktop .gv-body {
   padding: 4px 20px 32px;
 }
-.gv-offline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  padding: 8px 4px 0;
-}
 .gv-none {
   margin: 12px 4px 0;
 }

@@ -54,9 +54,8 @@ function usePreviews(): Record<string, PanePreview> {
 export function Grid() {
   const desktop = isDesktop.value;
   const previews = usePreviews();
-  const list = hosts.value;
-  const offline = list.filter((h) => h.status !== 'ok');
-  const tiles = list.flatMap((host) =>
+  // Machines without connection have no tiles: what they have open is not known.
+  const tiles = hosts.value.flatMap((host) =>
     host.status === 'ok' ? host.sessions.flatMap((session) => session.windows.map((window) => ({ host, session, window }))) : [],
   );
   const count = tiles.length;
@@ -83,14 +82,7 @@ export function Grid() {
         )}
       </header>
       <div class="gv-body scroll">
-        {offline.map((host) => (
-          <p key={host.id} class="gv-offline">
-            <span class={`dot dot-${host.status === 'error' ? 'closed' : 'connecting'}`} />
-            <span class="host-name">{host.name}</span>
-            <span class="dim small">{host.status === 'error' ? 'sin conexión' : 'conectando…'}</span>
-          </p>
-        ))}
-        {count === 0 && offline.length < list.length && <p class="dim small gv-none">No hay ventanas abiertas.</p>}
+        {count === 0 && <p class="dim small gv-none">No hay ventanas abiertas.</p>}
         <ul class="gv-tiles">
           {tiles.map(({ host, session, window }) => (
             <Tile key={`${host.id}/${session.id}/${window.id}`} host={host} session={session} window={window} previews={previews} />
