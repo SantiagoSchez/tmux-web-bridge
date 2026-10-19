@@ -6,6 +6,13 @@ import { TmuxError, TmuxExec } from './exec.js';
 /** Prefix of the grouped sessions opened by web terminals (hidden from the tree). */
 export const WEB_SESSION_PREFIX = '_tw-';
 
+/**
+ * How long a host that stops answering keeps showing what it had open. Past a short
+ * blip it is no longer known: a machine switched off would keep spaces that cannot be
+ * opened or closed.
+ */
+const OFFLINE_GRACE_MS = 60_000;
+
 const SEP = '\x1f';
 const FIELDS = [
   'session_id', 'session_name', '@space_num', '@space_icon', 'session_attached', 'session_created',
@@ -153,6 +160,7 @@ export class HostMonitor extends EventEmitter {
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
   private failures = 0;
+  private offlineSince: number | null = null;
   private polling: Promise<void> | null = null;
   private prefixLoaded = false;
   /** Web terminal sessions with a live pty on this hub (never reaped). */
@@ -216,11 +224,14 @@ export class HostMonitor extends EventEmitter {
     } catch (err) {
       if (!(err instanceof TmuxError && err.noServer)) {
         this.failures++;
-        this.update({ ...this.info, status: 'error', error: (err as Error).message });
+        this.offlineSince ??= Date.now();
+        const stale = Date.now() - this.offlineSince > OFFLINE_GRACE_MS;
+        this.update({ ...this.info, status: 'error', error: (err as Error).message, sessions: stale ? [] : this.info.sessions });
         return;
       }
     }
     this.failures = 0;
+    this.offlineSince = null;
     const prev = this.info;
     this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits });
     this.detectTransitions(prev, this.info);

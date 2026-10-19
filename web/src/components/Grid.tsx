@@ -50,12 +50,16 @@ function usePreviews(): Record<string, PanePreview> {
   return previews;
 }
 
-/** Every open window as a live miniature, by machine and space. A tap opens it. */
+/** Every open window as a live miniature, each under the name of its space. A tap opens it. */
 export function Grid() {
   const desktop = isDesktop.value;
   const previews = usePreviews();
   const list = hosts.value;
-  const count = list.reduce((n, h) => n + h.sessions.reduce((m, s) => m + s.windows.length, 0), 0);
+  const offline = list.filter((h) => h.status !== 'ok');
+  const tiles = list.flatMap((host) =>
+    host.status === 'ok' ? host.sessions.flatMap((session) => session.windows.map((window) => ({ host, session, window }))) : [],
+  );
+  const count = tiles.length;
   return (
     <div class="gv">
       <header class="wv-head">
@@ -79,32 +83,19 @@ export function Grid() {
         )}
       </header>
       <div class="gv-body scroll">
-        {list.map((host) => (
-          <section key={host.id} class="gv-host">
-            {(multiHost.value || host.status !== 'ok') && (
-              <h2 class="gv-host-head">
-                <span class={`dot dot-${host.status === 'ok' ? 'open' : host.status === 'error' ? 'closed' : 'connecting'}`} />
-                <span class="host-name">{host.name}</span>
-                {host.status !== 'ok' && <span class="dim small">{host.status === 'error' ? 'sin conexión' : 'conectando…'}</span>}
-              </h2>
-            )}
-            {host.status === 'ok' && host.sessions.length === 0 && <p class="dim small gv-none">tmux no tiene sesiones abiertas.</p>}
-            {host.sessions.map((s) => (
-              <div key={s.id} class="gv-session">
-                <h3 class="gv-session-head">
-                  <span class="session-num">{s.num ?? '·'}</span>
-                  {s.icon && <span>{s.icon}</span>}
-                  <span class="session-name">{s.name}</span>
-                </h3>
-                <ul class="gv-tiles">
-                  {s.windows.map((w) => (
-                    <Tile key={w.id} host={host} session={s} window={w} previews={previews} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
+        {offline.map((host) => (
+          <p key={host.id} class="gv-offline">
+            <span class={`dot dot-${host.status === 'error' ? 'closed' : 'connecting'}`} />
+            <span class="host-name">{host.name}</span>
+            <span class="dim small">{host.status === 'error' ? 'sin conexión' : 'conectando…'}</span>
+          </p>
         ))}
+        {count === 0 && offline.length < list.length && <p class="dim small gv-none">No hay ventanas abiertas.</p>}
+        <ul class="gv-tiles">
+          {tiles.map(({ host, session, window }) => (
+            <Tile key={`${host.id}/${session.id}/${window.id}`} host={host} session={session} window={window} previews={previews} />
+          ))}
+        </ul>
       </div>
     </div>
   );
@@ -120,18 +111,24 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
     return preview ? [{ id: p.id, preview }] : [];
   });
   const size = panes[0]?.preview;
-  const name = session.windows.length === 1 ? session.name : window.name;
+  const label = `${multiHost.value ? `${host.name} · ` : ''}${session.name} · ${window.name}`;
   return (
     <li>
+      <div class="tile-space">
+        <span class="session-num">{session.num ?? '·'}</span>
+        {session.icon && <span>{session.icon}</span>}
+        <span class="tile-space-name">{session.name}</span>
+        {multiHost.value && <span class="tile-host">{host.name}</span>}
+      </div>
       <button
         class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''}`}
-        title={window.state ? `${name} · ${STATE_LABEL[window.state]}` : name}
+        title={window.state ? `${label} · ${STATE_LABEL[window.state]}` : label}
         onClick={() => openWindow(host.id, window.id)}
       >
         <span class="tile-head">
           <span class="tile-index">{window.index}</span>
           {window.icon && <span>{window.icon}</span>}
-          <span class={`tile-name ${window.pinned ? 'pinned' : ''}`}>{name}</span>
+          <span class={`tile-name ${window.pinned ? 'pinned' : ''}`}>{window.name}</span>
         </span>
         <span class="tile-screen">
           {size ? (

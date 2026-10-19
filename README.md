@@ -11,7 +11,7 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
 </p>
 
 - **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas.
-- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles, agrupadas por máquina y space. Un toque abre la que quieras.
+- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y el nombre de su space encima. Un toque abre la que quieras.
 - **Terminal completa** (xterm.js) con barra de teclas para el móvil. Cada pestaña tiene su propia ventana actual, así que navegar desde el móvil no mueve el tmux del ordenador.
 - **Seleccionar y copiar con el dedo**: pulsación larga, asas para ajustar cada extremo y una lupa sobre el dedo.
 - **Control completo** de spaces, ventanas y paneles; «Nuevo space» puede abrir un proyecto y arrancar `claude` en él.
@@ -143,7 +143,7 @@ pnpm typecheck
 
 | Síntoma | Causa probable |
 | --- | --- |
-| Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. |
+| Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. Sus spaces dejan de mostrarse al minuto sin respuesta, porque ya no se sabe qué tiene abierto. |
 | No llegan notificaciones | ⚙️ Ajustes › Enviar prueba; `host-kit/install.sh --check` en la máquina. |
 | 401 al abrir el panel | Con `auth.method: tailscale`, estás entrando sin `tailscale serve`. |
 | «Código incorrecto» en la verificación en dos pasos | La hora del móvil o del servidor va desfasada más de 30 s. |

@@ -811,30 +811,20 @@ body.dragging-host * {
 .layout.desktop .gv-body {
   padding: 4px 20px 32px;
 }
-.gv-host {
-  padding-top: 12px;
-}
-.gv-host-head {
+.gv-offline {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 4px 0;
-  min-height: 36px;
+  margin: 0;
+  padding: 8px 4px 0;
 }
 .gv-none {
-  margin: 4px;
-}
-.gv-session-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 4px 8px;
-  font-size: 15px;
+  margin: 12px 4px 0;
 }
 .gv-tiles {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 12px 0 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
@@ -842,6 +832,34 @@ body.dragging-host * {
 .layout.desktop .gv-tiles {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
+}
+/* The space of each window, above its tile. */
+.tile-space {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 4px 4px;
+  font-size: 12px;
+  color: var(--subtext0);
+}
+.tile-space .session-num {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-size: 11px;
+}
+.tile-space-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tile-host {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--overlay1);
 }
 .tile {
   width: 100%;
