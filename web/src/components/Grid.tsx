@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { HostInfo, PanePreview, PreviewsResponse, SessionInfo, WindowInfo } from '../../../shared/types';
 import { renderAnsi } from '../ansi';
+import { killSession, killWindow } from '../menus';
 import { isDesktop } from '../prefs';
 import { openWindow, route, toggleGrid } from '../router';
 import { hosts, multiHost, STATE_LABEL } from '../state';
@@ -104,9 +105,10 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
     return preview ? [{ id: p.id, preview }] : [];
   });
   const size = panes[0]?.preview;
+  const solo = session.windows.length === 1;
   const label = `${multiHost.value ? `${host.name} · ` : ''}${session.name} · ${window.name}`;
   return (
-    <li>
+    <li class="tile-item">
       <button
         class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''}`}
         title={window.state ? `${label} · ${STATE_LABEL[window.state]}` : label}
@@ -132,6 +134,15 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
             <span class="tile-wait dim small">…</span>
           )}
         </span>
+      </button>
+      {/* Outside the tile: a button cannot hold another. The only window of a space closes the space, as in its menu. */}
+      <button
+        class="icon-btn tile-close"
+        aria-label={`Cerrar ${solo ? 'el space' : 'la ventana'} ${label}`}
+        title={solo ? 'Cerrar space' : 'Cerrar ventana'}
+        onClick={() => (solo ? killSession(host, session) : killWindow(host, window))}
+      >
+        <IconClose />
       </button>
     </li>
   );

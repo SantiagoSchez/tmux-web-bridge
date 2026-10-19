@@ -825,6 +825,21 @@ body.dragging-host * {
 .layout.desktop .gv-tiles {
   gap: 12px;
 }
+.tile-item {
+  position: relative;
+}
+.tile-close {
+  position: absolute;
+  top: 5px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--overlay1);
+}
+.tile-close:hover {
+  color: var(--red);
+}
 .tile {
   width: 100%;
   display: flex;
@@ -849,7 +864,7 @@ body.dragging-host * {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 6px 36px 6px 8px;
   font-size: 13px;
 }
 .tile-name {
