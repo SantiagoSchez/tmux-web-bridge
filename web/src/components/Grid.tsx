@@ -83,7 +83,8 @@ export function Grid() {
       </header>
       <div class="gv-body scroll">
         {count === 0 && <p class="dim small gv-none">No hay ventanas abiertas.</p>}
-        <ul class="gv-tiles">
+        {/* Up to 3 per row (2 on a phone), always as wide as the view: fewer windows, bigger tiles. */}
+        <ul class="gv-tiles" style={{ '--per-row': Math.max(1, Math.min(count, desktop ? 3 : 2)) }}>
           {tiles.map(({ host, session, window }) => (
             <Tile key={`${host.id}/${session.id}/${window.id}`} host={host} session={session} window={window} previews={previews} />
           ))}

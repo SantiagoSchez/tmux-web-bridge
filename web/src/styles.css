@@ -819,11 +819,10 @@ body.dragging-host * {
   margin: 0;
   padding: 12px 0 0;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--per-row), minmax(0, 1fr));
   gap: 8px;
 }
 .layout.desktop .gv-tiles {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 12px;
 }
 /* The space of each window, above its tile. */
