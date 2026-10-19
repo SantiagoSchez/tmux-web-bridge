@@ -820,6 +820,7 @@ body.dragging-host * {
   padding: 12px 0 0;
   display: grid;
   grid-template-columns: repeat(var(--per-row), minmax(0, 1fr));
+  align-items: start;
   gap: 8px;
 }
 .layout.desktop .gv-tiles {
@@ -887,10 +888,10 @@ body.dragging-host * {
   font-size: 12px;
   color: var(--overlay1);
 }
-/* Every tile the same shape; the window inside is scaled to fit it, cell for cell. */
+/* Each tile takes the shape of its window, which is scaled to fill it, cell for cell. */
 .tile-screen {
   display: flex;
-  aspect-ratio: 16 / 10;
+  aspect-ratio: var(--ratio, 16 / 10);
   container-type: size;
   background: var(--crust);
 }

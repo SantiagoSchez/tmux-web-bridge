@@ -123,7 +123,8 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
           </span>
           {multiHost.value && <span class="tile-host">{host.name}</span>}
         </span>
-        <span class="tile-screen">
+        {/* As wide as the column and as tall as the window's shape needs: no bands around it. Cells are 0.6 × 1.2. */}
+        <span class="tile-screen" style={size ? { '--ratio': size.cols / (size.rows * 2) } : undefined}>
           {size ? (
             <span class="tile-win" style={{ '--cols': size.cols, '--rows': size.rows }}>
               {panes.map((p) => (
