@@ -826,8 +826,11 @@ body.dragging-host * {
 .layout.desktop .gv-tiles {
   gap: 12px;
 }
+/* As wide as the column, unless the window is taller than 4:3: then it is that tall and narrower. */
 .tile-item {
   position: relative;
+  justify-self: center;
+  width: min(100%, 100% * 0.75 * var(--ratio, 1.6));
 }
 .tile-close {
   position: absolute;
@@ -891,7 +894,7 @@ body.dragging-host * {
 /* Each tile takes the shape of its window, which is scaled to fill it, cell for cell. */
 .tile-screen {
   display: flex;
-  aspect-ratio: var(--ratio, 16 / 10);
+  aspect-ratio: var(--ratio, 1.6);
   container-type: size;
   background: var(--crust);
 }

@@ -108,7 +108,8 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
   const solo = session.windows.length === 1;
   const label = `${multiHost.value ? `${host.name} · ` : ''}${session.name} · ${window.name}`;
   return (
-    <li class="tile-item">
+    // The tile takes the shape of the window, so there are no bands around it. Cells are 0.6 × 1.2.
+    <li class="tile-item" style={size ? { '--ratio': size.cols / (size.rows * 2) } : undefined}>
       <button
         class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''}`}
         title={window.state ? `${label} · ${STATE_LABEL[window.state]}` : label}
@@ -123,8 +124,7 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
           </span>
           {multiHost.value && <span class="tile-host">{host.name}</span>}
         </span>
-        {/* As wide as the column and as tall as the window's shape needs: no bands around it. Cells are 0.6 × 1.2. */}
-        <span class="tile-screen" style={size ? { '--ratio': size.cols / (size.rows * 2) } : undefined}>
+        <span class="tile-screen">
           {size ? (
             <span class="tile-win" style={{ '--cols': size.cols, '--rows': size.rows }}>
               {panes.map((p) => (
