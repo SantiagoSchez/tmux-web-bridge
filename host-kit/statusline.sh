@@ -176,6 +176,11 @@ TERM_W=""
 [ -z "$TERM_W" ] && TERM_W=$({ stty size </dev/tty | awk '{print $2}'; } 2>/dev/null)
 [ -z "$TERM_W" ] && TERM_W=120
 
+# Inside tmux, a status bar that already shows the 5h/7d limits says so with
+# @claude_limits_in_status=1, and they're left out here.
+LIMITS_IN_BAR=""
+[ -n "$TMUX" ] && LIMITS_IN_BAR=$(tmux show-options -gqv @claude_limits_in_status 2>/dev/null)
+
 # Ordered segments (empty ones skipped automatically). On a narrow pane (the phone,
 # through tmux-web-bridge) only model, context and git: the folder is the window's
 # and the 5h/7d limits have their own strip in the web app.
@@ -185,7 +190,7 @@ SEGS+=("${BOLD}${CYAN}🧠 ${MODEL}${R}")
 [ "$TERM_W" -ge "$COMPACT_BELOW" ] && SEGS+=("${BLUE}📁 ${FOLDER}${R}")
 SEGS+=("$CTX_BAR")
 [ -n "$GIT_PART" ] && SEGS+=("$GIT_PART")
-if [ "$TERM_W" -ge "$COMPACT_BELOW" ]; then
+if [ "$TERM_W" -ge "$COMPACT_BELOW" ] && [ "$LIMITS_IN_BAR" != 1 ]; then
   SEGS+=("$RATE_5H")
   SEGS+=("$RATE_7D")
 fi
