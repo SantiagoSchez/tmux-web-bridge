@@ -1,9 +1,10 @@
+import { route, toggleGrid } from '../router';
 import { connections, pending, sheet, wsStatus } from '../state';
-import { IconGear, IconUsers } from './icons';
+import { IconGear, IconGrid, IconUsers } from './icons';
 
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
 
-/** Top bar of the list: app name, hub link status, live connections counter, settings. */
+/** Top bar of the list: app name, hub link status, windows grid, live connections counter, settings. */
 export function Header() {
   const count = connections.value.length;
   const status = wsStatus.value;
@@ -16,6 +17,15 @@ export function Header() {
         {waiting > 0 && <span class="pill pill-alert">{waiting} pendiente{waiting === 1 ? '' : 's'}</span>}
       </div>
       <div class="topbar-actions">
+        <button
+          class={`icon-btn ${route.value.name === 'grid' ? 'on' : ''}`}
+          aria-label="Vista de ventanas"
+          aria-pressed={route.value.name === 'grid'}
+          title="Todas las ventanas en miniatura"
+          onClick={toggleGrid}
+        >
+          <IconGrid />
+        </button>
         <ConnectionsButton count={count} />
         <button class="icon-btn" aria-label="Ajustes" onClick={() => (sheet.value = 'settings')}>
           <IconGear />

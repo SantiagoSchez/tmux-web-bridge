@@ -16,6 +16,7 @@ import { ConnectionRegistry } from './connections.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
+import { PreviewCache } from './preview.js';
 import { PushService } from './push.js';
 import { openTerminal } from './terminal.js';
 import { TwoFactor } from './twofactor.js';
@@ -40,6 +41,7 @@ const hostOrder = new HostOrder(config.dataDir, config.hosts.map((h) => h.id));
 const conns = new ConnectionRegistry();
 const push = new PushService(config);
 const notifier = new Notifier(config, hosts, push, conns);
+const previews = new PreviewCache(hosts);
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' }, trustProxy: config.trustProxy });
 app.decorateRequest('sessionId', null);
@@ -303,6 +305,9 @@ app.post('/api/upload', { bodyLimit: UPLOAD_MAX }, async (req, reply) => {
   console.log(`[upload] ${host.id} ${q.pane}: ${path} (${Math.round(req.body.length / 1024)} KB)`);
   return { path };
 });
+
+/** Screens of every pane for the windows grid, polled while it is open (only what changed since `since`). */
+app.get('/api/previews', async (req) => previews.get(Number((req.query as { since?: string }).since) || 0));
 
 app.get('/api/health', async (req) =>
   passwordAuth && !req.sessionId

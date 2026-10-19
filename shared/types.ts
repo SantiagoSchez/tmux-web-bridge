@@ -84,6 +84,29 @@ export interface ProjectList {
   shortcuts: { name: string; path: string }[];
 }
 
+/** A pane's screen for the windows grid, as `capture-pane -e` prints it (text with SGR colours). */
+export interface PanePreview {
+  /** Place and size of the pane in its window, in cells. */
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  /** Size of the whole window, in cells. */
+  cols: number;
+  rows: number;
+  text: string;
+}
+
+/**
+ * GET /api/previews?since=<rev>: the panes whose screen changed after that revision
+ * (keyed "host:%pane"), and the keys of every pane with a preview, to drop the rest.
+ */
+export interface PreviewsResponse {
+  rev: number;
+  panes: Record<string, PanePreview>;
+  alive: string[];
+}
+
 export interface ViewInfo {
   host: string;
   session?: string;

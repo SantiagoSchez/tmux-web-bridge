@@ -6,6 +6,7 @@ import { findWindow, hosts, wsStatus } from '../state';
 import { Connections } from './Connections';
 import { Dialogs, Toasts } from './Dialogs';
 import { Drawer } from './Drawer';
+import { Grid } from './Grid';
 import { Header } from './Header';
 import { LimitsBar } from './LimitsBar';
 import { Login } from './Login';
@@ -41,6 +42,8 @@ export function App() {
       ) : (
         <Missing loading={wsStatus.value !== 'open' || hosts.value.find((h) => h.id === r.host)?.status !== 'ok'} />
       )
+    ) : r.name === 'grid' ? (
+      <Grid />
     ) : null;
 
   if (desktop) {
@@ -65,7 +68,7 @@ export function App() {
           <Tree />
         </>
       )}
-      {main && <Drawer />}
+      {r.name === 'window' && <Drawer />}
       <Overlays />
     </div>
   );

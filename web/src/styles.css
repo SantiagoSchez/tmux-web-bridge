@@ -311,7 +311,8 @@ h3 {
 }
 /* The strip already sits under the status bar. */
 .limits ~ .topbar,
-.limits ~ .wv .wv-head {
+.limits ~ .wv .wv-head,
+.limits ~ .gv .wv-head {
   padding-top: 8px;
   min-height: 56px;
 }
@@ -358,6 +359,10 @@ h3 {
 .icon-btn:active {
   background: var(--surface0);
   color: var(--text);
+}
+.icon-btn.on {
+  background: var(--surface0);
+  color: var(--mauve);
 }
 .small-btn {
   width: 36px;
@@ -787,6 +792,130 @@ body.dragging-host * {
 }
 .flag-activity {
   background: var(--lavender);
+}
+
+/* ------------------------------------------------------------ windows grid */
+
+.gv {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--base);
+}
+.gv-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 12px calc(32px + var(--safe-bottom));
+}
+.layout.desktop .gv-body {
+  padding: 4px 20px 32px;
+}
+.gv-host {
+  padding-top: 12px;
+}
+.gv-host-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 0;
+  min-height: 36px;
+}
+.gv-none {
+  margin: 4px;
+}
+.gv-session-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 4px 8px;
+  font-size: 15px;
+}
+.gv-tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.layout.desktop .gv-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+.tile {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  border-radius: 10px;
+  background: var(--mantle);
+  border: 1px solid var(--surface0);
+  border-top: 3px solid var(--state-color, var(--surface0));
+  overflow: hidden;
+}
+.tile:hover {
+  border-color: var(--surface2);
+  border-top-color: var(--state-color, var(--surface2));
+}
+.tile.current {
+  border-color: #ca9ee699;
+  border-top-color: var(--state-color, #ca9ee699);
+}
+.tile-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.tile-index {
+  font: 600 11px var(--mono);
+  color: var(--overlay1);
+}
+.tile-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Every tile the same shape; the window inside is scaled to fit it, cell for cell. */
+.tile-screen {
+  display: flex;
+  aspect-ratio: 16 / 10;
+  container-type: size;
+  background: var(--crust);
+}
+.tile-wait {
+  margin: auto;
+}
+/* JetBrains Mono cells are 0.6em wide; lines are 1.2em tall. */
+.tile-win {
+  position: relative;
+  margin: auto;
+  font-family: var(--mono);
+  font-size: min(calc(100cqw / var(--cols) / 0.6), calc(100cqh / var(--rows) / 1.2));
+  width: calc(var(--cols) * 0.6em);
+  height: calc(var(--rows) * 1.2em);
+  background: var(--surface1);
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  pointer-events: none;
+}
+.tile-pane {
+  position: absolute;
+  left: calc(var(--l) * 0.6em);
+  top: calc(var(--t) * 1.2em);
+  width: calc(var(--w) * 0.6em);
+  height: calc(var(--h) * 1.2em);
+  overflow: hidden;
+  background: var(--base);
+  color: var(--text);
+  line-height: 1.2em;
+  white-space: pre;
 }
 
 /* ------------------------------------------------------------ window view */
