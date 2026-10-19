@@ -220,13 +220,27 @@ fi
 
 # ------------------------------------------------------------ git pull
 # Tras un pull (merge, o rebase con pull.rebase), este script vuelve a ejecutarse.
+# Los hooks van al .git/hooks del clon y core.hooksPath se fija en el propio repo: si unos
+# dotfiles definen un core.hooksPath global, git los buscaría allí y se ejecutarían tras
+# cualquier pull, rebase o amend de cualquier repo (y en otra máquina esa ruta ni existe).
 if git -C "$KIT" rev-parse --git-dir >/dev/null 2>&1; then
+    HOOKS="$(git -C "$KIT" rev-parse --path-format=absolute --git-common-dir)/hooks"
+    if [ "$(git -C "$KIT" config --local --get core.hooksPath || true)" != "$HOOKS" ]; then
+        git -C "$KIT" config --local core.hooksPath "$HOOKS"
+        say "Hooks de git del clon en $HOOKS (core.hooksPath del repo, no el global)"
+    fi
+    GLOBAL_HOOKS="$(git config --global --type=path --get core.hooksPath || true)"
     for hook in post-merge post-rewrite; do
-        path="$(git -C "$KIT" rev-parse --path-format=absolute --git-path "hooks/$hook")"
+        path="$HOOKS/$hook"
         want="#!/bin/sh
 # tmux-web-bridge: aplica el kit tras cada git pull (lo instala host-kit/install.sh).
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 exec \"$KIT/install.sh\" --quiet"
+        # Lo que dejaron versiones anteriores en el core.hooksPath global se quita.
+        if [ -n "$GLOBAL_HOOKS" ] && [ -f "$GLOBAL_HOOKS/$hook" ] && [ "$(cat "$GLOBAL_HOOKS/$hook")" = "$want" ]; then
+            rm -f "$GLOBAL_HOOKS/$hook"
+            say "Quitado el hook global $GLOBAL_HOOKS/$hook (se ejecutaba en todos los repos)"
+        fi
         if [ -f "$path" ] && [ "$(cat "$path")" = "$want" ]; then
             same "Hook de git al día: $hook"
         else
