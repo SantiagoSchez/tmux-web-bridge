@@ -825,34 +825,6 @@ body.dragging-host * {
 .layout.desktop .gv-tiles {
   gap: 12px;
 }
-/* The space of each window, above its tile. */
-.tile-space {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  padding: 0 4px 4px;
-  font-size: 12px;
-  color: var(--subtext0);
-}
-.tile-space .session-num {
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  border-radius: 5px;
-  font-size: 11px;
-}
-.tile-space-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tile-host {
-  margin-left: auto;
-  flex-shrink: 0;
-  color: var(--overlay1);
-}
 .tile {
   width: 100%;
   display: flex;
@@ -880,10 +852,6 @@ body.dragging-host * {
   padding: 6px 8px;
   font-size: 13px;
 }
-.tile-index {
-  font: 600 11px var(--mono);
-  color: var(--overlay1);
-}
 .tile-name {
   flex: 1;
   min-width: 0;
@@ -891,6 +859,18 @@ body.dragging-host * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tile-space {
+  font-weight: 500;
+  color: var(--subtext0);
+}
+.tile-sep {
+  color: var(--overlay1);
+}
+.tile-host {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--overlay1);
 }
 /* Every tile the same shape; the window inside is scaled to fit it, cell for cell. */
 .tile-screen {

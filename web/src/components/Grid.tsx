@@ -50,7 +50,7 @@ function usePreviews(): Record<string, PanePreview> {
   return previews;
 }
 
-/** Every open window as a live miniature, each under the name of its space. A tap opens it. */
+/** Every open window as a live miniature, titled with its space and name. A tap opens it. */
 export function Grid() {
   const desktop = isDesktop.value;
   const previews = usePreviews();
@@ -107,21 +107,19 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
   const label = `${multiHost.value ? `${host.name} · ` : ''}${session.name} · ${window.name}`;
   return (
     <li>
-      <div class="tile-space">
-        <span class="session-num">{session.num ?? '·'}</span>
-        {session.icon && <span>{session.icon}</span>}
-        <span class="tile-space-name">{session.name}</span>
-        {multiHost.value && <span class="tile-host">{host.name}</span>}
-      </div>
       <button
         class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''}`}
         title={window.state ? `${label} · ${STATE_LABEL[window.state]}` : label}
         onClick={() => openWindow(host.id, window.id)}
       >
         <span class="tile-head">
-          <span class="tile-index">{window.index}</span>
           {window.icon && <span>{window.icon}</span>}
-          <span class={`tile-name ${window.pinned ? 'pinned' : ''}`}>{window.name}</span>
+          <span class="tile-name">
+            <span class="tile-space">{session.name}</span>
+            <span class="tile-sep"> › </span>
+            <span class={window.pinned ? 'pinned' : ''}>{window.name}</span>
+          </span>
+          {multiHost.value && <span class="tile-host">{host.name}</span>}
         </span>
         <span class="tile-screen">
           {size ? (
