@@ -166,7 +166,9 @@ function broadcast(msg: ServerMessage): void {
 for (const host of hosts.values()) {
   host.on('change', (info) => {
     broadcast({ t: 'host', host: info });
-    if (info.limits && usage.add(info.limits)) broadcast({ t: 'usage', samples: usage.list });
+    let added = false;
+    for (const l of info.limits ?? []) added = usage.add(l) || added;
+    if (added) broadcast({ t: 'usage', samples: usage.list });
   });
   host.on('transition', (t) => notifier.onTransition(t));
 }

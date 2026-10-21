@@ -104,18 +104,7 @@ Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `
 <details>
 <summary>Usar tu propia status line en vez de la del kit</summary>
 
-El panel saca los límites de uso de una opción global de tmux que publica la status line (Claude Code solo le pasa `rate_limits` a ella). Si instalas con `--skip-claude`, añade esto a la tuya después de leer el JSON en `$input`:
-
-```bash
-# Límites de uso para el panel web (tmux-web-bridge): "pct5h reset5h pct7d reset7d actualizado"
-if [ -n "$TMUX" ]; then
-  read -r P5 R5 P7 R7 < <(echo "$input" | jq -r '[(.rate_limits.five_hour.used_percentage // 0 | floor), (.rate_limits.five_hour.resets_at // 0), (.rate_limits.seven_day.used_percentage // 0 | floor), (.rate_limits.seven_day.resets_at // 0)] | @tsv')
-  if [ "${R5:-0}" -gt 0 ]; then
-    RL_OLD=$(tmux show-options -gqv @claude_rate_limits 2>/dev/null)
-    [ "${RL_OLD% *}" = "$P5 $R5 $P7 $R7" ] || tmux set-option -gq @claude_rate_limits "$P5 $R5 $P7 $R7 $(date +%s)"
-  fi
-fi
-```
+El panel saca los límites de uso de una opción global de tmux que publica la status line (Claude Code solo le pasa `rate_limits` a ella), con una entrada por cuenta separada por `;`: `pct5h reset5h pct7d reset7d actualizado email`. El email sale de `oauthAccount.emailAddress` en `.claude.json` y la barra muestra una fila por cuenta. Si instalas con `--skip-claude`, copia a la tuya el bloque «Límites de uso para el panel web» de [`host-kit/statusline.sh`](host-kit/statusline.sh), después de leer el JSON en `$input` y sacar de él `PCT_5H`, `RESET_5H`, `PCT_7D` y `RESET_7D`.
 </details>
 
 ### 4. En el móvil (Android)

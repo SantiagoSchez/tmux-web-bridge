@@ -50,10 +50,13 @@ export interface RateLimits {
   sevenDay: { pct: number; resetsAt: number };
   /** When a statusline on that host last saw them (epoch seconds). */
   updatedAt: number;
+  /** Email of the Claude account they belong to; missing from older statuslines. */
+  account?: string;
 }
 
 /** One reading of the usage limits, kept by the hub to forecast when they run out. */
 export interface UsageSample {
+  account?: string;
   t: number; // epoch seconds
   five: number;
   fiveReset: number;
@@ -69,8 +72,8 @@ export interface HostInfo {
   sessions: SessionInfo[];
   /** tmux prefix key as tmux names it (C-a, C-b...). */
   prefix?: string;
-  /** Published by the Claude Code statusline on that host (@claude_rate_limits). */
-  limits?: RateLimits | null;
+  /** Published by the Claude Code statusline on that host (@claude_rate_limits), one per account. */
+  limits?: RateLimits[];
   /** "Nuevo space" opens a project of its projects folder, like the `c` shell function. */
   projects?: boolean;
   /** Its menu offers to reboot it (SSH hosts; never the hub's own). */

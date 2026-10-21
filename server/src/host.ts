@@ -64,15 +64,24 @@ interface WebSessionRow {
   created: number;
 }
 
-/** "pct5h reset5h pct7d reset7d updated" (see the statusline snippet in the README). */
-function parseLimits(raw: string): RateLimits | null {
-  const n = raw.trim().split(/\s+/).map(Number);
-  if (n.length < 5 || n.some((x) => !Number.isFinite(x))) return null;
-  return { fiveHour: { pct: n[0], resetsAt: n[1] }, sevenDay: { pct: n[2], resetsAt: n[3] }, updatedAt: n[4] };
+/**
+ * "pct5h reset5h pct7d reset7d updated account;..." (see host-kit/statusline.sh), one
+ * entry per account; older statuslines publish a single one without the account.
+ */
+function parseLimits(raw: string): RateLimits[] {
+  const list: RateLimits[] = [];
+  for (const entry of raw.split(';')) {
+    const v = entry.trim().split(/\s+/);
+    const n = v.slice(0, 5).map(Number);
+    if (v.length < 5 || n.some((x) => !Number.isFinite(x))) continue;
+    const account = v[5] && v[5] !== '-' ? v[5] : undefined;
+    list.push({ fiveHour: { pct: n[0], resetsAt: n[1] }, sevenDay: { pct: n[2], resetsAt: n[3] }, updatedAt: n[4], account });
+  }
+  return list;
 }
 
-function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits | null } {
-  let limits: RateLimits | null = null;
+function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits[] } {
+  let limits: RateLimits[] | null = null;
   const sessions = new Map<string, SessionInfo>();
   const windows = new Map<string, WindowInfo>();
   const webSessions = new Map<string, WebSessionRow>();
@@ -142,7 +151,7 @@ function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessi
     s.windows.sort((a, b) => a.index - b.index);
     for (const w of s.windows) w.panes.sort((a, b) => a.index - b.index);
   }
-  return { sessions: list, webSessions: [...webSessions.values()], limits };
+  return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [] };
 }
 
 /**
@@ -212,7 +221,7 @@ export class HostMonitor extends EventEmitter {
   private async poll(): Promise<void> {
     let sessions: SessionInfo[] = [];
     let webSessions: WebSessionRow[] = [];
-    let limits: RateLimits | null = null;
+    let limits: RateLimits[] = [];
     try {
       const out = await this.exec.runFormat(['list-panes', '-a', '-F', FORMAT]);
       ({ sessions, webSessions, limits } = parse(out));

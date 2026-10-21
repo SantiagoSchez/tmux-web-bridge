@@ -43,13 +43,26 @@ read -r PCT CTX_SIZE PCT_5H RESET_5H PCT_7D RESET_7D < <(
 USED_K=$(( CTX_SIZE * PCT / 100 / 1000 ))
 
 # ── Límites de uso para el panel web (tmux-web-bridge) ──
-# Son de la cuenta, iguales en todos los agentes: se publican en una opción global
-# de tmux ("pct5h reset5h pct7d reset7d actualizado") que lee el servidor central.
-# Solo se escribe cuando cambian, así que cuesta una lectura por repintado.
+# Son de la cuenta, iguales en todos sus agentes: se publican en una opción global
+# de tmux que lee el servidor central, con una entrada por cuenta separada por ';'
+# ("pct5h reset5h pct7d reset7d actualizado email"), porque cada carpeta de
+# configuración de Claude Code puede tener la suya. Solo se escribe cuando cambian,
+# así que cuesta un par de lecturas por repintado.
 if [ -n "$TMUX" ] && [ "${RESET_5H:-0}" -gt 0 ] 2>/dev/null; then
+  RL_ACCT=$(jq -r '.oauthAccount.emailAddress // empty' "${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json" 2>/dev/null)
+  RL_ACCT=${RL_ACCT:--}
   RL_NOW="$PCT_5H $RESET_5H $PCT_7D $RESET_7D"
-  RL_OLD=$(tmux show-options -gqv @claude_rate_limits 2>/dev/null)
-  [ "${RL_OLD% *}" = "$RL_NOW" ] || tmux set-option -gq @claude_rate_limits "$RL_NOW $(date +%s)" 2>/dev/null
+  RL_T=$(date +%s)
+  RL_KEEP="" RL_MINE=""
+  IFS=';' read -ra RL_ENTRIES <<< "$(tmux show-options -gqv @claude_rate_limits 2>/dev/null)"
+  for e in "${RL_ENTRIES[@]}"; do
+    read -r p5 r5 p7 r7 at acct <<< "$e"
+    [ -n "$acct" ] || continue # sin cuenta: de una statusline anterior
+    if [ "$acct" = "$RL_ACCT" ]; then RL_MINE="$p5 $r5 $p7 $r7"; continue; fi
+    # Las demás cuentas se quedan, salvo si llevan una semana sin leerse.
+    [ $((RL_T - at)) -lt 604800 ] 2>/dev/null && RL_KEEP+="$p5 $r5 $p7 $r7 $at $acct;"
+  done
+  [ "$RL_MINE" = "$RL_NOW" ] || tmux set-option -gq @claude_rate_limits "${RL_KEEP}$RL_NOW $RL_T $RL_ACCT" 2>/dev/null
 fi
 
 # ── Format values ───────────────────────────────────

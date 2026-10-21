@@ -114,9 +114,44 @@ function Summary({ groups }: { groups: Group[] }) {
   );
 }
 
+/** The freshest reading of each account among all hosts; those without one (older statuslines) last. */
+function accounts(): RateLimits[] {
+  const by = new Map<string, RateLimits>();
+  for (const h of hosts.value)
+    for (const l of h.limits ?? []) {
+      const prev = by.get(l.account ?? '');
+      if (!prev || l.updatedAt > prev.updatedAt) by.set(l.account ?? '', l);
+    }
+  return [...by.values()].sort((a, b) => Number(!a.account) - Number(!b.account) || (a.account ?? '').localeCompare(b.account ?? ''));
+}
+
+/** One account's row: its email (only the part before @ on phones) and both meters. */
+function Account({ limits, samples, now }: { limits: RateLimits; samples: UsageSample[]; now: number }) {
+  const { account, fiveHour, sevenDay } = limits;
+  const mine = samples.filter((s) => s.account === account);
+  const at = account?.indexOf('@') ?? -1;
+  const age = left(now - limits.updatedAt);
+  return (
+    <div class="limit-row">
+      <span class="limit-account" title={`${account ? `${account} · ` : ''}leídos hace ${age === '—' ? 'un momento' : age}`}>
+        {at > 0 ? (
+          <>
+            {account!.slice(0, at)}
+            <span class="limit-domain">{account!.slice(at)}</span>
+          </>
+        ) : (
+          account
+        )}
+      </span>
+      <Meter label="5h" pct={fiveHour.pct} resetsAt={fiveHour.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', fiveHour.pct, fiveHour.resetsAt, now)} />
+      <Meter label="7d" pct={sevenDay.pct} resetsAt={sevenDay.resetsAt} now={now} runsOut={runsOutAt(mine, 'seven', sevenDay.pct, sevenDay.resetsAt, now)} />
+    </div>
+  );
+}
+
 /**
- * Claude's usage limits for the account (5 h and 7 d), shared by every agent:
- * the freshest reading published by any host's statusline.
+ * Claude's usage limits (5 h and 7 d), one row per account, shared by all of its
+ * agents: the freshest reading published by any host's statusline.
  */
 export function LimitsBar() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -125,32 +160,19 @@ export function LimitsBar() {
     return () => clearInterval(t);
   }, []);
 
-  let latest: RateLimits | null = null;
-  for (const h of hosts.value) if (h.limits && (!latest || h.limits.updatedAt > latest.updatedAt)) latest = h.limits;
+  const list = accounts();
   const states = groups();
-  if (!latest && !states.length) return null;
+  if (!list.length && !states.length) return null;
 
   const samples = usageSamples.value;
-  const age = latest ? now - latest.updatedAt : 0;
   return (
     <div class={`limits ${states.length ? 'has-summary' : ''}`}>
       {states.length > 0 && <Summary groups={states} />}
-      {latest && (
-        <div class="limit-meters" title={`Límites de uso de Claude · leídos hace ${left(age) === '—' ? 'un momento' : left(age)}`}>
-          <Meter
-            label="5h"
-            pct={latest.fiveHour.pct}
-            resetsAt={latest.fiveHour.resetsAt}
-            now={now}
-            runsOut={runsOutAt(samples, 'five', latest.fiveHour.pct, latest.fiveHour.resetsAt, now)}
-          />
-          <Meter
-            label="7d"
-            pct={latest.sevenDay.pct}
-            resetsAt={latest.sevenDay.resetsAt}
-            now={now}
-            runsOut={runsOutAt(samples, 'seven', latest.sevenDay.pct, latest.sevenDay.resetsAt, now)}
-          />
+      {list.length > 0 && (
+        <div class="limit-meters" title="Límites de uso de Claude">
+          {list.map((l) => (
+            <Account key={l.account ?? ''} limits={l} samples={samples} now={now} />
+          ))}
         </div>
       )}
     </div>

@@ -26,11 +26,11 @@ export class UsageHistory {
     return this.samples;
   }
 
-  /** A reading from any host's statusline; false if it is not newer or changes nothing. */
+  /** A reading from any host's statusline; false if it is not newer than the last of its account or changes nothing. */
   add(l: RateLimits): boolean {
-    const last = this.samples[this.samples.length - 1];
+    const last = this.samples.filter((x) => x.account === l.account).pop();
     if (last && l.updatedAt <= last.t) return false;
-    const s: UsageSample = { t: l.updatedAt, five: l.fiveHour.pct, fiveReset: l.fiveHour.resetsAt, seven: l.sevenDay.pct, sevenReset: l.sevenDay.resetsAt };
+    const s: UsageSample = { account: l.account, t: l.updatedAt, five: l.fiveHour.pct, fiveReset: l.fiveHour.resetsAt, seven: l.sevenDay.pct, sevenReset: l.sevenDay.resetsAt };
     if (last && s.five === last.five && s.seven === last.seven && s.fiveReset === last.fiveReset && s.sevenReset === last.sevenReset) return false;
     this.samples = [...this.samples.filter((x) => x.t > s.t - KEEP_SECONDS), s];
     const tmp = `${this.file}.tmp`;
