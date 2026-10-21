@@ -229,6 +229,24 @@ h3 {
 .limit-domain {
   color: var(--overlay1);
 }
+/* With a Claude open, its account stands out and the others fade. The ▸ sits in
+   room every email keeps, so nothing moves when it appears. */
+.limit-account::before {
+  content: '▸';
+  display: inline-block;
+  width: 1.5ch;
+  visibility: hidden;
+  color: var(--mauve);
+}
+.limit-row.current .limit-account {
+  color: var(--mauve);
+}
+.limit-row.current .limit-account::before {
+  visibility: visible;
+}
+.limit-row.dim > * {
+  opacity: 0.4;
+}
 .limit {
   display: flex;
   align-items: center;
@@ -315,7 +333,8 @@ h3 {
   .limit-account {
     max-width: 9ch;
   }
-  .limit-domain {
+  .limit-domain,
+  .limit-account::before {
     display: none;
   }
   .limit-bar {

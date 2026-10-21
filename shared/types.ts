@@ -17,6 +17,8 @@ export interface PaneInfo {
   height: number;
   dead: boolean;
   inMode: boolean;
+  /** Email of the Claude account of the Claude Code in it (@claude_account, from its statusline). */
+  account?: string;
 }
 
 export interface WindowInfo {

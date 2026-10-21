@@ -63,6 +63,10 @@ if [ -n "$TMUX" ] && [ "${RESET_5H:-0}" -gt 0 ] 2>/dev/null; then
     [ $((RL_T - at)) -lt 604800 ] 2>/dev/null && RL_KEEP+="$p5 $r5 $p7 $r7 $at $acct;"
   done
   [ "$RL_MINE" = "$RL_NOW" ] || tmux set-option -gq @claude_rate_limits "${RL_KEEP}$RL_NOW $RL_T $RL_ACCT" 2>/dev/null
+  # Y la cuenta de este agente en su panel, para que el panel web resalte la suya.
+  if [ -n "$TMUX_PANE" ] && [ "$(tmux display -p -t "$TMUX_PANE" '#{@claude_account}' 2>/dev/null)" != "$RL_ACCT" ]; then
+    tmux set-option -pq -t "$TMUX_PANE" @claude_account "$RL_ACCT" 2>/dev/null
+  fi
 fi
 
 # ── Format values ───────────────────────────────────

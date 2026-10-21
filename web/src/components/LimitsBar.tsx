@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { PaneState, RateLimits, UsageSample } from '../../../shared/types';
 import { openWindow, route } from '../router';
-import { hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
+import { findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
 
 /** "2d23h", "3h37m", "45m": time left until a reset, like the Claude Code statusline. */
 function left(seconds: number): string {
@@ -125,14 +125,23 @@ function accounts(): RateLimits[] {
   return [...by.values()].sort((a, b) => Number(!a.account) - Number(!b.account) || (a.account ?? '').localeCompare(b.account ?? ''));
 }
 
+/** The account of the Claude in the pane open in the app (its active one if none is picked), if any. */
+function openAccount(): string | undefined {
+  const r = route.value;
+  if (r.name !== 'window') return undefined;
+  const panes = findWindow(r.host, r.window)?.window.panes ?? [];
+  const pane = panes.find((p) => (r.pane ? p.id === r.pane : p.active));
+  return pane?.state && pane.state !== 'ssh' ? pane.account : undefined;
+}
+
 /** One account's row: its email (only the part before @ on phones) and both meters. */
-function Account({ limits, samples, now }: { limits: RateLimits; samples: UsageSample[]; now: number }) {
+function Account({ limits, samples, now, dim }: { limits: RateLimits; samples: UsageSample[]; now: number; dim?: boolean }) {
   const { account, fiveHour, sevenDay } = limits;
   const mine = samples.filter((s) => s.account === account);
   const at = account?.indexOf('@') ?? -1;
   const age = left(now - limits.updatedAt);
   return (
-    <div class="limit-row">
+    <div class={`limit-row ${dim === false ? 'current' : dim ? 'dim' : ''}`}>
       <span class="limit-account" title={`${account ? `${account} · ` : ''}leídos hace ${age === '—' ? 'un momento' : age}`}>
         {at > 0 ? (
           <>
@@ -165,13 +174,16 @@ export function LimitsBar() {
   if (!list.length && !states.length) return null;
 
   const samples = usageSamples.value;
+  // With a Claude open, the other accounts fade (only if it is one of the rows).
+  const open = openAccount();
+  const current = list.length > 1 && list.some((l) => l.account === open) ? open : undefined;
   return (
     <div class={`limits ${states.length ? 'has-summary' : ''}`}>
       {states.length > 0 && <Summary groups={states} />}
       {list.length > 0 && (
         <div class="limit-meters" title="Límites de uso de Claude">
           {list.map((l) => (
-            <Account key={l.account ?? ''} limits={l} samples={samples} now={now} />
+            <Account key={l.account ?? ''} limits={l} samples={samples} now={now} dim={current === undefined ? undefined : l.account !== current} />
           ))}
         </div>
       )}
