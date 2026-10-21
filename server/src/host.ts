@@ -67,17 +67,20 @@ interface WebSessionRow {
 /**
  * "pct5h reset5h pct7d reset7d updated account;..." (see host-kit/statusline.sh), one
  * entry per account; older statuslines publish a single one without the account.
+ * That one is stale once the host's statusline publishes the new kind (it drops it
+ * on its first write anyway).
  */
 function parseLimits(raw: string): RateLimits[] {
-  const list: RateLimits[] = [];
+  const list: (RateLimits & { legacy: boolean })[] = [];
   for (const entry of raw.split(';')) {
     const v = entry.trim().split(/\s+/);
     const n = v.slice(0, 5).map(Number);
     if (v.length < 5 || n.some((x) => !Number.isFinite(x))) continue;
     const account = v[5] && v[5] !== '-' ? v[5] : undefined;
-    list.push({ fiveHour: { pct: n[0], resetsAt: n[1] }, sevenDay: { pct: n[2], resetsAt: n[3] }, updatedAt: n[4], account });
+    list.push({ fiveHour: { pct: n[0], resetsAt: n[1] }, sevenDay: { pct: n[2], resetsAt: n[3] }, updatedAt: n[4], account, legacy: v.length === 5 });
   }
-  return list;
+  const current = list.some((l) => !l.legacy) ? list.filter((l) => !l.legacy) : list;
+  return current.map(({ legacy: _, ...l }) => l);
 }
 
 function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits[] } {
