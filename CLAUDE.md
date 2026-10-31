@@ -11,7 +11,7 @@ Cada push a `master` despliega el hub automáticamente (`.github/workflows/deplo
 
 ## Releases
 
-Solo cuando el usuario lo pide («saca una release»). Versión SemVer en `VERSION` (la leen el hub y el `tmux.conf` del kit, que la publica en `@twb_kit_version`); el panel avisa cuando la última release de GitHub es más nueva que el hub o que el kit de alguna máquina.
+Al terminar una feature (desplegada y comprobada), propón sacar una release: di qué versión tocaría y qué entraría, y sácala solo cuando el usuario diga que sí. Los bugfixes y retoques sueltos no lo piden por sí solos, pero entran en la siguiente. Versión SemVer en `VERSION` (la leen el hub y el `tmux.conf` del kit, que la publica en `@twb_kit_version`); el panel avisa cuando la última release de GitHub es más nueva que el hub o que el kit de alguna máquina.
 
 1. Sube `VERSION` según lo que haya desde la última release (`git log v<anterior>..`): parche para arreglos, menor para funciones nuevas, mayor para cambios que obliguen a tocar la configuración o reinstalar.
 2. Commit «Release X.Y.Z» y push (despliega el hub).
