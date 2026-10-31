@@ -13,6 +13,7 @@ import { Login } from './Login';
 import { Palette } from './Palette';
 import { Settings } from './Settings';
 import { Tree } from './Tree';
+import { UpdateBanner } from './UpdateBanner';
 import { WindowView } from './WindowView';
 
 /** The app, or the password screen when the hub asks for one. */
@@ -50,6 +51,7 @@ export function App() {
     return (
       <div class="layout desktop">
         <LimitsBar />
+        <UpdateBanner />
         <aside class="sidebar">
           <Header />
           <Tree />
@@ -62,6 +64,7 @@ export function App() {
   return (
     <div class="layout mobile">
       <LimitsBar />
+      <UpdateBanner />
       {main ?? (
         <>
           <Header />

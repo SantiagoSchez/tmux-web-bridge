@@ -149,9 +149,9 @@ h3 {
   height: 100dvh;
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
 }
-/* Without the limits strip the sidebar and the window take the whole height. */
+/* Without the limits strip (or the update notice) the sidebar and the window take the whole height. */
 .layout.desktop > .sidebar,
 .layout.desktop > .main {
   grid-row: -2;
@@ -348,12 +348,44 @@ h3 {
     display: none;
   }
 }
-/* The strip already sits under the status bar. */
+/* The strip (or the update notice) already sits under the status bar. */
 .limits ~ .topbar,
 .limits ~ .wv .wv-head,
-.limits ~ .gv .wv-head {
+.limits ~ .gv .wv-head,
+.update-banner ~ .topbar,
+.update-banner ~ .wv .wv-head,
+.update-banner ~ .gv .wv-head {
   padding-top: 8px;
   min-height: 56px;
+}
+
+/* ------------------------------------------------------------ update notice */
+
+.update-banner {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  background: color-mix(in srgb, var(--mauve) 14%, var(--crust));
+  border-bottom: 1px solid var(--surface0);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.update-banner:first-child {
+  padding-top: calc(6px + var(--safe-top));
+}
+.update-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.update-text a {
+  color: var(--mauve);
+  white-space: nowrap;
+}
+.update-banner .toast-close {
+  flex-shrink: 0;
 }
 
 /* ------------------------------------------------------------ top bar */

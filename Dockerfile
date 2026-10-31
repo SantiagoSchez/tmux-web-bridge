@@ -15,7 +15,8 @@ COPY . .
 RUN pnpm build \
  && pnpm --filter server deploy --prod --legacy /out/server \
  && cp -r server/dist /out/server/dist \
- && mkdir -p /out/web && cp -r web/dist /out/web/dist
+ && mkdir -p /out/web && cp -r web/dist /out/web/dist \
+ && cp VERSION /out/VERSION
 
 FROM node:22-bookworm-slim
 # ssh para entrar en las máquinas; nc para pasar por el proxy SOCKS5 de Tailscale.

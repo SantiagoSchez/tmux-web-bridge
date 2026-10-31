@@ -111,6 +111,12 @@ El panel saca los límites de uso de una opción global de tmux que publica la s
 
 Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y en ⚙️ **Ajustes › Notificaciones › Activar en este dispositivo**.
 
+## Actualizaciones
+
+La versión está en [`VERSION`](VERSION) y cada una se publica como release en GitHub. Una vez al día el servidor central consulta la última release (solo hace esa petición, no envía ningún dato) y, si es más nueva que él o que el kit de alguna máquina, el panel lo avisa con una franja arriba que se queda hasta que la cierras. Cerrada, no vuelve hasta la siguiente release. Se desactiva para todos los dispositivos en ⚙️ **Ajustes › Buscar actualizaciones**.
+
+Para actualizar el servidor central, `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker); para el kit, `git pull` en el clon de cada máquina.
+
 ## Seguridad
 
 - Dos formas de entrar, nunca mezcladas (`auth.method`):

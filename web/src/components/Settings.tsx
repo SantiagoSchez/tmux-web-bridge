@@ -2,6 +2,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { dialog, sheet, toast, vapidKey } from '../state';
+import { newer, updateInfo } from '../updates';
+import { hub } from '../ws';
 import { Sheet } from './Dialogs';
 import { TwoFactorSettings } from './TwoFactor';
 
@@ -154,6 +156,8 @@ export function Settings() {
         </div>
       </section>
 
+      <UpdateSettings />
+
       {auth.value?.method === 'password' && <TwoFactorSettings />}
 
       {auth.value?.method === 'password' && (
@@ -171,5 +175,31 @@ export function Settings() {
         </section>
       )}
     </Sheet>
+  );
+}
+
+function UpdateSettings() {
+  const info = updateInfo.value;
+  if (!info) return null;
+  const latest = info.latest?.version;
+  const state = !info.enabled
+    ? 'Desactivado.'
+    : latest && newer(latest, info.current)
+      ? `Hay una versión nueva: ${latest} (este servidor tiene la ${info.current}).`
+      : `Al día: versión ${info.current}.`;
+  return (
+    <section class="settings-group">
+      <h3>Buscar actualizaciones</h3>
+      <p class="dim small">
+        Una vez al día el servidor central mira en GitHub si hay una versión nueva de twb, y avisa también de las máquinas cuyo kit va por detrás. No se envía ningún
+        dato. Vale para todos los dispositivos.
+      </p>
+      <p class="settings-state">{state}</p>
+      <div class="row-btns">
+        <button class={`btn ${info.enabled ? '' : 'btn-primary'}`} onClick={() => hub.send({ t: 'updateCheck', enabled: !info.enabled })}>
+          {info.enabled ? 'Desactivar' : 'Activar'}
+        </button>
+      </div>
+    </section>
   );
 }

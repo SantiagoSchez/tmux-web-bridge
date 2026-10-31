@@ -20,8 +20,9 @@ const FIELDS = [
   'window_bell_flag', 'window_activity_flag', 'window_zoomed_flag',
   'pane_id', 'pane_index', 'pane_active', 'pane_current_command', 'pane_current_path', 'pane_title',
   '@pane_icon', 'pane_width', 'pane_height', 'pane_dead', 'pane_in_mode', '@claude_account',
-  // Global option, the same on every row: Claude's usage limits from the statusline.
-  '@claude_rate_limits',
+  // Global options, the same on every row: Claude's usage limits from the statusline,
+  // and the version of the host-kit (its tmux.conf sets it).
+  '@claude_rate_limits', '@twb_kit_version',
 ] as const;
 const FORMAT = FIELDS.map((f) => `#{${f}}`).join(SEP);
 
@@ -83,8 +84,9 @@ function parseLimits(raw: string): RateLimits[] {
   return current.map(({ legacy: _, ...l }) => l);
 }
 
-function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits[] } {
+function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits[]; kit?: string } {
   let limits: RateLimits[] | null = null;
+  let kit: string | undefined;
   const sessions = new Map<string, SessionInfo>();
   const windows = new Map<string, WindowInfo>();
   const webSessions = new Map<string, WebSessionRow>();
@@ -94,6 +96,7 @@ function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessi
     if (v.length < FIELDS.length) continue;
     const r = Object.fromEntries(FIELDS.map((f, i) => [f, v[i]])) as Record<(typeof FIELDS)[number], string>;
     limits ??= parseLimits(r['@claude_rate_limits']);
+    kit ||= r['@twb_kit_version'] || undefined;
 
     if (r.session_name.startsWith(WEB_SESSION_PREFIX)) {
       webSessions.set(r.session_name, { name: r.session_name, attached: Number(r.session_attached), created: Number(r.session_created) });
@@ -155,7 +158,7 @@ function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessi
     s.windows.sort((a, b) => a.index - b.index);
     for (const w of s.windows) w.panes.sort((a, b) => a.index - b.index);
   }
-  return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [] };
+  return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [], kit };
 }
 
 /**
@@ -226,9 +229,10 @@ export class HostMonitor extends EventEmitter {
     let sessions: SessionInfo[] = [];
     let webSessions: WebSessionRow[] = [];
     let limits: RateLimits[] = [];
+    let kit: string | undefined;
     try {
       const out = await this.exec.runFormat(['list-panes', '-a', '-F', FORMAT]);
-      ({ sessions, webSessions, limits } = parse(out));
+      ({ sessions, webSessions, limits, kit } = parse(out));
       if (!this.prefixLoaded) {
         const prefix = (await this.exec.run(['show-options', '-gv', 'prefix'])).trim();
         this.info = { ...this.info, prefix };
@@ -246,7 +250,7 @@ export class HostMonitor extends EventEmitter {
     this.failures = 0;
     this.offlineSince = null;
     const prev = this.info;
-    this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits });
+    this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits, kit });
     this.detectTransitions(prev, this.info);
     void this.reapWebSessions(webSessions);
   }

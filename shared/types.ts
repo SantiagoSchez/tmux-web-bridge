@@ -80,6 +80,19 @@ export interface HostInfo {
   projects?: boolean;
   /** Its menu offers to reboot it (SSH hosts; never the hub's own). */
   reboot?: boolean;
+  /** Version of its host-kit (@twb_kit_version, set by the kit's tmux.conf); missing before 1.0.0. */
+  kit?: string;
+}
+
+/** The daily check for a new release of twb on GitHub, set for the whole hub. */
+export interface UpdateInfo {
+  enabled: boolean;
+  /** Version of the running hub. */
+  current: string;
+  /** Last published release, as of the last check. */
+  latest: { version: string; url: string } | null;
+  /** Release whose notice was closed: it does not come back until a newer one. */
+  dismissed: string | null;
 }
 
 /** A host's projects (folders of its projects dir) and `c` shortcuts. */
@@ -160,6 +173,8 @@ export type ClientMessage =
   | { t: 'presence'; present: boolean }
   /** The machines' order in the list (host ids), kept by the hub for every device. */
   | { t: 'hostOrder'; hosts: string[] }
+  | { t: 'updateCheck'; enabled: boolean }
+  | { t: 'updateDismiss'; version: string }
   | ({ t: 'action'; id: number; host: string } & ActionOp);
 
 /** Messages from the hub to the browser over /ws. */
@@ -171,6 +186,7 @@ export type ServerMessage =
   /** Usage limit readings of the last hours (on connect and on each new one). */
   | { t: 'usage'; samples: UsageSample[] }
   | { t: 'connections'; list: ConnectionInfo[] }
+  | { t: 'updates'; info: UpdateInfo }
   | { t: 'result'; id: number; ok: boolean; error?: string; data?: unknown };
 
 /** Body of POST /api/notify, sent by tmux-window-title.sh on each host. */

@@ -1,6 +1,7 @@
 import type { ActionOp, ClientMessage, ServerMessage, ViewInfo } from '../../shared/types';
 import { recheck, signedOut } from './auth';
 import { applyHostOrder, clientId, connections, hosts, toast, usageSamples, vapidKey, wsStatus } from './state';
+import { updateInfo } from './updates';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
@@ -82,6 +83,9 @@ class HubSocket {
         break;
       case 'connections':
         connections.value = msg.list;
+        break;
+      case 'updates':
+        updateInfo.value = msg.info;
         break;
       case 'result': {
         const p = this.pending.get(msg.id);

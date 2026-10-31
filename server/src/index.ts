@@ -20,6 +20,7 @@ import { PreviewCache } from './preview.js';
 import { PushService } from './push.js';
 import { openTerminal } from './terminal.js';
 import { TwoFactor } from './twofactor.js';
+import { UpdateChecker } from './updates.js';
 import { UsageHistory } from './usage.js';
 
 if (process.argv[2] === 'hash-password') {
@@ -42,6 +43,7 @@ const conns = new ConnectionRegistry();
 const push = new PushService(config);
 const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
+const updates = new UpdateChecker(config.dataDir);
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' }, trustProxy: config.trustProxy });
 app.decorateRequest('sessionId', null);
@@ -173,6 +175,8 @@ for (const host of hosts.values()) {
   host.on('transition', (t) => notifier.onTransition(t));
 }
 conns.on('change', (list) => broadcast({ t: 'connections', list }));
+updates.on('change', (info) => broadcast({ t: 'updates', info }));
+updates.start();
 
 /**
  * A ✅ (done, unseen) pane looked at in the web app for a moment counts as seen,
@@ -211,6 +215,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'tree', hosts: hostOrder.list.map((id) => hosts.get(id)!.snapshot) });
   send(ws, { t: 'connections', list: conns.list() });
   send(ws, { t: 'usage', samples: usage.list });
+  send(ws, { t: 'updates', info: updates.info });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -236,6 +241,12 @@ app.get('/ws', { websocket: true }, (ws, req) => {
           if (!Array.isArray(msg.hosts)) break;
           hostOrder.set(msg.hosts.map(String));
           broadcast({ t: 'hostOrder', hosts: hostOrder.list });
+          break;
+        case 'updateCheck':
+          updates.setEnabled(msg.enabled === true);
+          break;
+        case 'updateDismiss':
+          if (typeof msg.version === 'string') updates.dismiss(msg.version);
           break;
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
