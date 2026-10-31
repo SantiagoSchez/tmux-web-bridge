@@ -251,7 +251,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const data = await runAction(host, op);
+          const data = await runAction(host, op, updates.info.latest?.version ?? null);
           await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
           break;

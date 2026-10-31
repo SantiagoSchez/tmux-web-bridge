@@ -7,7 +7,7 @@ Cada push a `master` despliega el hub automáticamente (`.github/workflows/deplo
 - Al terminar una feature o un bugfix, haz commit y push directamente para desplegarlo, sin preguntar.
 - Tras el push, sigue el run de `deploy` y avisa de si ha ido bien.
 - Los cambios que solo tocan `**.md`, `host-kit/**`, `deploy/install-hub.sh` o `deploy/tmux-web-bridge.service` no lanzan el despliegue: dilo al hacer el push.
-- El kit de `host-kit/` llega a cada máquina por git: la primera vez con `git clone` y `host-kit/install.sh`, y después con `git pull` en su clon (un hook de git vuelve a aplicarlo). Tras cambiar el kit, recuerda que hay que hacer pull en las máquinas.
+- El kit de `host-kit/` llega a cada máquina por git: la primera vez con `git clone` y `host-kit/install.sh`, y después siempre a una release, nunca a `master`: con el botón «Actualizar» del panel (aviso de versión o menú de la máquina), o a mano con `git fetch --tags && git checkout vX.Y.Z` en su clon (un hook de git vuelve a aplicarlo). El clon queda en HEAD separado, así que `git pull` ya no sirve. Un cambio en el kit no llega a las máquinas hasta la siguiente release: recuérdalo al hacer el push.
 
 ## Releases
 

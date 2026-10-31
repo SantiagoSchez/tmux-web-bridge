@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Prepara una máquina (macOS, Linux o WSL) para tmux-web-bridge desde un clon del repo.
-# Se ejecuta una vez; después basta con `git pull` en el clon.
+# Se ejecuta una vez; después se actualiza desde el panel (menú de la máquina, o el aviso de
+# versión nueva), o a mano con `git fetch --tags && git checkout vX.Y.Z` en el clon.
 #
 #   git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 #   ~/tmux-web-bridge/host-kit/install.sh --hub https://servidor --host wsl --token SECRETO
 #
-# Enlaza al clon (así un pull los pone al día):
+# Enlaza al clon (así actualizar el clon los pone al día):
 #   ~/.scripts/tmux-window-title.sh     estados de Claude en tmux + aviso al servidor central
 #   ~/.scripts/tmux-spaces.sh           spaces numerados (@space_num) y sus atajos
 #   ~/.claude/scripts/statusline.sh     status line de Claude Code (publica los límites de uso)
@@ -13,8 +14,8 @@
 #   ~/.tmux.conf                        source-file del tmux.conf del kit (hooks, atajos, ratón)
 #   ~/.claude/settings.json             hooks y status line de Claude Code (se fusionan, con copia)
 #   ~/.config/tmux-web-bridge/notify.env  URL, id y token de esta máquina (no va al repo)
-#   hooks de git post-merge y post-rewrite del clon: tras cada pull vuelven a ejecutar este
-#   script (recarga el tmux.conf y fusiona los hooks de Claude si han cambiado)
+#   hooks de git post-merge, post-rewrite y post-checkout del clon: tras cada pull o checkout
+#   vuelven a ejecutar este script (recarga el tmux.conf y fusiona los hooks de Claude si han cambiado)
 #
 # Los enlaces son relativos y el source-file usa ~: si ~/.scripts o ~/.tmux.conf viven en unos
 # dotfiles compartidos entre máquinas (Dropbox), valen en todas las que tengan el clon en el
@@ -176,7 +177,7 @@ fi
 
 # ------------------------------------------------------------ Claude Code
 if [ "$SKIP_CLAUDE" = 0 ]; then
-    # Se recuerda el directorio: un pull desde un shell sin CLAUDE_CONFIG_DIR (el hook de git)
+    # Se recuerda el directorio: una actualización sin CLAUDE_CONFIG_DIR (el hook de git, el panel)
     # no debe acabar escribiendo en el ~/.claude de otro Claude de la misma cuenta.
     [ -n "$CLAUDE_DIR" ] || [ ! -f "$CLAUDE_DIR_FILE" ] || CLAUDE_DIR="$(cat "$CLAUDE_DIR_FILE")"
     [ -n "$CLAUDE_DIR" ] || CLAUDE_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
@@ -218,8 +219,9 @@ if [ "$SKIP_CLAUDE" = 0 ]; then
     fi
 fi
 
-# ------------------------------------------------------------ git pull
-# Tras un pull (merge, o rebase con pull.rebase), este script vuelve a ejecutarse.
+# ------------------------------------------------------------ hooks de git
+# Tras un pull (merge, o rebase con pull.rebase) o un checkout de la release, este script
+# vuelve a ejecutarse. El panel hace su checkout sin hooks y lo ejecuta él.
 # Los hooks van al .git/hooks del clon y core.hooksPath se fija en el propio repo: si unos
 # dotfiles definen un core.hooksPath global, git los buscaría allí y se ejecutarían tras
 # cualquier pull, rebase o amend de cualquier repo (y en otra máquina esa ruta ni existe).
@@ -230,12 +232,21 @@ if git -C "$KIT" rev-parse --git-dir >/dev/null 2>&1; then
         say "Hooks de git del clon en $HOOKS (core.hooksPath del repo, no el global)"
     fi
     GLOBAL_HOOKS="$(git config --global --type=path --get core.hooksPath || true)"
-    for hook in post-merge post-rewrite; do
+    for hook in post-merge post-rewrite post-checkout; do
         path="$HOOKS/$hook"
-        want="#!/bin/sh
+        if [ "$hook" = post-checkout ]; then
+            # Solo al cambiar de rama o commit ($3 = 1), no al sacar ficheros con git checkout -- f.
+            want="#!/bin/sh
+# tmux-web-bridge: aplica el kit tras cada git checkout de la release (lo instala host-kit/install.sh).
+[ \"\$3\" = 1 ] || exit 0
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+exec \"$KIT/install.sh\" --quiet"
+        else
+            want="#!/bin/sh
 # tmux-web-bridge: aplica el kit tras cada git pull (lo instala host-kit/install.sh).
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 exec \"$KIT/install.sh\" --quiet"
+        fi
         # Lo que dejaron versiones anteriores en el core.hooksPath global se quita.
         if [ -n "$GLOBAL_HOOKS" ] && [ -f "$GLOBAL_HOOKS/$hook" ] && [ "$(cat "$GLOBAL_HOOKS/$hook")" = "$want" ]; then
             rm -f "$GLOBAL_HOOKS/$hook"
@@ -248,15 +259,15 @@ exec \"$KIT/install.sh\" --quiet"
             mkdir -p "$(dirname "$path")"
             printf '%s\n' "$want" > "$path"
             chmod +x "$path"
-            say "Hook de git: $hook (tras cada pull se vuelve a aplicar el kit)"
+            say "Hook de git: $hook (tras cada pull o checkout se vuelve a aplicar el kit)"
         fi
     done
 else
-    warn "$KIT no está en un clon de git: actualiza con un clon para que git pull lo aplique"
+    warn "$KIT no está en un clon de git: instálalo desde un clon para poder actualizarlo desde el panel"
 fi
 
 # ------------------------------------------------------------ comprobación
 if [ "$QUIET" = 0 ] && grep -q '^HUB_URL=https\?://' "$ENV_FILE" && ! grep -q 'example.com' "$ENV_FILE"; then
     (check_hub) || warn "Los avisos al móvil no funcionarán hasta que el servidor central sea accesible"
 fi
-same "Listo. Para actualizar: git -C $(dirname "$KIT") pull"
+same "Listo. Para actualizar: desde el panel, o git -C $(dirname "$KIT") fetch --tags && git -C $(dirname "$KIT") checkout vX.Y.Z"

@@ -2,6 +2,7 @@ import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/t
 import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
 import { applyHostOrder, dialog, hosts, multiHost, toast, wsStatus, type MenuItem } from './state';
+import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
 
 // Tree actions shared by the list and the window view. Anything that destroys
@@ -231,8 +232,34 @@ export function hostMenu(host: HostInfo): void {
       { label: 'Poner arriba del todo', icon: '⤒', disabled: i === 0, run: () => moveHost(host.id, 0) },
     );
   }
+  const latest = latestRelease.value;
+  if (latest && kitBehind(host, latest)) {
+    items.push({ label: `Actualizar el kit a v${latest}`, icon: '⇡', disabled: kitUpdating.value, run: () => updateKits([host], latest) });
+  }
   if (host.reboot) items.push({ label: 'Reiniciar la máquina', icon: '⏻', danger: true, run: () => rebootHost(host) });
   dialog.value = { kind: 'menu', title: host.name, items };
+}
+
+/**
+ * Moves the kit of these machines to the release (the hub picks the version), one action
+ * per machine so a sleeping one does not hold the others back. Failures come as their own
+ * toast (hub.action shows them, with the machine's name); what worked, in one.
+ */
+export function updateKits(list: HostInfo[], latest: string): void {
+  const names = list.map((h) => `${h.name} (${h.kit ?? 'sin versión'})`).join(', ');
+  dialog.value = {
+    kind: 'confirm',
+    title: `¿Actualizar el kit a v${latest}?`,
+    message: `${names}. Se recarga su configuración de tmux: no se cierra nada y los Claude abiertos no se reinician.`,
+    confirm: 'Actualizar',
+    onSubmit: async () => {
+      kitUpdating.value = true;
+      const results = await Promise.allSettled(list.map((h) => hub.action<{ version: string }>(h.id, { op: 'updateKit' }).then((r) => ({ host: h, ...r }))));
+      kitUpdating.value = false;
+      const done = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+      if (done.length) toast(`Kit ${done[0].version} en ${done.map((d) => d.host.name).join(', ')}`);
+    },
+  };
 }
 
 export function rebootHost(host: HostInfo): void {

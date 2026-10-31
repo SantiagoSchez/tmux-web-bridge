@@ -3,7 +3,7 @@ import type { Config, HostConfig } from './config.js';
 
 // Non-interactive SSH sessions (and launchd/systemd) start with a bare PATH that
 // misses Homebrew and snap; tmux usually lives in one of those.
-const EXTRA_PATH = '/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/snap/bin';
+export const EXTRA_PATH = '/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.linuxbrew/bin:/snap/bin';
 
 /**
  * Quotes one argument for the remote shell. A leading '=' must be quoted too: zsh

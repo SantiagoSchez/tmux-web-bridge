@@ -6,6 +6,7 @@
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "start": "pnpm --filter server start",
     "postinstall": "node scripts/fix-node-pty.mjs"
   },

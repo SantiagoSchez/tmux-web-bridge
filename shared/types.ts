@@ -164,7 +164,9 @@ export type ActionOp =
   /** Back to the end of the output: out of copy mode, or Ctrl+End to a full-screen program (Claude Code). */
   | { op: 'scrollToEnd'; pane: string }
   | { op: 'reloadWindow'; window: string }
-  | { op: 'reboot' };
+  | { op: 'reboot' }
+  /** Moves the host's kit to the last release the hub knows of (the hub picks the version). */
+  | { op: 'updateKit' };
 
 /** Messages from the browser to the hub over /ws. */
 export type ClientMessage =

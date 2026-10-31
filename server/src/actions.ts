@@ -1,6 +1,7 @@
 import type { ActionOp, ProjectList } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
+import { updateKit } from './kit.js';
 
 const SESSION_ID = /^\$\d+$/;
 const WINDOW_ID = /^@\d+$/;
@@ -109,8 +110,11 @@ async function reboot(host: HostMonitor): Promise<void> {
   }
 }
 
-/** Runs one tree action on a host. Returns data for the client, if any. */
-export async function runAction(host: HostMonitor, action: ActionOp): Promise<unknown> {
+/**
+ * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
+ * is the version updateKit moves the kit to (the hub's last check, never the client's).
+ */
+export async function runAction(host: HostMonitor, action: ActionOp, latestRelease: string | null = null): Promise<unknown> {
   const run = (args: string[]) => host.exec.run(args);
   switch (action.op) {
     case 'newSession': {
@@ -197,6 +201,8 @@ export async function runAction(host: HostMonitor, action: ActionOp): Promise<un
     case 'reboot':
       await reboot(host);
       return;
+    case 'updateKit':
+      return updateKit(host, latestRelease);
     default:
       throw new Error(`Operación desconocida: ${(action as { op: string }).op}`);
   }

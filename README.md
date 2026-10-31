@@ -99,7 +99,7 @@ git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 ~/tmux-web-bridge/host-kit/install.sh --hub https://<url-del-panel> --host <id-en-config.yaml> --token <notifyToken>
 ```
 
-Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para los siguientes `git pull`. Para actualizar basta un `git pull` en el clon: un hook de git vuelve a aplicar el kit. Con `install.sh --check` se comprueba la conexión.
+Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones. Para actualizarlo, ver [Actualizaciones](#actualizaciones). Con `install.sh --check` se comprueba la conexión.
 
 <details>
 <summary>Usar tu propia status line en vez de la del kit</summary>
@@ -115,7 +115,15 @@ Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y en ⚙️ *
 
 La versión está en [`VERSION`](VERSION) y cada una se publica como release en GitHub. Una vez al día el servidor central consulta la última release (solo hace esa petición, no envía ningún dato) y, si es más nueva que él o que el kit de alguna máquina, el panel lo avisa con una franja arriba que se queda hasta que la cierras. Cerrada, no vuelve hasta la siguiente release. Se desactiva para todos los dispositivos en ⚙️ **Ajustes › Buscar actualizaciones**.
 
-Para actualizar el servidor central, `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker); para el kit, `git pull` en el clon de cada máquina.
+Para actualizar el servidor central, `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker).
+
+El kit de las máquinas se actualiza desde el propio panel: con el botón **Actualizar** del aviso, o con **Actualizar el kit a vX.Y.Z** en el menú de cada máquina. Tras confirmar, el servidor central entra en ella por el mismo SSH de siempre, pasa el clon a la última release (`git fetch --tags` y `git checkout vX.Y.Z`, que deja el clon en HEAD separado), vuelve a aplicar el kit y recarga su `tmux.conf`. Nunca fuerza nada: con cambios locales en el clon, no lo toca. No se cierra ningún space y los Claude abiertos no se reinician. A mano es lo mismo, en el clon:
+
+```sh
+git fetch --tags && git checkout vX.Y.Z   # un hook de git vuelve a aplicar el kit
+```
+
+Con el clon en una release, `git pull` ya no funciona («You are not currently on a branch»).
 
 ## Seguridad
 
@@ -132,6 +140,7 @@ pnpm install
 cp config.example.yaml config.yaml   # con allowWithoutTailscale: true y un host local: true
 pnpm --filter web build && ./restart-dev.sh     # http://127.0.0.1:7681 (log en server-dev.log)
 pnpm typecheck
+pnpm test
 ```
 
 ## Solución de problemas

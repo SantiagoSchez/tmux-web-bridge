@@ -387,6 +387,15 @@ h3 {
 .update-banner .toast-close {
   flex-shrink: 0;
 }
+.update-banner .btn {
+  flex-shrink: 0;
+  min-height: 30px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.update-banner .btn:disabled {
+  opacity: 0.6;
+}
 
 /* ------------------------------------------------------------ top bar */
 
