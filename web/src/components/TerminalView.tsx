@@ -557,8 +557,11 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   const [mods, setMods] = useState<Set<Mod>>(new Set());
   const modsRef = useRef(mods);
   modsRef.current = mods;
-  const [state, setState] = useState<'connecting' | 'open' | 'closed'>('connecting');
+  /** lost: the socket dropped on its own (the phone suspends the app in the background), it reconnects by itself. */
+  const [state, setState] = useState<'connecting' | 'open' | 'lost' | 'closed'>('connecting');
   const [attempt, setAttempt] = useState(0);
+  /** Automatic reconnections in a row without the socket opening. */
+  const retries = useRef(0);
   /**
    * Lines scrolled up with the finger. tmux reports its copy mode (pane.inMode), but a
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
@@ -609,6 +612,27 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       cleanup();
     };
   }, [attempt]);
+
+  // A dropped socket comes back by itself: with backoff while the app is in front, and
+  // right away when it comes back from the background (the timer does not run there).
+  useEffect(() => {
+    if (state !== 'lost') return;
+    const retry = () => {
+      if (document.visibilityState !== 'visible') return;
+      retries.current++;
+      setAttempt((a) => a + 1);
+    };
+    const onVisible = () => {
+      retries.current = 0;
+      retry();
+    };
+    const t = setTimeout(retry, Math.min(5000, 400 * 2 ** retries.current));
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [state]);
 
   function start(): () => void {
     // xterm opens a link when the mouse goes down and up on it, even after a drag: a
@@ -665,12 +689,24 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
     setState('connecting');
-    ws.onopen = () => setState('open');
+    /** The pty ended (the space was closed, tmux could not start...): reconnecting would not bring it back. */
+    let exited = false;
+    let disposed = false;
+    ws.onopen = () => {
+      retries.current = 0;
+      setState('open');
+    };
     ws.onmessage = (ev) => {
-      if (typeof ev.data === 'string') return; // control message ({t:'exit'})
+      if (typeof ev.data === 'string') {
+        exited = true; // control message ({t:'exit'})
+        return;
+      }
       term.write(new Uint8Array(ev.data as ArrayBuffer));
     };
-    ws.onclose = () => setState('closed');
+    ws.onclose = () => {
+      if (disposed) return;
+      setState(exited || retries.current >= 5 ? 'closed' : 'lost');
+    };
 
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
@@ -740,6 +776,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       dataSub.dispose();
       selectionSub.dispose();
       resizeSub.dispose();
+      disposed = true;
       ws.close();
       term.dispose();
       termRef.current = null;
@@ -922,12 +959,18 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       )}
       {state !== 'open' && (
         <div class="term-overlay">
-          {state === 'connecting' ? (
-            <span class="dim">Abriendo terminal…</span>
+          {state === 'connecting' || state === 'lost' ? (
+            <span class="dim">{attempt > 0 ? 'Reconectando…' : 'Abriendo terminal…'}</span>
           ) : (
             <>
               <span>Terminal desconectada</span>
-              <button class="btn" onClick={() => setAttempt(attempt + 1)}>
+              <button
+                class="btn"
+                onClick={() => {
+                  retries.current = 0;
+                  setAttempt(attempt + 1);
+                }}
+              >
                 Reconectar
               </button>
             </>
