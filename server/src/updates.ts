@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { UpdateInfo } from '../../shared/types.js';
 
-const REPO = 'SantiagoSchez/tmux-web-bridge';
+export const REPO = 'SantiagoSchez/tmux-web-bridge';
 const DAY_MS = 24 * 3600_000;
 
 /** The version this hub was built from: VERSION at the repo root (copied next to server/ in the image). */

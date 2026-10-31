@@ -141,6 +141,7 @@ cp config.example.yaml config.yaml   # con allowWithoutTailscale: true y un host
 pnpm --filter web build && ./restart-dev.sh     # http://127.0.0.1:7681 (log en server-dev.log)
 pnpm typecheck
 pnpm test
+scripts/test-kit-update.sh   # «Actualizar el kit» de punta a punta, aislado (HOME, git y tmux temporales)
 ```
 
 ## Solución de problemas

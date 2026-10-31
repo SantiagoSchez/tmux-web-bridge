@@ -16,3 +16,8 @@ Al terminar una feature (desplegada y comprobada), propón sacar una release: di
 1. Sube `VERSION` según lo que haya desde la última release (`git log v<anterior>..`): parche para arreglos, menor para funciones nuevas, mayor para cambios que obliguen a tocar la configuración o reinstalar.
 2. Commit «Release X.Y.Z» y push (despliega el hub).
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`, y `gh release create vX.Y.Z --title vX.Y.Z --notes "…"` con las novedades en español, agrupadas, a partir de los commits.
+
+## Pruebas
+
+- `pnpm typecheck` y `pnpm test` antes de cada push.
+- Si tocas la actualización del kit (`server/src/kit.ts`, `host-kit/install.sh`, `host-kit/tmux.conf`), pasa `scripts/test-kit-update.sh`. No lo pruebes a mano contra un clon o un tmux improvisados: `install.sh` usa el socket de tmux por defecto y un `HOME` falso no basta para aislarlo (así se ensució una vez el tmux real de esta máquina).

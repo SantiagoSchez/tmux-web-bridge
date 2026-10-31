@@ -29,6 +29,9 @@
 #   --skip-claude   no toca ~/.claude (hooks y status line)
 #   --check         solo comprueba la conexión con el servidor central
 #   --quiet         solo cuenta lo que cambia (lo usan los hooks de git)
+#
+# Con TWB_NO_TMUX_RELOAD=1 no recarga el tmux en marcha: el panel, al actualizar el kit, lo
+# recarga él por el socket de tmux de la máquina (aquí sería siempre el de por defecto).
 
 set -euo pipefail
 
@@ -170,7 +173,7 @@ if [ "$SKIP_TMUX" = 0 ]; then
         printf '\n# tmux-web-bridge: estados de Claude, spaces y lo que necesita el panel web\n%s\n' "$LINE" >> "$TMUX_CONF"
         say "Añadido a $TMUX_CONF: $LINE"
     fi
-    if tmux info >/dev/null 2>&1; then
+    if [ "${TWB_NO_TMUX_RELOAD:-0}" != 1 ] && tmux info >/dev/null 2>&1; then
         tmux source-file "$KIT/tmux.conf" && same "Cargado en el tmux en marcha"
     fi
 fi

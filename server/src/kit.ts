@@ -1,5 +1,6 @@
 import { EXTRA_PATH, TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
+import { REPO } from './updates.js';
 
 const VERSION = /^\d+\.\d+\.\d+$/;
 
@@ -22,21 +23,26 @@ export function kitDir(published: string | null | undefined): string {
 
 /**
  * Script that moves the clone to a release tag and applies the kit, stopping at the
- * first problem. Never forces anything: local changes leave the clone alone. The
- * checkout runs without hooks because install.sh is run right after it anyway.
+ * first problem. Never forces anything: local changes leave the clone alone, and a
+ * clone of anything but twb is not touched. Every error names the clone. The checkout
+ * runs without hooks because install.sh is run right after it anyway, without its own
+ * tmux reload: it would reach the default tmux socket, not necessarily the host's.
  */
 export function kitScript(dir: string, tag: string): string {
+  const repo = REPO.toLowerCase();
   return [
     `PATH="$PATH:${EXTRA_PATH}"; export PATH`,
     `dir=${dir}`,
     `cd "$dir" 2>/dev/null && git rev-parse --git-dir >/dev/null 2>&1 || { echo "Sin clon del kit en $dir: instálalo con git clone + host-kit/install.sh" >&2; exit 1; }`,
+    `origin=$(git remote get-url origin 2>/dev/null)`,
+    `case "$(printf '%s' "$origin" | tr 'A-Z' 'a-z')" in */${repo}|*/${repo}.git|*:${repo}|*:${repo}.git) ;; *) echo "El clon del kit en $dir no es de twb (origin: \${origin:-ninguno}): no se toca" >&2; exit 1 ;; esac`,
     `[ -z "$(git status --porcelain --untracked-files=no)" ] || { echo "Cambios locales en el clon del kit ($dir): no se toca" >&2; exit 1; }`,
-    `git fetch --quiet --tags --force origin || { echo "git fetch falló en $dir" >&2; exit 1; }`,
-    `git rev-parse --quiet --verify 'refs/tags/${tag}^{commit}' >/dev/null || { echo "No existe el tag ${tag} en el clon" >&2; exit 1; }`,
-    `git -c core.hooksPath=/dev/null -c advice.detachedHead=false checkout --quiet '${tag}' || exit 1`,
+    `git fetch --quiet --tags --force origin || { echo "git fetch falló en $dir (origin: $origin)" >&2; exit 1; }`,
+    `git rev-parse --quiet --verify 'refs/tags/${tag}^{commit}' >/dev/null || { echo "No existe el tag ${tag} en el clon del kit ($dir, origin: $origin)" >&2; exit 1; }`,
+    `git -c core.hooksPath=/dev/null -c advice.detachedHead=false checkout --quiet '${tag}' || { echo "git checkout ${tag} falló en $dir" >&2; exit 1; }`,
     // The hub reloads tmux.conf itself (through the host's own tmux socket): it needs the path.
     `echo "TWB_KIT_DIR=$(pwd)"`,
-    'exec host-kit/install.sh --quiet',
+    `TWB_NO_TMUX_RELOAD=1 host-kit/install.sh --quiet || { echo "host-kit/install.sh falló en $dir" >&2; exit 1; }`,
   ].join('\n');
 }
 

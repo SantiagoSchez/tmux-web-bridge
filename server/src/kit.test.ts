@@ -22,7 +22,8 @@ test('kitScript checks out the tag without hooks and then applies the kit', () =
   assert.match(s, /^dir="\$HOME"\/tmux-web-bridge$/m);
   assert.match(s, /core\.hooksPath=\/dev\/null .*checkout --quiet 'v1\.1\.0'/);
   assert.ok(s.indexOf('git status --porcelain') < s.indexOf('git fetch'));
-  assert.ok(s.trimEnd().endsWith('exec host-kit/install.sh --quiet'));
+  assert.ok(s.indexOf('git remote get-url origin') < s.indexOf('git fetch'));
+  assert.match(s, /TWB_NO_TMUX_RELOAD=1 host-kit\/install\.sh --quiet/);
 });
 
 /** A host whose shell fails like `err` (tmux answers nothing: no @twb_kit_dir). */
