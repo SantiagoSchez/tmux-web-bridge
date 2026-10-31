@@ -93,6 +93,8 @@ export interface UpdateInfo {
   latest: { version: string; url: string } | null;
   /** Release whose notice was closed: it does not come back until a newer one. */
   dismissed: string | null;
+  /** The release of the running version (missing for a version never released, or with the check off). */
+  released: { date: string; url: string } | null;
 }
 
 /** A host's projects (folders of its projects dir) and `c` shortcuts. */

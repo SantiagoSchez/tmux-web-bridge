@@ -5,6 +5,7 @@ import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, ses
 import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
 import { hosts, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
+import { updateInfo } from '../updates';
 import { IconClose, IconMore, IconPlus } from './icons';
 
 /** Home: what needs you first, then every host → space → window. */
@@ -18,7 +19,27 @@ export function Tree() {
         <HostBlock key={h.id} host={h} index={i} last={i === list.length - 1} />
       ))}
       {list.length === 0 && wsStatus.value === 'open' && <p class="dim pad">No hay máquinas configuradas.</p>}
+      <VersionFooter />
     </div>
+  );
+}
+
+/** The hub's version and the date of its release, at the bottom of the list. */
+function VersionFooter() {
+  const info = updateInfo.value;
+  if (!info) return null;
+  const r = info.released;
+  const date = r && new Date(r.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  return (
+    <footer class="version-footer">
+      {r ? (
+        <a href={r.url} target="_blank" rel="noopener" title="Notas de esta versión">
+          twb v{info.current} · {date}
+        </a>
+      ) : (
+        `twb v${info.current}`
+      )}
+    </footer>
   );
 }
 

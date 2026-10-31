@@ -531,7 +531,23 @@ h3 {
 .tree {
   flex: 1;
   min-height: 0;
-  padding: 4px 12px calc(32px + var(--safe-bottom));
+  padding: 4px 12px calc(16px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+}
+/* At the bottom of the list, or of the sidebar when the list is short. */
+.version-footer {
+  margin-top: auto;
+  padding: 24px 4px 0;
+  font: 11px/1.4 var(--mono);
+  color: var(--overlay0);
+}
+.version-footer a {
+  color: inherit;
+  text-decoration: none;
+}
+.version-footer a:hover {
+  color: var(--subtext0);
 }
 .section-title {
   font-size: 12px;
