@@ -21,8 +21,9 @@ const FIELDS = [
   'pane_id', 'pane_index', 'pane_active', 'pane_current_command', 'pane_current_path', 'pane_title',
   '@pane_icon', 'pane_width', 'pane_height', 'pane_dead', 'pane_in_mode', '@claude_account',
   // Global options, the same on every row: Claude's usage limits from the statusline,
-  // and the version of the host-kit (its tmux.conf sets it).
-  '@claude_rate_limits', '@twb_kit_version',
+  // the version of the host-kit (its tmux.conf sets it), and whether the statusline
+  // leaves the limits out (the hub's setting).
+  '@claude_rate_limits', '@twb_kit_version', '@claude_limits_in_status',
 ] as const;
 const FORMAT = FIELDS.map((f) => `#{${f}}`).join(SEP);
 
@@ -84,9 +85,19 @@ function parseLimits(raw: string): RateLimits[] {
   return current.map(({ legacy: _, ...l }) => l);
 }
 
-function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessionRow[]; limits: RateLimits[]; kit?: string } {
+interface Parsed {
+  sessions: SessionInfo[];
+  webSessions: WebSessionRow[];
+  limits: RateLimits[];
+  kit?: string;
+  /** @claude_limits_in_status as tmux has it; null with no rows (no tmux server to ask). */
+  limitsInStatus: string | null;
+}
+
+function parse(output: string): Parsed {
   let limits: RateLimits[] | null = null;
   let kit: string | undefined;
+  let limitsInStatus: string | null = null;
   const sessions = new Map<string, SessionInfo>();
   const windows = new Map<string, WindowInfo>();
   const webSessions = new Map<string, WebSessionRow>();
@@ -97,6 +108,7 @@ function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessi
     const r = Object.fromEntries(FIELDS.map((f, i) => [f, v[i]])) as Record<(typeof FIELDS)[number], string>;
     limits ??= parseLimits(r['@claude_rate_limits']);
     kit ||= r['@twb_kit_version'] || undefined;
+    limitsInStatus ??= r['@claude_limits_in_status'];
 
     if (r.session_name.startsWith(WEB_SESSION_PREFIX)) {
       webSessions.set(r.session_name, { name: r.session_name, attached: Number(r.session_attached), created: Number(r.session_created) });
@@ -158,7 +170,7 @@ function parse(output: string): { sessions: SessionInfo[]; webSessions: WebSessi
     s.windows.sort((a, b) => a.index - b.index);
     for (const w of s.windows) w.panes.sort((a, b) => a.index - b.index);
   }
-  return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [], kit };
+  return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [], kit, limitsInStatus };
 }
 
 /**
@@ -181,6 +193,12 @@ export class HostMonitor extends EventEmitter {
   private prefixLoaded = false;
   /** Web terminal sessions with a live pty on this hub (never reaped). */
   readonly liveWebSessions = new Set<string>();
+  /**
+   * Whether the Claude statusline shows the 5h/7d limits (the hub's setting). Polling
+   * puts @claude_limits_in_status back when tmux lost it (restarted) or its own
+   * config set it otherwise.
+   */
+  limitsInStatusLine = true;
 
   constructor(
     readonly hostConfig: HostConfig,
@@ -232,7 +250,13 @@ export class HostMonitor extends EventEmitter {
     let kit: string | undefined;
     try {
       const out = await this.exec.runFormat(['list-panes', '-a', '-F', FORMAT]);
-      ({ sessions, webSessions, limits, kit } = parse(out));
+      let limitsInStatus: string | null;
+      ({ sessions, webSessions, limits, kit, limitsInStatus } = parse(out));
+      // Shown: only a 1 hides them, so an unset option is fine as it is.
+      const want = this.limitsInStatusLine ? '0' : '1';
+      if (limitsInStatus !== null && (want === '1' ? limitsInStatus !== '1' : limitsInStatus === '1')) {
+        await this.exec.run(['set-option', '-gq', '@claude_limits_in_status', want]).catch(() => {});
+      }
       if (!this.prefixLoaded) {
         const prefix = (await this.exec.run(['show-options', '-gv', 'prefix'])).trim();
         this.info = { ...this.info, prefix };

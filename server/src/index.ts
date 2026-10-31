@@ -18,6 +18,7 @@ import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
 import { PreviewCache } from './preview.js';
 import { PushService } from './push.js';
+import { SettingsStore } from './settings.js';
 import { openTerminal } from './terminal.js';
 import { TwoFactor } from './twofactor.js';
 import { UpdateChecker } from './updates.js';
@@ -44,6 +45,8 @@ const push = new PushService(config);
 const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
+const settings = new SettingsStore(config.dataDir);
+for (const host of hosts.values()) host.limitsInStatusLine = settings.value.limitsInStatusLine;
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' }, trustProxy: config.trustProxy });
 app.decorateRequest('sessionId', null);
@@ -176,6 +179,13 @@ for (const host of hosts.values()) {
 }
 conns.on('change', (list) => broadcast({ t: 'connections', list }));
 updates.on('change', (info) => broadcast({ t: 'updates', info }));
+settings.on('change', (value) => {
+  for (const host of hosts.values()) {
+    host.limitsInStatusLine = value.limitsInStatusLine;
+    void host.refresh();
+  }
+  broadcast({ t: 'settings', settings: value });
+});
 updates.start();
 
 /**
@@ -216,6 +226,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'connections', list: conns.list() });
   send(ws, { t: 'usage', samples: usage.list });
   send(ws, { t: 'updates', info: updates.info });
+  send(ws, { t: 'settings', settings: settings.value });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -247,6 +258,9 @@ app.get('/ws', { websocket: true }, (ws, req) => {
           break;
         case 'updateDismiss':
           if (typeof msg.version === 'string') updates.dismiss(msg.version);
+          break;
+        case 'settings':
+          if (msg.settings && typeof msg.settings === 'object') settings.update(msg.settings);
           break;
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');

@@ -92,7 +92,7 @@ export function TwoFactorSettings() {
 
   if (!status) return null;
   return (
-    <section class="settings-group">
+    <section class="setting">
       <h3>Verificación en dos pasos</h3>
       <p class="dim small">Al entrar, además de la contraseña, se pide el código de una app de autenticación (Google Authenticator, 1Password, Authy…).</p>
 

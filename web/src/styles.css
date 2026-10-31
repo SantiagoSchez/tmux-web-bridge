@@ -1615,19 +1615,91 @@ body.dragging-host * {
   overflow-wrap: anywhere;
 }
 
-.settings-group {
-  padding: 4px 4px 16px;
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--crust);
 }
-.settings-group + .settings-group {
+.settings-tabs button {
+  flex: 1;
+  min-height: 36px;
+  border-radius: 9px;
+  color: var(--subtext0);
+  font-weight: 600;
+  font-size: 14px;
+}
+.settings-tabs button.on {
+  background: var(--surface0);
+  color: var(--text);
+}
+/* Centred on wide screens: the same height for every tab, so the tabs don't jump. */
+.layout.desktop .settings-panel {
+  min-height: 400px;
+}
+.settings-scope {
+  margin: 8px 4px 0;
+}
+.setting {
+  padding: 16px 4px;
+}
+.setting + .setting {
   border-top: 1px solid var(--surface0);
-  padding-top: 16px;
 }
-.settings-group h3 {
+.setting h3 {
   font-size: 14px;
   margin-bottom: 4px;
 }
-.settings-group p {
+.setting p {
   margin: 4px 0 12px;
+}
+.setting-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.setting-text {
+  flex: 1;
+  min-width: 0;
+}
+.setting-row p {
+  margin-bottom: 0;
+}
+.setting-row + * {
+  margin-top: 12px;
+}
+.switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  margin-top: 2px;
+  border-radius: 13px;
+  background: var(--surface1);
+  transition: background 0.15s;
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--subtext1);
+  transition: transform 0.15s, background 0.15s;
+}
+.switch.on {
+  background: var(--mauve);
+}
+.switch.on::after {
+  transform: translateX(18px);
+  background: var(--crust);
+}
+.switch:disabled {
+  opacity: 0.4;
 }
 .settings-state {
   color: var(--subtext1);
@@ -1655,7 +1727,7 @@ body.dragging-host * {
   color: var(--text);
   overflow-wrap: anywhere;
 }
-.settings-group .text-input {
+.setting .text-input {
   margin-bottom: 4px;
 }
 .recovery-codes {

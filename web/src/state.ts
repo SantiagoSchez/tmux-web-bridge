@@ -1,5 +1,5 @@
 import { computed, signal } from '@preact/signals';
-import type { ConnectionInfo, HostInfo, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { ConnectionInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -10,6 +10,8 @@ export const hosts = signal<HostInfo[]>([]);
 export const connections = signal<ConnectionInfo[]>([]);
 /** Recent readings of the usage limits (from the hub), to forecast when they run out. */
 export const usageSamples = signal<UsageSample[]>([]);
+/** The hub's settings, the same for every device. */
+export const hubSettings = signal<HubSettings | null>(null);
 
 export const PRIO: Record<PaneState, number> = { question: 60, attention: 50, done: 40, busy: 30, claude: 20, ssh: 10 };
 export const ALERT_STATES: PaneState[] = ['question', 'attention', 'done'];

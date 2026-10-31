@@ -1,7 +1,8 @@
+import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
-import { dialog, sheet, toast, vapidKey } from '../state';
+import { dialog, hubSettings, sheet, toast, vapidKey } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Dialogs';
@@ -39,20 +40,16 @@ async function detect(): Promise<PushState> {
   return 'on';
 }
 
-const STATE_TEXT: Record<PushState, string> = {
+/** Why the switch can't be used here (when it can, it says on or off by itself). */
+const PUSH_NOTE: Partial<Record<PushState, string>> = {
   unsupported: 'Este navegador no admite notificaciones push.',
   insecure: 'Hace falta HTTPS para las notificaciones.',
   denied: 'Has bloqueado las notificaciones para este sitio. Actívalas en los ajustes del navegador.',
-  off: 'Desactivadas en este dispositivo.',
-  on: 'Activadas en este dispositivo.',
-  busy: '…',
 };
 
-const PRESENCE_TEXT: Record<PresenceState, string> = {
+const PRESENCE_NOTE: Partial<Record<PresenceState, string>> = {
   unsupported: 'Este navegador no puede saber si estás usando el dispositivo (hace falta Chrome, Edge o Brave).',
   denied: 'Has bloqueado la detección de actividad para este sitio. Actívala en los ajustes del navegador.',
-  off: 'Desactivado en este dispositivo.',
-  on: 'Activado: mientras lo uses, no llegan notificaciones a ningún dispositivo.',
 };
 
 function logoutEverywhere(): void {
@@ -69,14 +66,68 @@ function logoutEverywhere(): void {
   };
 }
 
+/** One setting: name, explanation, a switch on the right, and what goes with it underneath. */
+function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; disabled?: boolean; onChange: (on: boolean) => void; children?: ComponentChildren }) {
+  return (
+    <section class="setting">
+      <div class="setting-row">
+        <div class="setting-text">
+          <h3>{props.title}</h3>
+          <p class="dim small">{props.desc}</p>
+        </div>
+        <button
+          class={`switch ${props.on ? 'on' : ''}`}
+          role="switch"
+          aria-checked={props.on}
+          aria-label={props.title}
+          disabled={props.disabled}
+          onClick={() => props.onChange(!props.on)}
+        />
+      </div>
+      {props.children}
+    </section>
+  );
+}
+
+type Tab = 'device' | 'machines' | 'account';
+
 export function Settings() {
   const open = sheet.value === 'settings';
-  const [push, setPush] = useState<PushState>('busy');
-
-  useEffect(() => {
-    if (open) detect().then(setPush, () => setPush('unsupported'));
-  }, [open]);
+  const [tab, setTab] = useState<Tab>('device');
+  const account = auth.value?.method === 'password';
   if (!open) return null;
+
+  const tabs: [Tab, string][] = [
+    ['device', 'Dispositivo'],
+    ['machines', 'Máquinas'],
+  ];
+  if (account) tabs.push(['account', 'Cuenta']);
+  const current = tab === 'account' && !account ? 'device' : tab;
+
+  return (
+    <Sheet title="Ajustes" onClose={() => (sheet.value = null)}>
+      <div class="settings-tabs" role="tablist" aria-label="Secciones de los ajustes">
+        {tabs.map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={current === id} class={current === id ? 'on' : ''} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div class="settings-panel" role="tabpanel">
+        {current === 'device' && <DeviceSettings />}
+        {current === 'machines' && <MachineSettings />}
+        {current === 'account' && <AccountSettings />}
+      </div>
+    </Sheet>
+  );
+}
+
+/** This browser only: its notifications and whether using it silences them. */
+function DeviceSettings() {
+  const [push, setPush] = useState<PushState>('busy');
+  useEffect(() => {
+    detect().then(setPush, () => setPush('unsupported'));
+  }, []);
 
   const enable = async () => {
     setPush('busy');
@@ -110,96 +161,91 @@ export function Settings() {
     toast(res.ok ? 'Notificación de prueba enviada' : `Fallo al enviar: ${res.error ?? 'sin destinatarios'}`, res.ok ? 'info' : 'error');
   };
 
+  const presence = presenceState.value;
   return (
-    <Sheet title="Ajustes" onClose={() => (sheet.value = null)}>
-      <section class="settings-group">
-        <h3>Notificaciones</h3>
-        <p class="dim small">Avisos de 🙋 preguntas, 💬 permisos y ✅ tareas terminadas de Claude, salvo que ya lo estés mirando.</p>
-        <p class="settings-state">{STATE_TEXT[push]}</p>
-        <div class="row-btns">
-          {push === 'off' && (
-            <button class="btn btn-primary" onClick={enable}>
-              Activar en este dispositivo
-            </button>
-          )}
-          {push === 'on' && (
-            <>
-              <button class="btn" onClick={test}>
-                Enviar prueba
-              </button>
-              <button class="btn" onClick={disable}>
-                Desactivar
-              </button>
-            </>
-          )}
-        </div>
-      </section>
-
-      <section class="settings-group">
-        <h3>Silenciar mientras uso este dispositivo</h3>
-        <p class="dim small">
-          Si has usado el teclado o el ratón en los últimos 5 minutos (en cualquier aplicación) y la pantalla no está bloqueada, no se envían notificaciones: los
-          avisos ya están en la lista de pendientes. Necesita esta app abierta, aunque sea en segundo plano.
-        </p>
-        <p class="settings-state">{PRESENCE_TEXT[presenceState.value]}</p>
-        <div class="row-btns">
-          {presenceState.value === 'off' && (
-            <button class="btn btn-primary" onClick={() => void enablePresence()}>
-              Activar en este dispositivo
-            </button>
-          )}
-          {presenceState.value === 'on' && (
-            <button class="btn" onClick={disablePresence}>
-              Desactivar
-            </button>
-          )}
-        </div>
-      </section>
-
-      <UpdateSettings />
-
-      {auth.value?.method === 'password' && <TwoFactorSettings />}
-
-      {auth.value?.method === 'password' && (
-        <section class="settings-group">
-          <h3>Sesión</h3>
-          <p class="dim small">Se cierra sola tras {auth.value.days ?? 30} días sin abrir el panel en este dispositivo.</p>
+    <>
+      <Toggle
+        title="Notificaciones"
+        desc="Avisos de 🙋 preguntas, 💬 permisos y ✅ tareas terminadas de Claude en este dispositivo, salvo que ya lo estés mirando."
+        on={push === 'on'}
+        disabled={push !== 'on' && push !== 'off'}
+        onChange={(on) => void (on ? enable() : disable())}
+      >
+        {PUSH_NOTE[push] && <p class="settings-state small">{PUSH_NOTE[push]}</p>}
+        {push === 'on' && (
           <div class="row-btns">
-            <button class="btn" onClick={() => void logout()}>
-              Cerrar sesión
-            </button>
-            <button class="btn" onClick={logoutEverywhere}>
-              En todos los dispositivos
+            <button class="btn" onClick={test}>
+              Enviar prueba
             </button>
           </div>
-        </section>
-      )}
-    </Sheet>
+        )}
+      </Toggle>
+
+      <Toggle
+        title="Silenciar mientras lo uso"
+        desc="Si has usado el teclado o el ratón en los últimos 5 minutos (en cualquier aplicación) y la pantalla no está bloqueada, no llegan notificaciones a ningún dispositivo: los avisos ya están en la lista de pendientes. Necesita esta app abierta, aunque sea en segundo plano."
+        on={presence === 'on'}
+        disabled={presence !== 'on' && presence !== 'off'}
+        onChange={(on) => (on ? void enablePresence() : disablePresence())}
+      >
+        {PRESENCE_NOTE[presence] && <p class="settings-state small">{PRESENCE_NOTE[presence]}</p>}
+      </Toggle>
+    </>
   );
 }
 
-function UpdateSettings() {
+/** The hub's settings: the same for every machine and every device. */
+function MachineSettings() {
+  const s = hubSettings.value;
   const info = updateInfo.value;
-  if (!info) return null;
-  const latest = info.latest?.version;
-  const state = !info.enabled
-    ? 'Desactivado.'
+  const latest = info?.latest?.version;
+  const updateState = !info?.enabled
+    ? null
     : latest && newer(latest, info.current)
       ? `Hay una versión nueva: ${latest} (este servidor tiene la ${info.current}).`
       : `Al día: versión ${info.current}.`;
   return (
-    <section class="settings-group">
-      <h3>Buscar actualizaciones</h3>
-      <p class="dim small">
-        Una vez al día el servidor central mira en GitHub si hay una versión nueva de twb, y avisa también de las máquinas cuyo kit va por detrás. No se envía ningún
-        dato. Vale para todos los dispositivos.
-      </p>
-      <p class="settings-state">{state}</p>
-      <div class="row-btns">
-        <button class={`btn ${info.enabled ? '' : 'btn-primary'}`} onClick={() => hub.send({ t: 'updateCheck', enabled: !info.enabled })}>
-          {info.enabled ? 'Desactivar' : 'Activar'}
-        </button>
-      </div>
-    </section>
+    <>
+      <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos.</p>
+      {s && (
+        <Toggle
+          title="Límites en la status line"
+          desc="Los límites de 5 h y semanal al final de la línea de estado de Claude Code. Desactívalo si la barra de tmux ya los muestra; en el panel siguen siempre en la franja de arriba."
+          on={s.limitsInStatusLine}
+          onChange={(on) => hub.send({ t: 'settings', settings: { limitsInStatusLine: on } })}
+        />
+      )}
+      {info && (
+        <Toggle
+          title="Buscar actualizaciones"
+          desc="Una vez al día el servidor central mira en GitHub si hay una versión nueva de twb, y avisa también de las máquinas cuyo kit va por detrás. No se envía ningún dato."
+          on={info.enabled}
+          onChange={(on) => hub.send({ t: 'updateCheck', enabled: on })}
+        >
+          {updateState && <p class="settings-state small">{updateState}</p>}
+        </Toggle>
+      )}
+    </>
+  );
+}
+
+/** Password login only: two-step verification and the sessions. */
+function AccountSettings() {
+  return (
+    <>
+      <TwoFactorSettings />
+      <section class="setting">
+        <h3>Sesión</h3>
+        <p class="dim small">Se cierra sola tras {auth.value?.days ?? 30} días sin abrir el panel en este dispositivo.</p>
+        <div class="row-btns">
+          <button class="btn" onClick={() => void logout()}>
+            Cerrar sesión
+          </button>
+          <button class="btn" onClick={logoutEverywhere}>
+            En todos los dispositivos
+          </button>
+        </div>
+      </section>
+    </>
   );
 }

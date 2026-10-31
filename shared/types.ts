@@ -84,6 +84,15 @@ export interface HostInfo {
   kit?: string;
 }
 
+/** Settings of the whole hub (every device sees and changes the same ones). */
+export interface HubSettings {
+  /**
+   * The 5h/7d limits at the end of the Claude Code status line on every machine. Off
+   * when tmux's own bar shows them: the hub sets @claude_limits_in_status=1 there.
+   */
+  limitsInStatusLine: boolean;
+}
+
 /** The daily check for a new release of twb on GitHub, set for the whole hub. */
 export interface UpdateInfo {
   enabled: boolean;
@@ -179,6 +188,7 @@ export type ClientMessage =
   | { t: 'hostOrder'; hosts: string[] }
   | { t: 'updateCheck'; enabled: boolean }
   | { t: 'updateDismiss'; version: string }
+  | { t: 'settings'; settings: Partial<HubSettings> }
   | ({ t: 'action'; id: number; host: string } & ActionOp);
 
 /** Messages from the hub to the browser over /ws. */
@@ -191,6 +201,7 @@ export type ServerMessage =
   | { t: 'usage'; samples: UsageSample[] }
   | { t: 'connections'; list: ConnectionInfo[] }
   | { t: 'updates'; info: UpdateInfo }
+  | { t: 'settings'; settings: HubSettings }
   | { t: 'result'; id: number; ok: boolean; error?: string; data?: unknown };
 
 /** Body of POST /api/notify, sent by tmux-window-title.sh on each host. */
