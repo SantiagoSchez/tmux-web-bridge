@@ -539,6 +539,7 @@ h3 {
 .version-footer {
   margin-top: auto;
   padding: 24px 4px 0;
+  text-align: center;
   font: 11px/1.4 var(--mono);
   color: var(--overlay0);
 }
