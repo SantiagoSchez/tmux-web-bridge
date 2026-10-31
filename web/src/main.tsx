@@ -1,4 +1,5 @@
 import { render } from 'preact';
+import './attention';
 import { boot } from './auth';
 import { Root } from './components/App';
 import { resumePresence } from './presence';
