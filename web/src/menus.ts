@@ -1,7 +1,7 @@
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/types';
 import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
-import { applyHostOrder, dialog, hosts, multiHost, toast, wsStatus, type MenuItem } from './state';
+import { applyHostOrder, dialog, hosts, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
 import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
 
@@ -97,16 +97,51 @@ export function renameWindow(host: HostInfo, window: WindowInfo): void {
   };
 }
 
+const isClaude = (p: PaneInfo) => p.command === 'claude' || (p.state !== null && p.state !== 'ssh');
+
+/** A path as typed in a shell: quoted only when it needs it. */
+function shellPath(path: string): string {
+  return /^[\w@%+=:,./~-]+$/.test(path) ? path : `'${path.replace(/'/g, `'\\''`)}'`;
+}
+
+/** The Claude Code open in these panes, with how to resume each one once closed. */
+function claudeResumes(panes: { pane: PaneInfo; where: string }[]): ClaudeResume[] {
+  return panes
+    .filter(({ pane }) => isClaude(pane))
+    .map(({ pane, where }) => ({
+      label: [`${pane.icon || '🤖'} ${pane.path.split('/').pop() || pane.path}`, where].filter(Boolean).join(' · '),
+      session: pane.claudeSession,
+      command: `cd ${shellPath(pane.path)} && claude ${pane.claudeSession ? `--resume ${pane.claudeSession}` : '--continue'}`,
+    }));
+}
+
+/** What the close dialog adds when Claude is open in what is about to close. */
+function claudeWarning(resume: ClaudeResume[]): string {
+  if (!resume.length) return '';
+  return resume.length === 1
+    ? ' Tiene un Claude abierto: al cerrar se copia el comando para reanudarlo.'
+    : ` Tiene ${resume.length} Claude abiertos: al cerrar se copian los comandos para reanudarlos.`;
+}
+
 export function killSession(host: HostInfo, session: SessionInfo, leave = false): void {
+  const resume = claudeResumes(
+    session.windows.flatMap((w) =>
+      w.panes.map((pane) => ({
+        pane,
+        where: session.windows.length > 1 || w.panes.length > 1 ? `ventana ${w.index}${w.panes.length > 1 ? `, panel ${pane.index}` : ''}` : '',
+      })),
+    ),
+  );
   dialog.value = {
     kind: 'confirm',
     title: `¿Cerrar el space «${session.name}»?`,
     message:
-      session.windows.length === 1
+      (session.windows.length === 1
         ? 'Se terminará lo que se esté ejecutando en él.'
-        : `Se cerrarán sus ${session.windows.length} ventanas y todo lo que se esté ejecutando en ellas.`,
+        : `Se cerrarán sus ${session.windows.length} ventanas y todo lo que se esté ejecutando en ellas.`) + claudeWarning(resume),
     confirm: 'Cerrar space',
     danger: true,
+    resume,
     onSubmit: async () => {
       await hub.action(host.id, { op: 'killSession', session: session.id });
       if (leave) goHome();
@@ -115,12 +150,16 @@ export function killSession(host: HostInfo, session: SessionInfo, leave = false)
 }
 
 export function killWindow(host: HostInfo, window: WindowInfo, leave = false): void {
+  const resume = claudeResumes(window.panes.map((pane) => ({ pane, where: window.panes.length > 1 ? `panel ${pane.index}` : '' })));
   dialog.value = {
     kind: 'confirm',
     title: `¿Cerrar la ventana «${window.name}»?`,
-    message: window.panes.length > 1 ? `Tiene ${window.panes.length} paneles; se cerrarán todos.` : 'Se terminará lo que se esté ejecutando en ella.',
+    message:
+      (window.panes.length > 1 ? `Tiene ${window.panes.length} paneles; se cerrarán todos.` : 'Se terminará lo que se esté ejecutando en ella.') +
+      claudeWarning(resume),
     confirm: 'Cerrar ventana',
     danger: true,
+    resume,
     onSubmit: async () => {
       await hub.action(host.id, { op: 'killWindow', window: window.id });
       if (leave) goHome();
@@ -130,12 +169,14 @@ export function killWindow(host: HostInfo, window: WindowInfo, leave = false): v
 
 export function killPane(host: HostInfo, window: WindowInfo, pane: PaneInfo): void {
   const last = window.panes.length === 1;
+  const resume = claudeResumes([{ pane, where: '' }]);
   dialog.value = {
     kind: 'confirm',
     title: `¿Cerrar el panel ${pane.index}?`,
-    message: `${pane.command}${last ? ' · Es el único panel: se cerrará la ventana.' : ''}`,
+    message: `${pane.command}${last ? ' · Es el único panel: se cerrará la ventana.' : ''}${claudeWarning(resume)}`,
     confirm: 'Cerrar panel',
     danger: true,
+    resume,
     onSubmit: async () => {
       await hub.action(host.id, { op: 'killPane', pane: pane.id });
       if (last) goHome();
@@ -145,7 +186,6 @@ export function killPane(host: HostInfo, window: WindowInfo, pane: PaneInfo): vo
 
 /** Restarts every pane of a window: fresh shell (.zshrc reloaded) and Claude resumed. */
 export function reloadWindow(host: HostInfo, window: WindowInfo): void {
-  const isClaude = (p: PaneInfo) => p.command === 'claude' || (p.state !== null && p.state !== 'ssh');
   const claude = window.panes.filter(isClaude);
   const busy = window.panes.filter((p) => p.state === 'busy');
   const many = window.panes.length > 1;

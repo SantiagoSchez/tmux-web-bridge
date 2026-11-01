@@ -22,6 +22,10 @@
 #   tmux-window-title.sh jump <socket> <pane-id>  clic en una notificación: salta al panel
 #   tmux-window-title.sh reload <pane-id>      relanza el panel: shell nueva (recarga .zshrc) y,
 #                                              si tenía un Claude, lo reanuda con su conversación
+#   tmux-window-title.sh close <pane|window|session> <id> [cliente]
+#                                              cierra; si hay un Claude dentro, antes pregunta en un
+#                                              popup con su session_id y copia cómo reanudarlo
+#   tmux-window-title.sh wrap-kill-keys        los atajos que cierran a pelo pasan por close
 #
 # Avisos al móvil: si existe ~/.config/tmux-web-bridge/notify.env (HUB_URL,
 # HOST_ID, NOTIFY_TOKEN), cada pregunta/atención/terminado se envía también al
@@ -172,16 +176,25 @@ cmd_refresh() {
     [ -n "$win" ] || win="$(tmux display-message -p '#{window_id}' 2>/dev/null)"
     [ -n "$win" ] || return 0
 
-    local top_prio=0 top_state="" active_name="" pane pane_pid active entry state name prio
+    local top_prio=0 top_state="" active_name="" pane pane_pid active entry state name prio sid
 
     while read -r pane pane_pid active; do
         entry="$(state_of_pane "$pane" "$pane_pid")"
         if [ -z "$entry" ]; then
             tmux set-option -p -t "$pane" -u @pane_icon 2>/dev/null
+            tmux set-option -p -t "$pane" -u @claude_session 2>/dev/null
             continue
         fi
         IFS=$'\t' read -r state name <<< "$entry"
         tmux set-option -p -t "$pane" @pane_icon "$(icon_for "$state")" 2>/dev/null
+        # El id de la conversación, para el panel web (cerrar y reanudar luego).
+        sid=""
+        [ "$state" != "ssh" ] && [ -f "$STATE_DIR/$pane" ] && IFS=$'\t' read -r _ _ sid < "$STATE_DIR/$pane"
+        if [ -n "$sid" ]; then
+            tmux set-option -p -t "$pane" @claude_session "$sid" 2>/dev/null
+        else
+            tmux set-option -p -t "$pane" -u @claude_session 2>/dev/null
+        fi
         prio="$(prio_for "$state")"
         if [ "$prio" -gt "$top_prio" ]; then
             top_prio="$prio"
@@ -449,6 +462,173 @@ cmd_reload() {
     cmd_refresh "$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null)"
 }
 
+# ------------------------------------------------------------ cerrar con Claude abierto
+# tmux no tiene un hook que pueda cancelar un cierre: los atajos que cierran paneles,
+# ventanas y spaces pasan por `close`, que cierra sin más si no hay ningún Claude y,
+# si lo hay, lo cuenta en un popup con el comando para reanudar cada conversación.
+
+SELF="$HOME/.scripts/tmux-window-title.sh"
+
+# ~ en vez de $HOME y el resto escapado, para pegarlo en una shell.
+shell_path() {
+    local p="$1"
+    if [ "$p" = "$HOME" ]; then printf '~'
+    elif [[ "$p" == "$HOME"/* ]]; then printf '~/%q' "${p#"$HOME"/}"
+    else printf '%q' "$p"
+    fi
+}
+
+# Los Claude de lo que se va a cerrar, uno por línea:
+# "<pane_id>\t<estado>\t<nombre>\t<session_id>\t<ventana>\t<panel>\t<ruta>".
+# Un Claude que no guardó su session_id va con el id "-" (se reanuda con --continue).
+claude_panes() {
+    local kind="$1" target="$2" pane cmd win_idx pane_idx path state name sid scope=()
+    case "$kind" in
+        pane)    scope=(-t "$target" -f "#{==:#{pane_id},$target}") ;;
+        window)  scope=(-t "$target") ;;
+        session) scope=(-s -t "$target") ;;
+        *)       return 0 ;;
+    esac
+    while IFS=$'\t' read -r pane cmd win_idx pane_idx path; do
+        state="" name="" sid=""
+        [ -f "$STATE_DIR/$pane" ] && IFS=$'\t' read -r state name sid < "$STATE_DIR/$pane"
+        if [ -n "$state" ] && [ "$state" != "ssh" ]; then
+            :
+        elif [[ "$cmd" =~ ^[0-9]+\.[0-9]+\.[0-9]+ || "$cmd" == claude ]]; then
+            state="claude" name="" sid=""
+        else
+            continue
+        fi
+        # "-" por id vacío: dos tabuladores seguidos se leen como uno.
+        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$pane" "$state" "${name:-$(basename "$path")}" "${sid:--}" "$win_idx" "$pane_idx" "$path"
+    done < <(tmux list-panes "${scope[@]}" -F '#{pane_id}	#{pane_current_command}	#{window_index}	#{pane_index}	#{pane_current_path}' 2>/dev/null)
+}
+
+resume_cmd() {
+    local sid="$1" path="$2"
+    if [ -n "$sid" ] && [ "$sid" != "-" ]; then
+        printf 'cd %s && claude --resume %s' "$(shell_path "$path")" "$sid"
+    else
+        printf 'cd %s && claude --continue' "$(shell_path "$path")"
+    fi
+}
+
+state_label() {
+    case "$1" in
+        question)  printf 'te está preguntando' ;;
+        attention) printf 'espera tu permiso' ;;
+        done)      printf 'ha terminado (sin ver)' ;;
+        busy)      printf 'está trabajando' ;;
+        *)         printf 'abierto' ;;
+    esac
+}
+
+kill_target() {
+    case "$1" in
+        pane)    tmux kill-pane -t "$2" ;;
+        window)  tmux kill-window -t "$2" ;;
+        session) tmux kill-session -t "$2" ;;
+    esac
+}
+
+# Atajo de cerrar: popup si hay un Claude; si no, cierra (el space pregunta igualmente).
+cmd_close() {
+    local kind="$1" target="$2" client="${3:-}" list lines l width height cw ch title what
+    [ -n "$target" ] || return 0
+    list="$(claude_panes "$kind" "$target")"
+    if [ -z "$list" ]; then
+        if [ "$kind" = "session" ]; then
+            what="$(tmux display-message -p -t "$target" '#S' 2>/dev/null)"
+            tmux confirm-before ${client:+-t "$client"} -p "¿Cerrar el space ${what//#/##}? (y/n)" "kill-session -t '$target'"
+        else
+            kill_target "$kind" "$target"
+        fi
+        return 0
+    fi
+
+    case "$kind" in
+        pane)    title="Cerrar el panel" ;;
+        window)  title="Cerrar la ventana «$(tmux display-message -p -t "$target" '#W' 2>/dev/null)»" ;;
+        session) title="Cerrar el space «$(tmux display-message -p -t "$target" '#S' 2>/dev/null)»" ;;
+    esac
+    # Tamaño a la medida del texto, sin pasarse del cliente.
+    # ${#l} cuenta caracteres (no bytes); el margen cubre los emojis, que ocupan dos.
+    lines="$(cmd_close_text "$kind" "$target" "$list")"
+    width=0 height=2
+    while IFS= read -r l; do
+        [ "${#l}" -gt "$width" ] && width="${#l}"
+        height=$((height + 1))
+    done <<< "$lines"
+    [ "${#title}" -gt "$width" ] && width="${#title}"
+    width=$((width + 6))
+    IFS=' ' read -r cw ch < <(tmux display-message -p ${client:+-c "$client"} '#{client_width} #{client_height}' 2>/dev/null)
+    [ -n "${cw:-}" ] && [ "$width" -gt "$cw" ] && width="$cw"
+    [ -n "${ch:-}" ] && [ "$height" -gt "$ch" ] && height="$ch"
+    tmux display-popup ${client:+-c "$client"} -E -w "$width" -h "$height" -T " ${title//#/##} " \
+        "$(printf '%q close-popup %q %q' "$SELF" "$kind" "$target")"
+}
+
+# Texto del popup (también da su tamaño).
+cmd_close_text() {
+    local kind="$1" target="$2" list="$3" n pane state name sid win_idx pane_idx path multi=0
+    n="$(printf '%s\n' "$list" | wc -l)"
+    [ "$kind" = "window" ] && [ "$(tmux list-panes -t "$target" 2>/dev/null | wc -l)" -gt 1 ] && multi=1
+    echo
+    if [ "$n" -gt 1 ]; then echo " Hay $n Claude abiertos:"; else echo " Hay un Claude abierto:"; fi
+    while IFS=$'\t' read -r pane state name sid win_idx pane_idx path; do
+        echo
+        case "$kind" in
+            session) printf '  %s %s · ventana %s, panel %s · %s\n' "$(icon_for "$state")" "$name" "$win_idx" "$pane_idx" "$(state_label "$state")" ;;
+            window)  printf '  %s %s%s · %s\n' "$(icon_for "$state")" "$name" "$([ "$multi" = 1 ] && printf ' · panel %s' "$pane_idx")" "$(state_label "$state")" ;;
+            *)       printf '  %s %s · %s\n' "$(icon_for "$state")" "$name" "$(state_label "$state")" ;;
+        esac
+        if [ "$sid" != "-" ]; then printf '    sesión %s\n' "$sid"; else printf '    sin id de sesión guardado\n'; fi
+        printf '    %s\n' "$(resume_cmd "$sid" "$path")"
+    done <<< "$list"
+    echo
+    if [ "$n" -gt 1 ]; then echo " Al cerrar, los comandos se copian al portapapeles."; else echo " Al cerrar, el comando se copia al portapapeles."; fi
+    echo
+    printf ' ¿Cerrar? (y/n) '
+}
+
+# Dentro del popup: muestra el aviso, espera y/n y cierra (copiando los comandos).
+cmd_close_popup() {
+    local kind="$1" target="$2" list key cmds n
+    list="$(claude_panes "$kind" "$target")"
+    if [ -z "$list" ]; then kill_target "$kind" "$target"; return 0; fi
+    cmd_close_text "$kind" "$target" "$list"
+    IFS= read -rsn1 key || return 0
+    case "$key" in y|Y|s|S) ;; *) return 0 ;; esac
+
+    cmds="$(while IFS=$'\t' read -r _ _ _ sid _ _ path; do resume_cmd "$sid" "$path"; echo; done <<< "$list")"
+    cmds="${cmds%$'\n'}"
+    n="$(printf '%s\n' "$cmds" | wc -l)"
+    # -w: también al portapapeles del terminal (OSC 52, set-clipboard on).
+    tmux set-buffer -w -- "$cmds" 2>/dev/null
+    kill_target "$kind" "$target"
+    if [ "$n" -gt 1 ]; then
+        tmux display-message -d 6000 "Copiados $n comandos para reanudar (prefix + ] para pegarlos)"
+    else
+        tmux display-message -d 6000 "Copiado: ${cmds//#/##}"
+    fi
+}
+
+# Los atajos que cierran un panel o una ventana a pelo (el Ctrl+W de tu ~/.tmux.conf, los
+# «Kill» de los menús del clic derecho) pasan a cerrar con `close`. Los que ya confirman
+# (confirm-before) y los que llevan otros argumentos se quedan como están.
+cmd_wrap_kill_keys() {
+    local tmp
+    tmp="$(mktemp)" || return 0
+    { tmux list-keys -T root; tmux list-keys -T prefix; } 2>/dev/null |
+        grep -E 'kill-(pane|window)' | grep -v 'confirm-before' |
+        sed -E \
+            -e "s#kill-pane( -t =)?( [}]|$)#run-shell \"$SELF close pane '\#{pane_id}' '\#{client_name}'\"\\2#g" \
+            -e "s#kill-window( -t =)?( [}]|$)#run-shell \"$SELF close window '\#{window_id}' '\#{client_name}'\"\\2#g" |
+        grep -vE 'kill-(pane|window)' > "$tmp"
+    [ -s "$tmp" ] && tmux source-file "$tmp"
+    rm -f "$tmp"
+}
+
 action="${1:-refresh}"
 [ $# -gt 0 ] && shift
 
@@ -461,5 +641,8 @@ case "$action" in
     clear)       cmd_clear ;;
     rename)      cmd_rename "${1:-}" "${2:-}" ;;
     reload)      cmd_reload "${1:-}" ;;
-    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|focus <pane-id>|clear|rename <window-id> [nombre]}" >&2; exit 2 ;;
+    close)       cmd_close "${1:-}" "${2:-}" "${3:-}" ;;
+    close-popup) cmd_close_popup "${1:-}" "${2:-}" ;;
+    wrap-kill-keys) cmd_wrap_kill_keys ;;
+    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|focus <pane-id>|clear|rename <window-id> [nombre]|reload <pane-id>|close <pane|window|session> <id> [cliente]|wrap-kill-keys}" >&2; exit 2 ;;
 esac

@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
-import { dialog, dismissToast, toasts, type Dialog } from '../state';
+import { dialog, dismissToast, toast, toasts, type Dialog } from '../state';
 import { IconClose } from './icons';
 import { hub } from '../ws';
 
@@ -59,10 +59,35 @@ export function Dialogs() {
   return <PromptDialog d={d} close={close} />;
 }
 
+/** Copies the commands that resume the Claude about to close (the click is the gesture the clipboard needs). */
+function copyResume(commands: string[], closing: boolean): void {
+  const many = commands.length > 1;
+  navigator.clipboard.writeText(commands.join('\n')).then(
+    () => toast(closing ? (many ? 'Comandos para reanudar copiados' : 'Comando para reanudar copiado') : 'Copiado'),
+    () => toast('El navegador no ha dejado copiar al portapapeles', 'error'),
+  );
+}
+
 function ConfirmDialog({ d, close }: { d: Extract<Dialog, { kind: 'confirm' }>; close: () => void }) {
   return (
     <Sheet title={d.title} onClose={close}>
       <p class="sheet-text">{d.message}</p>
+      {d.resume && d.resume.length > 0 && (
+        <ul class="resume-list">
+          {d.resume.map((r) => (
+            <li key={r.command}>
+              <div class="resume-label">{r.label}</div>
+              <div class="resume-row">
+                <code class="resume-cmd">{r.command}</code>
+                <button class="btn resume-copy" aria-label="Copiar el comando" title="Copiar" onClick={() => copyResume([r.command], false)}>
+                  Copiar
+                </button>
+              </div>
+              {!r.session && <div class="dim small">Sin id de sesión guardado: se reanuda la última conversación de esa carpeta.</div>}
+            </li>
+          ))}
+        </ul>
+      )}
       <div class="sheet-actions">
         <button class="btn" onClick={close}>
           Cancelar
@@ -71,6 +96,7 @@ function ConfirmDialog({ d, close }: { d: Extract<Dialog, { kind: 'confirm' }>; 
           class={`btn ${d.danger ? 'btn-danger' : 'btn-primary'}`}
           onClick={() => {
             close();
+            if (d.resume?.length) copyResume(d.resume.map((r) => r.command), true);
             d.onSubmit();
           }}
         >

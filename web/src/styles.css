@@ -1496,6 +1496,36 @@ body.dragging-host * {
   margin: 0 4px 16px;
   color: var(--subtext1);
 }
+.resume-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.resume-label {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.resume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.resume-cmd {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--crust);
+  font: 12px/1.4 var(--mono);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.resume-copy {
+  flex: none;
+  padding: 0 12px;
+}
 .sheet-actions {
   display: flex;
   justify-content: flex-end;

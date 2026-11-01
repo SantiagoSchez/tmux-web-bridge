@@ -90,9 +90,17 @@ export function dismissToast(id: number): void {
 
 export type Dialog =
   | { kind: 'prompt'; title: string; label?: string; value: string; placeholder?: string; confirm: string; onSubmit: (v: string) => void }
-  | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; onSubmit: () => void }
+  | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; onSubmit: () => void }
   | { kind: 'menu'; title: string; subtitle?: string; items: MenuItem[] }
   | { kind: 'project'; host: HostInfo };
+
+/** A Claude about to be closed, and the command that resumes its conversation later. */
+export interface ClaudeResume {
+  label: string;
+  /** Its session id; missing when the host-kit did not save it (resumed with --continue). */
+  session?: string;
+  command: string;
+}
 
 export interface MenuItem {
   label: string;

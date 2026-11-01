@@ -19,6 +19,8 @@ export interface PaneInfo {
   inMode: boolean;
   /** Email of the Claude account of the Claude Code in it (@claude_account, from its statusline). */
   account?: string;
+  /** Session id of the Claude Code in it (@claude_session, from host-kit/tmux-window-title.sh), to resume it. */
+  claudeSession?: string;
 }
 
 export interface WindowInfo {
