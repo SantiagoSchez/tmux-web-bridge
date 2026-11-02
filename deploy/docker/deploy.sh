@@ -58,6 +58,10 @@ fi
 docker compose up -d twb
 if health; then
   docker image prune -f >/dev/null
+  # La caché de compilación crece en cada despliegue y nada más la limpia: el 2-nov-2026
+  # llegó a 5,7 GB y llenó el disco del CT. Se deja en 1 GB como máximo (se queda lo más
+  # reciente, así la siguiente compilación aprovecha sus capas). Si falla, no tumba el despliegue.
+  docker builder prune -f --max-used-space 1gb >/dev/null || true
   echo "Desplegado $sha"
   exit 0
 fi
