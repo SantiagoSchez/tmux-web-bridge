@@ -888,7 +888,15 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     sendRaw(seq);
   };
 
-  const keepFocus = (e: Event) => e.preventDefault();
+  /**
+   * A button over the terminal keeps the keyboard as it is. Up, the input proxy keeps the
+   * focus. Put away with Android's back gesture, the proxy is still focused and Chrome
+   * would bring the keyboard back on the tap: it lets go of the focus instead.
+   */
+  const keepFocus = (e: Event) => {
+    e.preventDefault();
+    if (document.activeElement === input.current && !keyboardShown()) hideKeyboard();
+  };
   /** Right after attach: the arrows and Enter, the most used ones. */
   const FIRST_KEYS: [string, string, string?][] = [
     ['↑', '\x1b[A'],
