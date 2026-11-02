@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { killPane, reloadWindow, windowMenu } from '../menus';
-import { isDesktop, prefs, setPref } from '../prefs';
+import { toggleDictation } from '../dictation';
+import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
-import { connections, multiHost, STATE_LABEL, type MenuItem } from '../state';
+import { connections, hubSettings, multiHost, STATE_LABEL, type MenuItem } from '../state';
 import { uploadFiles } from '../upload';
 import { hub } from '../ws';
 import { ConnectionsButton } from './Header';
 import { PendingStrip } from './Assist';
 import { IconBack, IconMore } from './icons';
+import { MicButton } from './Mic';
 import { EDGE } from './Drawer';
 import { TerminalView } from './TerminalView';
 
@@ -29,6 +31,20 @@ export function WindowView({ host, session, window, paneId }: Props) {
     hub.setView({ host: host.id, session: session.id, window: window.id, pane: pane?.id });
   }, [host.id, session.id, window.id, pane?.id]);
   useEffect(() => () => hub.setView(null), []);
+
+  // Ctrl+Shift+Space: dictate to this pane, and again to send it. Capture phase, before xterm sees the key.
+  const dictation = !!hubSettings.value?.dictation;
+  useEffect(() => {
+    if (!dictation || !pane) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Space')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      toggleDictation(host.id, pane.id);
+    };
+    globalThis.addEventListener('keydown', onKey, { capture: true });
+    return () => globalThis.removeEventListener('keydown', onKey, { capture: true });
+  }, [dictation, host.id, pane?.id]);
 
   const selectPane = (id: string) => {
     openWindow(host.id, window.id, id, true);
@@ -131,6 +147,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
       )}
       <div class="wv-bar">
         <ViewTools />
+        {pane && !isTouch && <MicButton hostId={host.id} paneId={pane.id} class="reload-btn" />}
         <button class="reload-btn" onClick={() => reloadWindow(host, window)} aria-label="Recargar ventana" title="Recargar ventana: .zshrc y Claude">
           ↻
         </button>

@@ -14,6 +14,7 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
 - **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y titulada «space › ventana». Un toque abre la que quieras.
 - **Terminal completa** (xterm.js) con barra de teclas para el móvil. Cada pestaña tiene su propia ventana actual, así que navegar desde el móvil no mueve el tmux del ordenador.
 - **Seleccionar y copiar con el dedo**: pulsación larga, asas para ajustar cada extremo y una lupa sobre el dedo.
+- **Dictado sin salir de tu red**: tocas 🎤 (o Ctrl+Shift+Espacio), hablas y el texto aparece en el panel. Lo transcribe Parakeet v3 en el servidor central, y un modelo local (Qwen3.5 4B) quita las muletillas y corrige los términos técnicos con lo que hay en la pantalla.
 - **Control completo** de spaces, ventanas y paneles; «Nuevo space» puede abrir un proyecto y arrancar `claude` en él.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
@@ -112,6 +113,15 @@ La status line del kit muestra los límites 5h/7d al final, salvo en un panel es
 ### 4. En el móvil (Android)
 
 Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y en ⚙️ **Ajustes › Dispositivo › Notificaciones**.
+
+### 5. Dictado (opcional)
+
+Se activa en ⚙️ **Ajustes › Dictado** y vale para todos los dispositivos. Todo corre en CPU en tu servidor central:
+
+- **Transcripción**: Parakeet TDT 0.6B v3 (sherpa-onnx) dentro del propio servidor. Se descarga en `data/models` la primera vez (unos 670 MB), ocupa ~1 GB de RAM y transcribe 30 s de audio en unos 2 s con 4 hilos.
+- **Limpieza** (opcional): Qwen3.5 4B Q4_K_M detrás de llama-server, unos 3 GB de RAM. Con Docker es el servicio `llm` de `compose.yaml` (`docker compose up -d llm`). Sin Docker, arranca tú `llama-server -hf unsloth/Qwen3.5-4B-GGUF:Q4_K_M --jinja` y pon su URL en `dictation.llmUrl` de `config.yaml`. Tarda unos segundos por dictado; si pasa de 10, el texto va tal y como se oyó.
+
+Los modelos más pequeños (Qwen3.5 0.8B y 2B) se probaron con dictados en español y no sirven para esto: el 0.8B cambia el sentido de las frases y el 2B casi no limpia. El navegador necesita HTTPS para usar el micrófono.
 
 ## Actualizaciones
 

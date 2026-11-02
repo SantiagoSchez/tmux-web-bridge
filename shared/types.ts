@@ -93,6 +93,36 @@ export interface HubSettings {
    * when tmux's own bar shows them: the hub sets @claude_limits_in_status=1 there.
    */
   limitsInStatusLine: boolean;
+  /**
+   * Dictation: the hub transcribes what you say (Parakeet) and types it into the pane.
+   * Off by default: the speech model takes about 1 GB of the hub's memory.
+   */
+  dictation: boolean;
+  /** "llm": a local model (llama-server) cleans the transcript up; "none": typed as heard. */
+  dictationCleanup: 'llm' | 'none';
+  /** Terms the speech model tends to mishear (one per line), handed to the cleanup. */
+  dictationGlossary: string;
+}
+
+/** What the hub's dictation can do right now. */
+export interface DictationInfo {
+  /** The speech model: off (setting off), being downloaded or loaded, ready, or failed. */
+  state: 'off' | 'downloading' | 'loading' | 'ready' | 'error';
+  /** Download progress, 0 to 1. */
+  progress?: number;
+  error?: string;
+  /** The cleanup model: not configured, answering, or not answering. */
+  llm: 'unset' | 'ok' | 'down';
+  /** Its name, as llama-server reports it. */
+  llmModel?: string;
+}
+
+/** Answer of POST /api/dictate. */
+export interface DictateResult {
+  /** What was typed into the pane ("" when nothing was heard). */
+  text: string;
+  /** Why the cleanup was skipped and the transcript typed as heard. */
+  fallback?: 'timeout' | 'error' | 'unavailable';
 }
 
 /** The daily check for a new release of twb on GitHub, set for the whole hub. */
@@ -204,6 +234,7 @@ export type ServerMessage =
   | { t: 'connections'; list: ConnectionInfo[] }
   | { t: 'updates'; info: UpdateInfo }
   | { t: 'settings'; settings: HubSettings }
+  | { t: 'dictation'; info: DictationInfo }
   | { t: 'result'; id: number; ok: boolean; error?: string; data?: unknown };
 
 /** Body of POST /api/notify, sent by tmux-window-title.sh on each host. */

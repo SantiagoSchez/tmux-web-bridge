@@ -58,6 +58,15 @@ export interface Config {
   /** Seconds to wait for a host script notification before pushing from the emoji change alone. */
   fallbackDelayMs: number;
   hosts: HostConfig[];
+  /** Dictation (switched on in the app's settings): where the models are and how they run. */
+  dictation: {
+    /** OpenAI-style endpoint of the cleanup model (llama-server), e.g. http://llm:8080. Null: no cleanup. */
+    llmUrl: string | null;
+    /** Threads for the speech model. */
+    threads: number;
+    /** Past this, the transcript is typed as heard. */
+    cleanupTimeoutMs: number;
+  };
   configPath: string;
 }
 
@@ -138,6 +147,11 @@ export function loadConfig(): Config {
     pollIntervalMs: Number(raw.pollIntervalMs ?? 1000),
     fallbackDelayMs: Number(raw.fallbackDelayMs ?? 4000),
     hosts,
+    dictation: {
+      llmUrl: (process.env.TWB_DICTATION_LLM_URL || raw.dictation?.llmUrl || '').replace(/\/+$/, '') || null,
+      threads: Number(raw.dictation?.threads ?? 4),
+      cleanupTimeoutMs: Number(raw.dictation?.cleanupTimeoutMs ?? 10_000),
+    },
     configPath,
   };
 }

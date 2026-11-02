@@ -12,6 +12,7 @@ import { clientId, toast } from '../state';
 import { XTERM_THEME } from '../theme';
 import { hub } from '../ws';
 import { AttachButton } from './Attach';
+import { MicButton } from './Mic';
 import { IconClose, IconDown } from './icons';
 
 interface Props {
@@ -989,6 +990,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       {isTouch && (
         <div class="keybar scroll-x">
           <AttachButton hostId={host.id} paneId={pane.id} class="key" />
+          <MicButton hostId={host.id} paneId={pane.id} class="key" onPointerDown={keepFocus} />
           {FIRST_KEYS.map(keyButton)}
           <button class={`key mod ${mods.has('ctrl') ? 'on' : ''}`} onPointerDown={keepFocus} onClick={() => toggle('ctrl')} aria-pressed={mods.has('ctrl')}>
             Ctrl

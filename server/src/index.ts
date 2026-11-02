@@ -7,12 +7,13 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
-import type { ClientMessage, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
+import type { ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
 import { runAction, runTitleScript } from './actions.js';
 import { shq } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig } from './config.js';
 import { ConnectionRegistry } from './connections.js';
+import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
@@ -47,6 +48,9 @@ const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
 for (const host of hosts.values()) host.limitsInStatusLine = settings.value.limitsInStatusLine;
+const dictation = new Dictation(config.dictation, config.dataDir);
+dictation.setGlossary(settings.value.dictationGlossary);
+dictation.setEnabled(settings.value.dictation);
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' }, trustProxy: config.trustProxy });
 app.decorateRequest('sessionId', null);
@@ -184,8 +188,11 @@ settings.on('change', (value) => {
     host.limitsInStatusLine = value.limitsInStatusLine;
     void host.refresh();
   }
+  dictation.setGlossary(value.dictationGlossary);
+  dictation.setEnabled(value.dictation);
   broadcast({ t: 'settings', settings: value });
 });
+dictation.on('change', (info) => broadcast({ t: 'dictation', info }));
 updates.start();
 
 /**
@@ -227,6 +234,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'usage', samples: usage.list });
   send(ws, { t: 'updates', info: updates.info });
   send(ws, { t: 'settings', settings: settings.value });
+  send(ws, { t: 'dictation', info: dictation.info });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -331,6 +339,57 @@ app.post('/api/upload', { bodyLimit: UPLOAD_MAX }, async (req, reply) => {
   }
   console.log(`[upload] ${host.id} ${q.pane}: ${path} (${Math.round(req.body.length / 1024)} KB)`);
   return { path };
+});
+
+/** Five minutes of 16 kHz 16-bit mono. */
+const DICTATE_MAX = 5 * 60 * SAMPLE_RATE * 2;
+/** Too short to have anything to clean up ("Sí.", "La tercera."): typed as heard, without the wait. */
+const CLEANUP_MIN_WORDS = 4;
+
+/**
+ * Dictation: what was said (16 kHz 16-bit mono PCM, converted by the browser) to text,
+ * cleaned up by the local model with the glossary and the words on the pane's screen,
+ * and typed into the pane as a paste, without Enter. A cleanup that fails or takes too
+ * long leaves the transcript as heard.
+ */
+app.post('/api/dictate', { bodyLimit: DICTATE_MAX }, async (req, reply) => {
+  const q = req.query as Record<string, string | undefined>;
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host || !/^%\d+$/.test(q.pane ?? '') || !Buffer.isBuffer(req.body) || req.body.length < 2) return reply.code(400).send({ error: 'Petición inválida' });
+  if (!host.findPane(q.pane!)) return reply.code(404).send({ error: 'El panel ya no existe' });
+  if (dictation.info.state !== 'ready') return reply.code(409).send({ error: 'El dictado no está listo' });
+
+  // A Buffer may start at an odd offset of its pool: copied to read it as 16-bit samples.
+  const bytes = new Uint8Array(req.body);
+  const pcm = new Int16Array(bytes.buffer, 0, bytes.length >> 1);
+  const t0 = Date.now();
+  const heard = await dictation.transcribe(pcm);
+  const t1 = Date.now();
+  const result: DictateResult = { text: heard };
+  if (!heard) return result;
+
+  const s = settings.value;
+  if (s.dictationCleanup === 'llm' && heard.split(/\s+/).length >= CLEANUP_MIN_WORDS) {
+    if (dictation.info.llm === 'unset') result.fallback = 'unavailable';
+    else {
+      try {
+        const screen = await host.exec.run(['capture-pane', '-p', '-J', '-t', q.pane!]).catch(() => '');
+        result.text = await dictation.clean(heard, screen);
+      } catch (err) {
+        result.fallback = (err as Error).name === 'TimeoutError' ? 'timeout' : 'error';
+        console.warn(`[dictado] limpieza fallida (${result.fallback}): ${(err as Error).message}`);
+      }
+    }
+  }
+  try {
+    // A space after it, so the next dictation does not stick to this one.
+    await pasteText(host, q.pane!, `${result.text} `);
+  } catch (err) {
+    return reply.code(502).send({ error: `No se pudo escribir en ${host.name}: ${(err as Error).message}` });
+  }
+  const secs = (pcm.length / SAMPLE_RATE).toFixed(1);
+  console.log(`[dictado] ${host.id} ${q.pane}: ${secs} s de audio, transcrito en ${t1 - t0} ms, ${result.fallback ? `sin limpiar (${result.fallback})` : `listo en ${Date.now() - t0} ms`}`);
+  return result;
 });
 
 /** Screens of every pane for the windows grid, polled while it is open (only what changed since `since`). */

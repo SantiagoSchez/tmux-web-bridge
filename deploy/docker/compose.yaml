@@ -57,11 +57,40 @@ services:
       # Si Tailscale se reinicia por su cuenta, el panel se queda en una red muerta:
       # el vigilante lo detecta (su proxy SOCKS deja de responder) y sale para que Docker lo rearranque.
       WATCHDOG_TCP: 127.0.0.1:1055
+      # Limpieza del dictado: el servicio llm de abajo (sin él, el dictado va tal y como se oye).
+      TWB_DICTATION_LLM_URL: http://llm:8080
     volumes:
       - ./config.yaml:/app/config.yaml:ro
       - ./data:/app/data
       - ./ssh:/home/node/.ssh
       - ts-socket:/var/run/tailscale
+
+  # Limpieza del dictado (Ajustes → Dictado): Qwen3.5 4B en CPU con llama.cpp, unos 3 GB de
+  # RAM. Se descarga en ./models la primera vez. Solo lo alcanza el panel por la red interna
+  # de Docker: sin puertos publicados (en la red de Tailscale quedaría abierto a la tailnet).
+  # Sin dictado, se puede quitar este servicio entero.
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b12033
+    container_name: twb-llm
+    restart: unless-stopped
+    environment:
+      LLAMA_CACHE: /models
+    command:
+      - -hf
+      - unsloth/Qwen3.5-4B-GGUF:Q4_K_M
+      - --jinja
+      - --ctx-size
+      - "4096"
+      - --parallel
+      - "1"
+      - --threads
+      - ${TWB_LLM_THREADS:-4}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    volumes:
+      - ./models:/models
 
 volumes:
   ts-socket:

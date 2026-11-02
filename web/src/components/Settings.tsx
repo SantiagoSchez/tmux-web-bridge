@@ -2,7 +2,8 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
-import { dialog, hubSettings, sheet, toast, vapidKey } from '../state';
+import { notReady } from '../dictation';
+import { dialog, dictationInfo, hubSettings, sheet, toast, vapidKey } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Dialogs';
@@ -89,7 +90,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
   );
 }
 
-type Tab = 'device' | 'machines' | 'account';
+type Tab = 'device' | 'machines' | 'dictation' | 'account';
 
 export function Settings() {
   const open = sheet.value === 'settings';
@@ -100,6 +101,7 @@ export function Settings() {
   const tabs: [Tab, string][] = [
     ['device', 'Dispositivo'],
     ['machines', 'Máquinas'],
+    ['dictation', 'Dictado'],
   ];
   if (account) tabs.push(['account', 'Cuenta']);
   const current = tab === 'account' && !account ? 'device' : tab;
@@ -116,6 +118,7 @@ export function Settings() {
       <div class="settings-panel" role="tabpanel">
         {current === 'device' && <DeviceSettings />}
         {current === 'machines' && <MachineSettings />}
+        {current === 'dictation' && <DictationSettings />}
         {current === 'account' && <AccountSettings />}
       </div>
     </Sheet>
@@ -224,6 +227,73 @@ function MachineSettings() {
         >
           {updateState && <p class="settings-state small">{updateState}</p>}
         </Toggle>
+      )}
+    </>
+  );
+}
+
+const LLM_STATE = { unset: 'sin configurar en el servidor', ok: 'responde', down: 'no responde' } as const;
+
+/** Dictation, for the whole hub: on or off, how the transcript is cleaned up, and the glossary. */
+function DictationSettings() {
+  const s = hubSettings.value;
+  const info = dictationInfo.value;
+  const [glossary, setGlossary] = useState(s?.dictationGlossary ?? '');
+  useEffect(() => setGlossary(s?.dictationGlossary ?? ''), [s?.dictationGlossary]);
+  if (!s) return null;
+  const set = (patch: Partial<typeof s>) => hub.send({ t: 'settings', settings: patch });
+  const state = s.dictation ? (notReady(info) ?? 'Listo.') : null;
+  const llm = info?.llm ?? 'unset';
+  return (
+    <>
+      <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos.</p>
+      <Toggle
+        title="Dictado"
+        desc={
+          <>
+            Un botón 🎤 en la barra de teclas del móvil y junto a la letra en el escritorio (o Ctrl+Shift+Espacio): tócalo, habla y vuelve a tocarlo. El servidor central lo
+            transcribe y lo escribe en el panel, sin Enter. Nada sale de tu red. El modelo de voz (Parakeet v3) se descarga la primera vez (unos 670 MB) y ocupa
+            alrededor de 1 GB de memoria del servidor.
+          </>
+        }
+        on={s.dictation}
+        onChange={(on) => set({ dictation: on })}
+      >
+        {state && <p class="settings-state small">{state}</p>}
+      </Toggle>
+      {s.dictation && (
+        <>
+          <section class="setting">
+            <h3>Limpieza</h3>
+            <p class="dim small">
+              Un modelo local quita las muletillas, se queda con la última versión cuando te corriges («la dos, no, la tres») y arregla los términos técnicos, con el
+              glosario y lo que hay en la pantalla del panel. Tarda unos segundos; si pasa de 10, el texto va tal y como se oyó.
+            </p>
+            <div class="seg" role="radiogroup" aria-label="Limpieza del dictado">
+              <button role="radio" aria-checked={s.dictationCleanup === 'llm'} class={s.dictationCleanup === 'llm' ? 'on' : ''} onClick={() => set({ dictationCleanup: 'llm' })}>
+                {info?.llmModel ?? 'Qwen3.5 4B'}
+              </button>
+              <button role="radio" aria-checked={s.dictationCleanup === 'none'} class={s.dictationCleanup === 'none' ? 'on' : ''} onClick={() => set({ dictationCleanup: 'none' })}>
+                Sin limpieza
+              </button>
+            </div>
+            {s.dictationCleanup === 'llm' && <p class="settings-state small">Modelo de limpieza: {LLM_STATE[llm]}.</p>}
+          </section>
+          <section class="setting">
+            <h3>Glosario</h3>
+            <p class="dim small">Nombres y términos que el reconocimiento suele oír mal (uno por línea): proyectos, herramientas, comandos.</p>
+            <textarea
+              class="glossary"
+              rows={5}
+              value={glossary}
+              placeholder={'tmux\npnpm\nClaude Code'}
+              spellcheck={false}
+              autocapitalize="off"
+              onInput={(e) => setGlossary(e.currentTarget.value)}
+              onBlur={() => glossary !== s.dictationGlossary && set({ dictationGlossary: glossary })}
+            />
+          </section>
+        </>
       )}
     </>
   );

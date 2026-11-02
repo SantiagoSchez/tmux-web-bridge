@@ -1870,3 +1870,49 @@ body.dragging-host * {
 .link-btn:hover {
   text-decoration: underline;
 }
+
+/* ------------------------------------------------------------ dictation */
+.mic.rec {
+  min-width: 64px;
+  background: var(--red);
+  color: var(--crust);
+  font: 600 14px var(--mono);
+}
+.mic.busy {
+  animation: pulse 1.2s ease-in-out infinite;
+  cursor: progress;
+}
+/* Two or more choices side by side (the dictation cleanup). */
+.seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--crust);
+}
+.seg button {
+  flex: 1;
+  min-height: 36px;
+  border-radius: 9px;
+  color: var(--subtext0);
+  font-weight: 600;
+  font-size: 14px;
+}
+.seg button.on {
+  background: var(--surface0);
+  color: var(--text);
+}
+.glossary {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  font: 15px var(--mono);
+  resize: vertical;
+  outline: none;
+}
+.glossary:focus {
+  border-color: var(--mauve);
+}
