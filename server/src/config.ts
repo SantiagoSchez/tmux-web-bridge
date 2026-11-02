@@ -64,8 +64,6 @@ export interface Config {
     llmUrl: string | null;
     /** Threads for the speech model. */
     threads: number;
-    /** Past this, the transcript is typed as heard. */
-    cleanupTimeoutMs: number;
   };
   configPath: string;
 }
@@ -150,7 +148,6 @@ export function loadConfig(): Config {
     dictation: {
       llmUrl: (process.env.TWB_DICTATION_LLM_URL || raw.dictation?.llmUrl || '').replace(/\/+$/, '') || null,
       threads: Number(raw.dictation?.threads ?? 4),
-      cleanupTimeoutMs: Number(raw.dictation?.cleanupTimeoutMs ?? 10_000),
     },
     configPath,
   };

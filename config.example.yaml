@@ -87,4 +87,4 @@ hosts:
 # dictation:
 #   llmUrl: http://127.0.0.1:8080   # llama-server; en Docker viene de TWB_DICTATION_LLM_URL
 #   threads: 4                      # hilos de Parakeet
-#   cleanupTimeoutMs: 10000         # pasado este tiempo, el texto va tal y como se oyó
+# El tiempo máximo de la limpieza y el glosario se eligen en la app.

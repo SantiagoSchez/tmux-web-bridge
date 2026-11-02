@@ -374,7 +374,7 @@ app.post('/api/dictate', { bodyLimit: DICTATE_MAX }, async (req, reply) => {
     else {
       try {
         const screen = await host.exec.run(['capture-pane', '-p', '-J', '-t', q.pane!]).catch(() => '');
-        result.text = await dictation.clean(heard, screen);
+        result.text = await dictation.clean(heard, screen, s.dictationTimeout * 1000);
       } catch (err) {
         result.fallback = (err as Error).name === 'TimeoutError' ? 'timeout' : 'error';
         console.warn(`[dictado] limpieza fallida (${result.fallback}): ${(err as Error).message}`);

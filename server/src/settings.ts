@@ -1,9 +1,28 @@
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DICTATION_TIMEOUTS } from '../../shared/dictation.js';
 import type { HubSettings } from '../../shared/types.js';
 
-const DEFAULTS: HubSettings = { limitsInStatusLine: true, dictation: false, dictationCleanup: 'llm', dictationGlossary: '' };
+/** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
+export const DEFAULT_GLOSSARY = [
+  'tmux', 'twb', 'Claude', 'Claude Code', 'pnpm', 'npm', 'git', 'commit', 'push', 'pull', 'rebase', 'merge', 'branch', 'master',
+  'worktree', 'deploy', 'release', 'Docker', 'compose', 'TypeScript', 'typecheck', 'README', 'CLAUDE.md', 'hub', 'kit',
+  'Tailscale', 'SSH', 'Proxmox', 'CT', 'Parakeet', 'Qwen',
+].join('\n');
+
+const DEFAULTS: HubSettings = {
+  limitsInStatusLine: true,
+  dictation: false,
+  dictationCleanup: 'llm',
+  dictationGlossary: DEFAULT_GLOSSARY,
+  dictationTimeout: 10,
+};
+/**
+ * Kept in the file, not in the settings: the default glossary went into an empty one
+ * once. Emptied on purpose afterwards, it stays empty.
+ */
+const SEEDED = 'dictationGlossarySeeded';
 /** Plenty for a list of terms, and it goes into every cleanup prompt. */
 const GLOSSARY_MAX = 2000;
 
@@ -21,9 +40,24 @@ export class SettingsStore extends EventEmitter {
     super();
     this.path = join(dataDir, 'settings.json');
     try {
-      if (existsSync(this.path)) this.state = { ...DEFAULTS, ...JSON.parse(readFileSync(this.path, 'utf8')) };
+      if (!existsSync(this.path)) return;
+      const { [SEEDED]: seeded, ...saved } = JSON.parse(readFileSync(this.path, 'utf8'));
+      this.state = { ...DEFAULTS, ...saved };
+      // Settings from before the default glossary: an empty one gets it, once.
+      if (!seeded && !this.state.dictationGlossary.trim()) {
+        this.state = { ...this.state, dictationGlossary: DEFAULT_GLOSSARY };
+        this.save();
+      }
     } catch {
       /* unreadable: defaults */
+    }
+  }
+
+  private save(): void {
+    try {
+      writeFileSync(this.path, JSON.stringify({ ...this.state, [SEEDED]: true }, null, 2));
+    } catch (err) {
+      console.warn(`[settings] no se pudo guardar ${this.path}: ${(err as Error).message}`);
     }
   }
 
@@ -38,12 +72,9 @@ export class SettingsStore extends EventEmitter {
     if (typeof patch.dictation === 'boolean') next.dictation = patch.dictation;
     if (patch.dictationCleanup === 'llm' || patch.dictationCleanup === 'none') next.dictationCleanup = patch.dictationCleanup;
     if (typeof patch.dictationGlossary === 'string') next.dictationGlossary = patch.dictationGlossary.slice(0, GLOSSARY_MAX);
+    if ((DICTATION_TIMEOUTS as readonly number[]).includes(patch.dictationTimeout as number)) next.dictationTimeout = patch.dictationTimeout!;
     this.state = next;
-    try {
-      writeFileSync(this.path, JSON.stringify(next, null, 2));
-    } catch (err) {
-      console.warn(`[settings] no se pudo guardar ${this.path}: ${(err as Error).message}`);
-    }
+    this.save();
     this.emit('change', next);
   }
 }

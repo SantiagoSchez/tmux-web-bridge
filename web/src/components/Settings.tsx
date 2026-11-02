@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
+import { DICTATION_TIMEOUTS } from '../../../shared/dictation';
 import { notReady } from '../dictation';
 import { dialog, dictationInfo, hubSettings, sheet, toast, vapidKey } from '../state';
 import { newer, updateInfo } from '../updates';
@@ -267,7 +268,7 @@ function DictationSettings() {
             <h3>Limpieza</h3>
             <p class="dim small">
               Un modelo local quita las muletillas, se queda con la última versión cuando te corriges («la dos, no, la tres») y arregla los términos técnicos, con el
-              glosario y lo que hay en la pantalla del panel. Tarda unos segundos; si pasa de 10, el texto va tal y como se oyó.
+              glosario y lo que hay en la pantalla del panel.
             </p>
             <div class="seg" role="radiogroup" aria-label="Limpieza del dictado">
               <button role="radio" aria-checked={s.dictationCleanup === 'llm'} class={s.dictationCleanup === 'llm' ? 'on' : ''} onClick={() => set({ dictationCleanup: 'llm' })}>
@@ -279,6 +280,19 @@ function DictationSettings() {
             </div>
             {s.dictationCleanup === 'llm' && <p class="settings-state small">Modelo de limpieza: {LLM_STATE[llm]}.</p>}
           </section>
+          {s.dictationCleanup === 'llm' && (
+            <section class="setting">
+              <h3>Tiempo máximo</h3>
+              <p class="dim small">Lo que puede tardar la limpieza. Si pasa de ahí, el texto va tal y como se oyó. Los dictados largos necesitan más.</p>
+              <div class="seg" role="radiogroup" aria-label="Tiempo máximo de la limpieza">
+                {DICTATION_TIMEOUTS.map((secs) => (
+                  <button key={secs} role="radio" aria-checked={s.dictationTimeout === secs} class={s.dictationTimeout === secs ? 'on' : ''} onClick={() => set({ dictationTimeout: secs })}>
+                    {secs} s
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
           <section class="setting">
             <h3>Glosario</h3>
             <p class="dim small">Nombres y términos que el reconocimiento suele oír mal (uno por línea): proyectos, herramientas, comandos.</p>

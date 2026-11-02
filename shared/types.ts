@@ -102,6 +102,8 @@ export interface HubSettings {
   dictationCleanup: 'llm' | 'none';
   /** Terms the speech model tends to mishear (one per line), handed to the cleanup. */
   dictationGlossary: string;
+  /** Seconds the cleanup may take before the transcript is typed as heard (one of DICTATION_TIMEOUTS). */
+  dictationTimeout: number;
 }
 
 /** What the hub's dictation can do right now. */

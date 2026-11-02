@@ -306,14 +306,14 @@ export class Dictation extends EventEmitter {
    * as context. Throws on a timeout (TimeoutError), when the model is unreachable, or
    * when what it returns is not a cleaned-up copy of the transcript.
    */
-  async clean(text: string, screen: string): Promise<string> {
+  async clean(text: string, screen: string, timeoutMs: number): Promise<string> {
     if (!this.config.llmUrl) throw new Error('Sin modelo de limpieza');
     const words = screenWords(screen);
     const user = `${words.length ? `<PANTALLA>\n${words.join(' ')}\n</PANTALLA>\n\n` : ''}<DICTADO>\n${text}\n</DICTADO>`;
     let res: Response;
     try {
       // The cleaned text is about as long as the transcript; a model that starts answering is cut short.
-      res = await this.request(user, Math.min(2048, Math.ceil(text.length / 2) + 64), this.config.cleanupTimeoutMs);
+      res = await this.request(user, Math.min(2048, Math.ceil(text.length / 2) + 64), timeoutMs);
     } catch (err) {
       if ((err as Error).name !== 'TimeoutError') this.set({ llm: 'down' });
       throw err;
