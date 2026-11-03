@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { DEFAULT_KEYBAR, type KeybarButton } from '../../shared/keybar.js';
 import { DEFAULT_GLOSSARY, SettingsStore } from './settings.js';
 
 function withDir(fn: (dir: string) => void): void {
@@ -72,4 +73,34 @@ test('the dictation button holds by default, and the shortcut keeps only valid c
     const saved = new SettingsStore(dir).value;
     assert.equal(saved.dictationButton, 'toggle');
     assert.equal(saved.dictationShortcut, 'alt+KeyD');
+  }));
+
+test('the key bar starts as it always was, and keeps only well-formed buttons', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.deepEqual(store.value.keybar, DEFAULT_KEYBAR);
+    store.update({
+      keybar: [
+        { kind: 'text', label: 'clear', text: '/clear', enter: true },
+        { kind: 'key', label: '', key: 'd', ctrl: true },
+        { kind: 'key', label: '', key: 'nope' },
+        { kind: 'text', label: 'vacío', text: '' },
+        { kind: 'bogus', label: 'x' } as unknown as KeybarButton,
+        { kind: 'mic', label: '' },
+      ],
+    });
+    store.update({ keybar: 'nope' as unknown as KeybarButton[] });
+    assert.deepEqual(new SettingsStore(dir).value.keybar, [
+      { kind: 'text', label: 'clear', text: '/clear', enter: true },
+      { kind: 'key', label: '', key: 'd', ctrl: true },
+      { kind: 'mic', label: '' },
+    ]);
+    store.update({ keybar: [] });
+    assert.deepEqual(new SettingsStore(dir).value.keybar, []);
+  }));
+
+test('a broken key bar in the file falls back to the default one', () =>
+  withDir((dir) => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ keybar: { up: true } }));
+    assert.deepEqual(new SettingsStore(dir).value.keybar, DEFAULT_KEYBAR);
   }));

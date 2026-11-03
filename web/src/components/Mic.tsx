@@ -12,7 +12,8 @@ const MIN_HOLD_MS = 300;
 /** How far past the button the finger can wander before letting go discards. */
 const SLOP = 24;
 
-type Props = { hostId: string; paneId: string; class: string; onPointerDown?: (e: Event) => void };
+/** label: what the idle button shows instead of 🎤 (the key bar's setting). */
+type Props = { hostId: string; paneId: string; class: string; label?: string; onPointerDown?: (e: Event) => void };
 
 /**
  * 🎤: dictate to the pane (typed in without Enter). Hold mode: talk while pressing it,
@@ -69,7 +70,7 @@ export function MicButton(props: Props) {
       onPointerDown={props.onPointerDown}
       onClick={() => toggleDictation(props.hostId, props.paneId)}
     >
-      🎤
+      {props.label || '🎤'}
     </button>
   );
 }
@@ -117,7 +118,7 @@ function HoldMic(props: Props & { shortcut: string }) {
   };
 
   const held = out !== null;
-  const label = out ? '✕ suelta' : recording ? `● ${clock(Date.now() - d.since)}` : '🎤';
+  const label = out ? '✕ suelta' : recording ? `● ${clock(Date.now() - d.since)}` : props.label || '🎤';
   return (
     <button
       type="button"

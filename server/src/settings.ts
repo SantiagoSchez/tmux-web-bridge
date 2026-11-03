@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
+import { DEFAULT_KEYBAR, sanitizeKeybar } from '../../shared/keybar.js';
 import type { HubSettings } from '../../shared/types.js';
 
 /** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
@@ -20,6 +21,7 @@ const DEFAULTS: HubSettings = {
   dictationTimeout: 10,
   dictationButton: 'hold',
   dictationShortcut: DEFAULT_DICTATION_SHORTCUT,
+  keybar: DEFAULT_KEYBAR,
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
@@ -45,7 +47,7 @@ export class SettingsStore extends EventEmitter {
     try {
       if (!existsSync(this.path)) return;
       const { [SEEDED]: seeded, ...saved } = JSON.parse(readFileSync(this.path, 'utf8'));
-      this.state = { ...DEFAULTS, ...saved };
+      this.state = { ...DEFAULTS, ...saved, keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
         this.state = { ...this.state, dictationGlossary: DEFAULT_GLOSSARY };
@@ -82,6 +84,8 @@ export class SettingsStore extends EventEmitter {
       const sc = parseShortcut(patch.dictationShortcut);
       if (sc) next.dictationShortcut = serializeShortcut(sc);
     }
+    const keybar = sanitizeKeybar(patch.keybar);
+    if (keybar) next.keybar = keybar;
     this.state = next;
     this.save();
     this.emit('change', next);

@@ -7,9 +7,10 @@ import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
-import { clientId, toast } from '../state';
+import { clientId, hubSettings, toast } from '../state';
 import { appearance, TERM_THEMES } from '../theme';
 import { hub } from '../ws';
 import { AttachButton } from './Attach';
@@ -44,7 +45,8 @@ function prefixBytes(prefix: string | undefined): string {
 }
 
 type Mod = 'ctrl' | 'alt';
-const ARROWS: Record<string, string> = { '↑': 'A', '↓': 'B', '→': 'C', '←': 'D' };
+/** Text and its Enter in one write would read as a paste in Claude Code: the Enter goes a moment later. */
+const ENTER_DELAY_MS = 80;
 /** A new line without sending (Ctrl+J), what Ghostty's shift+enter sends: Claude Code breaks the line. */
 const NEWLINE = '\n';
 
@@ -95,15 +97,7 @@ const clipboardProvider: IClipboardProvider = {
 
 /** Applies sticky Ctrl/Alt to what the soft keyboard typed. */
 function withMods(data: string, mods: Set<Mod>): string {
-  let out = data;
-  if (mods.has('ctrl') && out.length === 1) {
-    const c = out.toLowerCase().charCodeAt(0);
-    if (c >= 0x61 && c <= 0x7a) out = String.fromCharCode(c & 0x1f);
-    else if (out === ' ' || out === '@') out = '\x00';
-    else if ('[\\]^_'.includes(out)) out = String.fromCharCode(out.charCodeAt(0) & 0x1f);
-  }
-  if (mods.has('alt')) out = `\x1b${out}`;
-  return out;
+  return applyMods(data, mods.has('ctrl'), mods.has('alt'));
 }
 
 /** Keys of a hardware keyboard (tablet, Bluetooth) that the input proxy forwards as escape sequences. */
@@ -894,16 +888,15 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     setMods(next);
   };
 
-  const key = (label: string, seq: string) => {
-    if (ARROWS[label] && mods.size) {
-      // Ctrl/Alt + arrow: xterm modifier encoding (5 = Ctrl, 3 = Alt).
-      seq = `\x1b[1;${mods.has('ctrl') ? 5 : 3}${ARROWS[label]}`;
-      setMods(new Set());
-    } else if (mods.size && seq.length === 1) {
-      seq = withMods(seq, mods);
-      setMods(new Set());
-    }
-    sendRaw(seq);
+  /** A key or text button of the bar, with the sticky Ctrl/Alt (used up by it). */
+  const press = (b: KeybarButton) => {
+    const ctrl = mods.has('ctrl');
+    const alt = mods.has('alt');
+    if (mods.size) setMods(new Set());
+    if (b.kind === 'key') return sendRaw(keySeq(b.key, ctrl || !!b.ctrl, alt || !!b.alt));
+    if (b.kind !== 'text') return;
+    sendRaw(b.text.length === 1 ? applyMods(b.text, ctrl, alt) : b.text);
+    if (b.enter) setTimeout(() => sendRaw('\r'), ENTER_DELAY_MS);
   };
 
   /**
@@ -915,36 +908,35 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     e.preventDefault();
     if (document.activeElement === input.current && !keyboardShown()) hideKeyboard();
   };
-  /** Right after attach: the arrows and Enter, the most used ones. */
-  const FIRST_KEYS: [string, string, string?][] = [
-    ['↑', '\x1b[A'],
-    ['↓', '\x1b[B'],
-    ['←', '\x1b[D'],
-    ['→', '\x1b[C'],
-    ['Enter', '\r'],
-  ];
-  const KEYS: [string, string, string?][] = [
-    ['Esc', '\x1b'],
-    ['⏎ línea', NEWLINE, 'Salto de línea sin enviar (como Shift+Enter)'],
-    ['⇧Tab', '\x1b[Z', 'Shift+Tab (modo de Claude)'],
-    ['^C', '\x03'],
-    ['1', '1'],
-    ['2', '2'],
-    ['3', '3'],
-    ['Tab', '\t'],
-    ['PgUp', '\x1b[5~'],
-    ['PgDn', '\x1b[6~'],
-    ['|', '|'],
-    ['~', '~'],
-    ['/', '/'],
-    ['-', '-'],
-  ];
-
-  const keyButton = ([label, seq, title]: [string, string, string?]) => (
-    <button key={label} class="key" title={title} onPointerDown={keepFocus} onClick={() => key(label, seq)}>
-      {label}
-    </button>
-  );
+  const keybarButton = (b: KeybarButton, i: number) => {
+    const label = b.label || defaultLabel(b);
+    switch (b.kind) {
+      case 'attach':
+        return <AttachButton key={i} hostId={host.id} paneId={pane.id} class="key" label={b.label} />;
+      case 'mic':
+        return <MicButton key={i} hostId={host.id} paneId={pane.id} class="key" label={b.label} onPointerDown={keepFocus} />;
+      case 'ctrl':
+      case 'alt':
+        return (
+          <button key={i} class={`key mod ${mods.has(b.kind) ? 'on' : ''}`} onPointerDown={keepFocus} onClick={() => toggle(b.kind as Mod)} aria-pressed={mods.has(b.kind)}>
+            {label}
+          </button>
+        );
+      case 'prefix':
+        return (
+          <button key={i} class="key key-prefix" onPointerDown={keepFocus} onClick={() => sendRaw(prefixBytes(host.prefix))} title={`Prefijo de tmux (${host.prefix ?? 'C-b'})`}>
+            {b.label || (host.prefix ?? 'C-b').replace('C-', '^')}
+          </button>
+        );
+      default:
+        return (
+          <button key={i} class="key" title={describe(b)} onPointerDown={keepFocus} onClick={() => press(b)}>
+            {label}
+          </button>
+        );
+    }
+  };
+  const keybar = hubSettings.value?.keybar ?? DEFAULT_KEYBAR;
 
   return (
     <div class="term">
@@ -1004,23 +996,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
         </div>
       )}
       {above && <div class="term-above">{above}</div>}
-      {isTouch && (
-        <div class="keybar scroll-x">
-          <AttachButton hostId={host.id} paneId={pane.id} class="key" />
-          <MicButton hostId={host.id} paneId={pane.id} class="key" onPointerDown={keepFocus} />
-          {FIRST_KEYS.map(keyButton)}
-          <button class={`key mod ${mods.has('ctrl') ? 'on' : ''}`} onPointerDown={keepFocus} onClick={() => toggle('ctrl')} aria-pressed={mods.has('ctrl')}>
-            Ctrl
-          </button>
-          <button class={`key mod ${mods.has('alt') ? 'on' : ''}`} onPointerDown={keepFocus} onClick={() => toggle('alt')} aria-pressed={mods.has('alt')}>
-            Alt
-          </button>
-          <button class="key key-prefix" onPointerDown={keepFocus} onClick={() => sendRaw(prefixBytes(host.prefix))} title={`Prefijo de tmux (${host.prefix ?? 'C-b'})`}>
-            {(host.prefix ?? 'C-b').replace('C-', '^')}
-          </button>
-          {KEYS.map(keyButton)}
-        </div>
-      )}
+      {isTouch && keybar.length > 0 && <div class="keybar scroll-x">{keybar.map(keybarButton)}</div>}
     </div>
   );
 }

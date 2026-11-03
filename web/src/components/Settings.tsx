@@ -9,6 +9,7 @@ import { dialog, dictationInfo, hubSettings, sheet, toast, vapidKey } from '../s
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Dialogs';
+import { KeybarSettings } from './KeybarSettings';
 import { TwoFactorSettings } from './TwoFactor';
 
 type PushState = 'unsupported' | 'insecure' | 'denied' | 'off' | 'on' | 'busy';
@@ -92,7 +93,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
   );
 }
 
-type Tab = 'device' | 'machines' | 'dictation' | 'account';
+type Tab = 'device' | 'machines' | 'dictation' | 'keys' | 'account';
 
 export function Settings() {
   const open = sheet.value === 'settings';
@@ -104,6 +105,7 @@ export function Settings() {
     ['device', 'Dispositivo'],
     ['machines', 'Máquinas'],
     ['dictation', 'Dictado'],
+    ['keys', 'Teclas'],
   ];
   if (account) tabs.push(['account', 'Cuenta']);
   const current = tab === 'account' && !account ? 'device' : tab;
@@ -121,6 +123,7 @@ export function Settings() {
         {current === 'device' && <DeviceSettings />}
         {current === 'machines' && <MachineSettings />}
         {current === 'dictation' && <DictationSettings />}
+        {current === 'keys' && <KeybarSettings />}
         {current === 'account' && <AccountSettings />}
       </div>
     </Sheet>

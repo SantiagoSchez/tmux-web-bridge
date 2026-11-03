@@ -1726,6 +1726,20 @@ body.dragging-host * {
   background: var(--surface0);
   color: var(--text);
 }
+/* Five tabs (with «Cuenta») on a narrow phone: a little tighter, and they scroll if still too wide. */
+@media (max-width: 420px) {
+  .settings-tabs {
+    gap: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .settings-tabs button {
+    flex: 1 0 auto;
+    padding: 0 1px;
+    font-size: 13px;
+    letter-spacing: -0.4px;
+  }
+}
 /* Centred on wide screens: the same height for every tab, so the tabs don't jump. */
 .layout.desktop .settings-panel {
   min-height: 400px;
@@ -1999,4 +2013,178 @@ kbd.shortcut {
 }
 .glossary:focus {
   border-color: var(--mauve);
+}
+
+/* ------------------------------------------------------------ key bar settings */
+
+.kb-preview {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  margin: 4px 0 12px;
+  border-radius: 12px;
+  background: var(--crust);
+}
+.kb-preview .key {
+  pointer-events: none;
+  transition: background 0.15s;
+}
+.kb-preview .key.kb-lift {
+  background: var(--mauve);
+  color: var(--crust);
+}
+.kb-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* GAP in KeybarSettings */
+  margin: 0;
+  padding: 0;
+}
+.kb-row {
+  border-radius: 12px;
+  background: var(--surface0);
+  background: color-mix(in srgb, var(--surface0) 55%, transparent);
+  position: relative;
+}
+.kb-list.sorting .kb-row {
+  transition: transform 0.15s;
+}
+.kb-list.sorting .kb-row.dragging {
+  transition: none;
+  z-index: 1;
+  background: var(--surface1);
+  box-shadow: 0 6px 20px var(--shadow-strong);
+}
+.kb-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+}
+.kb-grip {
+  width: 40px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--overlay1);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.kb-row.dragging .kb-grip {
+  cursor: grabbing;
+  color: var(--mauve);
+}
+.kb-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  text-align: left;
+}
+.kb-chip {
+  pointer-events: none;
+  min-width: 44px;
+  height: 36px;
+}
+.kb-desc {
+  color: var(--subtext0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kb-del {
+  width: 44px;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--overlay1);
+}
+.kb-del:hover {
+  color: var(--red);
+}
+.kb-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 12px 14px;
+}
+.kb-new {
+  margin-top: 12px;
+  padding: 12px 0 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface0) 55%, transparent);
+}
+.kb-new h3 {
+  font-size: 14px;
+  padding: 0 12px 4px;
+}
+.kb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kb-field input,
+.kb-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  color: var(--text);
+  font: 15px var(--mono);
+  outline: none;
+}
+.kb-field input:focus,
+.kb-field select:focus {
+  border-color: var(--mauve);
+}
+.kb-keyfields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 16px;
+}
+.kb-keyfields > .kb-field:first-child {
+  flex: 1 1 180px;
+}
+.kb-char {
+  width: 90px;
+}
+.kb-char input {
+  text-align: center;
+}
+.kb-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  font-size: 14px;
+}
+.kb-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mauve);
+}
+.kb-presets {
+  margin-top: 12px;
+}
+.kb-preset-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kb-preset-grid .btn {
+  height: 40px;
+}
+.kb-actions {
+  margin-top: 16px;
 }

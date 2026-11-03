@@ -2,6 +2,7 @@
 // import them with `import type`, so nothing here exists at runtime.
 
 import type { DictationButton } from './dictation.js';
+import type { KeybarButton } from './keybar.js';
 
 /** Claude/tmux pane states set by host-kit/tmux-window-title.sh (most urgent first). */
 export type PaneState = 'question' | 'attention' | 'done' | 'busy' | 'claude' | 'ssh';
@@ -112,6 +113,8 @@ export interface HubSettings {
   dictationButton: DictationButton;
   /** Starts dictating (held: until released; pressed: until pressed again). See parseShortcut. */
   dictationShortcut: string;
+  /** The key bar under the terminal on touch screens, in order. See shared/keybar.ts. */
+  keybar: KeybarButton[];
 }
 
 /** What the hub's dictation can do right now. */
