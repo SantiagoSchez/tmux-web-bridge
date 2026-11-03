@@ -489,6 +489,23 @@ cmd_rename() {
     fi
 }
 
+# Directorio desde el que se reanuda una conversación de Claude. Claude la guarda bajo
+# el directorio en que arrancó (~/.claude/projects/<ruta>/<id>.jsonl) y `--resume` solo
+# la busca en el de la carpeta actual: si luego entró en un worktree, el panel está en el
+# worktree y desde ahí no la encuentra. Reanudada desde el original, Claude vuelve él
+# solo al worktree. Si no se encuentra la conversación, la ruta que se le pasa.
+session_dir() {
+    local sid="$1" fallback="$2" file dir=""
+    if [ -n "$sid" ] && [ "$sid" != "-" ]; then
+        for file in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$sid".jsonl; do
+            [ -f "$file" ] || continue
+            dir="$(grep -m 1 '"cwd":"' "$file" | jq -r '.cwd // empty' 2>/dev/null)"
+            break
+        done
+    fi
+    if [ -n "$dir" ] && [ -d "$dir" ]; then printf '%s' "$dir"; else printf '%s' "$fallback"; fi
+}
+
 # Relanza un panel (botón «Recargar ventana» del panel web): mata lo que corre en él y
 # arranca la shell por defecto en el mismo directorio, que vuelve a leer .zshrc. Si el
 # panel tenía un Claude, la shell nueva lo reanuda con su conversación (claude --resume,
@@ -505,6 +522,7 @@ cmd_reload() {
 
     if [ -n "${sid:-}" ] && [ "${state:-}" != "ssh" ]; then
         resume="$claude --resume $sid"
+        dir="$(session_dir "$sid" "$dir")"
     elif [[ "$cmd" =~ ^[0-9]+\.[0-9]+\.[0-9]+ || "$cmd" == claude ]]; then
         # Un Claude sin session_id guardado: la conversación más reciente de ese directorio.
         resume="$claude --continue"
@@ -565,7 +583,7 @@ claude_panes() {
 resume_cmd() {
     local sid="$1" path="$2"
     if [ -n "$sid" ] && [ "$sid" != "-" ]; then
-        printf 'cd %s && claude --resume %s' "$(shell_path "$path")" "$sid"
+        printf 'cd %s && claude --resume %s' "$(shell_path "$(session_dir "$sid" "$path")")" "$sid"
     else
         printf 'cd %s && claude --continue' "$(shell_path "$path")"
     fi

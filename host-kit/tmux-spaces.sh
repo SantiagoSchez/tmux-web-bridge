@@ -191,9 +191,22 @@ cmd_resurrect_save() {
     done < <(tmux list-windows -a -f "$NOT_WEB" -F '#{session_name}	#{window_index}	#{@name_pinned}' 2>/dev/null)
 }
 
+# Directorio en que arrancó una conversación de Claude, el único desde el que `--resume`
+# la encuentra (ver session_dir en tmux-window-title.sh): si entró en un worktree, el
+# panel se restaura en el worktree. Vacío si no se encuentra.
+session_dir() {
+    local file dir
+    for file in "${CLAUDE_CONFIG_DIR:-$HOME/.claude}"/projects/*/"$1".jsonl; do
+        [ -f "$file" ] || continue
+        dir="$(grep -m 1 '"cwd":"' "$file" | jq -r '.cwd // empty' 2>/dev/null)"
+        [ -n "$dir" ] && [ -d "$dir" ] && printf '%s' "$dir"
+        return 0
+    done
+}
+
 # Tras restaurar: relanza cada Claude con su conversación y vuelve a fijar nombres.
 cmd_resurrect_restore() {
-    local dir sess win_idx pane_idx sid target cmd
+    local dir sess win_idx pane_idx sid target cmd start
     dir="$(resurrect_dir)"
 
     if [ -f "$dir/claude-panes.tsv" ]; then
@@ -201,7 +214,9 @@ cmd_resurrect_restore() {
             target="=$sess:$win_idx.$pane_idx"
             cmd="$(tmux display-message -p -t "$target" '#{pane_current_command}' 2>/dev/null)" || continue
             case "$cmd" in
-                zsh|bash|sh|-zsh|-bash) tmux send-keys -t "$target" "claude --resume $sid" Enter ;;
+                zsh|bash|sh|-zsh|-bash)
+                    start="$(session_dir "$sid")"
+                    tmux send-keys -t "$target" "${start:+cd $(printf '%q' "$start") && }claude --resume $sid" Enter ;;
             esac
         done < "$dir/claude-panes.tsv"
     fi
