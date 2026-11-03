@@ -13,6 +13,7 @@ export const DEFAULT_GLOSSARY = [
 
 const DEFAULTS: HubSettings = {
   limitsInStatusLine: true,
+  soloSpaces: true,
   dictation: false,
   dictationCleanup: 'llm',
   dictationGlossary: DEFAULT_GLOSSARY,
@@ -69,6 +70,7 @@ export class SettingsStore extends EventEmitter {
   update(patch: Partial<HubSettings>): void {
     const next = { ...this.state };
     if (typeof patch.limitsInStatusLine === 'boolean') next.limitsInStatusLine = patch.limitsInStatusLine;
+    if (typeof patch.soloSpaces === 'boolean') next.soloSpaces = patch.soloSpaces;
     if (typeof patch.dictation === 'boolean') next.dictation = patch.dictation;
     if (patch.dictationCleanup === 'llm' || patch.dictationCleanup === 'none') next.dictationCleanup = patch.dictationCleanup;
     if (typeof patch.dictationGlossary === 'string') next.dictationGlossary = patch.dictationGlossary.slice(0, GLOSSARY_MAX);

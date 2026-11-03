@@ -93,6 +93,8 @@ export interface HubSettings {
    * when tmux's own bar shows them: the hub sets @claude_limits_in_status=1 there.
    */
   limitsInStatusLine: boolean;
+  /** A space with a single window is one row in the list (and one item in the palette and menus). */
+  soloSpaces: boolean;
   /**
    * Dictation: the hub transcribes what you say (Parakeet) and types it into the pane.
    * Off by default: the speech model takes about 1 GB of the hub's memory.

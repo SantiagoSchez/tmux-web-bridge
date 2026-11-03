@@ -1,7 +1,7 @@
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/types';
 import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
-import { applyHostOrder, dialog, hosts, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
+import { applyHostOrder, dialog, hosts, isSolo, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
 import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
 
@@ -216,7 +216,7 @@ export function windowMenu(
   { pane, extra = [], leave = false }: { pane?: PaneInfo; extra?: MenuItem[]; leave?: boolean } = {},
 ): void {
   const target = pane ?? window.panes.find((p) => p.active) ?? window.panes[0];
-  const solo = session.windows.length === 1;
+  const solo = isSolo(session);
   const items: MenuItem[] = [
     { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
     ...(solo ? [{ label: 'Renombrar space', icon: '✎', run: () => renameSession(host, session) }] : []),

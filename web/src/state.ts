@@ -15,6 +15,11 @@ export const hubSettings = signal<HubSettings | null>(null);
 /** What the hub's dictation can do right now. */
 export const dictationInfo = signal<DictationInfo | null>(null);
 
+/** A space with a single window shown as one row that is both (a hub setting, on by default). */
+export function isSolo(session: SessionInfo): boolean {
+  return session.windows.length === 1 && hubSettings.value?.soloSpaces !== false;
+}
+
 export const PRIO: Record<PaneState, number> = { question: 60, attention: 50, done: 40, busy: 30, claude: 20, ssh: 10 };
 export const ALERT_STATES: PaneState[] = ['question', 'attention', 'done'];
 export const STATE_LABEL: Record<PaneState, string> = {

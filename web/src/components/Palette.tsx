@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { openWindow, route } from '../router';
-import { ALERT_STATES, hosts, multiHost, paletteOpen, PRIO } from '../state';
+import { ALERT_STATES, hosts, isSolo, multiHost, paletteOpen, PRIO } from '../state';
 import { Sheet } from './Dialogs';
 
 interface Entry {
@@ -33,7 +33,7 @@ function entries(): Entry[] {
     if (host.status !== 'ok') continue;
     for (const session of [...host.sessions].sort((a, b) => (a.num ?? 99) - (b.num ?? 99)))
       for (const window of session.windows) {
-        const solo = session.windows.length === 1;
+        const solo = isSolo(session);
         const pane = window.panes.find((p) => p.active) ?? window.panes[0];
         const title = solo ? session.name : `${session.name} › ${window.name}`;
         const meta = [solo && window.name !== session.name ? window.name : '', pane?.command, pane ? shortPath(pane.path) : '', multiHost.value ? host.name : '']

@@ -4,7 +4,7 @@ import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, sessionMenu, windowMenu } from '../menus';
 import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
-import { hosts, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
+import { hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
 import { updateInfo } from '../updates';
 import { IconClose, IconMore, IconPlus } from './icons';
 
@@ -243,7 +243,7 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
 }
 
 function SessionBlock({ host, session }: { host: HostInfo; session: SessionInfo }) {
-  if (session.windows.length === 1) return <SoloSession host={host} session={session} window={session.windows[0]} />;
+  if (isSolo(session)) return <SoloSession host={host} session={session} window={session.windows[0]} />;
   const key = `${host.id}:${session.name}`;
   const collapsed = prefs.value.collapsedSessions.includes(key);
   const toggle = () => {

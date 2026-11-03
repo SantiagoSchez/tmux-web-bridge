@@ -213,6 +213,14 @@ function MachineSettings() {
       <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos.</p>
       {s && (
         <Toggle
+          title="Spaces de una ventana en una fila"
+          desc="Un space con una sola ventana se muestra como una única fila, sin cabecera aparte. Desactívalo para ver siempre el space y sus ventanas por separado."
+          on={s.soloSpaces}
+          onChange={(on) => hub.send({ t: 'settings', settings: { soloSpaces: on } })}
+        />
+      )}
+      {s && (
+        <Toggle
           title="Límites en la status line"
           desc="Los límites de 5 h y semanal al final de la línea de estado de Claude Code. Desactívalo si la barra de tmux ya los muestra; en el panel siguen siempre en la franja de arriba."
           on={s.limitsInStatusLine}

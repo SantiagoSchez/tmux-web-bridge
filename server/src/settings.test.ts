@@ -50,3 +50,13 @@ test('only the offered cleanup timeouts are accepted', () =>
     store.update({ dictationTimeout: '30' as unknown as number });
     assert.equal(store.value.dictationTimeout, 20);
   }));
+
+test('single-window spaces fold into one row unless turned off', () =>
+  withDir((dir) => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ limitsInStatusLine: true }));
+    const store = new SettingsStore(dir);
+    assert.equal(store.value.soloSpaces, true);
+    store.update({ soloSpaces: false });
+    store.update({ soloSpaces: 'yes' as unknown as boolean });
+    assert.equal(new SettingsStore(dir).value.soloSpaces, false);
+  }));

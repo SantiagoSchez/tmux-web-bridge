@@ -4,7 +4,7 @@ import { killPane, reloadWindow, windowMenu } from '../menus';
 import { toggleDictation } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
-import { connections, hubSettings, multiHost, STATE_LABEL, type MenuItem } from '../state';
+import { connections, hubSettings, isSolo, multiHost, STATE_LABEL, type MenuItem } from '../state';
 import { uploadFiles } from '../upload';
 import { hub } from '../ws';
 import { ConnectionsButton } from './Header';
@@ -59,7 +59,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
     if (next && next.id !== window.id) openWindow(host.id, next.id, null, true);
   };
 
-  const solo = session.windows.length === 1;
+  const solo = isSolo(session);
 
   // Files dropped on the window, or an image pasted (Cmd+V of a screenshot), go to the pane for Claude.
   const [dropping, setDropping] = useState(false);
