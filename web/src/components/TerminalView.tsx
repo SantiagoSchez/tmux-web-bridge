@@ -650,6 +650,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       fontFamily: FONT_FAMILY,
       fontSize,
       theme: TERM_THEMES[theme].xterm,
+      minimumContrastRatio: TERM_THEMES[theme].minContrast,
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 2000,
@@ -872,7 +873,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   }, [fontSize]);
 
   useEffect(() => {
-    if (termRef.current) termRef.current.options.theme = TERM_THEMES[theme].xterm;
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = TERM_THEMES[theme].xterm;
+    term.options.minimumContrastRatio = TERM_THEMES[theme].minContrast;
   }, [theme]);
 
   const toggle = (m: Mod) => {

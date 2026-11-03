@@ -66,6 +66,11 @@
   --halo: #0009;
   --error-bg: #4a2f38;
   --error-fg: #f2c4c8;
+  /* Shadows under floating things, and the veil behind sheets and the drawer. */
+  --shadow: #0006;
+  --shadow-strong: #0008;
+  --backdrop: #11111bb3;
+  --backdrop-soft: #11111b99;
 
   --mono: 'TWB Mono', 'TWB Symbols', ui-monospace, Menlo, 'Roboto Mono', monospace;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -84,22 +89,48 @@
   --surface1: #bcc0cc;
   --surface2: #acb0be;
   --overlay0: #9ca0b0;
-  --overlay1: #7c7f93;
+  --overlay1: #686b7f;
   --subtext0: #6c6f85;
   --subtext1: #5c5f77;
   --text: #4c4f69;
+  /* Latte's accents, darkened where needed to read as text on --base (4.6:1). */
   --mauve: #8839ef;
-  --peach: #fe640b;
-  --yellow: #df8e1d;
-  --green: #40a02b;
+  --peach: #bc4501;
+  --yellow: #976014;
+  --green: #317b21;
   --red: #d20f39;
-  --blue: #1e66f5;
-  --teal: #179299;
-  --lavender: #7287fd;
+  --blue: #1560f5;
+  --teal: #13777d;
+  --lavender: #3c59fc;
   --halo: #fff9;
   --error-bg: #f5d0d7;
   --error-fg: #8a0f2c;
+  --shadow: #4c4f6926;
+  --shadow-strong: #4c4f6938;
+  --backdrop: #4c4f6973;
+  --backdrop-soft: #4c4f6959;
   color-scheme: light;
+  scrollbar-color: var(--surface2) transparent;
+}
+:root[data-theme='light'] .scroll,
+:root[data-theme='light'] textarea {
+  scrollbar-width: thin;
+}
+/* Light: the meters are tinted, so the dark percentage reads on them. */
+:root[data-theme='light'] .limit-bar {
+  background: var(--surface0);
+}
+:root[data-theme='light'] .limit-fill {
+  background: color-mix(in srgb, var(--blue) 32%, var(--base));
+}
+:root[data-theme='light'] .limit-bar.mid .limit-fill {
+  background: color-mix(in srgb, #df8e1d 40%, var(--base));
+}
+:root[data-theme='light'] .limit-bar.high .limit-fill {
+  background: color-mix(in srgb, var(--red) 32%, var(--base));
+}
+:root[data-theme='light'] .state-chip {
+  background: color-mix(in srgb, var(--state-color) 12%, transparent);
 }
 
 * {
@@ -1257,7 +1288,7 @@ body.dragging-host * {
   justify-content: center;
   background: var(--surface1);
   color: var(--text);
-  box-shadow: 0 6px 20px #0006;
+  box-shadow: 0 6px 20px var(--shadow);
 }
 .term-box {
   flex: 1;
@@ -1281,7 +1312,7 @@ body.dragging-host * {
   gap: 8px;
 }
 .term-copy .btn {
-  box-shadow: 0 6px 20px #0006;
+  box-shadow: 0 6px 20px var(--shadow);
 }
 .term-copy .btn:last-child {
   padding: 0 12px;
@@ -1304,7 +1335,7 @@ body.dragging-host * {
   width: 20px;
   height: 20px;
   background: var(--mauve);
-  box-shadow: 0 2px 6px #0006;
+  box-shadow: 0 2px 6px var(--shadow);
 }
 .sel-handle.start::after {
   right: 0;
@@ -1325,7 +1356,7 @@ body.dragging-host * {
   color: var(--text);
   line-height: 1.3;
   white-space: pre;
-  box-shadow: 0 6px 20px #0008;
+  box-shadow: 0 6px 20px var(--shadow-strong);
   pointer-events: none;
 }
 .loupe span {
@@ -1427,7 +1458,7 @@ body.dragging-host * {
   flex-direction: column;
   background: var(--mantle);
   border-right: 1px solid var(--surface0);
-  box-shadow: 12px 0 40px #0008;
+  box-shadow: 12px 0 40px var(--shadow-strong);
   transform: translateX(-100%);
   transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   visibility: hidden;
@@ -1443,7 +1474,7 @@ body.dragging-host * {
   position: fixed;
   inset: 0;
   z-index: 39;
-  background: #11111bb3;
+  background: var(--backdrop);
   transition: opacity 0.2s;
 }
 
@@ -1479,7 +1510,7 @@ body.dragging-host * {
   position: fixed;
   inset: 0;
   z-index: 50;
-  background: #11111b99;
+  background: var(--backdrop-soft);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -1492,7 +1523,7 @@ body.dragging-host * {
   background: var(--mantle);
   border-radius: 18px 18px 0 0;
   padding: 6px 16px calc(16px + var(--safe-bottom));
-  box-shadow: 0 -10px 40px #0007;
+  box-shadow: 0 -10px 40px var(--shadow-strong);
   animation: rise 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .layout.desktop .sheet-backdrop {
@@ -1825,7 +1856,7 @@ body.dragging-host * {
   padding: 12px 6px 12px 14px;
   border-radius: 12px;
   background: var(--surface0);
-  box-shadow: 0 8px 24px #0006;
+  box-shadow: 0 8px 24px var(--shadow);
   font-size: 14px;
   overflow-wrap: anywhere;
   animation: rise 0.2s ease-out;

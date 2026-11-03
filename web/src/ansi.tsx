@@ -14,6 +14,40 @@ const PALETTES: Record<Appearance, string[]> = { dark: palette('dark'), light: p
 /** The palette of the screen being rendered (renderAnsi is synchronous). */
 let PALETTE = PALETTES.dark;
 let XTERM_THEME = TERM_THEMES.dark.xterm;
+let MIN_CONTRAST = TERM_THEMES.dark.minContrast;
+
+function rgbOf(c: string): [number, number, number] {
+  if (c.startsWith('#')) return [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)) as [number, number, number];
+  const m = c.match(/\d+/g) ?? ['0', '0', '0'];
+  return [Number(m[0]), Number(m[1]), Number(m[2])];
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  const l = (v: number) => ((v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * l(r) + 0.7152 * l(g) + 0.0722 * l(b);
+}
+
+function contrast(a: number, b: number): number {
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+}
+
+const readable = new Map<string, string>();
+
+/** Like xterm's minimumContrastRatio: the text colour pushed toward black or white until it reads on its background. */
+function ensureContrast(fg: string, bg: string): string {
+  const key = `${fg}|${bg}|${MIN_CONTRAST}`;
+  let out = readable.get(key);
+  if (out) return out;
+  const f = rgbOf(fg);
+  const lb = luminance(rgbOf(bg));
+  const target = lb > 0.5 ? 0 : 255;
+  out = fg;
+  for (let t = 0.1; contrast(luminance(rgbOf(out)), lb) < MIN_CONTRAST && t <= 1.001; t += 0.1) {
+    out = `rgb(${f.map((v) => Math.round(v + (target - v) * t)).join(',')})`;
+  }
+  readable.set(key, out);
+  return out;
+}
 
 interface Attrs {
   fg: string | null;
@@ -81,6 +115,10 @@ function styleOf(a: Attrs): CSSProperties | null {
   let fg = a.fg;
   let bg = a.bg;
   if (a.inverse) [fg, bg] = [bg ?? XTERM_THEME.background, fg ?? XTERM_THEME.foreground];
+  if (MIN_CONTRAST > 1 && (fg || bg)) {
+    const shown = ensureContrast(fg ?? XTERM_THEME.foreground, bg ?? XTERM_THEME.background);
+    if (fg || shown !== XTERM_THEME.foreground) fg = shown;
+  }
   const s: CSSProperties = {};
   if (fg) s.color = fg;
   if (bg) s.background = bg;
@@ -99,6 +137,7 @@ const ESC = /\x1b(?:\[([0-9;:?]*)([@-~])|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A
 export function renderAnsi(text: string, theme: Appearance): (string | JSX.Element)[] {
   PALETTE = PALETTES[theme];
   XTERM_THEME = TERM_THEMES[theme].xterm;
+  MIN_CONTRAST = TERM_THEMES[theme].minContrast;
   const out: (string | JSX.Element)[] = [];
   let attrs = PLAIN;
   let buf = '';
