@@ -1192,9 +1192,29 @@ body.dragging-host * {
 
 .view-tools {
   display: flex;
+  align-items: center;
   gap: 4px;
+}
+.view-tools button:disabled {
+  opacity: 0.4;
+}
+.font-size-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  padding: 0 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--surface0);
+  font-size: 15.5px;
+}
+.font-size-label {
   flex: 1;
-  min-width: 0;
+}
+.font-size-value {
+  min-width: 28px;
+  text-align: center;
+  font: 600 14px var(--mono);
 }
 .view-tools button {
   min-width: 38px;

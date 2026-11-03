@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
-import { killPane, reloadWindow, windowMenu } from '../menus';
+import { killPane, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
@@ -96,7 +96,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
   const openMenu = () => {
     const extra: MenuItem[] = [];
     if (pane) extra.push({ label: `Cerrar panel ${pane.index}`, icon: '✕', danger: true, run: () => killPane(host, window, pane) });
-    windowMenu(host, session, window, { pane, extra, leave: !desktop });
+    windowMenu(host, session, window, { pane, extra, leave: !desktop, top: <FontSizeRow /> });
   };
 
   // Above the keyboard bar: the other pending panes (on wide screens the sidebar already lists them).
@@ -152,30 +152,36 @@ export function WindowView({ host, session, window, paneId }: Props) {
           ))}
         </div>
       )}
-      <div class="wv-bar">
-        <ViewTools />
-        {pane && !isTouch && <MicButton hostId={host.id} paneId={pane.id} class="reload-btn" />}
-        <button class="reload-btn" onClick={() => reloadWindow(host, window)} aria-label="Recargar ventana" title="Recargar ventana: .zshrc y Claude">
-          ↻
-        </button>
-      </div>
+      {/* On a computer, the dictation button (on a phone it is in the key bar). */}
+      {pane && !isTouch && dictation && (
+        <div class="wv-bar">
+          <MicButton hostId={host.id} paneId={pane.id} class="reload-btn" />
+        </div>
+      )}
 
       {pane && <TerminalView key={`${host.id}:${session.id}`} host={host} session={session} window={window} pane={pane} above={above} />}
     </div>
   );
 }
 
-/** Font size of the terminal (stored per device). */
-function ViewTools() {
+/** Font size of the terminal (stored per device), at the top of the window's menu: it stays open while tapping. */
+function FontSizeRow() {
   const size = prefs.value.termFontSize;
   return (
-    <div class="view-tools">
-      <button onClick={() => setPref('termFontSize', Math.max(8, size - 1))} aria-label="Letra más pequeña">
-        A−
-      </button>
-      <button onClick={() => setPref('termFontSize', Math.min(22, size + 1))} aria-label="Letra más grande">
-        A+
-      </button>
+    <div class="font-size-row">
+      <span class="menu-icon">Aa</span>
+      <span class="font-size-label">Tamaño de letra</span>
+      <div class="view-tools">
+        <button onClick={() => setPref('termFontSize', Math.max(8, size - 1))} disabled={size <= 8} aria-label="Letra más pequeña">
+          A−
+        </button>
+        <span class="font-size-value" aria-live="polite">
+          {size}
+        </span>
+        <button onClick={() => setPref('termFontSize', Math.min(22, size + 1))} disabled={size >= 22} aria-label="Letra más grande">
+          A+
+        </button>
+      </div>
     </div>
   );
 }

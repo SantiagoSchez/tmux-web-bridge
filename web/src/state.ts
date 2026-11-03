@@ -1,4 +1,5 @@
 import { computed, signal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import type { ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
@@ -98,7 +99,8 @@ export function dismissToast(id: number): void {
 export type Dialog =
   | { kind: 'prompt'; title: string; label?: string; value: string; placeholder?: string; confirm: string; onSubmit: (v: string) => void }
   | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; onSubmit: () => void }
-  | { kind: 'menu'; title: string; subtitle?: string; items: MenuItem[] }
+  /** top: shown above the items, and the menu stays open while it is used (the font size). */
+  | { kind: 'menu'; title: string; subtitle?: string; top?: ComponentChildren; items: MenuItem[] }
   | { kind: 'project'; host: HostInfo };
 
 /** A Claude about to be closed, and the command that resumes its conversation later. */

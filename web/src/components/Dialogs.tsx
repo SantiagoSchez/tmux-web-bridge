@@ -34,6 +34,7 @@ export function Dialogs() {
   if (d.kind === 'menu') {
     return (
       <Sheet title={d.title} subtitle={d.subtitle} onClose={close}>
+        {d.top}
         <ul class="menu">
           {d.items.map((it) => (
             <li key={it.label}>

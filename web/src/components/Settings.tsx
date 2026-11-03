@@ -348,7 +348,7 @@ function DictationSettings() {
         title="Dictado"
         desc={
           <>
-            Un botón 🎤 en la barra de teclas del móvil y junto a la letra en el escritorio, y un atajo de teclado. El servidor central transcribe lo que dices y
+            Un botón 🎤 en la barra de teclas del móvil y encima de la terminal en el escritorio, y un atajo de teclado. El servidor central transcribe lo que dices y
             lo escribe en el panel, sin Enter. Nada sale de tu red. El modelo de voz (Parakeet v3) se descarga la primera vez (unos 670 MB) y ocupa
             alrededor de 1 GB de memoria del servidor.
           </>

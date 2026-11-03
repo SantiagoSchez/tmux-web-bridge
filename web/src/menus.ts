@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/types';
 import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
@@ -213,7 +214,7 @@ export function windowMenu(
   host: HostInfo,
   session: SessionInfo,
   window: WindowInfo,
-  { pane, extra = [], leave = false }: { pane?: PaneInfo; extra?: MenuItem[]; leave?: boolean } = {},
+  { pane, extra = [], leave = false, top }: { pane?: PaneInfo; extra?: MenuItem[]; leave?: boolean; top?: ComponentChildren } = {},
 ): void {
   const target = pane ?? window.panes.find((p) => p.active) ?? window.panes[0];
   const solo = isSolo(session);
@@ -235,7 +236,7 @@ export function windowMenu(
   );
   const title = solo ? session.name : window.name;
   const subtitle = [solo ? (window.name !== session.name ? window.name : '') : session.name, multiHost.value ? host.name : ''].filter(Boolean).join(' · ');
-  dialog.value = { kind: 'menu', title: `${window.icon ? window.icon + ' ' : ''}${title}`, subtitle: subtitle || undefined, items };
+  dialog.value = { kind: 'menu', title: `${window.icon ? window.icon + ' ' : ''}${title}`, subtitle: subtitle || undefined, top, items };
 }
 
 export function sessionMenu(host: HostInfo, session: SessionInfo): void {
