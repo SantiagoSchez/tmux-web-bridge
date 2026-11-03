@@ -117,6 +117,9 @@ const SPECIAL_KEYS: Record<string, string> = {
   Delete: '\x1b[3~',
 };
 
+/** How long a deletion waits for the keyboard's replacement word (see bindInputProxy). */
+const REPLACE_WAIT_MS = 60;
+
 /**
  * Typing on a phone. Android keyboards (Gboard...) compose each word and xterm.js
  * only receives it when the word is committed: letters show up late and some get
@@ -131,14 +134,21 @@ function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods
   /** The field's last value seen. */
   let field = SENTINEL;
   let composing = false;
+  /** A deletion held back in case the keyboard is replacing the word (see onInput). */
+  let pending: ReturnType<typeof setTimeout> | undefined;
   const reset = () => {
+    clearTimeout(pending);
+    pending = undefined;
     el.value = SENTINEL;
     sent = field = SENTINEL;
     el.setSelectionRange(1, 1);
   };
   reset();
 
-  const onInput = () => {
+  /** Sends what changed from `sent` to the field's current value. */
+  const flush = () => {
+    clearTimeout(pending);
+    pending = undefined;
     const v = el.value;
     const diff = typedDiff(sent, v);
     let added = diff.added;
@@ -154,16 +164,34 @@ function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods
     // Start over between words (never mid-composition): keeps the field short and the sentinel in place.
     if (!composing && (!v.startsWith(SENTINEL) || v.length > 40 || /[\s\r\n]$/.test(v))) reset();
   };
+
+  const onInput = () => {
+    const v = el.value;
+    field = v;
+    // When Gboard autocorrects a word ("claude" into "Claude") it may delete it first
+    // and then insert the new one, as two inputs. Held back a moment, the deletion and
+    // the insertion become a single diff, and typedDiff keeps the lowercase typed.
+    // Erasing the sentinel (backspace on an empty field) is never a replacement.
+    const diff = typedDiff(sent, v);
+    if (!diff.added && diff.removed && v.startsWith(SENTINEL)) {
+      clearTimeout(pending);
+      pending = setTimeout(flush, REPLACE_WAIT_MS);
+      return;
+    }
+    flush();
+  };
   const onKeyDown = (e: KeyboardEvent) => {
     if (composing || e.isComposing) return;
     if (e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
       e.preventDefault();
+      if (pending) flush();
       send(withMods(e.key, new Set<Mod>(['ctrl'])));
       return;
     }
     const seq = SPECIAL_KEYS[e.key];
     if (!seq) return;
     e.preventDefault();
+    if (pending) flush();
     send(e.key === 'Enter' && e.shiftKey ? NEWLINE : e.altKey ? `\x1b${seq}` : seq);
     reset();
   };
@@ -172,7 +200,7 @@ function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods
     composing = false;
     // Some keyboards fire the final input before compositionend: re-check now.
     setTimeout(() => {
-      if (!composing && el.value === field && (field.length > 40 || /[\s\r\n]$/.test(field))) reset();
+      if (!composing && !pending && el.value === field && (field.length > 40 || /[\s\r\n]$/.test(field))) reset();
     }, 0);
   };
   el.addEventListener('input', onInput);
@@ -180,6 +208,7 @@ function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods
   el.addEventListener('compositionstart', onStart);
   el.addEventListener('compositionend', onEnd);
   return () => {
+    clearTimeout(pending);
     el.removeEventListener('input', onInput);
     el.removeEventListener('keydown', onKeyDown);
     el.removeEventListener('compositionstart', onStart);
