@@ -15,7 +15,9 @@
 #   tmux-window-title.sh refresh [window-id]   recalcula nombre e icono
 #   tmux-window-title.sh refresh-all           recalcula todas las ventanas
 #   tmux-window-title.sh state <estado> [nombre]   marca el estado del panel actual
-#   tmux-window-title.sh start [nombre]        inicio de Claude: estado claude + session_id (JSON por stdin)
+#   tmux-window-title.sh start [nombre]        inicio de Claude: estado claude + session_id (JSON por stdin);
+#                                              tras compactar conserva el estado que tenía
+#   tmux-window-title.sh tool <pre|post> [nombre]  Claude usa una herramienta (JSON por stdin): 🔨
 #   tmux-window-title.sh focus <pane-id>       el panel recibe foco: ✅ pasa a 🤖
 #   tmux-window-title.sh clear                 borra el estado del panel actual
 #   tmux-window-title.sh rename <window-id> [nombre]   fija el nombre (vacío = automático)
@@ -358,6 +360,24 @@ notify_clear() {
     [ -n "$NOTIFIER" ] && "$NOTIFIER" -remove "claude-tmux-$pane" >/dev/null 2>&1 &
 }
 
+# Un solo cambio de estado a la vez por servidor tmux: dos hooks a la vez (dos Claude en
+# un space, herramientas en paralelo) leerían iconos a medio escribir y el último en
+# escribir dejaría uno viejo en la ventana o en el space. mkdir es atómico en macOS y en
+# Linux (flock no viene en macOS). Un candado de más de 2 s es de un proceso que murió.
+lock() {
+    local dir="$STATE_DIR/.lock" tries=0
+    mkdir -p "$STATE_DIR"
+    until mkdir "$dir" 2>/dev/null; do
+        tries=$((tries + 1))
+        if [ "$tries" -ge 100 ]; then
+            rm -rf "$dir"
+            tries=0
+        fi
+        sleep 0.02
+    done
+    trap 'rmdir "$STATE_DIR/.lock" 2>/dev/null' EXIT
+}
+
 write_state() {
     local pane="$1" state="$2" name="$3" sid="$4"
     mkdir -p "$STATE_DIR"
@@ -369,7 +389,7 @@ cmd_state() {
     [ -n "${TMUX_PANE:-}" ] || return 0
     [ -f "$STATE_DIR/$TMUX_PANE" ] && IFS=$'\t' read -r old_state _ old_sid < "$STATE_DIR/$TMUX_PANE"
     # JSON del hook de Claude (para el texto de la notificación).
-    [ -t 0 ] || payload="$(cat)"
+    payload="$PAYLOAD"
     event="$state"
 
     # Claude lanza también una Notification al hacer una pregunta: no debe
@@ -381,6 +401,8 @@ cmd_state() {
     [ "$state" = "done" ] && pane_is_viewed "$TMUX_PANE" && state="claude"
 
     write_state "$TMUX_PANE" "$state" "$name" "${old_sid:-}"
+    # Cuándo empezó a esperar el permiso (lo mira cmd_tool).
+    [ "$state" = "attention" ] && [ "${old_state:-}" != "attention" ] && date +%s > "$STATE_DIR/$TMUX_PANE.since"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
 
     case "$event" in
@@ -392,11 +414,47 @@ cmd_state() {
 # SessionStart de Claude: el JSON del hook llega por stdin; se guarda su
 # session_id para poder reanudar la conversación exacta al restaurar tmux.
 cmd_start() {
-    local name="${1:-}" sid=""
+    local name="${1:-}" sid="" source="" state=""
     [ -n "${TMUX_PANE:-}" ] || return 0
-    [ -t 0 ] || sid="$(jq -r '.session_id // empty' 2>/dev/null)"
-    write_state "$TMUX_PANE" claude "$name" "$sid"
+    if [ -n "$PAYLOAD" ]; then
+        sid="$(jq -r '.session_id // empty' <<< "$PAYLOAD" 2>/dev/null)"
+        source="$(jq -r '.source // empty' <<< "$PAYLOAD" 2>/dev/null)"
+    fi
+    # Tras compactar (a mano, o sola a mitad de una tarea) Claude sigue con lo que estaba:
+    # no vuelve a 🤖 si estaba trabajando o esperándote.
+    [ "$source" = "compact" ] && [ -f "$STATE_DIR/$TMUX_PANE" ] && IFS=$'\t' read -r state _ < "$STATE_DIR/$TMUX_PANE"
+    write_state "$TMUX_PANE" "${state:-claude}" "$name" "$sid"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
+}
+
+# Claude usa una herramienta (hooks PreToolUse y PostToolUse de todas): está trabajando.
+# Cubre lo que no empieza con un mensaje tuyo (sigue solo tras una tarea en segundo plano,
+# un subagente o un /loop, o tras compactar) y la vuelta al trabajo tras aprobar un permiso,
+# que no tiene hook propio. AskUserQuestion y ExitPlanMode abren y cierran la pregunta 🙋.
+cmd_tool() {
+    local phase="${1:-}" name="${2:-}" tool="" state="" since started
+    [ -n "${TMUX_PANE:-}" ] || return 0
+    [[ "$PAYLOAD" =~ \"tool_name\"[[:space:]]*:[[:space:]]*\"([^\"]*)\" ]] && tool="${BASH_REMATCH[1]}"
+    case "$tool" in
+        AskUserQuestion|ExitPlanMode)
+            if [ "$phase" = "pre" ]; then cmd_state question "$name"; else cmd_state busy "$name"; fi
+            return 0 ;;
+    esac
+    [ -f "$STATE_DIR/$TMUX_PANE" ] && IFS=$'\t' read -r state _ < "$STATE_DIR/$TMUX_PANE"
+    case "$state" in
+        # Ya trabajando (lo más frecuente: no se toca nada). Una pregunta solo la cierra su respuesta.
+        busy|question) return 0 ;;
+        attention)
+            # Con herramientas en paralelo, la que termina puede haber empezado antes de pedir
+            # el permiso, que sigue pendiente. Solo cuenta si empezó después del aviso, que
+            # Claude da unos segundos después de mostrar el permiso.
+            if [ "$phase" = "post" ] && [[ "$PAYLOAD" =~ \"duration_ms\"[[:space:]]*:[[:space:]]*([0-9]+) ]]; then
+                since="$(cat "$STATE_DIR/$TMUX_PANE.since" 2>/dev/null)"
+                started=$(( $(date +%s) - BASH_REMATCH[1] / 1000 ))
+                [ -n "$since" ] && [ "$started" -lt "$((since - 1))" ] && return 0
+            fi ;;
+    esac
+    cmd_state busy "$name"
 }
 
 cmd_focus() {
@@ -413,7 +471,7 @@ cmd_focus() {
 cmd_clear() {
     [ -n "${TMUX_PANE:-}" ] || return 0
     notify_clear "$TMUX_PANE"
-    rm -f "$STATE_DIR/$TMUX_PANE"
+    rm -f "$STATE_DIR/$TMUX_PANE" "$STATE_DIR/$TMUX_PANE.since"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
 }
 
@@ -453,7 +511,7 @@ cmd_reload() {
     fi
 
     # El Claude nuevo vuelve a escribir su estado al arrancar (hook SessionStart).
-    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.notified"
+    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.notified" "$STATE_DIR/$pane.since"
     if [ -n "$resume" ]; then
         tmux respawn-pane -k -t "$pane" -c "$dir" "$shell" -ic "$resume; exec $(printf '%q' "$shell")"
     else
@@ -632,11 +690,29 @@ cmd_wrap_kill_keys() {
 action="${1:-refresh}"
 [ $# -gt 0 ] && shift
 
+# El JSON de los hooks de Claude llega por stdin.
+PAYLOAD=""
+case "$action" in
+    state|start|tool) [ -t 0 ] || PAYLOAD="$(cat)" ;;
+esac
+
+# Lo que cambia estados e iconos va de uno en uno (ver lock). Antes, la vía rápida de
+# tool: si ya estaba trabajando, ni candado ni tmux.
+if [ "$action" = "tool" ] && [ -n "${TMUX_PANE:-}" ] && [ -f "$STATE_DIR/$TMUX_PANE" ] &&
+    [[ ! "$PAYLOAD" =~ \"tool_name\"[[:space:]]*:[[:space:]]*\"(AskUserQuestion|ExitPlanMode)\" ]]; then
+    IFS=$'\t' read -r fast_state _ < "$STATE_DIR/$TMUX_PANE"
+    [ "${fast_state:-}" = "busy" ] && exit 0
+fi
+case "$action" in
+    refresh|refresh-all|state|start|tool|focus|clear) lock ;;
+esac
+
 case "$action" in
     refresh)     cmd_refresh "${1:-}" ;;
     refresh-all) cmd_refresh_all ;;
     state)       cmd_state "${1:-}" "${2:-}" ;;
     start)       cmd_start "${1:-}" ;;
+    tool)        cmd_tool "${1:-}" "${2:-}" ;;
     focus)       cmd_focus "${1:-}" ;;
     clear)       cmd_clear ;;
     rename)      cmd_rename "${1:-}" "${2:-}" ;;
@@ -644,5 +720,5 @@ case "$action" in
     close)       cmd_close "${1:-}" "${2:-}" "${3:-}" ;;
     close-popup) cmd_close_popup "${1:-}" "${2:-}" ;;
     wrap-kill-keys) cmd_wrap_kill_keys ;;
-    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|focus <pane-id>|clear|rename <window-id> [nombre]|reload <pane-id>|close <pane|window|session> <id> [cliente]|wrap-kill-keys}" >&2; exit 2 ;;
+    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|tool <pre|post> [nombre]|focus <pane-id>|clear|rename <window-id> [nombre]|reload <pane-id>|close <pane|window|session> <id> [cliente]|wrap-kill-keys}" >&2; exit 2 ;;
 esac

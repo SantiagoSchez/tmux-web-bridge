@@ -8,14 +8,14 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "AskUserQuestion|ExitPlanMode",
-        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state question \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh tool pre \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "AskUserQuestion|ExitPlanMode",
-        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh state busy \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "~/.scripts/tmux-window-title.sh tool post \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }]
       }
     ],
     "Notification": [

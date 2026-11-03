@@ -47,6 +47,33 @@ function stateOf(icon: string, explicit = ''): PaneState | null {
   return ICON_STATES[icon] ?? null;
 }
 
+const PRIO: Record<PaneState, number> = { question: 60, attention: 50, done: 40, busy: 30, claude: 20, ssh: 10 };
+const STATE_ICONS = Object.fromEntries(Object.entries(ICON_STATES).map(([icon, state]) => [state, icon])) as Record<PaneState, string>;
+
+function mostUrgent(states: (PaneState | null)[]): PaneState | null {
+  let top: PaneState | null = null;
+  for (const s of states) if (s && (!top || PRIO[s] > PRIO[top])) top = s;
+  return top;
+}
+
+/**
+ * A window's state is its most urgent pane's, and a space's its most urgent window's.
+ * The host script keeps @win_icon and @space_icon for the tmux bar, but two Claudes
+ * changing at once can leave them behind; the panes' own icons are the ground truth.
+ */
+export function rollUpStates(sessions: SessionInfo[]): void {
+  for (const s of sessions) {
+    for (const w of s.windows) {
+      // A pane-less window (none in practice) keeps what tmux says.
+      if (!w.panes.length) continue;
+      w.state = mostUrgent(w.panes.map((p) => p.state));
+      w.icon = w.state ? STATE_ICONS[w.state] : '';
+    }
+    const top = mostUrgent(s.windows.map((w) => w.state));
+    s.icon = top ? STATE_ICONS[top] : '';
+  }
+}
+
 /** Context of a pane, for notifications. */
 export interface PaneContext {
   host: HostMonitor;
@@ -171,6 +198,7 @@ function parse(output: string): Parsed {
     s.windows.sort((a, b) => a.index - b.index);
     for (const w of s.windows) w.panes.sort((a, b) => a.index - b.index);
   }
+  rollUpStates(list);
   return { sessions: list, webSessions: [...webSessions.values()], limits: limits ?? [], kit, limitsInStatus };
 }
 
