@@ -382,11 +382,21 @@ h3 {
 }
 /* Phones: each account on one line, without its domain or the absolute reset dates. */
 @media (max-width: 600px) {
+  /* Too much for the width (several accounts, many states): it scrolls sideways instead of being cut. */
   .limits {
     justify-content: space-between;
     gap: 10px;
     padding-left: 12px;
     padding-right: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .limits::-webkit-scrollbar {
+    display: none;
+  }
+  .limits > * {
+    flex-shrink: 0;
   }
   .limit-meters {
     column-gap: 10px;
