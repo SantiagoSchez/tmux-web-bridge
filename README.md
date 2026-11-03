@@ -14,7 +14,7 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
 - **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y titulada «space › ventana». Un toque abre la que quieras.
 - **Terminal completa** (xterm.js) con barra de teclas para el móvil. Cada pestaña tiene su propia ventana actual, así que navegar desde el móvil no mueve el tmux del ordenador.
 - **Seleccionar y copiar con el dedo**: pulsación larga, asas para ajustar cada extremo y una lupa sobre el dedo.
-- **Dictado sin salir de tu red**: tocas 🎤 (o Ctrl+Shift+Espacio), hablas y el texto aparece en el panel. Lo transcribe Parakeet v3 en el servidor central, y un modelo local (Qwen3.5 4B) quita las muletillas y corrige los términos técnicos con lo que hay en la pantalla.
+- **Dictado sin salir de tu red**: mantienes pulsado 🎤 (o el atajo, Ctrl+Shift+Espacio por defecto) mientras hablas, sueltas y el texto aparece en el panel. En los ajustes eliges entre mantener o tocar y volver a tocar, y cambias el atajo. Lo transcribe Parakeet v3 en el servidor central, y un modelo local (Qwen3.5 4B) quita las muletillas y corrige los términos técnicos con lo que hay en la pantalla.
 - **Control completo** de spaces, ventanas y paneles; «Nuevo space» puede abrir un proyecto y arrancar `claude` en él.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.

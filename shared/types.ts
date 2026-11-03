@@ -1,6 +1,8 @@
 // Types shared by the hub (server/) and the web app (web/). Type-only: both sides
 // import them with `import type`, so nothing here exists at runtime.
 
+import type { DictationButton } from './dictation.js';
+
 /** Claude/tmux pane states set by host-kit/tmux-window-title.sh (most urgent first). */
 export type PaneState = 'question' | 'attention' | 'done' | 'busy' | 'claude' | 'ssh';
 
@@ -106,6 +108,10 @@ export interface HubSettings {
   dictationGlossary: string;
   /** Seconds the cleanup may take before the transcript is typed as heard (one of DICTATION_TIMEOUTS). */
   dictationTimeout: number;
+  /** The 🎤 button: hold to talk, or tap to start and tap again to send. */
+  dictationButton: DictationButton;
+  /** Starts dictating (held: until released; pressed: until pressed again). See parseShortcut. */
+  dictationShortcut: string;
 }
 
 /** What the hub's dictation can do right now. */

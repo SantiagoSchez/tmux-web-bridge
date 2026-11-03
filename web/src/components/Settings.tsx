@@ -3,8 +3,8 @@ import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
-import { DICTATION_TIMEOUTS } from '../../../shared/dictation';
-import { notReady } from '../dictation';
+import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut, shortcutProblem, type DictationButton } from '../../../shared/dictation';
+import { formatShortcut, notReady, recordingShortcut, shortcutFromEvent } from '../dictation';
 import { dialog, dictationInfo, hubSettings, sheet, toast, vapidKey } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
@@ -261,6 +261,71 @@ function MachineSettings() {
   );
 }
 
+const MIC_MODES: [DictationButton, string][] = [
+  ['hold', 'Mantener pulsado'],
+  ['toggle', 'Tocar y volver a tocar'],
+];
+
+/** The dictation shortcut: shown, and changed by pressing the new combination. */
+function ShortcutSetting({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const listening = recordingShortcut.value;
+  const [problem, setProblem] = useState<string | null>(null);
+  useEffect(() => {
+    if (!listening) return;
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.repeat || ['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(e.key)) return;
+      if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        recordingShortcut.value = false;
+        return;
+      }
+      const sc = shortcutFromEvent(e);
+      const why = parseShortcut(serializeShortcut(sc)) ? null : (shortcutProblem(sc) ?? 'Esa tecla no se puede usar.');
+      setProblem(why ? `${formatShortcut(sc)}: ${why}` : null);
+      if (why) return;
+      onChange(serializeShortcut(sc));
+      recordingShortcut.value = false;
+    };
+    globalThis.addEventListener('keydown', onKey, { capture: true });
+    return () => {
+      globalThis.removeEventListener('keydown', onKey, { capture: true });
+      recordingShortcut.value = false;
+    };
+  }, [listening]);
+  const current = parseShortcut(value);
+  return (
+    <section class="setting">
+      <h3>Atajo de teclado</h3>
+      <p class="dim small">Mantenlo pulsado mientras hablas y suéltalo para enviar, o púlsalo una vez para empezar y otra para enviar. Esc descarta lo grabado.</p>
+      <div class="row-btns">
+        <kbd class="shortcut">{listening ? 'Pulsa la combinación…' : current ? formatShortcut(current) : value}</kbd>
+        {listening ? (
+          <button class="btn" onClick={() => (recordingShortcut.value = false)}>
+            Cancelar
+          </button>
+        ) : (
+          <button
+            class="btn"
+            onClick={() => {
+              setProblem(null);
+              recordingShortcut.value = true;
+            }}
+          >
+            Cambiar
+          </button>
+        )}
+        {!listening && value !== DEFAULT_DICTATION_SHORTCUT && (
+          <button class="btn" onClick={() => onChange(DEFAULT_DICTATION_SHORTCUT)}>
+            Restablecer
+          </button>
+        )}
+      </div>
+      {problem && <p class="settings-state small">{problem}</p>}
+    </section>
+  );
+}
+
 const LLM_STATE = { unset: 'sin configurar en el servidor', ok: 'responde', down: 'no responde' } as const;
 
 /** Dictation, for the whole hub: on or off, how the transcript is cleaned up, and the glossary. */
@@ -280,8 +345,8 @@ function DictationSettings() {
         title="Dictado"
         desc={
           <>
-            Un botón 🎤 en la barra de teclas del móvil y junto a la letra en el escritorio (o Ctrl+Shift+Espacio): tócalo, habla y vuelve a tocarlo. El servidor central lo
-            transcribe y lo escribe en el panel, sin Enter. Nada sale de tu red. El modelo de voz (Parakeet v3) se descarga la primera vez (unos 670 MB) y ocupa
+            Un botón 🎤 en la barra de teclas del móvil y junto a la letra en el escritorio, y un atajo de teclado. El servidor central transcribe lo que dices y
+            lo escribe en el panel, sin Enter. Nada sale de tu red. El modelo de voz (Parakeet v3) se descarga la primera vez (unos 670 MB) y ocupa
             alrededor de 1 GB de memoria del servidor.
           </>
         }
@@ -292,6 +357,22 @@ function DictationSettings() {
       </Toggle>
       {s.dictation && (
         <>
+          <section class="setting">
+            <h3>Botón 🎤</h3>
+            <p class="dim small">
+              {s.dictationButton === 'toggle'
+                ? 'Tócalo para empezar a hablar y otra vez para enviarlo; ✕ lo descarta.'
+                : 'Mantenlo pulsado mientras hablas y suéltalo para enviarlo. Para descartarlo, desliza el dedo fuera del botón antes de soltar.'}
+            </p>
+            <div class="seg" role="radiogroup" aria-label="Botón del dictado">
+              {MIC_MODES.map(([id, label]) => (
+                <button key={id} role="radio" aria-checked={s.dictationButton === id} class={s.dictationButton === id ? 'on' : ''} onClick={() => set({ dictationButton: id })}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+          <ShortcutSetting value={s.dictationShortcut} onChange={(v) => set({ dictationShortcut: v })} />
           <section class="setting">
             <h3>Limpieza</h3>
             <p class="dim small">

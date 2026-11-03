@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { killPane, reloadWindow, windowMenu } from '../menus';
-import { toggleDictation } from '../dictation';
+import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
 import { connections, hubSettings, isSolo, multiHost, STATE_LABEL, type MenuItem } from '../state';
@@ -32,18 +32,25 @@ export function WindowView({ host, session, window, paneId }: Props) {
   }, [host.id, session.id, window.id, pane?.id]);
   useEffect(() => () => hub.setView(null), []);
 
-  // Ctrl+Shift+Space: dictate to this pane, and again to send it. Capture phase, before xterm sees the key.
+  // The dictation shortcut (Ajustes → Dictado): held, talk and let go; pressed, again to send. Capture
+  // phase, before xterm sees the key.
   const dictation = !!hubSettings.value?.dictation;
   useEffect(() => {
     if (!dictation || !pane) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey && e.shiftKey && !e.altKey && !e.metaKey && e.code === 'Space')) return;
+    const claim = (e: KeyboardEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      toggleDictation(host.id, pane.id);
     };
-    globalThis.addEventListener('keydown', onKey, { capture: true });
-    return () => globalThis.removeEventListener('keydown', onKey, { capture: true });
+    const onDown = (e: KeyboardEvent) => dictationKeyDown(e, host.id, pane.id) && claim(e);
+    const onUp = (e: KeyboardEvent) => dictationKeyUp(e) && claim(e);
+    globalThis.addEventListener('keydown', onDown, { capture: true });
+    globalThis.addEventListener('keyup', onUp, { capture: true });
+    globalThis.addEventListener('blur', dictationBlur);
+    return () => {
+      globalThis.removeEventListener('keydown', onDown, { capture: true });
+      globalThis.removeEventListener('keyup', onUp, { capture: true });
+      globalThis.removeEventListener('blur', dictationBlur);
+    };
   }, [dictation, host.id, pane?.id]);
 
   const selectPane = (id: string) => {

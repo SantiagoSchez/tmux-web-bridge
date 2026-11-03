@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DICTATION_TIMEOUTS } from '../../shared/dictation.js';
+import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
 import type { HubSettings } from '../../shared/types.js';
 
 /** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
@@ -18,6 +18,8 @@ const DEFAULTS: HubSettings = {
   dictationCleanup: 'llm',
   dictationGlossary: DEFAULT_GLOSSARY,
   dictationTimeout: 10,
+  dictationButton: 'hold',
+  dictationShortcut: DEFAULT_DICTATION_SHORTCUT,
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
@@ -75,6 +77,11 @@ export class SettingsStore extends EventEmitter {
     if (patch.dictationCleanup === 'llm' || patch.dictationCleanup === 'none') next.dictationCleanup = patch.dictationCleanup;
     if (typeof patch.dictationGlossary === 'string') next.dictationGlossary = patch.dictationGlossary.slice(0, GLOSSARY_MAX);
     if ((DICTATION_TIMEOUTS as readonly number[]).includes(patch.dictationTimeout as number)) next.dictationTimeout = patch.dictationTimeout!;
+    if (patch.dictationButton === 'hold' || patch.dictationButton === 'toggle') next.dictationButton = patch.dictationButton;
+    if (typeof patch.dictationShortcut === 'string') {
+      const sc = parseShortcut(patch.dictationShortcut);
+      if (sc) next.dictationShortcut = serializeShortcut(sc);
+    }
     this.state = next;
     this.save();
     this.emit('change', next);

@@ -8,6 +8,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { isTouch, prefs } from '../prefs';
+import { dictationEnded } from '../dictation';
 import { clientId, toast } from '../state';
 import { appearance, TERM_THEMES } from '../theme';
 import { hub } from '../ws';
@@ -871,6 +872,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     term.options.fontSize = fontSize;
     fitRef.current?.fit();
   }, [fontSize]);
+
+  // A dictation on this pane ended: on a computer the terminal takes the keyboard back (the 🎤 had it),
+  // ready for Enter. On a phone the keyboard stays as it was, like with the key buttons.
+  const ended = dictationEnded.value;
+  useEffect(() => {
+    if (ended?.pane === pane.id && !isTouch) termRef.current?.focus();
+  }, [ended]);
 
   useEffect(() => {
     const term = termRef.current;

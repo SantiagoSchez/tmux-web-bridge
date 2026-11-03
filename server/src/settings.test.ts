@@ -60,3 +60,16 @@ test('single-window spaces fold into one row unless turned off', () =>
     store.update({ soloSpaces: 'yes' as unknown as boolean });
     assert.equal(new SettingsStore(dir).value.soloSpaces, false);
   }));
+
+test('the dictation button holds by default, and the shortcut keeps only valid combinations', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.equal(store.value.dictationButton, 'hold');
+    assert.equal(store.value.dictationShortcut, 'ctrl+shift+Space');
+    store.update({ dictationButton: 'toggle', dictationShortcut: 'alt+KeyD' });
+    store.update({ dictationButton: 'press' as unknown as 'hold', dictationShortcut: 'KeyD' });
+    store.update({ dictationShortcut: 'ctrl+KeyC' });
+    const saved = new SettingsStore(dir).value;
+    assert.equal(saved.dictationButton, 'toggle');
+    assert.equal(saved.dictationShortcut, 'alt+KeyD');
+  }));
