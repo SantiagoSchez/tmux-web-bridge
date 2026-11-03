@@ -199,6 +199,32 @@ function keyboardShown(): boolean {
   return h < fullHeight - 120;
 }
 
+/**
+ * The keyboard was put away while the input proxy kept the focus (Android's back
+ * gesture): seen as the visible viewport growing back at the same width (a rotation
+ * changes the width). Only then do the key buttons let go of the focus. Guessing it
+ * from the height alone (keyboardShown) went wrong at times, and every key closed the
+ * keyboard.
+ */
+let keyboardDismissed = false;
+{
+  const vv = window.visualViewport;
+  let base = { w: vv?.width ?? 0, low: vv?.height ?? 0 };
+  vv?.addEventListener('resize', () => {
+    const { width: w, height: h } = vv;
+    if (w !== base.w) {
+      base = { w, low: h };
+      keyboardDismissed = false;
+    } else if (h < base.low) {
+      base.low = h;
+      keyboardDismissed = false;
+    } else if (h > base.low + 120) {
+      base.low = h;
+      if (document.activeElement?.classList.contains('term-input')) keyboardDismissed = true;
+    }
+  });
+}
+
 const LONG_PRESS_MS = 450;
 /** What ends a word for a long press: xterm's own separators plus the tmux pane border. */
 const WORD_SEPARATORS = ' ()[]{}\'"`,│';
@@ -588,13 +614,17 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const el = input.current;
     if (!el) return;
     if (document.activeElement === el) {
-      if (keyboardShown()) return;
+      if (keyboardShown() && !keyboardDismissed) return;
       el.blur();
     }
+    keyboardDismissed = false;
     el.focus({ preventScroll: true });
   };
   /** Scrolling to read: the keyboard goes away (what was typed is already sent). */
-  const hideKeyboard = () => input.current?.blur();
+  const hideKeyboard = () => {
+    keyboardDismissed = false;
+    input.current?.blur();
+  };
 
   // Terminal + socket lifetime: one per space (the component is keyed by session).
   useEffect(() => {
@@ -693,6 +723,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     ws.onopen = () => {
       retries.current = 0;
       setState('open');
+      // The layout may have settled while connecting (the pending strip, the pane tabs, the key bar):
+      // resizes then were not sent, and tmux would keep the size of the moment the socket was opened.
+      fit.fit();
+      ws.send(JSON.stringify({ t: 'r', cols: term.cols, rows: term.rows }));
     };
     ws.onmessage = (ev) => {
       if (typeof ev.data === 'string') {
@@ -906,7 +940,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
    */
   const keepFocus = (e: Event) => {
     e.preventDefault();
-    if (document.activeElement === input.current && !keyboardShown()) hideKeyboard();
+    if (document.activeElement === input.current && keyboardDismissed) hideKeyboard();
   };
   const keybarButton = (b: KeybarButton, i: number) => {
     const label = b.label || defaultLabel(b);
