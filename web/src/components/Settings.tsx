@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
+import { prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { DICTATION_TIMEOUTS } from '../../../shared/dictation';
 import { notReady } from '../dictation';
@@ -126,7 +127,13 @@ export function Settings() {
   );
 }
 
-/** This browser only: its notifications and whether using it silences them. */
+const THEMES: [Prefs['theme'], string][] = [
+  ['dark', 'Oscuro'],
+  ['light', 'Claro'],
+  ['system', 'Sistema'],
+];
+
+/** This browser only: its look, its notifications and whether using it silences them. */
 function DeviceSettings() {
   const [push, setPush] = useState<PushState>('busy');
   useEffect(() => {
@@ -166,8 +173,21 @@ function DeviceSettings() {
   };
 
   const presence = presenceState.value;
+  const theme = prefs.value.theme;
   return (
     <>
+      <section class="setting">
+        <h3>Tema</h3>
+        <p class="dim small">Los colores del panel y del terminal en este dispositivo. «Sistema» sigue el modo claro u oscuro que tenga configurado.</p>
+        <div class="seg" role="radiogroup" aria-label="Tema">
+          {THEMES.map(([id, label]) => (
+            <button key={id} role="radio" aria-checked={theme === id} class={theme === id ? 'on' : ''} onClick={() => setPref('theme', id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       <Toggle
         title="Notificaciones"
         desc="Avisos de 🙋 preguntas, 💬 permisos y ✅ tareas terminadas de Claude en este dispositivo, salvo que ya lo estés mirando."

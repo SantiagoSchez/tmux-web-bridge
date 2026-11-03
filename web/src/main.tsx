@@ -6,6 +6,7 @@ import { resumePresence } from './presence';
 import { navigate } from './router';
 import { bindShortcuts } from './shortcuts';
 import './styles.css';
+import './theme';
 
 void boot();
 bindShortcuts();

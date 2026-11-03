@@ -1,4 +1,4 @@
-/* Catppuccin Frappé, like the tmux theme. Dark only: pane contents assume it. */
+/* Catppuccin: Frappé (dark, like the tmux theme) or Latte (light), chosen per device in the settings. */
 
 /* JetBrains Mono patched with Nerd Fonts (OFL, see /fonts/OFL.txt), served by the hub.
    Its Powerline separators and prompt icons are drawn to fit its own cells, so the
@@ -62,6 +62,10 @@
   --blue: #8caaee;
   --teal: #81c8be;
   --lavender: #babbf1;
+  /* Behind text drawn over a coloured bar, and the error toast. */
+  --halo: #0009;
+  --error-bg: #4a2f38;
+  --error-fg: #f2c4c8;
 
   --mono: 'TWB Mono', 'TWB Symbols', ui-monospace, Menlo, 'Roboto Mono', monospace;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -70,6 +74,32 @@
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
+}
+/* Catppuccin Latte. theme.ts sets data-theme (light or dark, "system" already resolved). */
+:root[data-theme='light'] {
+  --crust: #dce0e8;
+  --mantle: #e6e9ef;
+  --base: #eff1f5;
+  --surface0: #ccd0da;
+  --surface1: #bcc0cc;
+  --surface2: #acb0be;
+  --overlay0: #9ca0b0;
+  --overlay1: #7c7f93;
+  --subtext0: #6c6f85;
+  --subtext1: #5c5f77;
+  --text: #4c4f69;
+  --mauve: #8839ef;
+  --peach: #fe640b;
+  --yellow: #df8e1d;
+  --green: #40a02b;
+  --red: #d20f39;
+  --blue: #1e66f5;
+  --teal: #179299;
+  --lavender: #7287fd;
+  --halo: #fff9;
+  --error-bg: #f5d0d7;
+  --error-fg: #8a0f2c;
+  color-scheme: light;
 }
 
 * {
@@ -310,7 +340,7 @@ h3 {
   line-height: 16px;
   font-weight: 700;
   color: var(--text);
-  text-shadow: 0 0 3px #0009;
+  text-shadow: 0 0 3px var(--halo);
 }
 .limit-left {
   overflow: hidden;
@@ -458,7 +488,7 @@ h3 {
 }
 .dot-open {
   background: var(--green);
-  box-shadow: 0 0 0 3px #a6d18926;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 15%, transparent);
 }
 .dot-connecting {
   background: var(--yellow);
@@ -485,7 +515,7 @@ h3 {
   white-space: nowrap;
 }
 .pill-alert {
-  background: #ca9ee62e;
+  background: color-mix(in srgb, var(--mauve) 18%, transparent);
   color: var(--mauve);
 }
 .pill-dim {
@@ -514,14 +544,14 @@ h3 {
 .conn-btn.conn-many {
   border-color: var(--peach);
   color: var(--peach);
-  background: #ef9f761f;
+  background: color-mix(in srgb, var(--peach) 12%, transparent);
 }
 
 .banner {
   margin: 8px 0 4px;
   padding: 10px 12px;
   border-radius: var(--radius);
-  background: #e782841f;
+  background: color-mix(in srgb, var(--red) 12%, transparent);
   color: var(--red);
   font-size: 14px;
 }
@@ -728,7 +758,7 @@ body.dragging-host * {
   border-bottom: 0;
 }
 .session.holds-current {
-  border-color: #ca9ee666;
+  border-color: color-mix(in srgb, var(--mauve) 40%, transparent);
 }
 .session-summary {
   margin-left: auto;
@@ -792,7 +822,7 @@ body.dragging-host * {
   padding: 0;
 }
 .windows li + li {
-  border-top: 1px solid #41455980;
+  border-top: 1px solid color-mix(in srgb, var(--surface0) 50%, transparent);
 }
 .win-row {
   display: flex;
@@ -957,8 +987,8 @@ body.dragging-host * {
   border-top-color: var(--state-color, var(--surface2));
 }
 .tile.current {
-  border-color: #ca9ee699;
-  border-top-color: var(--state-color, #ca9ee699);
+  border-color: color-mix(in srgb, var(--mauve) 60%, transparent);
+  border-top-color: var(--state-color, color-mix(in srgb, var(--mauve) 60%, transparent));
 }
 .tile-head {
   display: flex;
@@ -1304,7 +1334,7 @@ body.dragging-host * {
   text-align: center;
 }
 .loupe .sel {
-  background: #62688099;
+  background: color-mix(in srgb, var(--surface2) 60%, transparent);
 }
 .loupe .cur {
   outline: 2px solid var(--mauve);
@@ -1627,7 +1657,7 @@ body.dragging-host * {
   border: 1px solid var(--surface0);
 }
 .conn.me {
-  border-color: #ca9ee666;
+  border-color: color-mix(in srgb, var(--mauve) 40%, transparent);
 }
 .conn-top {
   display: flex;
@@ -1819,11 +1849,11 @@ body.dragging-host * {
 .toast-close:hover,
 .toast-close:focus-visible {
   opacity: 1;
-  background: #ffffff14;
+  background: color-mix(in srgb, currentColor 8%, transparent);
 }
 .toast-error {
-  background: #4a2f38;
-  color: #f2c4c8;
+  background: var(--error-bg);
+  color: var(--error-fg);
 }
 
 @media (prefers-reduced-motion: reduce) {

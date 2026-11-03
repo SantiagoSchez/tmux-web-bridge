@@ -1,14 +1,19 @@
 import type { CSSProperties, JSX } from 'preact';
-import { ANSI, XTERM_THEME } from './theme';
+import { TERM_THEMES, type Appearance } from './theme';
 
 /** The 256 colours: the theme's 16, the 6×6×6 cube and the grey ramp, as xterm draws them. */
-const PALETTE: string[] = (() => {
-  const p = [...ANSI.normal, ...ANSI.bright];
+function palette(theme: Appearance): string[] {
+  const { ansi } = TERM_THEMES[theme];
+  const p = [...ansi.normal, ...ansi.bright];
   const steps = [0, 95, 135, 175, 215, 255];
   for (const r of steps) for (const g of steps) for (const b of steps) p.push(`rgb(${r},${g},${b})`);
   for (let i = 0; i < 24; i++) p.push(`rgb(${8 + i * 10},${8 + i * 10},${8 + i * 10})`);
   return p;
-})();
+}
+const PALETTES: Record<Appearance, string[]> = { dark: palette('dark'), light: palette('light') };
+/** The palette of the screen being rendered (renderAnsi is synchronous). */
+let PALETTE = PALETTES.dark;
+let XTERM_THEME = TERM_THEMES.dark.xterm;
 
 interface Attrs {
   fg: string | null;
@@ -91,7 +96,9 @@ function styleOf(a: Attrs): CSSProperties | null {
 const ESC = /\x1b(?:\[([0-9;:?]*)([@-~])|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|[^[\]])/g;
 
 /** A captured screen as text and coloured spans, for a <pre>-like element. */
-export function renderAnsi(text: string): (string | JSX.Element)[] {
+export function renderAnsi(text: string, theme: Appearance): (string | JSX.Element)[] {
+  PALETTE = PALETTES[theme];
+  XTERM_THEME = TERM_THEMES[theme].xterm;
   const out: (string | JSX.Element)[] = [];
   let attrs = PLAIN;
   let buf = '';

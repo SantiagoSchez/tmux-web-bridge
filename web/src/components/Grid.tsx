@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { HostInfo, PanePreview, PreviewsResponse, SessionInfo, WindowInfo } from '../../../shared/types';
 import { renderAnsi } from '../ansi';
+import { appearance } from '../theme';
 import { killSession, killWindow } from '../menus';
 import { isDesktop } from '../prefs';
 import { openWindow, route, toggleGrid } from '../router';
@@ -150,7 +151,8 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
 }
 
 function PaneShot({ preview: p }: { preview: PanePreview }) {
-  const content = useMemo(() => renderAnsi(p.text), [p.text]);
+  const theme = appearance.value;
+  const content = useMemo(() => renderAnsi(p.text, theme), [p.text, theme]);
   return (
     <span class="tile-pane" style={{ '--l': p.left, '--t': p.top, '--w': p.width, '--h': p.height }}>
       {content}

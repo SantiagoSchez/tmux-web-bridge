@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { isTouch, prefs } from '../prefs';
 import { clientId, toast } from '../state';
-import { XTERM_THEME } from '../theme';
+import { appearance, TERM_THEMES } from '../theme';
 import { hub } from '../ws';
 import { AttachButton } from './Attach';
 import { MicButton } from './Mic';
@@ -580,6 +580,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   /** A handle being dragged: the other end of the selection, and from the finger to the dragged end. */
   const handleDrag = useRef<{ fixed: number; dx: number; dy: number } | null>(null);
   const fontSize = prefs.value.termFontSize;
+  const theme = appearance.value;
 
   const sendRaw = (d: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ t: 'i', d }));
@@ -648,7 +649,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const term = new Terminal({
       fontFamily: FONT_FAMILY,
       fontSize,
-      theme: XTERM_THEME,
+      theme: TERM_THEMES[theme].xterm,
       cursorBlink: true,
       allowProposedApi: true,
       scrollback: 2000,
@@ -869,6 +870,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     term.options.fontSize = fontSize;
     fitRef.current?.fit();
   }, [fontSize]);
+
+  useEffect(() => {
+    if (termRef.current) termRef.current.options.theme = TERM_THEMES[theme].xterm;
+  }, [theme]);
 
   const toggle = (m: Mod) => {
     const next = new Set(mods);

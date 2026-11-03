@@ -7,9 +7,11 @@ export interface Prefs {
   collapsedSessions: string[];
   /** No pushes to any device while you are using this one (Idle Detection). */
   silenceWhilePresent: boolean;
+  /** Light or dark, or whatever the device uses. */
+  theme: 'dark' | 'light' | 'system';
 }
 
-const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false };
+const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark' };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {
