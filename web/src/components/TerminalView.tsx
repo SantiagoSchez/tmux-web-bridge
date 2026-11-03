@@ -8,6 +8,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, keySeq, type KeybarButton } from '../../../shared/keybar';
+import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
 import { clientId, hubSettings, toast } from '../state';
@@ -120,37 +121,36 @@ const SPECIAL_KEYS: Record<string, string> = {
  * Typing on a phone. Android keyboards (Gboard...) compose each word and xterm.js
  * only receives it when the word is committed: letters show up late and some get
  * lost when the keyboard corrects or predicts. Instead, a plain textarea takes the
- * keyboard and every change is sent at once as a diff against the previous value:
- * new characters are typed, removed ones become backspaces (so autocorrect simply
- * rewrites the word). A zero-width sentinel keeps the field non-empty, so the
- * keyboard's backspace always produces an event.
+ * keyboard and every change is sent at once as a diff (typedDiff) against what was
+ * sent before. The zero-width sentinel keeps the field non-empty, so the keyboard's
+ * backspace always produces an event.
  */
-const SENTINEL = '​';
-
 function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods: () => Set<Mod>, clearMods: () => void): () => void {
-  let prev = SENTINEL;
+  /** The field as the terminal has it (typedDiff may keep a letter's case). */
+  let sent = SENTINEL;
+  /** The field's last value seen. */
+  let field = SENTINEL;
   let composing = false;
   const reset = () => {
     el.value = SENTINEL;
-    prev = SENTINEL;
+    sent = field = SENTINEL;
     el.setSelectionRange(1, 1);
   };
   reset();
 
   const onInput = () => {
     const v = el.value;
-    let p = 0;
-    while (p < prev.length && p < v.length && prev[p] === v[p]) p++;
-    const removed = prev.length - p;
-    let added = v.slice(p).replace(/​/g, '').replace(/\n/g, '\r');
+    const diff = typedDiff(sent, v);
+    let added = diff.added;
     const m = mods();
     if (m.size && added.length === 1) {
       added = withMods(added, m);
       clearMods();
     }
-    const out = '\x7f'.repeat(removed) + added;
+    const out = '\x7f'.repeat(diff.removed) + added;
     if (out) send(out);
-    prev = v;
+    sent = diff.sent;
+    field = v;
     // Start over between words (never mid-composition): keeps the field short and the sentinel in place.
     if (!composing && (!v.startsWith(SENTINEL) || v.length > 40 || /[\s\r\n]$/.test(v))) reset();
   };
@@ -172,7 +172,7 @@ function bindInputProxy(el: HTMLTextAreaElement, send: (d: string) => void, mods
     composing = false;
     // Some keyboards fire the final input before compositionend: re-check now.
     setTimeout(() => {
-      if (!composing && el.value === prev && (prev.length > 40 || /[\s\r\n]$/.test(prev))) reset();
+      if (!composing && el.value === field && (field.length > 40 || /[\s\r\n]$/.test(field))) reset();
     }, 0);
   };
   el.addEventListener('input', onInput);
