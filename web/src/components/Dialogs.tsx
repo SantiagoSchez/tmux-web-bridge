@@ -70,6 +70,16 @@ function copyResume(commands: string[], closing: boolean): void {
   );
 }
 
+/** How the Claude a dialog starts runs: auto mode, or skipping the permissions. Remembered. */
+function SkipPermissions() {
+  return (
+    <label class="kb-check skip-permissions" title="Sin marcar, Claude arranca en auto mode">
+      <input type="checkbox" checked={prefs.value.skipPermissions} onChange={(e) => setPref('skipPermissions', e.currentTarget.checked)} />
+      Saltarse los permisos
+    </label>
+  );
+}
+
 function ConfirmDialog({ d, close }: { d: Extract<Dialog, { kind: 'confirm' }>; close: () => void }) {
   return (
     <Sheet title={d.title} onClose={close}>
@@ -91,6 +101,7 @@ function ConfirmDialog({ d, close }: { d: Extract<Dialog, { kind: 'confirm' }>; 
         </ul>
       )}
       <div class="sheet-actions">
+        {d.permissions && <SkipPermissions />}
         <button class="btn" onClick={close}>
           Cancelar
         </button>
@@ -235,10 +246,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         {list && !items.length && !valid && <li class="dim pad">No hay proyectos.</li>}
       </ul>
       <div class="sheet-actions">
-        <label class="kb-check project-skip" title="Sin marcar, Claude arranca en auto mode">
-          <input type="checkbox" checked={prefs.value.skipPermissions} onChange={(e) => setPref('skipPermissions', e.currentTarget.checked)} />
-          Saltarse los permisos
-        </label>
+        <SkipPermissions />
         <button
           class="btn"
           onClick={() => {

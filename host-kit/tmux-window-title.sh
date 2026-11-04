@@ -510,14 +510,20 @@ session_dir() {
 # arranca la shell por defecto en el mismo directorio, que vuelve a leer .zshrc. Si el
 # panel tenía un Claude, la shell nueva lo reanuda con su conversación (claude --resume,
 # como la restauración de tmux-resurrect) y, al salir de él, deja otra shell limpia.
+# El modo, elegido en el diálogo: «auto» (--permission-mode auto) o «skip»
+# (--dangerously-skip-permissions); sin él, Claude arranca con su modo por defecto.
 cmd_reload() {
-    local pane="${1:-}" state="" name="" sid="" cmd dir shell claude resume=""
+    local pane="${1:-}" mode="${2:-}" state="" name="" sid="" cmd dir shell claude resume=""
     [ -n "$pane" ] || return 0
     cmd="$(tmux display-message -p -t "$pane" '#{pane_current_command}' 2>/dev/null)" || return 0
     dir="$(tmux display-message -p -t "$pane" '#{pane_current_path}' 2>/dev/null)"
     shell="$(tmux show-options -gqv default-shell 2>/dev/null)"
     [ -n "$shell" ] || shell="${SHELL:-/bin/sh}"
     claude="${TMUX_WEB_CLAUDE_CMD:-claude}"
+    case "$mode" in
+        auto) claude="$claude --permission-mode auto" ;;
+        skip) claude="$claude --dangerously-skip-permissions" ;;
+    esac
     [ -f "$STATE_DIR/$pane" ] && IFS=$'\t' read -r state name sid < "$STATE_DIR/$pane"
 
     if [ -n "${sid:-}" ] && [ "${state:-}" != "ssh" ]; then
@@ -734,7 +740,7 @@ case "$action" in
     focus)       cmd_focus "${1:-}" ;;
     clear)       cmd_clear ;;
     rename)      cmd_rename "${1:-}" "${2:-}" ;;
-    reload)      cmd_reload "${1:-}" ;;
+    reload)      cmd_reload "${1:-}" "${2:-}" ;;
     close)       cmd_close "${1:-}" "${2:-}" "${3:-}" ;;
     close-popup) cmd_close_popup "${1:-}" "${2:-}" ;;
     wrap-kill-keys) cmd_wrap_kill_keys ;;

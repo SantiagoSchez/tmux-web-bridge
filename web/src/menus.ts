@@ -201,7 +201,8 @@ export function reloadWindow(host: HostInfo, window: WindowInfo): void {
     message,
     confirm: 'Recargar',
     danger: busy.length > 0,
-    onSubmit: () => void hub.action(host.id, { op: 'reloadWindow', window: window.id }),
+    permissions: claude.length > 0,
+    onSubmit: () => void hub.action(host.id, { op: 'reloadWindow', window: window.id, skipPermissions: prefs.value.skipPermissions }),
   };
 }
 

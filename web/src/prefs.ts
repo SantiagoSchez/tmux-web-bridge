@@ -9,7 +9,7 @@ export interface Prefs {
   silenceWhilePresent: boolean;
   /** Light or dark, or whatever the device uses. */
   theme: 'dark' | 'light' | 'system';
-  /** "Abrir proyecto" starts claude with --dangerously-skip-permissions instead of auto mode. */
+  /** "Abrir proyecto" and "Recargar" start claude with --dangerously-skip-permissions instead of auto mode. */
   skipPermissions: boolean;
 }
 

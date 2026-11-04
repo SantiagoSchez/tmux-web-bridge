@@ -182,12 +182,14 @@ export async function runAction(host: HostMonitor, action: ActionOp, latestRelea
       for (const line of panes) {
         const [pane, path] = line.split('\t');
         if (!PANE_ID.test(pane)) continue;
-        // With host-kit, the script also resumes Claude; without it, a fresh shell is all we can do.
+        // With host-kit, the script also resumes Claude (a kit older than 1.8 ignores the
+        // permission mode); without it, a fresh shell is all we can do.
+        const mode = action.skipPermissions ? 'skip' : 'auto';
         const quoted = `"${(path || '~').replace(/["\\$]/g, '\\$&')}"`;
         await run([
           'if-shell',
           'test -x "$HOME/.scripts/tmux-window-title.sh"',
-          `run-shell -b '"$HOME/.scripts/tmux-window-title.sh" reload ${pane}'`,
+          `run-shell -b '"$HOME/.scripts/tmux-window-title.sh" reload ${pane} ${mode}'`,
           `respawn-pane -k -t ${pane} -c ${quoted}`,
         ]);
       }

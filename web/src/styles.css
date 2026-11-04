@@ -1665,8 +1665,8 @@ body.dragging-host * {
   overflow-y: auto;
   margin-top: 8px;
 }
-/* Left of "Space vacío": how claude starts in the project opened. */
-.project-skip {
+/* Left of a dialog's buttons: how the Claude it starts runs. */
+.skip-permissions {
   margin-right: auto;
 }
 .project-text {
