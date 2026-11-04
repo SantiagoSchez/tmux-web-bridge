@@ -68,10 +68,19 @@ async function listProjects(host: HostMonitor): Promise<ProjectList> {
 }
 
 /**
+ * The projects command with the permission mode chosen in the panel: auto mode, or
+ * skipping the permissions. Only a claude command gets the flag; any other is typed as is.
+ */
+export function projectCommand(command: string, skipPermissions: boolean): string {
+  if (!/^(\S*\/)?claude(\s|$)/.test(command)) return command;
+  return `${command} ${skipPermissions ? '--dangerously-skip-permissions' : '--permission-mode auto'}`;
+}
+
+/**
  * Opens a project like `c <name>`: a space named after it, in its folder, running
  * the projects command (claude). If that space is already open, it is reused.
  */
-async function openProject(host: HostMonitor, rawName: string, create: boolean): Promise<{ session: string; created: boolean }> {
+async function openProject(host: HostMonitor, rawName: string, create: boolean, skipPermissions: boolean): Promise<{ session: string; created: boolean }> {
   const p = host.hostConfig.projects;
   if (!p) throw new Error('Esta máquina no tiene carpeta de proyectos');
   const name = projectName(rawName);
@@ -92,7 +101,7 @@ async function openProject(host: HostMonitor, rawName: string, create: boolean):
   const abs = (await host.exec.shell(`cd ${hostPath(dir)} && pwd`)).trim();
   const out = await host.exec.run(['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs]);
   const [session, pane] = out.trim().split(' ');
-  if (p.command) await host.exec.run(['send-keys', '-t', pane, p.command, 'Enter']);
+  if (p.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(p.command, skipPermissions), 'Enter']);
   return { session, created: true };
 }
 
@@ -127,7 +136,7 @@ export async function runAction(host: HostMonitor, action: ActionOp, latestRelea
       if (!host.hostConfig.projects) throw new Error('Esta máquina no tiene carpeta de proyectos');
       return listProjects(host);
     case 'openProject':
-      return openProject(host, action.name, action.create === true);
+      return openProject(host, action.name, action.create === true, action.skipPermissions === true);
     case 'renameSession':
       await run(['rename-session', '-t', check(action.session, SESSION_ID, 'sesión'), '--', sessionName(action.name)]);
       return;

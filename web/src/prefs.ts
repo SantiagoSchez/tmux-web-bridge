@@ -9,9 +9,11 @@ export interface Prefs {
   silenceWhilePresent: boolean;
   /** Light or dark, or whatever the device uses. */
   theme: 'dark' | 'light' | 'system';
+  /** "Abrir proyecto" starts claude with --dangerously-skip-permissions instead of auto mode. */
+  skipPermissions: boolean;
 }
 
-const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark' };
+const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {

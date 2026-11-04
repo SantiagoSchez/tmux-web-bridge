@@ -207,7 +207,7 @@ export interface ConnectionInfo {
 export type ActionOp =
   | { op: 'newSession'; name?: string }
   | { op: 'listProjects' }
-  | { op: 'openProject'; name: string; create?: boolean }
+  | { op: 'openProject'; name: string; create?: boolean; skipPermissions?: boolean }
   | { op: 'renameSession'; session: string; name: string }
   | { op: 'killSession'; session: string }
   | { op: 'newWindow'; session: string; name?: string }

@@ -79,7 +79,9 @@ hosts:
     projects:
       dir: ~/proyectos                     # cada carpeta es un proyecto (rutas de esa máquina)
       shortcuts: ~/.c_dirs                 # opcional: atajos nombre="ruta" de `c`
-      command: claude                      # se escribe en el space nuevo (al salir queda la shell)
+      command: claude                      # se escribe en el space nuevo (al salir queda la shell); si es claude,
+                                           # se le añade --permission-mode auto o, con «Saltarse los permisos»
+                                           # marcado en el diálogo, --dangerously-skip-permissions
 
 # Dictado (se activa en la app: Ajustes → Dictado). El modelo de voz, Parakeet v3, corre en
 # el propio servidor central y se descarga en dataDir/models la primera vez (unos 670 MB;

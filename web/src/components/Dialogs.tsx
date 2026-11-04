@@ -2,6 +2,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
+import { prefs, setPref } from '../prefs';
 import { dialog, dismissToast, toast, toasts, type Dialog } from '../state';
 import { IconClose } from './icons';
 import { hub } from '../ws';
@@ -178,7 +179,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const open = async (name: string, create = false) => {
     setBusy(true);
     try {
-      const res = await hub.action<{ session: string }>(d.host.id, { op: 'openProject', name, create });
+      const res = await hub.action<{ session: string }>(d.host.id, { op: 'openProject', name, create, skipPermissions: prefs.value.skipPermissions });
       close();
       openSessionWhenReady(d.host.id, res.session);
     } catch {
@@ -234,6 +235,10 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         {list && !items.length && !valid && <li class="dim pad">No hay proyectos.</li>}
       </ul>
       <div class="sheet-actions">
+        <label class="kb-check project-skip" title="Sin marcar, Claude arranca en auto mode">
+          <input type="checkbox" checked={prefs.value.skipPermissions} onChange={(e) => setPref('skipPermissions', e.currentTarget.checked)} />
+          Saltarse los permisos
+        </label>
         <button
           class="btn"
           onClick={() => {

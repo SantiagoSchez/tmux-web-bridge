@@ -1665,6 +1665,10 @@ body.dragging-host * {
   overflow-y: auto;
   margin-top: 8px;
 }
+/* Left of "Space vacío": how claude starts in the project opened. */
+.project-skip {
+  margin-right: auto;
+}
 .project-text {
   display: flex;
   flex-direction: column;
