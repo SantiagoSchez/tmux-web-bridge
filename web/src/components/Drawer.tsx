@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useRef } from 'preact/hooks';
 import { route } from '../router';
+import { drawerOpen } from '../state';
 import { Header } from './Header';
 import { Tree } from './Tree';
 
@@ -8,7 +9,6 @@ import { Tree } from './Tree';
 export const EDGE = 36;
 const OPEN_AT = 70;
 
-export const drawerOpen = signal(false);
 /** Finger offset while dragging (px of drawer showing), null when not dragging. */
 const dragX = signal<number | null>(null);
 

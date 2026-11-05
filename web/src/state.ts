@@ -141,5 +141,7 @@ export function openFolderSettings(hostId: string): void {
   settingsTab.value = 'folders';
   sheet.value = 'settings';
 }
+/** The list as a drawer over a window, on phones. */
+export const drawerOpen = signal(false);
 /** The Cmd+K search, to jump to any window. */
 export const paletteOpen = signal(false);
