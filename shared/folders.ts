@@ -24,10 +24,12 @@ export function baseName(path: string): string {
   return path.replace(/\/+$/, '').split('/').pop() || path;
 }
 
-/** A path of a machine written in full: ~ becomes its home folder. */
-export function absolutePath(path: string, home: string): string {
-  if (!home || (path !== '~' && !path.startsWith('~/'))) return path;
-  return home.replace(/\/+$/, '') + path.slice(1) || '/';
+/** A path of a machine written short: its home folder, also when written out, becomes ~. */
+export function homePath(path: string, home: string): string {
+  const h = home.replace(/\/+$/, '');
+  if (!h) return path;
+  if (path === h) return '~';
+  return path.startsWith(`${h}/`) ? `~${path.slice(h.length)}` : path;
 }
 
 /** A folder inside another one. */

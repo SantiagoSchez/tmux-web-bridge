@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { absolutePath, childPath, folderNameProblem } from '../../../shared/folders';
+import { childPath, folderNameProblem, homePath } from '../../../shared/folders';
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
@@ -202,8 +202,8 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const q = query.trim();
   const all = useMemo(() => {
     const out: FolderItem[] = [];
-    // Under each one, where it is: its absolute path on the machine.
-    const abs = (path: string) => absolutePath(path, list?.home ?? '');
+    // Under each one, where it is on the machine: its whole path, with ~ for the home folder.
+    const abs = (path: string) => homePath(path, list?.home ?? '');
     for (const f of list?.folders ?? []) {
       const gone = f.missing ? ' · no está' : '';
       if (f.subfolders && !f.missing) {
@@ -271,7 +271,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
               <span class="menu-icon">＋</span>
               <span class="project-text">
                 <span class="project-name">Crear «{q}»</span>
-                <span class="project-hint">en {absolutePath(f.path, list?.home ?? '')}</span>
+                <span class="project-hint">en {homePath(f.path, list?.home ?? '')}</span>
               </span>
             </button>
           </li>
