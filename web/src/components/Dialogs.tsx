@@ -1,6 +1,6 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { folderNameProblem } from '../../../shared/folders';
+import { absolutePath, childPath, folderNameProblem } from '../../../shared/folders';
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
@@ -202,15 +202,14 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const q = query.trim();
   const all = useMemo(() => {
     const out: FolderItem[] = [];
-    const folders = list?.folders ?? [];
-    for (const f of folders) {
+    // Under each one, where it is: its absolute path on the machine.
+    const abs = (path: string) => absolutePath(path, list?.home ?? '');
+    for (const f of list?.folders ?? []) {
       const gone = f.missing ? ' · no está' : '';
       if (f.subfolders && !f.missing) {
-        // Where it comes from, only when there is more than one place to come from.
-        const hint = folders.length > 1 ? `en ${f.name}` : '';
-        for (const c of f.children) out.push({ key: `${f.path}\t${c}`, name: c, hint, folder: f.path, sub: c });
+        for (const c of f.children) out.push({ key: `${f.path}\t${c}`, name: c, hint: abs(childPath(f.path, c)), folder: f.path, sub: c });
       } else {
-        const hint = f.subfolders ? `${f.path} (subcarpetas)${gone}` : `${f.path}${gone}`;
+        const hint = f.subfolders ? `${abs(f.path)} (subcarpetas)${gone}` : `${abs(f.path)}${gone}`;
         out.push({ key: `${f.path}\t${f.subfolders ? '*' : ''}`, name: f.name, hint, folder: f.path, missing: f.missing });
       }
     }
@@ -272,7 +271,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
               <span class="menu-icon">＋</span>
               <span class="project-text">
                 <span class="project-name">Crear «{q}»</span>
-                <span class="project-hint">en {f.path}</span>
+                <span class="project-hint">en {absolutePath(f.path, list?.home ?? '')}</span>
               </span>
             </button>
           </li>

@@ -175,6 +175,8 @@ export interface UpdateInfo {
  */
 export interface ProjectList {
   folders: (SavedFolder & { missing: boolean; children: string[] })[];
+  /** The host's home folder, to show the paths under ~ in full. */
+  home: string;
 }
 
 /** A folder of a host, for the folder picker: where it is and the folders inside. */

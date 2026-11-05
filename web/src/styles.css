@@ -1698,13 +1698,26 @@ body.dragging-host * {
   text-decoration: line-through;
 }
 /* «Carpetas» in the settings: the machine's added folders and the folder picker. */
-.seg-wrap {
-  flex-wrap: wrap;
-  margin-bottom: 4px;
+/* Which machine's folders: one line however many machines there are. */
+.folder-host {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 4px 0;
 }
-.seg-wrap button {
-  flex: 1 0 auto;
-  padding: 0 10px;
+.folder-host select {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+.folder-host select:focus {
+  border-color: var(--mauve);
 }
 .folder-list {
   list-style: none;

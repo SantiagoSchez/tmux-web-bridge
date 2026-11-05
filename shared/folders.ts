@@ -24,6 +24,12 @@ export function baseName(path: string): string {
   return path.replace(/\/+$/, '').split('/').pop() || path;
 }
 
+/** A path of a machine written in full: ~ becomes its home folder. */
+export function absolutePath(path: string, home: string): string {
+  if (!home || (path !== '~' && !path.startsWith('~/'))) return path;
+  return home.replace(/\/+$/, '') + path.slice(1) || '/';
+}
+
 /** A folder inside another one. */
 export function childPath(parent: string, name: string): string {
   return `${parent.replace(/\/+$/, '')}/${name}`;

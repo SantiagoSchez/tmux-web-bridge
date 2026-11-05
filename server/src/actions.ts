@@ -47,15 +47,16 @@ function projectName(name: string): string {
  * for those with subfolders, the folders inside (not hidden ones), read every time.
  */
 async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
-  const script = saved
-    .map((f, i) => {
+  const script = [`printf 'H\t%s\n' "$HOME"`]
+    .concat(saved.map((f, i) => {
       const dir = hostPath(f.path);
       const children = f.subfolders ? `; (cd ${dir} && for d in */; do [ -d "$d" ] && printf 'C\t${i}\t%s\n' "\${d%/}"; done)` : '';
       return `if [ -d ${dir} ]; then echo 'F\t${i}'${children}; fi`;
-    })
+    }))
     .concat('true')
     .join('; ');
-  const lines = saved.length ? (await host.exec.shell(script)).split('\n') : [];
+  const lines = (await host.exec.shell(script)).split('\n');
+  const home = lines.find((l) => l.startsWith('H\t'))?.slice(2) ?? '';
   const folders = saved.map((f) => ({ ...f, missing: true, children: [] as string[] }));
   for (const line of lines) {
     const [kind, i, name] = line.split('\t');
@@ -65,7 +66,7 @@ async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<Pr
     else if (kind === 'C' && name) f.children.push(name);
   }
   for (const f of folders) f.children.sort((a, b) => a.localeCompare(b, 'es'));
-  return { folders };
+  return { folders, home };
 }
 
 /** Where a path of the host leads, and the folders inside, for the folder picker. */

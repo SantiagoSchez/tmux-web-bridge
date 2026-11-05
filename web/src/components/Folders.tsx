@@ -8,6 +8,10 @@ function saveFolders(hostId: string, list: SavedFolder[]): void {
   hub.send({ t: 'settings', settings: { folders: { [hostId]: list } } });
 }
 
+function folderCount(n: number): string {
+  return n === 0 ? 'sin carpetas' : n === 1 ? '1 carpeta' : `${n} carpetas`;
+}
+
 /** Why a folder can't be added (or renamed) with this name, or null. */
 function nameProblem(list: SavedFolder[], name: string, except?: SavedFolder): string | null {
   const why = folderNameProblem(name);
@@ -57,13 +61,16 @@ export function FolderSettings() {
         central.
       </p>
       {all.length > 1 && (
-        <div class="seg seg-wrap" role="radiogroup" aria-label="Máquina">
-          {all.map((h) => (
-            <button key={h.id} role="radio" aria-checked={h.id === host.id} class={h.id === host.id ? 'on' : ''} onClick={() => (folderHost.value = h.id)}>
-              {h.name}
-            </button>
-          ))}
-        </div>
+        <label class="folder-host">
+          <span class="dim small">Máquina</span>
+          <select value={host.id} onChange={(e) => (folderHost.value = e.currentTarget.value)}>
+            {all.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.name} · {folderCount(s.folders[h.id]?.length ?? 0)}
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       <section class="setting">
         {list.length ? (

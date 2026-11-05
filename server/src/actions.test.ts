@@ -71,6 +71,7 @@ test(
       { name: 'disco', path: '/Volumes/no-montado' },
     ];
     const list = (await runAction(host, { op: 'listProjects' }, null, { folders, command: 'claude' })) as ProjectList;
+    assert.equal(list.home, home);
     assert.deepEqual(list.folders, [
       { name: 'Proyectos', path: '~/Proyectos', subfolders: true, missing: false, children: ['Blog', 'twb'] },
       { name: 'Proyectos', path: '~/Proyectos', missing: false, children: [] },
