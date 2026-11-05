@@ -5,6 +5,13 @@ import { updateInfo } from './updates';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
 
+/**
+ * How long a socket that looks open has to answer a ping before it is taken for dead.
+ * Over the tailnet from mobile data a live socket can take a couple of seconds; a
+ * false alarm only costs a reconnection.
+ */
+export const PROBE_MS = 5000;
+
 /** The app's single WebSocket to the hub, with automatic reconnection. */
 class HubSocket {
   private ws: WebSocket | null = null;
@@ -15,6 +22,8 @@ class HubSocket {
   private present = false;
   /** Logged out: no reconnecting until the next login. */
   private stopped = false;
+  /** A ping without answer yet: when it fires, the socket is dead. */
+  private probeTimer: ReturnType<typeof setTimeout> | null = null;
 
   connect(): void {
     this.stopped = false;
@@ -33,9 +42,7 @@ class HubSocket {
     ws.onmessage = (ev) => this.onMessage(JSON.parse(ev.data) as ServerMessage);
     ws.onclose = (ev) => {
       if (this.ws !== ws || this.stopped) return;
-      wsStatus.value = 'closed';
-      for (const p of this.pending.values()) p.reject(new Error('Conexión perdida'));
-      this.pending.clear();
+      this.lost();
       // The hub closed this login (logout from another device).
       if (ev.code === 4401) return signedOut();
       const delay = Math.min(5000, 400 * 2 ** this.retry++);
@@ -47,23 +54,60 @@ class HubSocket {
     };
   }
 
+  /** The socket is gone: what was waiting on it fails. */
+  private lost(): void {
+    this.clearProbe();
+    wsStatus.value = 'closed';
+    for (const p of this.pending.values()) p.reject(new Error('Conexión perdida'));
+    this.pending.clear();
+  }
+
+  private clearProbe(): void {
+    if (this.probeTimer) clearTimeout(this.probeTimer);
+    this.probeTimer = null;
+  }
+
+  /**
+   * A socket can die without closing (the phone suspended the app, or changed network)
+   * and still look open: then nothing arrives and what is sent goes nowhere. Without
+   * an answer in time it is dropped and replaced at once.
+   */
+  private probe(): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== WebSocket.OPEN || this.probeTimer) return;
+    this.probeTimer = setTimeout(() => {
+      this.probeTimer = null;
+      if (this.ws !== ws || this.stopped) return;
+      ws.onclose = null; // a dead socket may take minutes to report its close
+      ws.close();
+      this.lost();
+      this.retry = 0;
+      this.connect();
+    }, PROBE_MS);
+    ws.send(JSON.stringify({ t: 'ping' } satisfies ClientMessage));
+  }
+
   disconnect(): void {
     this.stopped = true;
+    this.clearProbe();
     this.ws?.close();
     this.ws = null;
     wsStatus.value = 'closed';
   }
 
-  /** Reconnects now (the app came back to the foreground with a dead socket). */
+  /** The app came back to the front or the network changed: reconnects now if the socket is dead. */
   wake(): void {
-    if (this.stopped) return;
-    if (this.ws && this.ws.readyState !== WebSocket.OPEN && this.ws.readyState !== WebSocket.CONNECTING) {
+    if (this.stopped || !this.ws) return;
+    if (this.ws.readyState === WebSocket.OPEN) this.probe();
+    else if (this.ws.readyState !== WebSocket.CONNECTING) {
       this.retry = 0;
       this.connect();
     }
   }
 
   private onMessage(msg: ServerMessage): void {
+    // Anything arriving proves the socket alive.
+    this.clearProbe();
     switch (msg.t) {
       case 'welcome':
         clientId.value = msg.clientId;
@@ -147,3 +191,4 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') hub.wake();
   hub.sendView();
 });
+window.addEventListener('online', () => hub.wake());

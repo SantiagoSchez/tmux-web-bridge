@@ -15,6 +15,7 @@ import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionS
 import { loadConfig } from './config.js';
 import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
+import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
@@ -149,6 +150,8 @@ app.addHook('onRequest', async (req, reply) => {
 // ---------------------------------------------------------------- app websocket
 
 const clients = new Map<string, WebSocket>();
+/** Cuts the app and terminal sockets that died without closing (see heartbeat.ts). */
+const heartbeat = new Heartbeat();
 /** Open sockets (app and terminals) of each password login, closed when it is revoked. */
 const sessionSockets = new Map<string, Set<WebSocket>>();
 
@@ -233,6 +236,7 @@ async function pasteText(host: HostMonitor, pane: string, text: string): Promise
 
 app.get('/ws', { websocket: true }, (ws, req) => {
   bindSession(req, ws);
+  heartbeat.watch(ws);
   const conn = conns.add(identify(req));
   clients.set(conn.id, ws);
   send(ws, { t: 'welcome', clientId: conn.id, vapidPublicKey: push.publicKey });
@@ -255,6 +259,9 @@ app.get('/ws', { websocket: true }, (ws, req) => {
       switch (msg.t) {
         case 'hello':
           conns.update(conn.id, { visible: msg.visible });
+          break;
+        case 'ping':
+          send(ws, { t: 'pong' });
           break;
         case 'view':
           conns.update(conn.id, { view: msg.view, visible: msg.visible });
@@ -301,6 +308,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
 
 app.get('/ws/term', { websocket: true }, (ws, req) => {
   bindSession(req, ws);
+  heartbeat.watch(ws);
   const q = req.query as Record<string, string>;
   const host = hosts.get(q.host);
   if (!host) return ws.close(1008, 'máquina desconocida');

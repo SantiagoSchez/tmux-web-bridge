@@ -13,7 +13,7 @@ export interface TerminalParams {
   clientId?: string;
 }
 
-type TermInput = { t: 'i'; d: string } | { t: 'r'; cols: number; rows: number } | { t: 'sel'; window: string; pane?: string };
+type TermInput = { t: 'ping' } | { t: 'i'; d: string } | { t: 'r'; cols: number; rows: number } | { t: 'sel'; window: string; pane?: string };
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, Math.floor(n) || lo));
 
@@ -109,7 +109,9 @@ export function openTerminal(ws: WebSocket, host: HostMonitor, params: TerminalP
     } catch {
       return;
     }
-    if (msg.t === 'i' && typeof msg.d === 'string') term.write(msg.d);
+    // The app checks the socket is still alive when it comes back to the front.
+    if (msg.t === 'ping') ws.send(JSON.stringify({ t: 'pong' }));
+    else if (msg.t === 'i' && typeof msg.d === 'string') term.write(msg.d);
     else if (msg.t === 'r') term.resize(clamp(msg.cols, 10, 500), clamp(msg.rows, 4, 300));
     else if (msg.t === 'sel' && /^@\d+$/.test(msg.window)) void retarget(msg.window, msg.pane);
   });

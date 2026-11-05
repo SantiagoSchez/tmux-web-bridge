@@ -264,6 +264,8 @@ export type ActionOp =
 /** Messages from the browser to the hub over /ws. */
 export type ClientMessage =
   | { t: 'hello'; visible: boolean }
+  /** Is the socket still alive? (the app came back to the front, or the network changed) */
+  | { t: 'ping' }
   | { t: 'view'; view: ViewInfo | null; visible: boolean }
   | { t: 'presence'; present: boolean }
   /** The machines' order in the list (host ids), kept by the hub for every device. */
@@ -276,6 +278,7 @@ export type ClientMessage =
 /** Messages from the hub to the browser over /ws. */
 export type ServerMessage =
   | { t: 'welcome'; clientId: string; vapidPublicKey: string | null }
+  | { t: 'pong' }
   | { t: 'tree'; hosts: HostInfo[] }
   | { t: 'host'; host: HostInfo }
   | { t: 'hostOrder'; hosts: string[] }

@@ -13,7 +13,7 @@ import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
 import { clientId, hubSettings, toast } from '../state';
 import { appearance, TERM_THEMES } from '../theme';
-import { hub } from '../ws';
+import { hub, PROBE_MS } from '../ws';
 import { AttachButton } from './Attach';
 import { MicButton } from './Mic';
 import { IconClose, IconDown } from './icons';
@@ -757,17 +757,42 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       fit.fit();
       ws.send(JSON.stringify({ t: 'r', cols: term.cols, rows: term.rows }));
     };
+    /** A ping without answer yet (see probe). */
+    let probeTimer: ReturnType<typeof setTimeout> | undefined;
     ws.onmessage = (ev) => {
+      // Anything arriving proves the socket alive.
+      clearTimeout(probeTimer);
+      probeTimer = undefined;
       if (typeof ev.data === 'string') {
-        exited = true; // control message ({t:'exit'})
+        // Control message: {t:'exit'} when the pty ended, {t:'pong'}.
+        if ((JSON.parse(ev.data) as { t: string }).t === 'exit') exited = true;
         return;
       }
       term.write(new Uint8Array(ev.data as ArrayBuffer));
     };
     ws.onclose = () => {
+      clearTimeout(probeTimer);
       if (disposed) return;
       setState(exited || retries.current >= 5 ? 'closed' : 'lost');
     };
+    /**
+     * Back to the front, or on another network: the socket may have died without closing
+     * (the screen would stay as it was and what is typed would go nowhere). Without an
+     * answer in time it is dropped, and the 'lost' state reconnects.
+     */
+    const probe = () => {
+      if (document.visibilityState !== 'visible' || ws.readyState !== WebSocket.OPEN || probeTimer) return;
+      probeTimer = setTimeout(() => {
+        if (disposed) return;
+        ws.onclose = null; // a dead socket may take minutes to report its close
+        ws.close();
+        retries.current = 0;
+        setState('lost');
+      }, PROBE_MS);
+      ws.send(JSON.stringify({ t: 'ping' }));
+    };
+    document.addEventListener('visibilitychange', probe);
+    globalThis.addEventListener('online', probe);
 
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
@@ -837,6 +862,9 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       dataSub.dispose();
       selectionSub.dispose();
       resizeSub.dispose();
+      document.removeEventListener('visibilitychange', probe);
+      globalThis.removeEventListener('online', probe);
+      clearTimeout(probeTimer);
       disposed = true;
       ws.close();
       term.dispose();
