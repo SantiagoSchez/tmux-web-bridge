@@ -83,13 +83,16 @@ export interface Toast {
   id: number;
   text: string;
   kind: 'info' | 'error';
+  /** A button in the notice; using it closes the notice. */
+  action?: { label: string; run: () => void };
 }
 export const toasts = signal<Toast[]>([]);
 let toastSeq = 0;
-export function toast(text: string, kind: Toast['kind'] = 'info'): void {
+export function toast(text: string, kind: Toast['kind'] = 'info', action?: Toast['action']): void {
   const id = ++toastSeq;
-  toasts.value = [...toasts.value, { id, text, kind }];
-  setTimeout(() => dismissToast(id), kind === 'error' ? 6000 : 3000);
+  toasts.value = [...toasts.value, { id, text, kind, action }];
+  // With a button it stays longer, to give time to use it.
+  setTimeout(() => dismissToast(id), kind === 'error' || action ? 6000 : 3000);
 }
 
 export function dismissToast(id: number): void {

@@ -326,6 +326,17 @@ export function Toasts() {
       {list.map((t) => (
         <div key={t.id} class={`toast toast-${t.kind}`}>
           <span class="toast-text">{t.text}</span>
+          {t.action && (
+            <button
+              class="toast-action"
+              onClick={() => {
+                dismissToast(t.id);
+                t.action!.run();
+              }}
+            >
+              {t.action.label}
+            </button>
+          )}
           <button class="toast-close" aria-label="Cerrar aviso" onClick={() => dismissToast(t.id)}>
             <IconClose />
           </button>

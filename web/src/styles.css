@@ -2028,6 +2028,19 @@ body.dragging-host * {
   color: inherit;
   opacity: 0.7;
 }
+.toast-action {
+  flex-shrink: 0;
+  margin: -2px 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: var(--mauve);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.toast-action:hover,
+.toast-action:focus-visible {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
 .toast-close:hover,
 .toast-close:focus-visible {
   opacity: 1;

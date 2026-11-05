@@ -7,6 +7,7 @@ import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import { cleanCopy } from '../../../shared/copy';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
@@ -71,13 +72,24 @@ function macShortcut(e: KeyboardEvent): string | null {
   return null;
 }
 
-async function copyText(text: string): Promise<void> {
+async function copyText(text: string, asIs?: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
-    toast(`Copiado al portapapeles (${text.length} caracteres)`);
+    // Cleaned up: the notice offers what was on screen.
+    const action = asIs === undefined || asIs === text ? undefined : { label: 'Copiar tal cual', run: () => void copyText(asIs) };
+    toast(`Copiado al portapapeles (${text.length} caracteres)`, 'info', action);
   } catch {
     toast('El navegador no ha dejado copiar al portapapeles', 'error');
   }
+}
+
+/**
+ * Copies what was selected in the terminal, without the line breaks Claude Code puts at its
+ * width nor its quote bars and indent (cleanCopy).
+ * @param firstCol the column where the selection starts, when it is known.
+ */
+function copyFromTerminal(term: Terminal, text: string, firstCol?: number): Promise<void> {
+  return copyText(cleanCopy(text, term.cols, firstCol), text);
 }
 
 /**
@@ -85,16 +97,18 @@ async function copyText(text: string): Promise<void> {
  * puts it on the browser's clipboard. Reading the clipboard from the pane is denied.
  */
 let lastCopy = { text: '', at: 0 };
-const clipboardProvider: IClipboardProvider = {
-  readText: () => '',
-  writeText: async (_sel: ClipboardSelectionType, text: string) => {
-    if (!text) return;
-    // One copy in tmux can emit OSC 52 more than once (set-clipboard + tmux-yank): act once.
-    if (text === lastCopy.text && Date.now() - lastCopy.at < 1500) return;
-    lastCopy = { text, at: Date.now() };
-    await copyText(text);
-  },
-};
+function clipboardProvider(term: Terminal): IClipboardProvider {
+  return {
+    readText: () => '',
+    writeText: async (_sel: ClipboardSelectionType, text: string) => {
+      if (!text) return;
+      // One copy in tmux can emit OSC 52 more than once (set-clipboard + tmux-yank): act once.
+      if (text === lastCopy.text && Date.now() - lastCopy.at < 1500) return;
+      lastCopy = { text, at: Date.now() };
+      await copyFromTerminal(term, text);
+    },
+  };
+}
 
 /** Applies sticky Ctrl/Alt to what the soft keyboard typed. */
 function withMods(data: string, mods: Set<Mod>): string {
@@ -718,7 +732,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon(activate));
-    term.loadAddon(new ClipboardAddon(undefined, clipboardProvider));
+    term.loadAddon(new ClipboardAddon(undefined, clipboardProvider(term)));
     const unicode = new Unicode11Addon();
     term.loadAddon(unicode);
     term.unicode.activeVersion = '11';
@@ -796,8 +810,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
 
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
-      // Cmd+C with text selected in the terminal: let the browser copy it.
-      if (e.metaKey && e.key === 'c' && term.hasSelection()) return false;
+      // Cmd+C with text selected in the terminal (Option+drag): copied cleaned up.
+      if (e.metaKey && e.key === 'c' && term.hasSelection()) {
+        e.preventDefault();
+        void copyFromTerminal(term, term.getSelection(), term.getSelectionPosition()?.start.x);
+        return false;
+      }
       const seq = macShortcut(e);
       if (seq === null) return true;
       e.preventDefault();
@@ -943,12 +961,14 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
 
   const copySelection = () => {
     const term = termRef.current;
+    if (!term || !range) return;
     // Just a link selected: its URL (an OSC 8 link shows other text, a long URL wraps).
-    const link = term && range && linkAt(term, range[0] % term.cols, Math.floor(range[0] / term.cols));
+    const link = linkAt(term, range[0] % term.cols, Math.floor(range[0] / term.cols));
     const whole = link && linkRange(term, link);
-    const text = whole && whole[0] === range[0] && whole[1] === range[1] ? link.text : (term?.getSelection() ?? '');
-    term?.clearSelection();
-    if (text) void copyText(text);
+    const text = term.getSelection();
+    term.clearSelection();
+    if (whole && whole[0] === range[0] && whole[1] === range[1]) void copyText(link.text);
+    else if (text) void copyFromTerminal(term, text, range[0] % term.cols);
   };
 
   useEffect(() => {
