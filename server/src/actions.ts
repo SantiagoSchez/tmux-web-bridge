@@ -43,37 +43,24 @@ function projectName(name: string): string {
 }
 
 /**
- * The folders of the projects dir, the shortcuts file (name="path"; "!command" ones
- * are skipped) and the folders added in the panel, with whether each one is there.
+ * The folders of the projects dir and the ones added in the panel, with whether each
+ * of these is there (it may be a disk not mounted now: it shows, and can be removed).
  */
 async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
   const p = host.hostConfig.projects;
   const script = [
-    p ? `cd ${hostPath(p.dir)} 2>/dev/null && for d in */; do [ -d "$d" ] && printf 'P\t%s\n' "\${d%/}"; done` : '',
-    p?.shortcuts ? `[ -f ${hostPath(p.shortcuts)} ] && sed 's/^/S\t/' ${hostPath(p.shortcuts)}` : '',
+    p ? `(cd ${hostPath(p.dir)} 2>/dev/null && for d in */; do [ -d "$d" ] && printf 'P\t%s\n' "\${d%/}"; done)` : '',
+    ...saved.map((f) => `[ -d ${hostPath(f.path)} ] && echo F1 || echo F0`),
     'true',
   ].filter(Boolean).join('; ');
-  const out = p ? await host.exec.shell(script) : '';
-  const projects: string[] = [];
-  const shortcuts: ProjectList['shortcuts'] = [];
-  for (const line of out.split('\n')) {
-    if (line.startsWith('P\t')) projects.push(line.slice(2));
-    const m = /^S\t\s*([^#=\s][^=]*?)\s*=\s*(.+?)\s*$/.exec(line);
-    if (m) {
-      const path = m[2].replace(/^(["'])(.*)\1$/, '$2');
-      if (!path.startsWith('!')) shortcuts.push({ name: m[1], path });
-    }
-  }
+  const lines = p || saved.length ? (await host.exec.shell(script)).split('\n') : [];
+  const projects = lines.filter((l) => l.startsWith('P\t')).map((l) => l.slice(2));
   projects.sort((a, b) => a.localeCompare(b, 'es'));
-  // A shortcut whose folder is gone (moved or deleted) is not offered; an added folder
-  // shows as missing (it may be a disk not mounted now), so it can be removed.
-  const paths = [...shortcuts.map((s) => s.path), ...saved.map((f) => f.path)];
-  const found = paths.length ? (await host.exec.shell(paths.map((path) => `[ -d ${hostPath(path)} ] && echo 1 || echo 0`).join('; '))).split('\n') : [];
+  const found = lines.filter((l) => l === 'F0' || l === 'F1');
   return {
     dir: p?.dir ?? null,
     projects,
-    shortcuts: shortcuts.filter((_, i) => found[i] === '1'),
-    folders: saved.map((f, i) => ({ ...f, missing: found[shortcuts.length + i] !== '1' })),
+    folders: saved.map((f, i) => ({ ...f, missing: found[i] !== 'F1' })),
   };
 }
 
@@ -119,13 +106,12 @@ async function openProject(host: HostMonitor, saved: SavedFolder[], rawName: str
   if (open) return { session: open.split('\t')[0], created: false };
 
   const list = await listProjects(host, saved);
-  // The folders added in the panel first, then the shortcuts, then the projects dir.
+  // A folder added in the panel wins over a project of the same name.
   const folder = list.folders.find((f) => f.name === name);
   if (folder?.missing) throw new Error(`La carpeta ${folder.path} ya no está en ${host.name}`);
-  const shortcut = folder ?? list.shortcuts.find((s) => s.name === name);
-  if (!shortcut && !p) throw new Error(`No existe la carpeta ${name}`);
-  const dir = shortcut ? shortcut.path : `${p!.dir.replace(/\/$/, '')}/${name}`;
-  if (!shortcut && !list.projects.includes(name)) {
+  if (!folder && !p) throw new Error(`No existe la carpeta ${name}`);
+  const dir = folder ? folder.path : `${p!.dir.replace(/\/$/, '')}/${name}`;
+  if (!folder && !list.projects.includes(name)) {
     if (!create) throw new Error(`No existe el proyecto ${name}`);
     await host.exec.shell(`mkdir -p ${hostPath(dir)}`);
   }

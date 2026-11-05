@@ -9,7 +9,16 @@ import { IconClose } from './icons';
 import { hub } from '../ws';
 
 /** Bottom sheet on the phone, centred card on wide screens. Escape or a tap outside closes it. */
-export function Sheet({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: ComponentChildren }) {
+export function Sheet(props: {
+  title: string;
+  subtitle?: string;
+  /** A way back above the title (a section of the settings on the phone). */
+  back?: { label: string; onClick: () => void };
+  class?: string;
+  onClose: () => void;
+  children: ComponentChildren;
+}) {
+  const { title, subtitle, back, onClose, children } = props;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     addEventListener('keydown', onKey);
@@ -17,9 +26,14 @@ export function Sheet({ title, subtitle, onClose, children }: { title: string; s
   }, [onClose]);
   return (
     <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <div class={`sheet ${props.class ?? ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div class="sheet-grip" />
         <div class="sheet-head">
+          {back && (
+            <button class="sheet-back" onClick={back.onClick}>
+              ‹ {back.label}
+            </button>
+          )}
           <h2>{title}</h2>
           {subtitle && <p class="dim small">{subtitle}</p>}
         </div>
@@ -162,8 +176,8 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
 
 /**
  * "Nuevo space" on a host with a projects folder or folders added in the panel, like
- * the `c` shell function: pick a folder, a shortcut or a project (or type a new name
- * to create it in the projects folder) and the space opens there with claude running.
+ * the `c` shell function: pick a folder or a project (or type a new name to create
+ * it in the projects folder) and the space opens there with claude running.
  * An open project's space is reused.
  */
 function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; close: () => void }) {
@@ -179,11 +193,10 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const q = query.trim();
   const items = useMemo(() => {
     if (!list) return [];
-    // The same name twice opens the first: added folders, then shortcuts, then projects.
+    // The same name twice opens the first: added folders, then projects.
     const all: { name: string; hint: string; missing?: boolean }[] = [];
     const add = (i: (typeof all)[number]) => all.some((o) => o.name === i.name) || all.push(i);
     for (const f of list.folders) add({ name: f.name, hint: f.missing ? `${f.path} · no está` : f.path, missing: f.missing });
-    for (const s of list.shortcuts) add({ name: s.name, hint: s.path });
     for (const p of list.projects) add({ name: p, hint: '' });
     const lq = q.toLowerCase();
     return lq ? all.filter((i) => i.name.toLowerCase().includes(lq)) : all;

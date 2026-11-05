@@ -1,7 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
-import { prefs, setPref, type Prefs } from '../prefs';
+import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut, shortcutProblem, type DictationButton } from '../../../shared/dictation';
 import { formatShortcut, notReady, recordingShortcut, shortcutFromEvent } from '../dictation';
@@ -94,42 +94,93 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
   );
 }
 
+const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
+  { id: 'device', label: 'Dispositivo', hint: 'Tema y notificaciones de este dispositivo' },
+  { id: 'machines', label: 'Máquinas', hint: 'Lista de spaces, status line y actualizaciones' },
+  { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo space» en cada máquina' },
+  { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
+  { id: 'keys', label: 'Teclas', hint: 'La barra de teclas del móvil' },
+  { id: 'account', label: 'Cuenta', hint: 'Verificación en dos pasos y sesiones' },
+];
+
+/**
+ * A wide card with the sections down the side on a big screen. On the phone, the
+ * list of sections, and each one on its own with a way back, as in the system settings.
+ */
 export function Settings() {
   const open = sheet.value === 'settings';
-  const tab = settingsTab.value;
-  const setTab = (t: SettingsTab) => (settingsTab.value = t);
   const account = auth.value?.method === 'password';
   if (!open) return null;
 
-  const tabs: [SettingsTab, string][] = [
-    ['device', 'Dispositivo'],
-    ['machines', 'Máquinas'],
-    ['folders', 'Carpetas'],
-    ['dictation', 'Dictado'],
-    ['keys', 'Teclas'],
-  ];
-  if (account) tabs.push(['account', 'Cuenta']);
-  const current = tab === 'account' && !account ? 'device' : tab;
+  const sections = SECTIONS.filter((s) => s.id !== 'account' || account);
+  const picked = sections.find((s) => s.id === settingsTab.value) ?? null;
+  const close = () => (sheet.value = null);
+  const go = (id: SettingsTab | null) => (settingsTab.value = id);
 
+  if (!isDesktop.value) {
+    if (!picked) {
+      return (
+        <Sheet title="Ajustes" onClose={close}>
+          <ul class="menu settings-list">
+            {sections.map((s) => (
+              <li key={s.id}>
+                <button class="menu-item" onClick={() => go(s.id)}>
+                  <span class="project-text">
+                    <span class="project-name">{s.label}</span>
+                    <span class="project-hint">{s.hint}</span>
+                  </span>
+                  <span class="settings-chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Sheet>
+      );
+    }
+    return (
+      <Sheet title={picked.label} back={{ label: 'Ajustes', onClick: () => go(null) }} onClose={close}>
+        <SettingsSection id={picked.id} />
+      </Sheet>
+    );
+  }
+
+  const current = picked ?? sections[0];
   return (
-    <Sheet title="Ajustes" onClose={() => (sheet.value = null)}>
-      <div class="settings-tabs" role="tablist" aria-label="Secciones de los ajustes">
-        {tabs.map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={current === id} class={current === id ? 'on' : ''} onClick={() => setTab(id)}>
-            {label}
-          </button>
-        ))}
-      </div>
-      <div class="settings-panel" role="tabpanel">
-        {current === 'device' && <DeviceSettings />}
-        {current === 'machines' && <MachineSettings />}
-        {current === 'folders' && <FolderSettings />}
-        {current === 'dictation' && <DictationSettings />}
-        {current === 'keys' && <KeybarSettings />}
-        {current === 'account' && <AccountSettings />}
+    <Sheet title="Ajustes" class="settings-sheet" onClose={close}>
+      <div class="settings-layout">
+        <nav class="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Secciones de los ajustes">
+          {sections.map((s) => (
+            <button key={s.id} role="tab" aria-selected={current.id === s.id} class={current.id === s.id ? 'on' : ''} onClick={() => go(s.id)}>
+              {s.label}
+            </button>
+          ))}
+        </nav>
+        <div class="settings-panel" role="tabpanel" aria-label={current.label}>
+          <h3 class="settings-title">{current.label}</h3>
+          <SettingsSection id={current.id} />
+        </div>
       </div>
     </Sheet>
   );
+}
+
+function SettingsSection({ id }: { id: SettingsTab }) {
+  switch (id) {
+    case 'device':
+      return <DeviceSettings />;
+    case 'machines':
+      return <MachineSettings />;
+    case 'folders':
+      return <FolderSettings />;
+    case 'dictation':
+      return <DictationSettings />;
+    case 'keys':
+      return <KeybarSettings />;
+    case 'account':
+      return <AccountSettings />;
+  }
 }
 
 const THEMES: [Prefs['theme'], string][] = [

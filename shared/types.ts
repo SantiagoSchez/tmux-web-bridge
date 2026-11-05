@@ -163,12 +163,11 @@ export interface UpdateInfo {
   released: { date: string; url: string } | null;
 }
 
-/** A host's projects (folders of its projects dir), `c` shortcuts and the folders added in the panel. */
+/** A host's projects (folders of its projects dir) and the folders added in the panel. */
 export interface ProjectList {
   /** The projects dir; null on a host without one (only its added folders). */
   dir: string | null;
   projects: string[];
-  shortcuts: { name: string; path: string }[];
   /** missing: the folder is not there now (moved, deleted, or a disk not mounted). */
   folders: (SavedFolder & { missing: boolean })[];
 }

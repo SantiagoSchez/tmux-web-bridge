@@ -72,14 +72,14 @@ hosts:
     sshOptions: []               # opciones extra de ssh -o
 
   # Un servidor para trabajar con Claude: «Nuevo space» abre un proyecto, como la función `c`.
-  # Sin `projects`, ofrece solo las carpetas añadidas desde el panel (Ajustes › Carpetas).
+  # Otras carpetas (fuera de `dir`, o con otro nombre) se añaden desde el panel, en Ajustes › Carpetas;
+  # sin `projects`, «Nuevo space» ofrece solo esas.
   - id: dev
     name: Servidor
     ssh: usuario@192.168.1.10
     identityFile: ~/.ssh/tmux-web-bridge_ed25519
     projects:
       dir: ~/proyectos                     # cada carpeta es un proyecto (rutas de esa máquina)
-      shortcuts: ~/.c_dirs                 # opcional: atajos nombre="ruta" de `c`
       command: claude                      # se escribe en el space nuevo (al salir queda la shell); si es claude,
                                            # se le añade --permission-mode auto o, con «Saltarse los permisos»
                                            # marcado en el diálogo, --dangerously-skip-permissions

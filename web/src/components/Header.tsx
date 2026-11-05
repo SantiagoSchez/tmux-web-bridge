@@ -1,5 +1,5 @@
 import { route, toggleGrid } from '../router';
-import { connections, pending, sheet, wsStatus } from '../state';
+import { connections, openSettings, pending, sheet, wsStatus } from '../state';
 import { IconGear, IconGrid, IconUsers } from './icons';
 
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
@@ -27,7 +27,7 @@ export function Header() {
           <IconGrid />
         </button>
         <ConnectionsButton count={count} />
-        <button class="icon-btn" aria-label="Ajustes" onClick={() => (sheet.value = 'settings')}>
+        <button class="icon-btn" aria-label="Ajustes" onClick={openSettings}>
           <IconGear />
         </button>
       </div>

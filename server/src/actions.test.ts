@@ -67,7 +67,6 @@ test(
     assert.deepEqual(list, {
       dir: null,
       projects: [],
-      shortcuts: [],
       folders: [
         { name: 'trabajo', path: '~/trabajo', missing: false },
         { name: 'disco', path: '/Volumes/no-montado', missing: true },
