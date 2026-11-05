@@ -115,6 +115,18 @@ export interface HubSettings {
   dictationShortcut: string;
   /** The key bar under the terminal on touch screens, in order. See shared/keybar.ts. */
   keybar: KeybarButton[];
+  /**
+   * Folders added in the panel for «Nuevo space», by host id. A patch replaces the
+   * list of each host it names (an empty list removes it) and keeps the others.
+   */
+  folders: Record<string, SavedFolder[]>;
+}
+
+/** A folder of a machine added in the panel: «Nuevo space» opens a project there. */
+export interface SavedFolder {
+  name: string;
+  /** On that machine: absolute, or under ~ (written ~/…). */
+  path: string;
 }
 
 /** What the hub's dictation can do right now. */
@@ -151,11 +163,24 @@ export interface UpdateInfo {
   released: { date: string; url: string } | null;
 }
 
-/** A host's projects (folders of its projects dir) and `c` shortcuts. */
+/** A host's projects (folders of its projects dir), `c` shortcuts and the folders added in the panel. */
 export interface ProjectList {
-  dir: string;
+  /** The projects dir; null on a host without one (only its added folders). */
+  dir: string | null;
   projects: string[];
   shortcuts: { name: string; path: string }[];
+  /** missing: the folder is not there now (moved, deleted, or a disk not mounted). */
+  folders: (SavedFolder & { missing: boolean })[];
+}
+
+/** A folder of a host, for the folder picker: where it is and the folders inside. */
+export interface DirListing {
+  /** Absolute, or ~/… under the home folder. */
+  path: string;
+  /** null at the root. */
+  parent: string | null;
+  /** Names of the folders inside, hidden ones (leading '.') included. */
+  dirs: string[];
 }
 
 /** A pane's screen for the windows grid, as `capture-pane -e` prints it (text with SGR colours). */
@@ -208,6 +233,8 @@ export type ActionOp =
   | { op: 'newSession'; name?: string }
   | { op: 'listProjects' }
   | { op: 'openProject'; name: string; create?: boolean; skipPermissions?: boolean }
+  /** The folders inside one, for the folder picker. */
+  | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }
   | { op: 'killSession'; session: string }
   | { op: 'newWindow'; session: string; name?: string }

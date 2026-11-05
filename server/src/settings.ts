@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
+import { sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, sanitizeKeybar } from '../../shared/keybar.js';
 import type { HubSettings } from '../../shared/types.js';
 
@@ -22,6 +23,7 @@ const DEFAULTS: HubSettings = {
   dictationButton: 'hold',
   dictationShortcut: DEFAULT_DICTATION_SHORTCUT,
   keybar: DEFAULT_KEYBAR,
+  folders: {},
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
@@ -30,6 +32,19 @@ const DEFAULTS: HubSettings = {
 const SEEDED = 'dictationGlossarySeeded';
 /** Plenty for a list of terms, and it goes into every cleanup prompt. */
 const GLOSSARY_MAX = 2000;
+
+/** The folder lists of `patch` replace those of the same hosts; an empty one removes its host. */
+function mergeFolders(current: HubSettings['folders'], patch: unknown): HubSettings['folders'] {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return current;
+  const next = { ...current };
+  for (const [host, value] of Object.entries(patch)) {
+    const list = sanitizeFolderList(value);
+    if (!list) continue;
+    if (list.length) next[host] = list;
+    else delete next[host];
+  }
+  return next;
+}
 
 /**
  * Settings of the whole hub, chosen in the web app and kept in dataDir so every
@@ -47,7 +62,7 @@ export class SettingsStore extends EventEmitter {
     try {
       if (!existsSync(this.path)) return;
       const { [SEEDED]: seeded, ...saved } = JSON.parse(readFileSync(this.path, 'utf8'));
-      this.state = { ...DEFAULTS, ...saved, keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar };
+      this.state = { ...DEFAULTS, ...saved, keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar, folders: mergeFolders({}, saved.folders) };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
         this.state = { ...this.state, dictationGlossary: DEFAULT_GLOSSARY };
@@ -86,6 +101,7 @@ export class SettingsStore extends EventEmitter {
     }
     const keybar = sanitizeKeybar(patch.keybar);
     if (keybar) next.keybar = keybar;
+    if (patch.folders !== undefined) next.folders = mergeFolders(next.folders, patch.folders);
     this.state = next;
     this.save();
     this.emit('change', next);

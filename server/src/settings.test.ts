@@ -104,3 +104,32 @@ test('a broken key bar in the file falls back to the default one', () =>
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ keybar: { up: true } }));
     assert.deepEqual(new SettingsStore(dir).value.keybar, DEFAULT_KEYBAR);
   }));
+
+test('folders: a patch replaces the lists of the hosts it names and keeps the rest', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.deepEqual(store.value.folders, {});
+    store.update({ folders: { mac: [{ name: 'twb', path: '~/Proyectos/twb/' }], dev: [{ name: 'x', path: '/srv/x' }] } });
+    store.update({ folders: { dev: [] } });
+    assert.deepEqual(new SettingsStore(dir).value.folders, { mac: [{ name: 'twb', path: '~/Proyectos/twb' }] });
+  }));
+
+test('folders: invalid entries and repeated names are dropped', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({
+      folders: {
+        mac: [
+          { name: ' a ', path: '~' },
+          { name: 'a', path: '/otra' },
+          { name: '.oculta', path: '/x' },
+          { name: 'b/c', path: '/x' },
+          { name: 'rel', path: 'relativa' },
+          { name: 'raro', path: '~usuario/x' },
+          { name: 'ok', path: '/' },
+        ],
+        bad: 'nope',
+      } as never,
+    });
+    assert.deepEqual(store.value.folders, { mac: [{ name: 'a', path: '~' }, { name: 'ok', path: '/' }] });
+  }));

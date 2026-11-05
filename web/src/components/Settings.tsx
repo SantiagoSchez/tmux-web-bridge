@@ -5,10 +5,11 @@ import { prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut, shortcutProblem, type DictationButton } from '../../../shared/dictation';
 import { formatShortcut, notReady, recordingShortcut, shortcutFromEvent } from '../dictation';
-import { dialog, dictationInfo, hubSettings, sheet, toast, vapidKey } from '../state';
+import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Dialogs';
+import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
 import { TwoFactorSettings } from './TwoFactor';
 
@@ -93,17 +94,17 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
   );
 }
 
-type Tab = 'device' | 'machines' | 'dictation' | 'keys' | 'account';
-
 export function Settings() {
   const open = sheet.value === 'settings';
-  const [tab, setTab] = useState<Tab>('device');
+  const tab = settingsTab.value;
+  const setTab = (t: SettingsTab) => (settingsTab.value = t);
   const account = auth.value?.method === 'password';
   if (!open) return null;
 
-  const tabs: [Tab, string][] = [
+  const tabs: [SettingsTab, string][] = [
     ['device', 'Dispositivo'],
     ['machines', 'Máquinas'],
+    ['folders', 'Carpetas'],
     ['dictation', 'Dictado'],
     ['keys', 'Teclas'],
   ];
@@ -122,6 +123,7 @@ export function Settings() {
       <div class="settings-panel" role="tabpanel">
         {current === 'device' && <DeviceSettings />}
         {current === 'machines' && <MachineSettings />}
+        {current === 'folders' && <FolderSettings />}
         {current === 'dictation' && <DictationSettings />}
         {current === 'keys' && <KeybarSettings />}
         {current === 'account' && <AccountSettings />}

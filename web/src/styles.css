@@ -1619,9 +1619,14 @@ body.dragging-host * {
 }
 .sheet-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+/* On a narrow phone the buttons go to a second row rather than breaking their labels. */
+.sheet-actions .btn {
+  white-space: nowrap;
 }
 @keyframes fade {
   from {
@@ -1684,6 +1689,52 @@ body.dragging-host * {
   font-size: 12px;
   color: var(--overlay1);
   overflow-wrap: anywhere;
+}
+/* An added folder that is not on the machine now: shown, but it can't be opened. */
+.menu-item.missing {
+  opacity: 0.55;
+}
+.menu-item.missing .project-name {
+  text-decoration: line-through;
+}
+/* «Carpetas» in the settings: the machine's added folders and the folder picker. */
+.seg-wrap {
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.seg-wrap button {
+  flex: 1 0 auto;
+  padding: 0 10px;
+}
+.folder-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.folder-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--surface0);
+}
+.folder-list .project-text {
+  flex: 1;
+}
+.folder-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.folder-dirs {
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  border: 1px solid var(--surface0);
+  border-radius: 10px;
+}
+.folder-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .menu-icon {
   width: 24px;
@@ -1760,7 +1811,7 @@ body.dragging-host * {
   background: var(--surface0);
   color: var(--text);
 }
-/* Five tabs (with «Cuenta») on a narrow phone: a little tighter, and they scroll if still too wide. */
+/* Six tabs (with «Cuenta») on a narrow phone: a little tighter, and they scroll if still too wide. */
 @media (max-width: 420px) {
   .settings-tabs {
     gap: 2px;

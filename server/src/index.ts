@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import type { ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
-import { runAction, runTitleScript } from './actions.js';
+import { READ_ONLY_OPS, runAction, runTitleScript } from './actions.js';
 import { shq } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig } from './config.js';
@@ -273,8 +273,8 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const data = await runAction(host, op, updates.info.latest?.version ?? null);
-          await host.refresh();
+          const data = await runAction(host, op, updates.info.latest?.version ?? null, settings.value.folders[host.id] ?? []);
+          if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
           break;
         }

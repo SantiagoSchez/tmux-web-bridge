@@ -1,9 +1,10 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { folderNameProblem } from '../../../shared/folders';
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
-import { dialog, dismissToast, toast, toasts, type Dialog } from '../state';
+import { dialog, dismissToast, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { IconClose } from './icons';
 import { hub } from '../ws';
 
@@ -160,9 +161,10 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
 }
 
 /**
- * "Nuevo space" on a host with a projects folder, like the `c` shell function:
- * pick a shortcut or a project (or type a new name to create it) and the space
- * opens in its folder with claude running. An open project's space is reused.
+ * "Nuevo space" on a host with a projects folder or folders added in the panel, like
+ * the `c` shell function: pick a folder, a shortcut or a project (or type a new name
+ * to create it in the projects folder) and the space opens there with claude running.
+ * An open project's space is reused.
  */
 function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; close: () => void }) {
   const [list, setList] = useState<ProjectList | null>(null);
@@ -177,15 +179,19 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const q = query.trim();
   const items = useMemo(() => {
     if (!list) return [];
-    const all = [
-      ...list.shortcuts.map((s) => ({ name: s.name, hint: s.path })),
-      ...list.projects.filter((p) => !list.shortcuts.some((s) => s.name === p)).map((p) => ({ name: p, hint: '' })),
-    ];
+    // The same name twice opens the first: added folders, then shortcuts, then projects.
+    const all: { name: string; hint: string; missing?: boolean }[] = [];
+    const add = (i: (typeof all)[number]) => all.some((o) => o.name === i.name) || all.push(i);
+    for (const f of list.folders) add({ name: f.name, hint: f.missing ? `${f.path} · no está` : f.path, missing: f.missing });
+    for (const s of list.shortcuts) add({ name: s.name, hint: s.path });
+    for (const p of list.projects) add({ name: p, hint: '' });
     const lq = q.toLowerCase();
     return lq ? all.filter((i) => i.name.toLowerCase().includes(lq)) : all;
   }, [list, q]);
   const exact = items.some((i) => i.name === q);
-  const valid = q && !q.includes('/') && !q.startsWith('.');
+  const usable = items.filter((i) => !i.missing);
+  // New projects go into the projects folder: a host with only added folders has none.
+  const valid = !!list?.dir && !!q && !folderNameProblem(q);
 
   const open = async (name: string, create = false) => {
     setBusy(true);
@@ -199,13 +205,13 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   };
 
   return (
-    <Sheet title="Abrir proyecto" subtitle={list ? `${d.host.name} · ${list.dir}` : d.host.name} onClose={close}>
+    <Sheet title="Abrir proyecto" subtitle={list?.dir ? `${d.host.name} · ${list.dir}` : d.host.name} onClose={close}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (busy || !q) return;
-          if (exact) void open(q);
-          else if (items.length === 1) void open(items[0].name);
+          if (exact) void (usable.some((i) => i.name === q) && open(q));
+          else if (usable.length === 1) void open(usable[0].name);
           else if (valid) void open(q, true);
         }}
       >
@@ -213,7 +219,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           ref={input}
           class="text-input"
           value={query}
-          placeholder="Buscar o crear un proyecto"
+          placeholder={list && !list.dir ? 'Buscar una carpeta' : 'Buscar o crear un proyecto'}
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}
@@ -234,7 +240,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         {!list && <li class="dim pad">Cargando…</li>}
         {items.map((i) => (
           <li key={i.name}>
-            <button class="menu-item" disabled={busy} onClick={() => void open(i.name)}>
+            <button class={`menu-item ${i.missing ? 'missing' : ''}`} disabled={busy || i.missing} onClick={() => void open(i.name)}>
               <span class="menu-icon">▸</span>
               <span class="project-text">
                 <span class="project-name">{i.name}</span>
@@ -243,10 +249,20 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
             </button>
           </li>
         ))}
-        {list && !items.length && !valid && <li class="dim pad">No hay proyectos.</li>}
+        {list && !items.length && !valid && <li class="dim pad">{list.dir ? 'No hay proyectos.' : 'No hay carpetas.'}</li>}
       </ul>
       <div class="sheet-actions">
         <SkipPermissions />
+        <button
+          class="btn"
+          title="Añadir o quitar carpetas de esta máquina"
+          onClick={() => {
+            close();
+            openFolderSettings(d.host.id);
+          }}
+        >
+          Carpetas…
+        </button>
         <button
           class="btn"
           onClick={() => {

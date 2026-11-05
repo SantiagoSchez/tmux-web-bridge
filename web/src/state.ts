@@ -122,5 +122,18 @@ export interface MenuItem {
 
 export const dialog = signal<Dialog | null>(null);
 export const sheet = signal<'connections' | 'settings' | null>(null);
+
+export type SettingsTab = 'device' | 'machines' | 'folders' | 'dictation' | 'keys' | 'account';
+/** The settings tab shown (kept while the sheet is closed). */
+export const settingsTab = signal<SettingsTab>('device');
+/** The machine whose folders the «Carpetas» tab shows (null: the first one). */
+export const folderHost = signal<string | null>(null);
+
+/** Opens the settings on a machine's folders for «Nuevo space». */
+export function openFolderSettings(hostId: string): void {
+  folderHost.value = hostId;
+  settingsTab.value = 'folders';
+  sheet.value = 'settings';
+}
 /** The Cmd+K search, to jump to any window. */
 export const paletteOpen = signal(false);

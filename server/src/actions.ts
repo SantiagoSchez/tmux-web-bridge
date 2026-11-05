@@ -1,4 +1,5 @@
-import type { ActionOp, ProjectList } from '../../shared/types.js';
+import { folderNameProblem, folderPathOk } from '../../shared/folders.js';
+import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { updateKit } from './kit.js';
@@ -37,20 +38,22 @@ function hostPath(p: string): string {
 
 /** A project name, as `c --new-project` accepts it: no '/' and no leading '.'. */
 function projectName(name: string): string {
-  const n = name.trim();
-  if (!n || n.includes('/') || n.startsWith('.') || n.length > 100) throw new Error(`Nombre de proyecto inválido: ${name}`);
-  return n;
+  if (folderNameProblem(name)) throw new Error(`Nombre de proyecto inválido: ${name}`);
+  return name.trim();
 }
 
-/** The folders of the projects dir and the shortcuts file (name="path"; "!command" ones are skipped). */
-async function listProjects(host: HostMonitor): Promise<ProjectList> {
-  const p = host.hostConfig.projects!;
+/**
+ * The folders of the projects dir, the shortcuts file (name="path"; "!command" ones
+ * are skipped) and the folders added in the panel, with whether each one is there.
+ */
+async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
+  const p = host.hostConfig.projects;
   const script = [
-    `cd ${hostPath(p.dir)} 2>/dev/null && for d in */; do [ -d "$d" ] && printf 'P\t%s\n' "\${d%/}"; done`,
-    p.shortcuts ? `[ -f ${hostPath(p.shortcuts)} ] && sed 's/^/S\t/' ${hostPath(p.shortcuts)}` : '',
+    p ? `cd ${hostPath(p.dir)} 2>/dev/null && for d in */; do [ -d "$d" ] && printf 'P\t%s\n' "\${d%/}"; done` : '',
+    p?.shortcuts ? `[ -f ${hostPath(p.shortcuts)} ] && sed 's/^/S\t/' ${hostPath(p.shortcuts)}` : '',
     'true',
   ].filter(Boolean).join('; ');
-  const out = await host.exec.shell(script);
+  const out = p ? await host.exec.shell(script) : '';
   const projects: string[] = [];
   const shortcuts: ProjectList['shortcuts'] = [];
   for (const line of out.split('\n')) {
@@ -62,9 +65,36 @@ async function listProjects(host: HostMonitor): Promise<ProjectList> {
     }
   }
   projects.sort((a, b) => a.localeCompare(b, 'es'));
-  // A shortcut whose folder is gone (moved or deleted) is not offered.
-  const found = shortcuts.length ? (await host.exec.shell(shortcuts.map((s) => `[ -d ${hostPath(s.path)} ] && echo 1 || echo 0`).join('; '))).split('\n') : [];
-  return { dir: p.dir, projects, shortcuts: shortcuts.filter((_, i) => found[i] === '1') };
+  // A shortcut whose folder is gone (moved or deleted) is not offered; an added folder
+  // shows as missing (it may be a disk not mounted now), so it can be removed.
+  const paths = [...shortcuts.map((s) => s.path), ...saved.map((f) => f.path)];
+  const found = paths.length ? (await host.exec.shell(paths.map((path) => `[ -d ${hostPath(path)} ] && echo 1 || echo 0`).join('; '))).split('\n') : [];
+  return {
+    dir: p?.dir ?? null,
+    projects,
+    shortcuts: shortcuts.filter((_, i) => found[i] === '1'),
+    folders: saved.map((f, i) => ({ ...f, missing: found[shortcuts.length + i] !== '1' })),
+  };
+}
+
+/** Where a path of the host leads, and the folders inside, for the folder picker. */
+async function listDirs(host: HostMonitor, path: string): Promise<DirListing> {
+  const p = path.trim().replace(/(.)\/+$/, '$1');
+  if (!folderPathOk(p)) throw new Error('La ruta tiene que empezar por / o por ~');
+  const out = await host.exec.shell(
+    `cd ${hostPath(p)} 2>/dev/null || { echo NONE; exit 0; }; pwd; printf '%s\n' "$HOME"; ` +
+      `for d in * .*; do [ "$d" != . ] && [ "$d" != .. ] && [ -d "$d" ] && printf 'D\t%s\n' "$d"; done; true`,
+  );
+  const lines = out.split('\n');
+  if (lines[0] === 'NONE') throw new Error(`No existe la carpeta ${p} en ${host.name}`);
+  const [abs, home] = lines;
+  const tilde = (a: string) => (home && home !== '/' && a === home ? '~' : home && home !== '/' && a.startsWith(`${home}/`) ? `~${a.slice(home.length)}` : a);
+  const dirs = lines
+    .filter((l) => l.startsWith('D\t'))
+    .map((l) => l.slice(2))
+    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+    .slice(0, 2000);
+  return { path: tilde(abs), parent: abs === '/' ? null : tilde(abs.replace(/\/[^/]*$/, '') || '/'), dirs };
 }
 
 /**
@@ -80,28 +110,32 @@ export function projectCommand(command: string, skipPermissions: boolean): strin
  * Opens a project like `c <name>`: a space named after it, in its folder, running
  * the projects command (claude). If that space is already open, it is reused.
  */
-async function openProject(host: HostMonitor, rawName: string, create: boolean, skipPermissions: boolean): Promise<{ session: string; created: boolean }> {
+async function openProject(host: HostMonitor, saved: SavedFolder[], rawName: string, create: boolean, skipPermissions: boolean): Promise<{ session: string; created: boolean }> {
   const p = host.hostConfig.projects;
-  if (!p) throw new Error('Esta máquina no tiene carpeta de proyectos');
   const name = projectName(rawName);
   const space = sessionName(name);
   const existing = await host.exec.runFormat(['list-sessions', '-F', '#{session_id}\t#{session_name}']).catch(() => '');
   const open = existing.split('\n').find((l) => l.split('\t')[1] === space);
   if (open) return { session: open.split('\t')[0], created: false };
 
-  const list = await listProjects(host);
-  const shortcut = list.shortcuts.find((s) => s.name === name);
-  const dir = shortcut ? shortcut.path : `${p.dir.replace(/\/$/, '')}/${name}`;
+  const list = await listProjects(host, saved);
+  // The folders added in the panel first, then the shortcuts, then the projects dir.
+  const folder = list.folders.find((f) => f.name === name);
+  if (folder?.missing) throw new Error(`La carpeta ${folder.path} ya no está en ${host.name}`);
+  const shortcut = folder ?? list.shortcuts.find((s) => s.name === name);
+  if (!shortcut && !p) throw new Error(`No existe la carpeta ${name}`);
+  const dir = shortcut ? shortcut.path : `${p!.dir.replace(/\/$/, '')}/${name}`;
   if (!shortcut && !list.projects.includes(name)) {
     if (!create) throw new Error(`No existe el proyecto ${name}`);
     await host.exec.shell(`mkdir -p ${hostPath(dir)}`);
   }
+  const command = p ? p.command : 'claude';
   // The space starts in a shell (with its .zshrc) and the command is typed into it,
   // as `c` does: quitting claude leaves you in the project's folder.
   const abs = (await host.exec.shell(`cd ${hostPath(dir)} && pwd`)).trim();
   const out = await host.exec.run(['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs]);
   const [session, pane] = out.trim().split(' ');
-  if (p.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(p.command, skipPermissions), 'Enter']);
+  if (command) await host.exec.run(['send-keys', '-t', pane, projectCommand(command, skipPermissions), 'Enter']);
   return { session, created: true };
 }
 
@@ -119,11 +153,15 @@ async function reboot(host: HostMonitor): Promise<void> {
   }
 }
 
+/** Actions that only read: the tree needs no refresh after them. */
+export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs']);
+
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
- * is the version updateKit moves the kit to (the hub's last check, never the client's).
+ * is the version updateKit moves the kit to (the hub's last check, never the client's);
+ * `folders` are the ones added in the panel for this host.
  */
-export async function runAction(host: HostMonitor, action: ActionOp, latestRelease: string | null = null): Promise<unknown> {
+export async function runAction(host: HostMonitor, action: ActionOp, latestRelease: string | null = null, folders: SavedFolder[] = []): Promise<unknown> {
   const run = (args: string[]) => host.exec.run(args);
   switch (action.op) {
     case 'newSession': {
@@ -133,10 +171,12 @@ export async function runAction(host: HostMonitor, action: ActionOp, latestRelea
       return { session: out.trim() };
     }
     case 'listProjects':
-      if (!host.hostConfig.projects) throw new Error('Esta máquina no tiene carpeta de proyectos');
-      return listProjects(host);
+      return listProjects(host, folders);
     case 'openProject':
-      return openProject(host, action.name, action.create === true, action.skipPermissions === true);
+      return openProject(host, folders, action.name, action.create === true, action.skipPermissions === true);
+    case 'listDirs':
+      if (typeof action.path !== 'string') throw new Error('Falta la ruta');
+      return listDirs(host, action.path);
     case 'renameSession':
       await run(['rename-session', '-t', check(action.session, SESSION_ID, 'sesión'), '--', sessionName(action.name)]);
       return;

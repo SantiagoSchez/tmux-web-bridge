@@ -2,7 +2,7 @@ import type { ComponentChildren } from 'preact';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../shared/types';
 import { prefs, setPref } from './prefs';
 import { goHome, openWindow, route } from './router';
-import { applyHostOrder, dialog, hosts, isSolo, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
+import { applyHostOrder, dialog, hosts, hubSettings, isSolo, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
 import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
 
@@ -40,8 +40,8 @@ export function openSessionWhenReady(hostId: string, sessionId: string): void {
 }
 
 export function newSession(host: HostInfo, plain = false): void {
-  // Hosts with a projects folder: pick a project, like `c <name>`.
-  if (host.projects && !plain) {
+  // Hosts with a projects folder or folders added in the panel: pick one, like `c <name>`.
+  if ((host.projects || hubSettings.value?.folders[host.id]?.length) && !plain) {
     dialog.value = { kind: 'project', host };
     return;
   }
