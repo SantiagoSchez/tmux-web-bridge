@@ -141,6 +141,7 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
   const [value, setValue] = useState(d.value);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    if (d.noFocus) return;
     input.current?.focus();
     input.current?.select();
   }, []);
@@ -195,10 +196,10 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const [list, setList] = useState<ProjectList | null>(null);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
-  const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    // No focus on the search: on a phone the keyboard would cover the list, which is what
+    // you pick from most of the time.
     hub.action<ProjectList>(d.host.id, { op: 'listProjects' }).then(setList, close);
-    input.current?.focus();
   }, []);
 
   const q = query.trim();
@@ -256,7 +257,6 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         }}
       >
         <input
-          ref={input}
           class="text-input"
           value={query}
           placeholder={parents.length ? 'Buscar o crear un proyecto' : 'Buscar una carpeta'}

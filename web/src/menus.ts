@@ -52,6 +52,7 @@ export function newSession(host: HostInfo, plain = false): void {
     value: '',
     placeholder: 'Nombre (vacío = automático)',
     confirm: 'Crear',
+    noFocus: true, // the name is optional: no keyboard popping up on a phone
     onSubmit: async (name) => {
       const res = await hub.action<{ session: string }>(host.id, { op: 'newSession', name: name || undefined });
       if (res?.session) whenSessionReady(host.id, res.session, (s) => unfold(host.id, s));

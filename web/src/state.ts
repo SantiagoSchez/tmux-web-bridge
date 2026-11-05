@@ -97,7 +97,7 @@ export function dismissToast(id: number): void {
 }
 
 export type Dialog =
-  | { kind: 'prompt'; title: string; label?: string; value: string; placeholder?: string; confirm: string; onSubmit: (v: string) => void }
+  | { kind: 'prompt'; title: string; label?: string; value: string; placeholder?: string; confirm: string; onSubmit: (v: string) => void; noFocus?: boolean }
   /** permissions: shows the «Saltarse los permisos» box (prefs.skipPermissions) for the Claude it starts. */
   | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; permissions?: boolean; onSubmit: () => void }
   /** top: shown above the items, and the menu stays open while it is used (the font size). */
