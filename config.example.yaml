@@ -71,18 +71,12 @@ hosts:
     identityFile: ~/.ssh/tmux-web-bridge_ed25519
     sshOptions: []               # opciones extra de ssh -o
 
-  # Un servidor para trabajar con Claude: «Nuevo space» abre un proyecto, como la función `c`.
-  # Otras carpetas (fuera de `dir`, o con otro nombre) se añaden desde el panel, en Ajustes › Carpetas;
-  # sin `projects`, «Nuevo space» ofrece solo esas.
+  # «Nuevo space» abre un space en una carpeta de la máquina (como la función `c`), con claude.
+  # Las carpetas, con o sin sus subcarpetas, y el comando se eligen en el panel: Ajustes › Carpetas.
   - id: dev
     name: Servidor
     ssh: usuario@192.168.1.10
     identityFile: ~/.ssh/tmux-web-bridge_ed25519
-    projects:
-      dir: ~/proyectos                     # cada carpeta es un proyecto (rutas de esa máquina)
-      command: claude                      # se escribe en el space nuevo (al salir queda la shell); si es claude,
-                                           # se le añade --permission-mode auto o, con «Saltarse los permisos»
-                                           # marcado en el diálogo, --dangerously-skip-permissions
 
 # Dictado (se activa en la app: Ajustes → Dictado). El modelo de voz, Parakeet v3, corre en
 # el propio servidor central y se descarga en dataDir/models la primera vez (unos 670 MB;

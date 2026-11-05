@@ -14,7 +14,10 @@ function fakeHost(home: string): HostMonitor {
     new Promise<string>((resolve, reject) =>
       execFile('/bin/sh', ['-c', script], { env: { PATH: process.env.PATH, HOME: home } }, (err, out) => (err ? reject(err) : resolve(out))),
     );
-  return { name: 'Prueba', hostConfig: { projects: null }, exec: { shell } } as unknown as HostMonitor;
+  // No tmux here: no spaces open, and nothing may be created.
+  const runFormat = async () => '';
+  const run = async () => assert.fail('tmux no se toca en estas pruebas');
+  return { name: 'Prueba', hostConfig: {}, exec: { shell, runFormat, run } } as unknown as HostMonitor;
 }
 
 function withHome(fn: (home: string) => Promise<void>): () => Promise<void> {
@@ -57,20 +60,40 @@ test(
 );
 
 test(
-  'listProjects: a host without a projects dir lists its added folders, marking the missing ones',
+  'listProjects: added folders as they are now, with the folders inside those with subfolders',
   withHome(async (home) => {
-    mkdirSync(join(home, 'trabajo'));
-    const list = (await runAction(fakeHost(home), { op: 'listProjects' }, null, [
-      { name: 'trabajo', path: '~/trabajo' },
+    for (const d of ['Proyectos/twb', 'Proyectos/Blog', 'Proyectos/.oculta', 'notas']) mkdirSync(join(home, d), { recursive: true });
+    const host = fakeHost(home);
+    const folders = [
+      { name: 'Proyectos', path: '~/Proyectos', subfolders: true },
+      { name: 'Proyectos', path: '~/Proyectos' },
+      { name: 'notas', path: '~/notas', subfolders: true },
       { name: 'disco', path: '/Volumes/no-montado' },
-    ])) as ProjectList;
-    assert.deepEqual(list, {
-      dir: null,
-      projects: [],
-      folders: [
-        { name: 'trabajo', path: '~/trabajo', missing: false },
-        { name: 'disco', path: '/Volumes/no-montado', missing: true },
-      ],
-    });
+    ];
+    const list = (await runAction(host, { op: 'listProjects' }, null, { folders, command: 'claude' })) as ProjectList;
+    assert.deepEqual(list.folders, [
+      { name: 'Proyectos', path: '~/Proyectos', subfolders: true, missing: false, children: ['Blog', 'twb'] },
+      { name: 'Proyectos', path: '~/Proyectos', missing: false, children: [] },
+      { name: 'notas', path: '~/notas', subfolders: true, missing: false, children: [] },
+      { name: 'disco', path: '/Volumes/no-montado', missing: true, children: [] },
+    ]);
+    // Read every time: a folder made later shows up without touching the list.
+    mkdirSync(join(home, 'Proyectos/nuevo'));
+    const again = (await runAction(host, { op: 'listProjects' }, null, { folders, command: 'claude' })) as ProjectList;
+    assert.deepEqual(again.folders[0].children, ['Blog', 'nuevo', 'twb']);
+  }),
+);
+
+test(
+  'openProject: only folders of the host, and new ones only inside a folder with subfolders',
+  withHome(async (home) => {
+    mkdirSync(join(home, 'Proyectos'));
+    const host = fakeHost(home);
+    const machine = { folders: [{ name: 'p', path: '~/Proyectos', subfolders: true }, { name: 'disco', path: '/Volumes/no-montado' }], command: 'claude' };
+    await assert.rejects(runAction(host, { op: 'openProject', folder: '/etc' }, null, machine), /no está entre las de Prueba/);
+    await assert.rejects(runAction(host, { op: 'openProject', folder: '~/Proyectos' }, null, machine), /no está entre las de Prueba/);
+    await assert.rejects(runAction(host, { op: 'openProject', folder: '~/Proyectos', sub: '../x', create: true }, null, machine), /inválido/);
+    await assert.rejects(runAction(host, { op: 'openProject', folder: '~/Proyectos', sub: 'nuevo' }, null, machine), /No existe la carpeta/);
+    await assert.rejects(runAction(host, { op: 'openProject', folder: '/Volumes/no-montado' }, null, machine), /no está en Prueba/);
   }),
 );

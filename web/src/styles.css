@@ -1720,6 +1720,15 @@ body.dragging-host * {
 .folder-list .project-text {
   flex: 1;
 }
+.folder-sub {
+  flex-shrink: 0;
+  min-height: 36px;
+  font-size: 13px;
+  color: var(--subtext0);
+}
+.text-input.mono {
+  font-family: var(--mono);
+}
 .folder-picker {
   display: flex;
   flex-direction: column;

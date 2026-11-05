@@ -40,8 +40,8 @@ export function openSessionWhenReady(hostId: string, sessionId: string): void {
 }
 
 export function newSession(host: HostInfo, plain = false): void {
-  // Hosts with a projects folder or folders added in the panel: pick one, like `c <name>`.
-  if ((host.projects || hubSettings.value?.folders[host.id]?.length) && !plain) {
+  // Hosts with folders (Settings › Carpetas): pick one, like `c <name>`.
+  if (hubSettings.value?.folders[host.id]?.length && !plain) {
     dialog.value = { kind: 'project', host };
     return;
   }

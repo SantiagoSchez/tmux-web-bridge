@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { baseName, childPath, folderNameProblem, MAX_FOLDERS } from '../../../shared/folders';
+import { baseName, childPath, DEFAULT_COMMAND, folderNameProblem, MAX_FOLDERS, sameFolder } from '../../../shared/folders';
 import type { DirListing, HostInfo, SavedFolder } from '../../../shared/types';
 import { dialog, folderHost, hosts, hubSettings, toast } from '../state';
 import { hub } from '../ws';
@@ -42,11 +42,19 @@ export function FolderSettings() {
     };
   };
 
+  const toggleSubfolders = (f: SavedFolder) => {
+    const on = !f.subfolders;
+    const twin = list.find((o) => o !== f && sameFolder(o, f.path, on));
+    if (twin) return toast(`Ya está añadida así como «${twin.name}».`, 'error');
+    saveFolders(host.id, list.map((o) => (o === f ? (on ? { ...o, subfolders: true } : { name: o.name, path: o.path }) : o)));
+  };
+
   return (
     <>
       <p class="settings-scope dim small">
-        Las carpetas que ofrece «Nuevo space» en cada máquina, además de su carpeta de proyectos. Al elegir una se abre un space con su nombre, en esa carpeta y con
-        Claude. Se guardan en el servidor central.
+        Las carpetas que ofrece «Nuevo space» en cada máquina. Al elegir una se abre un space con su nombre, en esa carpeta y con el comando de la máquina. Con
+        «Subcarpetas», la carpeta ofrece cada una de las que tiene dentro, siempre al día, y en ella se pueden crear proyectos nuevos. Se guardan en el servidor
+        central.
       </p>
       {all.length > 1 && (
         <div class="seg seg-wrap" role="radiogroup" aria-label="Máquina">
@@ -66,6 +74,10 @@ export function FolderSettings() {
                   <span class="project-name">{f.name}</span>
                   <span class="project-hint">{f.path}</span>
                 </span>
+                <label class="kb-check folder-sub" title="Ofrecer cada carpeta que tenga dentro, en vez de esta">
+                  <input type="checkbox" checked={!!f.subfolders} onChange={() => toggleSubfolders(f)} />
+                  Subcarpetas
+                </label>
                 <button class="icon-btn small-btn" aria-label={`Cambiar el nombre de ${f.name}`} title="Cambiar el nombre" onClick={() => rename(f)}>
                   ✎
                 </button>
@@ -81,7 +93,7 @@ export function FolderSettings() {
             ))}
           </ul>
         ) : (
-          <p class="dim small">{host.projects ? 'Solo la carpeta de proyectos, sin carpetas añadidas.' : 'Ninguna carpeta todavía: «Nuevo space» abre un space vacío.'}</p>
+          <p class="dim small">Ninguna carpeta todavía: «Nuevo space» abre un space vacío.</p>
         )}
         {picking ? (
           <FolderPicker
@@ -102,7 +114,49 @@ export function FolderSettings() {
         )}
         {host.status !== 'ok' && !picking && <p class="settings-state small">{host.name} no está conectada: para añadir carpetas tiene que estarlo.</p>}
       </section>
+      <CommandSetting key={host.id} hostId={host.id} value={s.commands[host.id] ?? DEFAULT_COMMAND} />
     </>
+  );
+}
+
+/** What is typed into a space opened from a folder of this machine. */
+function CommandSetting({ hostId, value }: { hostId: string; value: string }) {
+  const [text, setText] = useState(value);
+  useEffect(() => setText(value), [value]);
+  const save = () => text.trim() !== value && hub.send({ t: 'settings', settings: { commands: { [hostId]: text.trim() } } });
+  return (
+    <section class="setting">
+      <h3>Comando al abrir</h3>
+      <p class="dim small">
+        Lo que se escribe en el space al abrirlo desde una carpeta; al salir queda la shell. A <code>claude</code> se le añade el modo de permisos de la casilla
+        «Saltarse los permisos». Vacío: solo la shell.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <input
+          class="text-input mono"
+          value={text}
+          placeholder="Solo la shell"
+          aria-label="Comando al abrir"
+          autocapitalize="off"
+          autocomplete="off"
+          spellcheck={false}
+          onInput={(e) => setText(e.currentTarget.value)}
+          onBlur={save}
+        />
+      </form>
+      {value !== DEFAULT_COMMAND && (
+        <div class="row-btns">
+          <button class="btn" onClick={() => hub.send({ t: 'settings', settings: { commands: { [hostId]: DEFAULT_COMMAND } } })}>
+            Volver a claude
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -112,6 +166,7 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
   const [path, setPath] = useState('~');
   const [name, setName] = useState<string | null>(null);
   const [hidden, setHidden] = useState(false);
+  const [subfolders, setSubfolders] = useState(false);
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -134,7 +189,7 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
 
   const typed = path.trim() !== at?.path;
   const shownName = name ?? (typed ? baseName(path.trim()) : at ? baseName(at.path) : '');
-  const already = at && !typed ? list.find((f) => f.path === at.path) : undefined;
+  const already = at && !typed ? list.find((f) => sameFolder(f, at.path, subfolders)) : undefined;
   const problem = already ? `Ya está añadida como «${already.name}».` : at ? nameProblem(list, shownName) : null;
 
   const add = async () => {
@@ -142,9 +197,10 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
     const l = typed ? await go(path) : at;
     if (!l) return;
     const finalName = name ?? baseName(l.path);
-    const why = list.find((f) => f.path === l.path) ? `Ya está añadida como «${list.find((f) => f.path === l.path)!.name}».` : nameProblem(list, finalName);
+    const twin = list.find((f) => sameFolder(f, l.path, subfolders));
+    const why = twin ? `Ya está añadida como «${twin.name}».` : nameProblem(list, finalName);
     if (why) return toast(why, 'error');
-    onAdd({ name: finalName.trim(), path: l.path });
+    onAdd(subfolders ? { name: finalName.trim(), path: l.path, subfolders } : { name: finalName.trim(), path: l.path });
   };
 
   const dirs = at ? at.dirs.filter((d) => hidden || !d.startsWith('.')) : [];
@@ -191,12 +247,16 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
         ))}
         {at && !dirs.length && <li class="dim pad">{at.dirs.length ? 'Solo hay carpetas ocultas.' : 'No hay carpetas dentro.'}</li>}
       </ul>
+      <label class="kb-check">
+        <input type="checkbox" checked={subfolders} onChange={(e) => setSubfolders(e.currentTarget.checked)} />
+        Incluir todas sus subcarpetas (siempre al día)
+      </label>
       <label class="folder-name">
-        <span class="dim small">Nombre del space</span>
+        <span class="dim small">{subfolders ? 'Nombre (para reconocerla en esta lista)' : 'Nombre del space'}</span>
         <input
           class="text-input"
           value={shownName}
-          aria-label="Nombre del space"
+          aria-label={subfolders ? 'Nombre' : 'Nombre del space'}
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}

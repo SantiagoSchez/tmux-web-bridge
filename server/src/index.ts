@@ -7,6 +7,7 @@ import fastifyWebsocket from '@fastify/websocket';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
+import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import type { ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
 import { READ_ONLY_OPS, runAction, runTitleScript } from './actions.js';
 import { shq } from './exec.js';
@@ -47,6 +48,12 @@ const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
+// The folders of «Nuevo space» live in the hub now: a `projects` block becomes one, once.
+const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
+for (const h of config.hosts.filter((x) => x.legacyProjects)) {
+  const what = migrated.includes(h.id) ? 'la carpeta de «projects» pasa a Ajustes › Carpetas, con sus subcarpetas' : '«projects» ya no se usa (las carpetas están en Ajustes › Carpetas)';
+  console.warn(`[config] ${h.id}: ${what}; quita «projects» de la config`);
+}
 for (const host of hosts.values()) host.limitsInStatusLine = settings.value.limitsInStatusLine;
 const dictation = new Dictation(config.dictation, config.dataDir);
 dictation.setGlossary(settings.value.dictationGlossary);
@@ -273,7 +280,8 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const data = await runAction(host, op, updates.info.latest?.version ?? null, settings.value.folders[host.id] ?? []);
+          const machine = { folders: settings.value.folders[host.id] ?? [], command: settings.value.commands[host.id] ?? DEFAULT_COMMAND };
+          const data = await runAction(host, op, updates.info.latest?.version ?? null, machine);
           if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
           break;

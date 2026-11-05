@@ -19,11 +19,10 @@ export interface HostConfig {
   /** Socket options for a non-default tmux server: -L name or -S path. */
   socketArgs: string[];
   /**
-   * "Nuevo space" opens a project, like the `c` shell function: a folder of `dir`
-   * (or one added in the panel), with `command` started in it. Paths are on that
-   * host; ~ is its home.
+   * The `projects` block of configs from before the folders moved into the panel: the
+   * hub turns it into one of the host's folders once (SettingsStore.migrateProjects).
    */
-  projects: { dir: string; command: string } | null;
+  legacyProjects: { dir: string; command: string } | null;
 }
 
 export interface Config {
@@ -96,9 +95,6 @@ export function loadConfig(): Config {
     seen.add(id);
     const local = h.local === true;
     if (!local && !h.ssh) throw new Error(`config: el host ${id} necesita "ssh" o "local: true"`);
-    if (h.projects?.shortcuts) {
-      console.warn(`[config] ${id}: projects.shortcuts ya no se usa; las carpetas de «Nuevo space» se añaden en Ajustes › Carpetas`);
-    }
     return {
       id,
       name: String(h.name ?? id),
@@ -109,7 +105,7 @@ export function loadConfig(): Config {
       sshOptions: Array.isArray(h.sshOptions) ? h.sshOptions.map(String) : [],
       tmux: h.tmux ? String(h.tmux) : 'tmux',
       socketArgs: h.socketPath ? ['-S', String(h.socketPath)] : h.socketName ? ['-L', String(h.socketName)] : [],
-      projects: h.projects?.dir
+      legacyProjects: h.projects?.dir
         ? { dir: String(h.projects.dir), command: String(h.projects.command ?? 'claude') }
         : null,
     };

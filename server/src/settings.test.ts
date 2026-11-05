@@ -133,3 +133,51 @@ test('folders: invalid entries and repeated names are dropped', () =>
     });
     assert.deepEqual(store.value.folders, { mac: [{ name: 'a', path: '~' }, { name: 'ok', path: '/' }] });
   }));
+
+test('folders: the same path may be there on its own and with its subfolders', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({
+      folders: {
+        mac: [
+          { name: 'Proyectos', path: '~/Proyectos', subfolders: true },
+          { name: 'raiz', path: '~/Proyectos' },
+          { name: 'otra', path: '~/Proyectos/', subfolders: true },
+        ],
+      },
+    });
+    assert.deepEqual(store.value.folders.mac, [
+      { name: 'Proyectos', path: '~/Proyectos', subfolders: true },
+      { name: 'raiz', path: '~/Proyectos' },
+    ]);
+  }));
+
+test('commands: per machine, claude is the default and one line at most', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({ commands: { mac: 'nvim .', dev: '' } });
+    store.update({ commands: { mac: 'claude', dev: 'a\nb' } });
+    assert.deepEqual(new SettingsStore(dir).value.commands, { dev: '' });
+  }));
+
+test('the projects block of an old config becomes a folder with subfolders, once', () =>
+  withDir((dir) => {
+    const hosts = [
+      { id: 'dev', projects: { dir: '~/Proyectos/', command: 'claude --model opus' } },
+      { id: 'mac', projects: null },
+    ];
+    const store = new SettingsStore(dir);
+    store.update({ folders: { dev: [{ name: 'Proyectos', path: '/srv/otro' }] } });
+    assert.deepEqual(store.migrateProjects(hosts), ['dev']);
+    assert.deepEqual(store.value.folders.dev, [
+      { name: 'Proyectos', path: '/srv/otro' },
+      { name: 'Proyectos-2', path: '~/Proyectos', subfolders: true },
+    ]);
+    assert.deepEqual(store.value.commands, { dev: 'claude --model opus' });
+
+    // Removed afterwards, it stays removed (even after a restart).
+    store.update({ folders: { dev: [] } });
+    const again = new SettingsStore(dir);
+    assert.deepEqual(again.migrateProjects(hosts), []);
+    assert.equal(again.value.folders.dev, undefined);
+  }));

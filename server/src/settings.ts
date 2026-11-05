@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
-import { sanitizeFolderList } from '../../shared/folders.js';
+import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, sanitizeKeybar } from '../../shared/keybar.js';
 import type { HubSettings } from '../../shared/types.js';
 
@@ -24,12 +24,15 @@ const DEFAULTS: HubSettings = {
   dictationShortcut: DEFAULT_DICTATION_SHORTCUT,
   keybar: DEFAULT_KEYBAR,
   folders: {},
+  commands: {},
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
  * once. Emptied on purpose afterwards, it stays empty.
  */
 const SEEDED = 'dictationGlossarySeeded';
+/** Hosts whose `projects` block of the config went into their folders already (once). */
+const MIGRATED = 'projectsMigrated';
 /** Plenty for a list of terms, and it goes into every cleanup prompt. */
 const GLOSSARY_MAX = 2000;
 
@@ -46,6 +49,19 @@ function mergeFolders(current: HubSettings['folders'], patch: unknown): HubSetti
   return next;
 }
 
+/** The commands of `patch` replace those of the same hosts; claude (the default) removes its host. */
+function mergeCommands(current: HubSettings['commands'], patch: unknown): HubSettings['commands'] {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return current;
+  const next = { ...current };
+  for (const [host, value] of Object.entries(patch)) {
+    const command = sanitizeCommand(value);
+    if (command === null) continue;
+    if (command === DEFAULT_COMMAND) delete next[host];
+    else next[host] = command;
+  }
+  return next;
+}
+
 /**
  * Settings of the whole hub, chosen in the web app and kept in dataDir so every
  * device sees the same ones.
@@ -55,14 +71,22 @@ function mergeFolders(current: HubSettings['folders'], patch: unknown): HubSetti
 export class SettingsStore extends EventEmitter {
   private readonly path: string;
   private state: HubSettings = DEFAULTS;
+  private migrated: string[] = [];
 
   constructor(dataDir: string) {
     super();
     this.path = join(dataDir, 'settings.json');
     try {
       if (!existsSync(this.path)) return;
-      const { [SEEDED]: seeded, ...saved } = JSON.parse(readFileSync(this.path, 'utf8'));
-      this.state = { ...DEFAULTS, ...saved, keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar, folders: mergeFolders({}, saved.folders) };
+      const { [SEEDED]: seeded, [MIGRATED]: migrated, ...saved } = JSON.parse(readFileSync(this.path, 'utf8'));
+      if (Array.isArray(migrated)) this.migrated = migrated.map(String);
+      this.state = {
+        ...DEFAULTS,
+        ...saved,
+        keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar,
+        folders: mergeFolders({}, saved.folders),
+        commands: mergeCommands({}, saved.commands),
+      };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
         this.state = { ...this.state, dictationGlossary: DEFAULT_GLOSSARY };
@@ -75,7 +99,7 @@ export class SettingsStore extends EventEmitter {
 
   private save(): void {
     try {
-      writeFileSync(this.path, JSON.stringify({ ...this.state, [SEEDED]: true }, null, 2));
+      writeFileSync(this.path, JSON.stringify({ ...this.state, [SEEDED]: true, [MIGRATED]: this.migrated }, null, 2));
     } catch (err) {
       console.warn(`[settings] no se pudo guardar ${this.path}: ${(err as Error).message}`);
     }
@@ -102,8 +126,38 @@ export class SettingsStore extends EventEmitter {
     const keybar = sanitizeKeybar(patch.keybar);
     if (keybar) next.keybar = keybar;
     if (patch.folders !== undefined) next.folders = mergeFolders(next.folders, patch.folders);
+    if (patch.commands !== undefined) next.commands = mergeCommands(next.commands, patch.commands);
     this.state = next;
     this.save();
     this.emit('change', next);
+  }
+
+  /**
+   * The `projects` block a host had in the config (before the folders moved into the
+   * panel) becomes one of its folders, with its subfolders, and its command: once per
+   * host, so removing that folder afterwards sticks. Returns the hosts migrated now.
+   */
+  migrateProjects(hosts: { id: string; projects: { dir: string; command: string } | null }[]): string[] {
+    const done: string[] = [];
+    let next = this.state;
+    for (const h of hosts) {
+      if (!h.projects || this.migrated.includes(h.id)) continue;
+      const list = next.folders[h.id] ?? [];
+      const path = h.projects.dir.trim().replace(/(.)\/+$/, '$1');
+      let name = baseName(path);
+      for (let i = 2; list.some((f) => f.name === name); i++) name = `${baseName(path)}-${i}`;
+      const folders = list.some((f) => sameFolder(f, path, true)) ? list : [...list, { name, path, subfolders: true }];
+      next = {
+        ...next,
+        folders: mergeFolders(next.folders, { [h.id]: folders }),
+        commands: mergeCommands(next.commands, { [h.id]: h.projects.command }),
+      };
+      this.migrated = [...this.migrated, h.id];
+      done.push(h.id);
+    }
+    if (!done.length) return done;
+    this.state = next;
+    this.save();
+    return done;
   }
 }

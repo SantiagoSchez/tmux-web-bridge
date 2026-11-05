@@ -237,7 +237,7 @@ export class HostMonitor extends EventEmitter {
     this.id = hostConfig.id;
     this.name = hostConfig.name;
     this.exec = new TmuxExec(hostConfig, config);
-    this.info = { id: this.id, name: this.name, status: 'connecting', sessions: [], projects: hostConfig.projects ? true : undefined, reboot: hostConfig.local ? undefined : true };
+    this.info = { id: this.id, name: this.name, status: 'connecting', sessions: [], reboot: hostConfig.local ? undefined : true };
   }
 
   get snapshot(): HostInfo {
@@ -309,7 +309,6 @@ export class HostMonitor extends EventEmitter {
   }
 
   private update(next: HostInfo): void {
-    if (this.hostConfig.projects) next = { ...next, projects: true };
     if (!this.hostConfig.local) next = { ...next, reboot: true };
     this.info = next;
     const json = JSON.stringify(next);

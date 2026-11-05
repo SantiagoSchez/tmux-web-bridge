@@ -29,7 +29,22 @@ export function childPath(parent: string, name: string): string {
   return `${parent.replace(/\/+$/, '')}/${name}`;
 }
 
-/** One machine's list as the hub keeps it: valid entries, names trimmed, the first of each name. */
+/** What is typed into a new space when a machine has no command set. */
+export const DEFAULT_COMMAND = 'claude';
+const MAX_COMMAND = 300;
+
+/** A machine's command as the hub keeps it (one line), or null if it can't be one. */
+export function sanitizeCommand(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > MAX_COMMAND || /[\n\r\0]/.test(value)) return null;
+  return value.trim();
+}
+
+/** The same entry: a folder may be there twice, on its own and with its subfolders. */
+export function sameFolder(f: SavedFolder, path: string, subfolders: boolean): boolean {
+  return f.path === path && !!f.subfolders === subfolders;
+}
+
+/** One machine's list as the hub keeps it: valid entries, names trimmed, the first of each name and entry. */
 export function sanitizeFolderList(value: unknown): SavedFolder[] | null {
   if (!Array.isArray(value)) return null;
   const out: SavedFolder[] = [];
@@ -37,8 +52,9 @@ export function sanitizeFolderList(value: unknown): SavedFolder[] | null {
     if (!f || typeof f !== 'object' || typeof f.name !== 'string' || typeof f.path !== 'string') continue;
     const name = f.name.trim();
     const path = f.path.trim().replace(/(.)\/+$/, '$1');
-    if (folderNameProblem(name) || !folderPathOk(path) || out.some((o) => o.name === name)) continue;
-    out.push({ name, path });
+    const subfolders = f.subfolders === true;
+    if (folderNameProblem(name) || !folderPathOk(path) || out.some((o) => o.name === name || sameFolder(o, path, subfolders))) continue;
+    out.push(subfolders ? { name, path, subfolders } : { name, path });
     if (out.length === MAX_FOLDERS) break;
   }
   return out;

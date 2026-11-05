@@ -1,4 +1,4 @@
-import { folderNameProblem, folderPathOk } from '../../shared/folders.js';
+import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, sameFolder } from '../../shared/folders.js';
 import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
@@ -43,25 +43,29 @@ function projectName(name: string): string {
 }
 
 /**
- * The folders of the projects dir and the ones added in the panel, with whether each
- * of these is there (it may be a disk not mounted now: it shows, and can be removed).
+ * A host's folders for «Nuevo space» as they are now: whether each one is there and,
+ * for those with subfolders, the folders inside (not hidden ones), read every time.
  */
 async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
-  const p = host.hostConfig.projects;
-  const script = [
-    p ? `(cd ${hostPath(p.dir)} 2>/dev/null && for d in */; do [ -d "$d" ] && printf 'P\t%s\n' "\${d%/}"; done)` : '',
-    ...saved.map((f) => `[ -d ${hostPath(f.path)} ] && echo F1 || echo F0`),
-    'true',
-  ].filter(Boolean).join('; ');
-  const lines = p || saved.length ? (await host.exec.shell(script)).split('\n') : [];
-  const projects = lines.filter((l) => l.startsWith('P\t')).map((l) => l.slice(2));
-  projects.sort((a, b) => a.localeCompare(b, 'es'));
-  const found = lines.filter((l) => l === 'F0' || l === 'F1');
-  return {
-    dir: p?.dir ?? null,
-    projects,
-    folders: saved.map((f, i) => ({ ...f, missing: found[i] !== 'F1' })),
-  };
+  const script = saved
+    .map((f, i) => {
+      const dir = hostPath(f.path);
+      const children = f.subfolders ? `; (cd ${dir} && for d in */; do [ -d "$d" ] && printf 'C\t${i}\t%s\n' "\${d%/}"; done)` : '';
+      return `if [ -d ${dir} ]; then echo 'F\t${i}'${children}; fi`;
+    })
+    .concat('true')
+    .join('; ');
+  const lines = saved.length ? (await host.exec.shell(script)).split('\n') : [];
+  const folders = saved.map((f) => ({ ...f, missing: true, children: [] as string[] }));
+  for (const line of lines) {
+    const [kind, i, name] = line.split('\t');
+    const f = folders[Number(i)];
+    if (!f) continue;
+    if (kind === 'F') f.missing = false;
+    else if (kind === 'C' && name) f.children.push(name);
+  }
+  for (const f of folders) f.children.sort((a, b) => a.localeCompare(b, 'es'));
+  return { folders };
 }
 
 /** Where a path of the host leads, and the folders inside, for the folder picker. */
@@ -85,7 +89,7 @@ async function listDirs(host: HostMonitor, path: string): Promise<DirListing> {
 }
 
 /**
- * The projects command with the permission mode chosen in the panel: auto mode, or
+ * The command of a space opened from a folder, with the permission mode chosen in the panel: auto mode, or
  * skipping the permissions. Only a claude command gets the flag; any other is typed as is.
  */
 export function projectCommand(command: string, skipPermissions: boolean): string {
@@ -93,35 +97,41 @@ export function projectCommand(command: string, skipPermissions: boolean): strin
   return `${command} ${skipPermissions ? '--dangerously-skip-permissions' : '--permission-mode auto'}`;
 }
 
+/** The folders a host offers in «Nuevo space» and what is typed into a space opened there. */
+export interface MachineFolders {
+  folders: SavedFolder[];
+  command: string;
+}
+
 /**
- * Opens a project like `c <name>`: a space named after it, in its folder, running
- * the projects command (claude). If that space is already open, it is reused.
+ * Opens a space like `c <name>`: named after the folder, in it, running the host's
+ * command (claude). The folder is an added one, or one inside an added folder with
+ * subfolders (created first if asked). If a space of that name is open, it is reused.
  */
-async function openProject(host: HostMonitor, saved: SavedFolder[], rawName: string, create: boolean, skipPermissions: boolean): Promise<{ session: string; created: boolean }> {
-  const p = host.hostConfig.projects;
-  const name = projectName(rawName);
+async function openProject(host: HostMonitor, machine: MachineFolders, action: Extract<ActionOp, { op: 'openProject' }>): Promise<{ session: string; created: boolean }> {
+  const sub = action.sub === undefined ? undefined : projectName(String(action.sub));
+  const folder = machine.folders.find((f) => sameFolder(f, String(action.folder), sub !== undefined));
+  if (!folder) throw new Error(`Esa carpeta no está entre las de ${host.name}`);
+  const name = sub ?? folder.name;
+  const dir = sub ? childPath(folder.path, sub) : folder.path;
   const space = sessionName(name);
   const existing = await host.exec.runFormat(['list-sessions', '-F', '#{session_id}\t#{session_name}']).catch(() => '');
   const open = existing.split('\n').find((l) => l.split('\t')[1] === space);
   if (open) return { session: open.split('\t')[0], created: false };
 
-  const list = await listProjects(host, saved);
-  // A folder added in the panel wins over a project of the same name.
-  const folder = list.folders.find((f) => f.name === name);
-  if (folder?.missing) throw new Error(`La carpeta ${folder.path} ya no está en ${host.name}`);
-  if (!folder && !p) throw new Error(`No existe la carpeta ${name}`);
-  const dir = folder ? folder.path : `${p!.dir.replace(/\/$/, '')}/${name}`;
-  if (!folder && !list.projects.includes(name)) {
-    if (!create) throw new Error(`No existe el proyecto ${name}`);
-    await host.exec.shell(`mkdir -p ${hostPath(dir)}`);
+  // Only inside a folder that is there: a disk not mounted gets no folders made under it.
+  const state = (await host.exec.shell(`if [ -d ${hostPath(dir)} ]; then echo ok; elif [ -d ${hostPath(folder.path)} ]; then echo new; else echo gone; fi`)).trim();
+  if (state === 'gone') throw new Error(`La carpeta ${folder.path} no está en ${host.name}`);
+  if (state === 'new') {
+    if (!sub || !action.create) throw new Error(`No existe la carpeta ${dir}`);
+    await host.exec.shell(`mkdir ${hostPath(dir)}`);
   }
-  const command = p ? p.command : 'claude';
   // The space starts in a shell (with its .zshrc) and the command is typed into it,
   // as `c` does: quitting claude leaves you in the project's folder.
   const abs = (await host.exec.shell(`cd ${hostPath(dir)} && pwd`)).trim();
   const out = await host.exec.run(['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs]);
   const [session, pane] = out.trim().split(' ');
-  if (command) await host.exec.run(['send-keys', '-t', pane, projectCommand(command, skipPermissions), 'Enter']);
+  if (machine.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
   return { session, created: true };
 }
 
@@ -145,9 +155,14 @@ export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
  * is the version updateKit moves the kit to (the hub's last check, never the client's);
- * `folders` are the ones added in the panel for this host.
+ * `machine`, the host's folders for «Nuevo space».
  */
-export async function runAction(host: HostMonitor, action: ActionOp, latestRelease: string | null = null, folders: SavedFolder[] = []): Promise<unknown> {
+export async function runAction(
+  host: HostMonitor,
+  action: ActionOp,
+  latestRelease: string | null = null,
+  machine: MachineFolders = { folders: [], command: DEFAULT_COMMAND },
+): Promise<unknown> {
   const run = (args: string[]) => host.exec.run(args);
   switch (action.op) {
     case 'newSession': {
@@ -157,9 +172,9 @@ export async function runAction(host: HostMonitor, action: ActionOp, latestRelea
       return { session: out.trim() };
     }
     case 'listProjects':
-      return listProjects(host, folders);
+      return listProjects(host, machine.folders);
     case 'openProject':
-      return openProject(host, folders, action.name, action.create === true, action.skipPermissions === true);
+      return openProject(host, machine, action);
     case 'listDirs':
       if (typeof action.path !== 'string') throw new Error('Falta la ruta');
       return listDirs(host, action.path);

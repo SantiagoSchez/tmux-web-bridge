@@ -81,8 +81,6 @@ export interface HostInfo {
   prefix?: string;
   /** Published by the Claude Code statusline on that host (@claude_rate_limits), one per account. */
   limits?: RateLimits[];
-  /** "Nuevo space" opens a project of its projects folder, like the `c` shell function. */
-  projects?: boolean;
   /** Its menu offers to reboot it (SSH hosts; never the hub's own). */
   reboot?: boolean;
   /** Version of its host-kit (@twb_kit_version, set by the kit's tmux.conf); missing before 1.0.0. */
@@ -116,17 +114,24 @@ export interface HubSettings {
   /** The key bar under the terminal on touch screens, in order. See shared/keybar.ts. */
   keybar: KeybarButton[];
   /**
-   * Folders added in the panel for «Nuevo space», by host id. A patch replaces the
-   * list of each host it names (an empty list removes it) and keeps the others.
+   * The folders «Nuevo space» offers, by host id. A patch replaces the list of each
+   * host it names (an empty list removes it) and keeps the others.
    */
   folders: Record<string, SavedFolder[]>;
+  /**
+   * What is typed into a space opened from a folder, by host id (missing: claude,
+   * which gets the permission mode chosen; empty: only the shell). Patched like folders.
+   */
+  commands: Record<string, string>;
 }
 
-/** A folder of a machine added in the panel: «Nuevo space» opens a project there. */
+/** A folder of a machine added in the panel: «Nuevo space» opens a space there. */
 export interface SavedFolder {
   name: string;
   /** On that machine: absolute, or under ~ (written ~/…). */
   path: string;
+  /** Offers each folder inside (read every time, so always current) instead of this one. */
+  subfolders?: boolean;
 }
 
 /** What the hub's dictation can do right now. */
@@ -163,13 +168,13 @@ export interface UpdateInfo {
   released: { date: string; url: string } | null;
 }
 
-/** A host's projects (folders of its projects dir) and the folders added in the panel. */
+/**
+ * A host's folders for «Nuevo space», as they are now: missing, the folder is not
+ * there (moved, deleted, or a disk not mounted); children, the folders inside one
+ * with subfolders (hidden ones left out).
+ */
 export interface ProjectList {
-  /** The projects dir; null on a host without one (only its added folders). */
-  dir: string | null;
-  projects: string[];
-  /** missing: the folder is not there now (moved, deleted, or a disk not mounted). */
-  folders: (SavedFolder & { missing: boolean })[];
+  folders: (SavedFolder & { missing: boolean; children: string[] })[];
 }
 
 /** A folder of a host, for the folder picker: where it is and the folders inside. */
@@ -231,7 +236,11 @@ export interface ConnectionInfo {
 export type ActionOp =
   | { op: 'newSession'; name?: string }
   | { op: 'listProjects' }
-  | { op: 'openProject'; name: string; create?: boolean; skipPermissions?: boolean }
+  /**
+   * Opens a space in an added folder (its path), or in `sub`, a folder inside one with
+   * subfolders, created first with `create`. An open space of that name is reused.
+   */
+  | { op: 'openProject'; folder: string; sub?: string; create?: boolean; skipPermissions?: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }
