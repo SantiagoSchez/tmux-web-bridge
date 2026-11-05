@@ -52,7 +52,9 @@ window.addEventListener('popstate', () => {
   } else if (entry === 'live') {
     entry = 'none';
     closeTop();
-    if (anyOpen()) pushEntry();
+    // Closing the top one may show another under it: the effect above has then put the
+    // entry back already (a dialog over the settings), or not (a settings section).
+    if (anyOpen() && (entry as Entry) !== 'live') pushEntry();
   } else if (entry === 'stale') {
     entry = 'none';
     history.back();

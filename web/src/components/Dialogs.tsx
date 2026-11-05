@@ -19,13 +19,15 @@ export function Sheet(props: {
   children: ComponentChildren;
 }) {
   const { title, subtitle, back, onClose, children } = props;
+  const backdrop = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // Only the one on top (the last one) closes: a dialog over the settings leaves them open.
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && [...document.querySelectorAll('.sheet-backdrop')].pop() === backdrop.current && onClose();
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div class="sheet-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div class="sheet-backdrop" ref={backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div class={`sheet ${props.class ?? ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div class="sheet-grip" />
         <div class="sheet-head">
