@@ -318,7 +318,7 @@ h3 {
   padding: 2px 4px;
   border-radius: 6px;
 }
-.limit:hover,
+.limit.warn:hover,
 .limit.open {
   background: var(--surface0);
 }
@@ -381,34 +381,29 @@ h3 {
   color: var(--text);
   text-shadow: 0 0 3px var(--halo);
 }
+.limit-left {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .limit-when {
   color: var(--overlay0);
   white-space: nowrap;
 }
-/* A meter's details, opened with a tap on it. */
+/* A meter's forecast, opened with a tap on its ⚠. */
 .limit-tip {
   position: fixed;
   z-index: 70;
   max-width: min(320px, calc(100vw - 16px));
   padding: 8px 10px;
-  display: grid;
-  gap: 6px;
   background: var(--mantle);
   border: 1px solid var(--surface1);
   border-radius: 8px;
   box-shadow: 0 6px 20px #0006;
   font: 12px/1.35 var(--mono);
-  color: var(--subtext1);
+  color: var(--peach);
   white-space: normal;
 }
-.limit-tip-head {
-  font-weight: 700;
-  color: var(--text);
-}
-.limit-tip-eta {
-  color: var(--peach);
-}
-/* Phones: each account on one line, without its domain. */
+/* Phones: each account on one line, without its domain or the reset dates. */
 @media (max-width: 600px) {
   /* Too much for the width (several accounts, many states): it scrolls sideways instead of being cut. */
   .limits {
@@ -438,6 +433,10 @@ h3 {
   }
   .limit-bar {
     width: 56px;
+  }
+  /* The time left until the reset, always; its date does not fit. */
+  .limit-left .limit-when {
+    display: none;
   }
 }
 /* The strip (or the update notice) already sits under the status bar. */

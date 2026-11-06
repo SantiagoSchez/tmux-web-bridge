@@ -51,55 +51,47 @@ function runsOutAt(samples: UsageSample[], w: Window, pct: number, resetsAt: num
 
 type Tip = { key: string; anchor: DOMRect };
 
-/** The meter whose details are open, if any: one at a time, for every row. */
+/** The meter whose forecast is open, if any: one at a time, for every row. */
 const tip = signal<Tip | null>(null);
 
 /**
- * One limit: its label, its bar and, if it would run out before its reset, a ⚠.
- * A tap opens the details (time left, reset date, forecast) in a tooltip, so the
- * strip stays short on a phone without losing them.
+ * One limit: its label, its bar, the time left until its reset and, if it would
+ * run out before then, a ⚠. Only then is it a button: a tap opens the forecast
+ * in a tooltip, so its text does not take room from the reset on a phone.
  */
 function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: string; pct: number; resetsAt: number; now: number; runsOut: number | null }) {
   const reset = resetsAt > 0 && resetsAt <= now; // the window already restarted since it was read
   const value = reset ? 0 : Math.max(0, Math.min(100, Math.round(pct)));
   const level = value >= 80 ? 'high' : value >= 60 ? 'mid' : 'low';
   const open = tip.value?.key === id;
+  const content = (
+    <>
+      <span class="limit-label">{label}</span>
+      <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} aria-label={`Uso ${label}`}>
+        <span class="limit-fill" style={{ width: `${value}%` }} />
+        <span class="limit-pct">{value}%</span>
+      </span>
+      <span class="limit-left">
+        {reset ? 'reiniciado' : left(resetsAt - now)}
+        {!reset && resetsAt > 0 && <span class="limit-when"> ({when(resetsAt)})</span>}
+      </span>
+    </>
+  );
+  if (!runsOut) return <div class={`limit ${reset ? 'reset' : ''}`}>{content}</div>;
   const toggle = (e: MouseEvent) => {
     tip.value = open ? null : { key: id, anchor: (e.currentTarget as HTMLElement).getBoundingClientRect() };
   };
   return (
     <>
-      <button
-        type="button"
-        class={`limit ${reset ? 'reset' : ''} ${open ? 'open' : ''}`}
-        aria-expanded={open}
-        aria-label={`Uso ${label}: ${value}%${runsOut ? ', llegarás al 100% antes del reinicio' : ''}`}
-        onClick={toggle}
-      >
-        <span class="limit-label">{label}</span>
-        <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}>
-          <span class="limit-fill" style={{ width: `${value}%` }} />
-          <span class="limit-pct">{value}%</span>
+      <button type="button" class={`limit warn ${open ? 'open' : ''}`} aria-expanded={open} onClick={toggle}>
+        {content}
+        <span class="limit-eta" aria-label="Llegarás al 100% antes del reinicio">
+          ⚠
         </span>
-        {runsOut && <span class="limit-eta">⚠</span>}
       </button>
       {open && (
         <LimitTip anchor={tip.value!.anchor}>
-          <div class="limit-tip-head">
-            {label} · {value}%
-          </div>
-          {reset ? (
-            <div>Reiniciado</div>
-          ) : resetsAt > 0 ? (
-            <div>
-              Se reinicia en {left(resetsAt - now)} <span class="limit-when">({when(resetsAt)})</span>
-            </div>
-          ) : null}
-          {runsOut && (
-            <div class="limit-tip-eta">
-              ⚠ Al ritmo actual llegas al 100% en {left(runsOut - now)} <span class="limit-when">({when(runsOut)})</span>, antes del reinicio
-            </div>
-          )}
+          ⚠ Al ritmo actual llegas al 100% en {left(runsOut - now)} <span class="limit-when">({when(runsOut)})</span>, antes del reinicio
         </LimitTip>
       )}
     </>
@@ -107,7 +99,7 @@ function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: 
 }
 
 /**
- * The details of a meter, under it and inside the screen. Fixed rather than
+ * A meter's forecast, under it and inside the screen. Fixed rather than
  * absolute: the strip cuts (or, on phones, scrolls) what overflows it. It closes
  * with a tap elsewhere, Escape, or when anything scrolls or resizes.
  */
