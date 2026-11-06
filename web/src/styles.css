@@ -1594,6 +1594,12 @@ body.dragging-host * {
 .layout.desktop .sheet-grip {
   display: none;
 }
+/* The top of a sheet drags it down (on the phone): the browser must not scroll it instead. */
+.layout.mobile .sheet-top {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .sheet-head {
   padding: 4px 4px 12px;
 }
