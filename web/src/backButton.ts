@@ -2,22 +2,37 @@ import { effect } from '@preact/signals';
 import { isDesktop } from './prefs';
 import { dialog, drawerOpen, paletteOpen, settingsTab, sheet } from './state';
 
-// The phone's back button closes what is open on top (a dialog, a menu, a sheet, the
-// search, the drawer) instead of leaving the page. While something is open there is
-// one history entry of ours, with the same URL: going back from it closes the top
-// one, and if more is still open, the entry goes back in.
+// The phone's back button closes what is open on top (a dialog, a menu, a sheet, a
+// section of the settings, the search, the drawer) instead of leaving the page. Each
+// of those layers has a history entry of ours, with the same URL and its depth in the
+// state (1 for the bottom one), pushed when it opens: going back from it closes it.
 //
-// An entry left behind when everything is closed by hand (a tap outside, a button)
-// is "stale": history can't drop it, so the next open reuses it, a navigation of the
-// app replaces it, and going back from it goes back once more, so that press still
-// does what it would have done.
+// The entries are pushed only then, while the tap that opened the layer still counts
+// as the user's: Chrome on Android skips, on back, entries added without one, so an
+// entry put back after closing the top layer (from popstate) made the next press
+// leave the app.
+//
+// Entries left behind when layers are closed by hand (a tap outside, a button) are
+// "stale": history can't drop them, so the next layers to open reuse them, a
+// navigation of the app replaces the current one, and going back from one goes back
+// once more, so that press still does what it would have done.
 
-type Entry = 'none' | 'live' | 'stale';
-let entry: Entry = history.state?.twbOverlay ? 'stale' : 'none';
-/** What to do once off our entry (replaceCurrent), run when that going back lands. */
+/** Open layers, each with its own entry: the settings on the phone count a section apart. */
+function layers(): number {
+  const settingsSection = sheet.value === 'settings' && !!settingsTab.value && !isDesktop.value;
+  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value);
+}
+
+/** The depth of an entry of ours, 0 for a page (true: one from before depths were kept). */
+function depthOf(state: unknown): number {
+  const d = (state as { twbOverlay?: unknown } | null)?.twbOverlay;
+  return typeof d === 'number' ? d : d ? 1 : 0;
+}
+
+/** Depth of the current entry: how many of ours there are down to the page. */
+let depth = depthOf(history.state);
+/** What to do once back on the page (replaceCurrent), run when that going back lands. */
 let afterLeaving: (() => void) | null = null;
-
-const anyOpen = () => !!dialog.value || !!sheet.value || paletteOpen.value || drawerOpen.value;
 
 /** Closes the one on top; the settings on the phone go from a section back to their list first. */
 function closeTop(): void {
@@ -28,20 +43,10 @@ function closeTop(): void {
   else drawerOpen.value = false;
 }
 
-function pushEntry(): void {
-  // The state of the page under it is kept (fromHome, fromApp), for the router's going back.
-  history.pushState({ ...history.state, twbOverlay: true }, '');
-  entry = 'live';
-}
-
 effect(() => {
-  const open = anyOpen();
-  if (open && entry !== 'live') {
-    if (entry === 'stale') entry = 'live';
-    else pushEntry();
-  } else if (!open && entry === 'live') {
-    entry = 'stale';
-  }
+  const open = layers();
+  // The state of the page under them is kept (fromHome, fromApp), for the router's going back.
+  while (depth < open) history.pushState({ ...history.state, twbOverlay: ++depth }, '');
 });
 
 window.addEventListener('popstate', () => {
@@ -49,14 +54,16 @@ window.addEventListener('popstate', () => {
     const then = afterLeaving;
     afterLeaving = null;
     then();
-  } else if (entry === 'live') {
-    entry = 'none';
-    closeTop();
-    // Closing the top one may show another under it: the effect above has then put the
-    // entry back already (a dialog over the settings), or not (a settings section).
-    if (anyOpen() && (entry as Entry) !== 'live') pushEntry();
-  } else if (entry === 'stale') {
-    entry = 'none';
+    return;
+  }
+  const from = depth;
+  depth = depthOf(history.state);
+  if (depth >= from) return; // forward, or onto a page
+  if (depth < layers()) {
+    // Off live entries: close their layers (more than one with history.go).
+    while (depth < layers()) closeTop();
+  } else {
+    // Off a stale one: once more, onto the next live entry or off the page.
     history.back();
   }
 });
@@ -67,25 +74,25 @@ window.addEventListener('popstate', () => {
  * leaves no entry in between that going back would stop at).
  */
 export function takeOverlayEntry(): boolean {
-  if (entry === 'none') return false;
-  entry = 'none';
+  if (!depth) return false;
+  depth = 0;
   return true;
 }
 
 /**
  * For the router, to put a page in place of the current one: if the current entry is
- * ours, off it first, so the page it was opened over is the one replaced.
+ * ours, back to the page first, so the page it was opened over is the one replaced.
  */
 export function replaceCurrent(replace: () => void): void {
-  if (entry === 'none') return replace();
-  entry = 'none';
+  if (!depth) return replace();
   afterLeaving = replace;
-  history.back();
+  history.go(-depth);
+  depth = 0;
 }
 
-/** The router going back a page: past the back button's entry too, if the current one is ours. */
+/** The router going back a page: past the back button's entries too, if the current one is ours. */
 export function goBack(): void {
-  if (entry === 'none') return history.back();
-  entry = 'none';
-  history.go(-2);
+  const n = depth + 1;
+  depth = 0;
+  history.go(-n);
 }
