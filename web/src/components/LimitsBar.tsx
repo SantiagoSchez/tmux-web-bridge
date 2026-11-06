@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'preact/hooks';
+import { signal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { PaneState, RateLimits, UsageSample } from '../../../shared/types';
 import { openWindow, route } from '../router';
 import { findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
@@ -47,26 +49,97 @@ function runsOutAt(samples: UsageSample[], w: Window, pct: number, resetsAt: num
   return at < resetsAt ? at : null;
 }
 
-function Meter({ label, pct, resetsAt, now, runsOut }: { label: string; pct: number; resetsAt: number; now: number; runsOut: number | null }) {
+type Tip = { key: string; anchor: DOMRect };
+
+/** The meter whose details are open, if any: one at a time, for every row. */
+const tip = signal<Tip | null>(null);
+
+/**
+ * One limit: its label, its bar and, if it would run out before its reset, a ⚠.
+ * A tap opens the details (time left, reset date, forecast) in a tooltip, so the
+ * strip stays short on a phone without losing them.
+ */
+function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: string; pct: number; resetsAt: number; now: number; runsOut: number | null }) {
   const reset = resetsAt > 0 && resetsAt <= now; // the window already restarted since it was read
   const value = reset ? 0 : Math.max(0, Math.min(100, Math.round(pct)));
   const level = value >= 80 ? 'high' : value >= 60 ? 'mid' : 'low';
+  const open = tip.value?.key === id;
+  const toggle = (e: MouseEvent) => {
+    tip.value = open ? null : { key: id, anchor: (e.currentTarget as HTMLElement).getBoundingClientRect() };
+  };
   return (
-    <div class={`limit ${reset ? 'reset' : ''}`} title={resetsAt ? `Se reinicia el ${when(resetsAt)}` : undefined}>
-      <span class="limit-label">{label}</span>
-      <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} aria-label={`Uso ${label}`}>
-        <span class="limit-fill" style={{ width: `${value}%` }} />
-        <span class="limit-pct">{value}%</span>
-      </span>
-      <span class="limit-left">
-        {reset ? 'reiniciado' : left(resetsAt - now)}
-        {!reset && resetsAt > 0 && <span class="limit-when"> ({when(resetsAt)})</span>}
-      </span>
-      {runsOut && (
-        <span class="limit-eta" title={`Al ritmo actual llegas al 100% el ${when(runsOut)}, antes del reinicio`}>
-          ⚠ 100% en {left(runsOut - now)}
+    <>
+      <button
+        type="button"
+        class={`limit ${reset ? 'reset' : ''} ${open ? 'open' : ''}`}
+        aria-expanded={open}
+        aria-label={`Uso ${label}: ${value}%${runsOut ? ', llegarás al 100% antes del reinicio' : ''}`}
+        onClick={toggle}
+      >
+        <span class="limit-label">{label}</span>
+        <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}>
+          <span class="limit-fill" style={{ width: `${value}%` }} />
+          <span class="limit-pct">{value}%</span>
         </span>
+        {runsOut && <span class="limit-eta">⚠</span>}
+      </button>
+      {open && (
+        <LimitTip anchor={tip.value!.anchor}>
+          <div class="limit-tip-head">
+            {label} · {value}%
+          </div>
+          {reset ? (
+            <div>Reiniciado</div>
+          ) : resetsAt > 0 ? (
+            <div>
+              Se reinicia en {left(resetsAt - now)} <span class="limit-when">({when(resetsAt)})</span>
+            </div>
+          ) : null}
+          {runsOut && (
+            <div class="limit-tip-eta">
+              ⚠ Al ritmo actual llegas al 100% en {left(runsOut - now)} <span class="limit-when">({when(runsOut)})</span>, antes del reinicio
+            </div>
+          )}
+        </LimitTip>
       )}
+    </>
+  );
+}
+
+/**
+ * The details of a meter, under it and inside the screen. Fixed rather than
+ * absolute: the strip cuts (or, on phones, scrolls) what overflows it. It closes
+ * with a tap elsewhere, Escape, or when anything scrolls or resizes.
+ */
+function LimitTip({ anchor, children }: { anchor: DOMRect; children: ComponentChildren }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [x, setX] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const w = ref.current!.offsetWidth;
+    const center = anchor.left + anchor.width / 2;
+    setX(Math.max(8, Math.min(innerWidth - 8 - w, center - w / 2)));
+  }, [anchor]);
+  useEffect(() => {
+    const close = () => (tip.value = null);
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element;
+      if (!ref.current?.contains(t) && !t.closest?.('.limit')) close();
+    };
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    addEventListener('pointerdown', down, true);
+    addEventListener('keydown', key);
+    addEventListener('scroll', close, true);
+    addEventListener('resize', close);
+    return () => {
+      removeEventListener('pointerdown', down, true);
+      removeEventListener('keydown', key);
+      removeEventListener('scroll', close, true);
+      removeEventListener('resize', close);
+    };
+  }, []);
+  return (
+    <div ref={ref} class="limit-tip" role="tooltip" style={{ top: `${anchor.bottom + 6}px`, left: `${x ?? anchor.left}px`, visibility: x === null ? 'hidden' : undefined }}>
+      {children}
     </div>
   );
 }
@@ -152,8 +225,8 @@ function Account({ limits, samples, now, dim }: { limits: RateLimits; samples: U
           account
         )}
       </span>
-      <Meter label="5h" pct={fiveHour.pct} resetsAt={fiveHour.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', fiveHour.pct, fiveHour.resetsAt, now)} />
-      <Meter label="7d" pct={sevenDay.pct} resetsAt={sevenDay.resetsAt} now={now} runsOut={runsOutAt(mine, 'seven', sevenDay.pct, sevenDay.resetsAt, now)} />
+      <Meter id={`${account ?? ''}|5h`} label="5h" pct={fiveHour.pct} resetsAt={fiveHour.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', fiveHour.pct, fiveHour.resetsAt, now)} />
+      <Meter id={`${account ?? ''}|7d`} label="7d" pct={sevenDay.pct} resetsAt={sevenDay.resetsAt} now={now} runsOut={runsOutAt(mine, 'seven', sevenDay.pct, sevenDay.resetsAt, now)} />
     </div>
   );
 }
@@ -181,7 +254,7 @@ export function LimitsBar() {
     <div class={`limits ${states.length ? 'has-summary' : ''}`}>
       {states.length > 0 && <Summary groups={states} />}
       {list.length > 0 && (
-        <div class="limit-meters" title="Límites de uso de Claude">
+        <div class="limit-meters">
           {list.map((l) => (
             <Account key={l.account ?? ''} limits={l} samples={samples} now={now} dim={current === undefined ? undefined : l.account !== current} />
           ))}
