@@ -6,6 +6,10 @@ import {
   isKeyChar,
   isKeyName,
   KEYBAR_MAX,
+  KEYBAR_SCALE_DEFAULT,
+  KEYBAR_SCALE_MAX,
+  KEYBAR_SCALE_MIN,
+  KEYBAR_SCALE_STEP,
   KEYS,
   LABEL_MAX,
   SPECIALS,
@@ -22,6 +26,12 @@ function save(keybar: KeybarButton[]): void {
   const s = hubSettings.value;
   if (s) hubSettings.value = { ...s, keybar };
   hub.send({ t: 'settings', settings: { keybar } });
+}
+
+function saveScale(keybarScale: number): void {
+  const s = hubSettings.value;
+  if (s) hubSettings.value = { ...s, keybarScale };
+  hub.send({ t: 'settings', settings: { keybarScale } });
 }
 
 function moved<T>(list: T[], from: number, to: number): T[] {
@@ -156,11 +166,31 @@ export function KeybarSettings() {
     setOpen(null);
   };
   const full = list.length >= KEYBAR_MAX;
+  const scale = s.keybarScale ?? KEYBAR_SCALE_DEFAULT;
 
   return (
     <>
       <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos. La barra sale bajo la terminal en las pantallas táctiles.</p>
-      <div class="kb-preview scroll-x" aria-label="Vista previa de la barra">
+      <div class="kb-size">
+        <span class="kb-size-label">Tamaño de los botones</span>
+        <div class="view-tools">
+          {scale !== KEYBAR_SCALE_DEFAULT && (
+            <button onClick={() => saveScale(KEYBAR_SCALE_DEFAULT)} title="Volver al tamaño normal">
+              {KEYBAR_SCALE_DEFAULT} %
+            </button>
+          )}
+          <button onClick={() => saveScale(scale - KEYBAR_SCALE_STEP)} disabled={scale <= KEYBAR_SCALE_MIN} aria-label="Botones más pequeños">
+            −
+          </button>
+          <span class="font-size-value kb-size-value" aria-live="polite">
+            {scale} %
+          </span>
+          <button onClick={() => saveScale(scale + KEYBAR_SCALE_STEP)} disabled={scale >= KEYBAR_SCALE_MAX} aria-label="Botones más grandes">
+            +
+          </button>
+        </div>
+      </div>
+      <div class="kb-preview scroll-x" aria-label="Vista previa de la barra" style={{ '--key-scale': scale / 100 }}>
         {shown.length ? (
           shown.map((b, i) => (
             <span key={i} class={`key ${b.kind === 'prefix' ? 'key-prefix' : ''} ${drag && drag.to === i ? 'kb-lift' : ''}`}>

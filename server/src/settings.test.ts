@@ -105,6 +105,18 @@ test('a broken key bar in the file falls back to the default one', () =>
     assert.deepEqual(new SettingsStore(dir).value.keybar, DEFAULT_KEYBAR);
   }));
 
+test('the key bar scale takes only the offered steps, and survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.equal(store.value.keybarScale, 100);
+    store.update({ keybarScale: 130 });
+    assert.equal(new SettingsStore(dir).value.keybarScale, 130);
+    for (const bad of [60, 160, 125, 112.5, '120' as unknown as number]) store.update({ keybarScale: bad });
+    assert.equal(store.value.keybarScale, 130);
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ keybarScale: 999 }));
+    assert.equal(new SettingsStore(dir).value.keybarScale, 100);
+  }));
+
 test('folders: a patch replaces the lists of the hosts it names and keeps the rest', () =>
   withDir((dir) => {
     const store = new SettingsStore(dir);

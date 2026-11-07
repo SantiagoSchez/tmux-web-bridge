@@ -8,7 +8,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { cleanCopy } from '../../../shared/copy';
-import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, keySeq, type KeybarButton } from '../../../shared/keybar';
+import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
@@ -1048,6 +1048,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     }
   };
   const keybar = hubSettings.value?.keybar ?? DEFAULT_KEYBAR;
+  const keyScale = (hubSettings.value?.keybarScale ?? KEYBAR_SCALE_DEFAULT) / 100;
 
   return (
     <div class="term">
@@ -1107,7 +1108,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
         </div>
       )}
       {above && <div class="term-above">{above}</div>}
-      {isTouch && keybar.length > 0 && <div class="keybar scroll-x">{keybar.map(keybarButton)}</div>}
+      {isTouch && keybar.length > 0 && <div class="keybar scroll-x" style={{ '--key-scale': keyScale }}>{keybar.map(keybarButton)}</div>}
     </div>
   );
 }

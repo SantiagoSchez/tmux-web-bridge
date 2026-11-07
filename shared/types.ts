@@ -113,6 +113,8 @@ export interface HubSettings {
   dictationShortcut: string;
   /** The key bar under the terminal on touch screens, in order. See shared/keybar.ts. */
   keybar: KeybarButton[];
+  /** The size of the key bar's buttons, in % (see KEYBAR_SCALE_* in shared/keybar.ts). */
+  keybarScale: number;
   /**
    * The folders «Nuevo space» offers, by host id. A patch replaces the list of each
    * host it names (an empty list removes it) and keeps the others.

@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
-import { DEFAULT_KEYBAR, sanitizeKeybar } from '../../shared/keybar.js';
+import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
 import type { HubSettings } from '../../shared/types.js';
 
 /** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
@@ -23,6 +23,7 @@ const DEFAULTS: HubSettings = {
   dictationButton: 'hold',
   dictationShortcut: DEFAULT_DICTATION_SHORTCUT,
   keybar: DEFAULT_KEYBAR,
+  keybarScale: KEYBAR_SCALE_DEFAULT,
   folders: {},
   commands: {},
 };
@@ -84,6 +85,7 @@ export class SettingsStore extends EventEmitter {
         ...DEFAULTS,
         ...saved,
         keybar: sanitizeKeybar(saved.keybar) ?? DEFAULTS.keybar,
+        keybarScale: sanitizeKeybarScale(saved.keybarScale) ?? DEFAULTS.keybarScale,
         folders: mergeFolders({}, saved.folders),
         commands: mergeCommands({}, saved.commands),
       };
@@ -125,6 +127,8 @@ export class SettingsStore extends EventEmitter {
     }
     const keybar = sanitizeKeybar(patch.keybar);
     if (keybar) next.keybar = keybar;
+    const keybarScale = sanitizeKeybarScale(patch.keybarScale);
+    if (keybarScale !== null) next.keybarScale = keybarScale;
     if (patch.folders !== undefined) next.folders = mergeFolders(next.folders, patch.folders);
     if (patch.commands !== undefined) next.commands = mergeCommands(next.commands, patch.commands);
     this.state = next;

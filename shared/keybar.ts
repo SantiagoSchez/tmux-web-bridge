@@ -45,6 +45,19 @@ export const LABEL_MAX = 16;
 export const TEXT_MAX = 1000;
 export const KEYBAR_MAX = 60;
 
+/** The bar's buttons, in % of their usual size: from KEYBAR_SCALE_MIN to KEYBAR_SCALE_MAX, in steps of KEYBAR_SCALE_STEP. */
+export const KEYBAR_SCALE_DEFAULT = 100;
+export const KEYBAR_SCALE_MIN = 70;
+export const KEYBAR_SCALE_MAX = 150;
+export const KEYBAR_SCALE_STEP = 10;
+
+/** A scale the bar can have, or null. */
+export function sanitizeKeybarScale(raw: unknown): number | null {
+  if (typeof raw !== 'number' || !Number.isInteger(raw)) return null;
+  if (raw < KEYBAR_SCALE_MIN || raw > KEYBAR_SCALE_MAX || (raw - KEYBAR_SCALE_MIN) % KEYBAR_SCALE_STEP) return null;
+  return raw;
+}
+
 const key = (k: string, label = '', mods: { ctrl?: boolean; alt?: boolean } = {}): KeybarButton => ({ kind: 'key', label, key: k, ...mods });
 const special = (kind: SpecialKind): KeybarButton => ({ kind, label: '' });
 
