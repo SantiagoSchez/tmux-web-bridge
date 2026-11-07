@@ -1318,7 +1318,7 @@ body.dragging-host * {
   display: flex;
   flex-direction: column;
 }
-/* The terminal and its "page up" and "back to the end" buttons. */
+/* The terminal and its "page up", "page down" and "back to the end" buttons. */
 .term-main {
   position: relative;
   flex: 1;
