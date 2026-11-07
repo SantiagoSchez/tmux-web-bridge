@@ -17,7 +17,7 @@ import { appearance, TERM_THEMES } from '../theme';
 import { hub, PROBE_MS } from '../ws';
 import { AttachButton } from './Attach';
 import { MicButton } from './Mic';
-import { IconClose, IconDown } from './icons';
+import { IconClose, IconEnd, IconPageUp } from './icons';
 
 interface Props {
   above?: ComponentChildren;
@@ -911,6 +911,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     setScrolledUp(0);
     void hub.action(host.id, { op: 'scrollToEnd', pane: pane.id }).catch(() => {});
   };
+  const pageUp = () => {
+    hideKeyboard();
+    // A full-screen program does not report it scrolled: the count keeps the buttons up.
+    setScrolledUp((up) => up + (termRef.current?.rows ?? 1));
+    void hub.action(host.id, { op: 'pageUp', pane: pane.id }).catch(() => {});
+  };
 
   /**
    * Selection handles: each one moves its end of the selection and the other end stays.
@@ -1055,9 +1061,14 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       <div class="term-main" ref={main}>
         <div class="term-box" ref={box} />
         {(pane.inMode || scrolledUp > 0) && (
-          <button class="fab" aria-label="Ir al final" title="Ir al final" onPointerDown={keepFocus} onClick={scrollToEnd}>
-            <IconDown />
-          </button>
+          <div class="fabs">
+            <button class="fab" aria-label="Página anterior" title="Página anterior" onPointerDown={keepFocus} onClick={pageUp}>
+              <IconPageUp />
+            </button>
+            <button class="fab" aria-label="Ir al final" title="Ir al final" onPointerDown={keepFocus} onClick={scrollToEnd}>
+              <IconEnd />
+            </button>
+          </div>
         )}
         {range && handle(0)}
         {range && handle(1)}

@@ -42,9 +42,15 @@ export const IconMore = () => (
     <circle cx="19" cy="12" r="1.2" fill="currentColor" />
   </Svg>
 );
-export const IconDown = () => (
+/** Down to the very end: a double chevron, apart from the page up arrow above it. */
+export const IconEnd = () => (
   <Svg>
-    <path d="M12 5v14M6 13l6 6 6-6" />
+    <path d="M6 6l6 6 6-6M6 13l6 6 6-6" />
+  </Svg>
+);
+export const IconPageUp = () => (
+  <Svg>
+    <path d="M12 19V5M6 11l6-6 6 6" />
   </Svg>
 );
 export const IconPlus = () => (

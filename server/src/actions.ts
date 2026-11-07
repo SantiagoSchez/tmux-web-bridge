@@ -251,6 +251,16 @@ export async function runAction(
       else if (alt === '1') await run(['send-keys', '-t', pane, 'C-End']);
       return;
     }
+    case 'pageUp': {
+      // Already in copy mode: a page up there. A full-screen program scrolls itself (Page
+      // Up); a plain shell goes into copy mode a page up (copy-mode -u).
+      const pane = check(action.pane, PANE_ID, 'panel');
+      const [inMode, alt] = (await run(['display-message', '-p', '-t', pane, '#{pane_in_mode} #{alternate_on}'])).trim().split(' ');
+      if (inMode === '1') await run(['send-keys', '-X', '-t', pane, 'page-up']);
+      else if (alt === '1') await run(['send-keys', '-t', pane, 'PPage']);
+      else await run(['copy-mode', '-u', '-t', pane]);
+      return;
+    }
     case 'reboot':
       await reboot(host);
       return;

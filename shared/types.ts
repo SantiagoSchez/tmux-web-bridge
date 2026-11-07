@@ -258,6 +258,8 @@ export type ActionOp =
   | { op: 'zoomPane'; pane: string }
   /** Back to the end of the output: out of copy mode, or Ctrl+End to a full-screen program (Claude Code). */
   | { op: 'scrollToEnd'; pane: string }
+  /** One page back in the output: copy mode's page-up, or Page Up to a full-screen program (Claude Code). */
+  | { op: 'pageUp'; pane: string }
   | { op: 'reloadWindow'; window: string; skipPermissions?: boolean }
   | { op: 'reboot' }
   /** Moves the host's kit to the last release the hub knows of (the hub picks the version). */

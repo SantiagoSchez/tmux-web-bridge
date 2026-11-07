@@ -1318,7 +1318,7 @@ body.dragging-host * {
   display: flex;
   flex-direction: column;
 }
-/* The terminal and its "back to the end" button. */
+/* The terminal and its "page up" and "back to the end" buttons. */
 .term-main {
   position: relative;
   flex: 1;
@@ -1326,11 +1326,16 @@ body.dragging-host * {
   display: flex;
   flex-direction: column;
 }
-.fab {
+.fabs {
   position: absolute;
   right: 14px;
   bottom: 14px;
   z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.fab {
   width: 44px;
   height: 44px;
   border-radius: 50%;
