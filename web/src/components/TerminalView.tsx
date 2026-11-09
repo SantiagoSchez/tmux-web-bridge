@@ -747,11 +747,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     termRef.current = term;
     fitRef.current = fit;
 
+    const openedOn = { ...target.current };
     const q = new URLSearchParams({
       host: host.id,
       session: session.id,
-      window: target.current.window,
-      pane: target.current.pane,
+      window: openedOn.window,
+      pane: openedOn.pane,
       cols: String(term.cols),
       rows: String(term.rows),
       client: clientId.value ?? '',
@@ -770,6 +771,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       // resizes then were not sent, and tmux would keep the size of the moment the socket was opened.
       fit.fit();
       ws.send(JSON.stringify({ t: 'r', cols: term.cols, rows: term.rows }));
+      // Moved to another window or pane while connecting (a tapped notification lands right as the
+      // app comes back and reconnects): the retarget effect could not send it then.
+      const now = target.current;
+      if (now.window !== openedOn.window || now.pane !== openedOn.pane) ws.send(JSON.stringify({ t: 'sel', window: now.window, pane: now.pane }));
     };
     /** A ping without answer yet (see probe). */
     let probeTimer: ReturnType<typeof setTimeout> | undefined;
