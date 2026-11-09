@@ -251,9 +251,6 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') shownAt = performance.now();
 });
 
-/** How long "reconnected in…" stays on screen. */
-const RECONNECTED_SHOWN_MS = 4000;
-
 /** "4,8 s". */
 function secs(ms: number): string {
   return `${(ms / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
@@ -658,8 +655,6 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   const [ready, setReady] = useState(false);
   /** When the socket was found gone (performance.now() time): reconnecting counts from then, or from coming to the front. */
   const lostAt = useRef(0);
-  /** How long the last reconnection took, in ms: all of it, and just opening the new socket. */
-  const [reconnected, setReconnected] = useState<{ total: number; socket: number } | null>(null);
   /**
    * Lines scrolled up with the finger. tmux reports its copy mode (pane.inMode), but a
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
@@ -723,13 +718,6 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     if (!ready) return;
     return connect();
   }, [ready, attempt]);
-
-  // How long the last reconnection took, shown for a moment once back.
-  useEffect(() => {
-    if (!reconnected) return;
-    const t = setTimeout(() => setReconnected(null), RECONNECTED_SHOWN_MS);
-    return () => clearTimeout(t);
-  }, [reconnected]);
 
   // A dropped socket comes back by itself: with backoff while the app is in front, and
   // right away when it comes back from the background (the timer does not run there)
@@ -915,9 +903,9 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       setState('open');
       if (isRetry) {
         const now = performance.now();
+        // In the console only: where a slow reconnection spent its time.
         const timing = { total: now - Math.max(lostAt.current, shownAt), socket: now - createdAt };
         console.info(`[terminal] reconectado en ${secs(timing.total)} (abrir la conexión: ${secs(timing.socket)})`);
-        setReconnected(timing);
       }
       // The layout may have settled while connecting (the pending strip, the pane tabs, the key bar):
       // resizes then were not sent, and tmux would keep the size of the moment the socket was opened.
@@ -1198,17 +1186,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
           rows={1}
         />
       )}
-      {reconnecting ? (
+      {reconnecting && (
         <div class="term-status" role="status">
           Reconectando… <Elapsed from={Math.max(lostAt.current, shownAt)} />
         </div>
-      ) : (
-        reconnected &&
-        state === 'open' && (
-          <div class="term-status" role="status">
-            Reconectado en {secs(reconnected.total)} · conexión {secs(reconnected.socket)}
-          </div>
-        )
       )}
       {state !== 'open' && !reconnecting && (
         <div class="term-overlay">
