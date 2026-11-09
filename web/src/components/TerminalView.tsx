@@ -14,7 +14,7 @@ import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
 import { clientId, hubSettings, toast } from '../state';
 import { appearance, TERM_THEMES } from '../theme';
-import { hub, PROBE_MS } from '../ws';
+import { CONNECT_TIMEOUT_MS, hub, PROBE_MS } from '../ws';
 import { AttachButton } from './Attach';
 import { MicButton } from './Mic';
 import { IconClose, IconEnd, IconPageDown, IconPageUp } from './icons';
@@ -732,7 +732,8 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   }, [reconnected]);
 
   // A dropped socket comes back by itself: with backoff while the app is in front, and
-  // right away when it comes back from the background (the timer does not run there).
+  // right away when it comes back from the background (the timer does not run there)
+  // or the phone has network again.
   useEffect(() => {
     if (state !== 'lost') return;
     const retry = () => {
@@ -740,15 +741,17 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       retries.current++;
       setAttempt((a) => a + 1);
     };
-    const onVisible = () => {
+    const now = () => {
       retries.current = 0;
       retry();
     };
     const t = setTimeout(retry, Math.min(5000, 400 * 2 ** retries.current));
-    document.addEventListener('visibilitychange', onVisible);
+    document.addEventListener('visibilitychange', now);
+    globalThis.addEventListener('online', now);
     return () => {
       clearTimeout(t);
-      document.removeEventListener('visibilitychange', onVisible);
+      document.removeEventListener('visibilitychange', now);
+      globalThis.removeEventListener('online', now);
     };
   }, [state]);
 
@@ -898,7 +901,16 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     let disposed = false;
     /** Nothing of this socket written yet: the screen still shows the previous one's. */
     let fresh = true;
+    // Hung while opening (see CONNECT_TIMEOUT_MS): a fresh one right away, or when the app is back in front.
+    const connectTimer = setTimeout(() => {
+      if (disposed || ws.readyState !== WebSocket.CONNECTING) return;
+      ws.onclose = null;
+      ws.close();
+      if (document.visibilityState === 'visible') setAttempt((a) => a + 1);
+      else setState('lost');
+    }, CONNECT_TIMEOUT_MS);
     ws.onopen = () => {
+      clearTimeout(connectTimer);
       retries.current = 0;
       setState('open');
       if (isRetry) {
@@ -935,6 +947,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     };
     ws.onclose = () => {
       clearTimeout(probeTimer);
+      clearTimeout(connectTimer);
       if (disposed) return;
       lostAt.current = performance.now();
       setState(exited || retries.current >= 5 ? 'closed' : 'lost');
@@ -965,6 +978,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       document.removeEventListener('visibilitychange', probe);
       globalThis.removeEventListener('online', probe);
       clearTimeout(probeTimer);
+      clearTimeout(connectTimer);
       disposed = true;
       ws.close();
       if (wsRef.current === ws) wsRef.current = null;

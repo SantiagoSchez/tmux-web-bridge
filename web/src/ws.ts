@@ -12,6 +12,16 @@ type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
  */
 export const PROBE_MS = 5000;
 
+/**
+ * How long a new socket may take to open before it is dropped for a fresh one. Coming
+ * back from the background, the phone's network can swallow the first attempts (the
+ * tailnet tunnel waking up): TCP then retries at 1, 3, 7 and 15 s and kept the app
+ * waiting 15 s for a hub that answers in a tenth of a second. A fresh connection gets
+ * through as soon as the network is back. The browser opens one socket at a time to
+ * a host, so a hung one also holds back the next (the terminal's behind the app's).
+ */
+export const CONNECT_TIMEOUT_MS = 4000;
+
 /** The app's single WebSocket to the hub, with automatic reconnection. */
 class HubSocket {
   private ws: WebSocket | null = null;
@@ -32,7 +42,17 @@ class HubSocket {
     this.ws = ws;
     wsStatus.value = 'connecting';
 
+    // Hung while opening: a fresh one right away, or when the app is back in front (wake).
+    const connectTimer = setTimeout(() => {
+      if (this.ws !== ws || this.stopped || ws.readyState !== WebSocket.CONNECTING) return;
+      ws.onclose = null;
+      ws.close();
+      this.lost();
+      if (document.visibilityState === 'visible') this.connect();
+    }, CONNECT_TIMEOUT_MS);
+
     ws.onopen = () => {
+      clearTimeout(connectTimer);
       this.retry = 0;
       wsStatus.value = 'open';
       // Restore what this tab was doing before the reconnection.
@@ -41,6 +61,7 @@ class HubSocket {
     };
     ws.onmessage = (ev) => this.onMessage(JSON.parse(ev.data) as ServerMessage);
     ws.onclose = (ev) => {
+      clearTimeout(connectTimer);
       if (this.ws !== ws || this.stopped) return;
       this.lost();
       // The hub closed this login (logout from another device).
