@@ -243,6 +243,33 @@ function keyboardShown(): boolean {
 }
 
 /**
+ * When the app last came to the front: a socket that dropped in the background only
+ * keeps you waiting from then on (performance.now() time, as the socket timings).
+ */
+let shownAt = performance.now();
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') shownAt = performance.now();
+});
+
+/** How long "reconnected in…" stays on screen. */
+const RECONNECTED_SHOWN_MS = 4000;
+
+/** "4,8 s". */
+function secs(ms: number): string {
+  return `${(ms / 1000).toLocaleString('es-ES', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} s`;
+}
+
+/** Seconds since `from` (performance.now() time), counting while on screen. */
+function Elapsed({ from }: { from: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 200);
+    return () => clearInterval(t);
+  }, []);
+  return <>{secs(Math.max(0, performance.now() - from))}</>;
+}
+
+/**
  * The keyboard was put away while the input proxy kept the focus (Android's back
  * gesture): seen as the visible viewport growing back at the same width (a rotation
  * changes the width). Only then do the key buttons let go of the focus. Guessing it
@@ -627,6 +654,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   const [attempt, setAttempt] = useState(0);
   /** Automatic reconnections in a row without the socket opening. */
   const retries = useRef(0);
+  /** The xterm exists (it waits for the fonts): sockets can be opened. */
+  const [ready, setReady] = useState(false);
+  /** When the socket was found gone (performance.now() time): reconnecting counts from then, or from coming to the front. */
+  const lostAt = useRef(0);
+  /** How long the last reconnection took, in ms: all of it, and just opening the new socket. */
+  const [reconnected, setReconnected] = useState<{ total: number; socket: number } | null>(null);
   /**
    * Lines scrolled up with the finger. tmux reports its copy mode (pane.inMode), but a
    * full-screen program (Claude Code) scrolls inside itself: only this count knows.
@@ -669,19 +702,34 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     input.current?.blur();
   };
 
-  // Terminal + socket lifetime: one per space (the component is keyed by session).
+  // Terminal lifetime: one per space (the component is keyed by session). It outlives its
+  // sockets: while one reconnects, the screen keeps what it showed, dimmed.
   useEffect(() => {
     let disposed = false;
     let cleanup = () => {};
     void fontsReady.then(() => {
       if (disposed) return;
-      cleanup = start();
+      cleanup = createTerminal();
+      setReady(true);
     });
     return () => {
       disposed = true;
       cleanup();
     };
-  }, [attempt]);
+  }, []);
+
+  // Socket lifetime: a new one for each attempt.
+  useEffect(() => {
+    if (!ready) return;
+    return connect();
+  }, [ready, attempt]);
+
+  // How long the last reconnection took, shown for a moment once back.
+  useEffect(() => {
+    if (!reconnected) return;
+    const t = setTimeout(() => setReconnected(null), RECONNECTED_SHOWN_MS);
+    return () => clearTimeout(t);
+  }, [reconnected]);
 
   // A dropped socket comes back by itself: with backoff while the app is in front, and
   // right away when it comes back from the background (the timer does not run there).
@@ -704,7 +752,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     };
   }, [state]);
 
-  function start(): () => void {
+  function createTerminal(): () => void {
     // xterm opens a link when the mouse goes down and up on it, even after a drag: a
     // drag selects it instead (tmux copies what is dragged over).
     let downAt = { x: 0, y: 0 };
@@ -747,72 +795,6 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     termRef.current = term;
     fitRef.current = fit;
 
-    const openedOn = { ...target.current };
-    const q = new URLSearchParams({
-      host: host.id,
-      session: session.id,
-      window: openedOn.window,
-      pane: openedOn.pane,
-      cols: String(term.cols),
-      rows: String(term.rows),
-      client: clientId.value ?? '',
-    });
-    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/term?${q}`);
-    ws.binaryType = 'arraybuffer';
-    wsRef.current = ws;
-    setState('connecting');
-    /** The pty ended (the space was closed, tmux could not start...): reconnecting would not bring it back. */
-    let exited = false;
-    let disposed = false;
-    ws.onopen = () => {
-      retries.current = 0;
-      setState('open');
-      // The layout may have settled while connecting (the pending strip, the pane tabs, the key bar):
-      // resizes then were not sent, and tmux would keep the size of the moment the socket was opened.
-      fit.fit();
-      ws.send(JSON.stringify({ t: 'r', cols: term.cols, rows: term.rows }));
-      // Moved to another window or pane while connecting (a tapped notification lands right as the
-      // app comes back and reconnects): the retarget effect could not send it then.
-      const now = target.current;
-      if (now.window !== openedOn.window || now.pane !== openedOn.pane) ws.send(JSON.stringify({ t: 'sel', window: now.window, pane: now.pane }));
-    };
-    /** A ping without answer yet (see probe). */
-    let probeTimer: ReturnType<typeof setTimeout> | undefined;
-    ws.onmessage = (ev) => {
-      // Anything arriving proves the socket alive.
-      clearTimeout(probeTimer);
-      probeTimer = undefined;
-      if (typeof ev.data === 'string') {
-        // Control message: {t:'exit'} when the pty ended, {t:'pong'}.
-        if ((JSON.parse(ev.data) as { t: string }).t === 'exit') exited = true;
-        return;
-      }
-      term.write(new Uint8Array(ev.data as ArrayBuffer));
-    };
-    ws.onclose = () => {
-      clearTimeout(probeTimer);
-      if (disposed) return;
-      setState(exited || retries.current >= 5 ? 'closed' : 'lost');
-    };
-    /**
-     * Back to the front, or on another network: the socket may have died without closing
-     * (the screen would stay as it was and what is typed would go nowhere). Without an
-     * answer in time it is dropped, and the 'lost' state reconnects.
-     */
-    const probe = () => {
-      if (document.visibilityState !== 'visible' || ws.readyState !== WebSocket.OPEN || probeTimer) return;
-      probeTimer = setTimeout(() => {
-        if (disposed) return;
-        ws.onclose = null; // a dead socket may take minutes to report its close
-        ws.close();
-        retries.current = 0;
-        setState('lost');
-      }, PROBE_MS);
-      ws.send(JSON.stringify({ t: 'ping' }));
-    };
-    document.addEventListener('visibilitychange', probe);
-    globalThis.addEventListener('online', probe);
-
     term.attachCustomKeyEventHandler((e) => {
       if (e.type !== 'keydown') return true;
       // Cmd+C with text selected in the terminal (Option+drag): copied cleaned up.
@@ -841,7 +823,8 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const resizeSub = term.onResize(({ cols, rows }) => {
       // The selection is kept as offsets for the old width.
       term.clearSelection();
-      if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'r', cols, rows }));
+      const ws = wsRef.current;
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'r', cols, rows }));
     });
     let t: ReturnType<typeof setTimeout>;
     const ro = new ResizeObserver(() => {
@@ -885,14 +868,106 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       dataSub.dispose();
       selectionSub.dispose();
       resizeSub.dispose();
+      term.dispose();
+      termRef.current = null;
+      fitRef.current = null;
+    };
+  }
+
+  function connect(): () => void {
+    const term = termRef.current!;
+    const fit = fitRef.current!;
+    const isRetry = attempt > 0;
+    const createdAt = performance.now();
+    const openedOn = { ...target.current };
+    const q = new URLSearchParams({
+      host: host.id,
+      session: session.id,
+      window: openedOn.window,
+      pane: openedOn.pane,
+      cols: String(term.cols),
+      rows: String(term.rows),
+      client: clientId.value ?? '',
+    });
+    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/term?${q}`);
+    ws.binaryType = 'arraybuffer';
+    wsRef.current = ws;
+    setState('connecting');
+    /** The pty ended (the space was closed, tmux could not start...): reconnecting would not bring it back. */
+    let exited = false;
+    let disposed = false;
+    /** Nothing of this socket written yet: the screen still shows the previous one's. */
+    let fresh = true;
+    ws.onopen = () => {
+      retries.current = 0;
+      setState('open');
+      if (isRetry) {
+        const now = performance.now();
+        const timing = { total: now - Math.max(lostAt.current, shownAt), socket: now - createdAt };
+        console.info(`[terminal] reconectado en ${secs(timing.total)} (abrir la conexión: ${secs(timing.socket)})`);
+        setReconnected(timing);
+      }
+      // The layout may have settled while connecting (the pending strip, the pane tabs, the key bar):
+      // resizes then were not sent, and tmux would keep the size of the moment the socket was opened.
+      fit.fit();
+      ws.send(JSON.stringify({ t: 'r', cols: term.cols, rows: term.rows }));
+      // Moved to another window or pane while connecting (a tapped notification lands right as the
+      // app comes back and reconnects): the retarget effect could not send it then.
+      const now = target.current;
+      if (now.window !== openedOn.window || now.pane !== openedOn.pane) ws.send(JSON.stringify({ t: 'sel', window: now.window, pane: now.pane }));
+    };
+    /** A ping without answer yet (see probe). */
+    let probeTimer: ReturnType<typeof setTimeout> | undefined;
+    ws.onmessage = (ev) => {
+      // Anything arriving proves the socket alive.
+      clearTimeout(probeTimer);
+      probeTimer = undefined;
+      if (typeof ev.data === 'string') {
+        // Control message: {t:'exit'} when the pty ended, {t:'pong'}.
+        if ((JSON.parse(ev.data) as { t: string }).t === 'exit') exited = true;
+        return;
+      }
+      // The new tmux client redraws everything: the old screen and its modes go first, in the same
+      // frame, so it never shows blank.
+      if (fresh && isRetry) term.reset();
+      fresh = false;
+      term.write(new Uint8Array(ev.data as ArrayBuffer));
+    };
+    ws.onclose = () => {
+      clearTimeout(probeTimer);
+      if (disposed) return;
+      lostAt.current = performance.now();
+      setState(exited || retries.current >= 5 ? 'closed' : 'lost');
+    };
+    /**
+     * Back to the front, or on another network: the socket may have died without closing
+     * (the screen would stay as it was and what is typed would go nowhere). Without an
+     * answer in time it is dropped, and the 'lost' state reconnects.
+     */
+    const probe = () => {
+      if (document.visibilityState !== 'visible' || ws.readyState !== WebSocket.OPEN || probeTimer) return;
+      const sentAt = performance.now();
+      probeTimer = setTimeout(() => {
+        if (disposed) return;
+        ws.onclose = null; // a dead socket may take minutes to report its close
+        ws.close();
+        retries.current = 0;
+        // The wait for the answer counts too: the screen was already stale.
+        lostAt.current = sentAt;
+        setState('lost');
+      }, PROBE_MS);
+      ws.send(JSON.stringify({ t: 'ping' }));
+    };
+    document.addEventListener('visibilitychange', probe);
+    globalThis.addEventListener('online', probe);
+
+    return () => {
       document.removeEventListener('visibilitychange', probe);
       globalThis.removeEventListener('online', probe);
       clearTimeout(probeTimer);
       disposed = true;
       ws.close();
-      term.dispose();
-      termRef.current = null;
-      wsRef.current = null;
+      if (wsRef.current === ws) wsRef.current = null;
     };
   }
 
@@ -1061,11 +1136,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   };
   const keybar = hubSettings.value?.keybar ?? DEFAULT_KEYBAR;
   const keyScale = (hubSettings.value?.keybarScale ?? KEYBAR_SCALE_DEFAULT) / 100;
+  /** A socket again after one that worked: the screen keeps the old one's, dimmed, under a small notice. */
+  const reconnecting = attempt > 0 && (state === 'connecting' || state === 'lost');
 
   return (
     <div class="term">
       <div class="term-main" ref={main}>
-        <div class="term-box" ref={box} />
+        <div class={`term-box ${attempt > 0 && state !== 'open' ? 'stale' : ''}`} ref={box} />
         {(pane.inMode || scrolledUp > 0) && (
           <div class="fabs">
             <button class="fab" aria-label="Página anterior" title="Página anterior" onPointerDown={keepFocus} onClick={() => page('up')}>
@@ -1107,10 +1184,22 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
           rows={1}
         />
       )}
-      {state !== 'open' && (
+      {reconnecting ? (
+        <div class="term-status" role="status">
+          Reconectando… <Elapsed from={Math.max(lostAt.current, shownAt)} />
+        </div>
+      ) : (
+        reconnected &&
+        state === 'open' && (
+          <div class="term-status" role="status">
+            Reconectado en {secs(reconnected.total)} · conexión {secs(reconnected.socket)}
+          </div>
+        )
+      )}
+      {state !== 'open' && !reconnecting && (
         <div class="term-overlay">
           {state === 'connecting' || state === 'lost' ? (
-            <span class="dim">{attempt > 0 ? 'Reconectando…' : 'Abriendo terminal…'}</span>
+            <span class="dim">Abriendo terminal…</span>
           ) : (
             <>
               <span>Terminal desconectada</span>
@@ -1118,6 +1207,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
                 class="btn"
                 onClick={() => {
                   retries.current = 0;
+                  lostAt.current = performance.now();
                   setAttempt(attempt + 1);
                 }}
               >

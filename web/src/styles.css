@@ -1459,6 +1459,27 @@ body.dragging-host * {
 .term-overlay .btn {
   pointer-events: auto;
 }
+/* Reconnecting: the last screen stays, dimmed, until the new tmux client redraws it. */
+.term-box.stale {
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.term-status {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface0);
+  color: var(--subtext1);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px var(--shadow);
+  pointer-events: none;
+}
 
 /* ------------------------------------------------------------ pending strip */
 
