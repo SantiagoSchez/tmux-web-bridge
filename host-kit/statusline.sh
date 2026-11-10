@@ -151,11 +151,20 @@ if git -C "$DIR" rev-parse --git-dir > /dev/null 2>&1; then
   MAIN_REPO=$(git -C "$DIR" worktree list 2>/dev/null | head -1 | awk '{print $1}')
   MAIN_REPO_NAME=$(basename "$MAIN_REPO")
 
+  # A worktree named after its branch (the git-worktree hook's default, with '/'
+  # turned into '-') shows the name once, with the worktree's icon.
+  SAME_NAME=""
+  [ "$WORKTREE_NAME" = "${BRANCH//\//-}" ] && SAME_NAME=1
+
   [ ${#BRANCH} -gt 30 ] && BRANCH="${BRANCH:0:30}…"
 
   if [ -n "$WORKTREE_NAME" ] && [ "$WORKTREE_NAME" != "$MAIN_REPO_NAME" ]; then
     [ ${#WORKTREE_NAME} -gt 25 ] && WORKTREE_NAME="${WORKTREE_NAME:0:25}…"
-    GIT_PART="${MAGENTA}🌲 ${WORKTREE_NAME}${R} ${GREEN}🌿 ${BRANCH}${R}"
+    if [ -n "$SAME_NAME" ]; then
+      GIT_PART="${MAGENTA}🌲 ${BRANCH}${R}"
+    else
+      GIT_PART="${MAGENTA}🌲 ${WORKTREE_NAME}${R} ${GREEN}🌿 ${BRANCH}${R}"
+    fi
   else
     GIT_PART="${GREEN}🌿 ${BRANCH}${R}"
   fi
