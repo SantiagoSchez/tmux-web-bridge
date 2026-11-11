@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import type { ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { AccountsInfo, ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -15,6 +15,8 @@ export const usageSamples = signal<UsageSample[]>([]);
 export const hubSettings = signal<HubSettings | null>(null);
 /** What the hub's dictation can do right now. */
 export const dictationInfo = signal<DictationInfo | null>(null);
+/** The Claude accounts the hub keeps logins of, and which one each machine uses. */
+export const accountsInfo = signal<AccountsInfo | null>(null);
 
 /** A space with a single window shown as one row that is both (a hub setting, on by default). */
 export function isSolo(session: SessionInfo): boolean {
@@ -105,7 +107,12 @@ export type Dialog =
   | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; permissions?: boolean; onSubmit: () => void }
   /** top: shown above the items, and the menu stays open while it is used (the font size). */
   | { kind: 'menu'; title: string; subtitle?: string; top?: ComponentChildren; items: MenuItem[] }
-  | { kind: 'project'; host: HostInfo };
+  | { kind: 'project'; host: HostInfo }
+  /**
+   * A Claude login from the panel. host: the machine to switch to it right after;
+   * account: the account it is meant for (re-login), if any.
+   */
+  | { kind: 'claudeLogin'; host?: string; account?: string };
 
 /** A Claude about to be closed, and the command that resumes its conversation later. */
 export interface ClaudeResume {

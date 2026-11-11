@@ -1,4 +1,4 @@
-import { type ChildProcess, execFile } from 'node:child_process';
+import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import type { Config, HostConfig } from './config.js';
 
 // Non-interactive SSH sessions (and launchd/systemd) start with a bare PATH that
@@ -126,6 +126,18 @@ export class TmuxExec {
       });
       feedStdin(child, input ?? '');
     });
+  }
+
+  /**
+   * Starts a POSIX shell script on the host and hands back the process, for a script
+   * that talks with the hub over its stdin and stdout while it runs.
+   */
+  spawnShell(script: string): ChildProcess {
+    const file = this.host.local ? '/bin/sh' : 'ssh';
+    const args = this.host.local ? ['-c', script] : [...this.sshArgs(false), `sh -c ${shq(script)}`];
+    const child = spawn(file, args, { env: this.host.local ? localEnv() : process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    child.stdin?.on('error', () => {});
+    return child;
   }
 
   /** Runs a tmux command whose -F format splits fields with control characters (see unescapeControls). */

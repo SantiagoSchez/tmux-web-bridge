@@ -4,7 +4,7 @@ import { childPath, folderNameProblem, homePath } from '../../../shared/folders'
 import type { ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
-import { dialog, dismissToast, openFolderSettings, toast, toasts, type Dialog } from '../state';
+import { accountsInfo, dialog, dismissToast, hosts, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { IconClose } from './icons';
 import { hub } from '../ws';
 
@@ -146,7 +146,97 @@ export function Dialogs() {
   }
   if (d.kind === 'confirm') return <ConfirmDialog d={d} close={close} />;
   if (d.kind === 'project') return <ProjectDialog d={d} close={close} />;
+  if (d.kind === 'claudeLogin') return <ClaudeLoginDialog d={d} close={close} />;
   return <PromptDialog d={d} close={close} />;
+}
+
+/**
+ * A Claude login made from the panel, as `/login` does it without a browser on the
+ * machine: Claude's page opens in another tab and shows a code to paste here. The hub
+ * keeps the login; with a machine, it switches it to the account right after.
+ */
+function ClaudeLoginDialog({ d, close }: { d: Extract<Dialog, { kind: 'claudeLogin' }>; close: () => void }) {
+  const [start, setStart] = useState<{ url: string; state: string } | null>(null);
+  const [code, setCode] = useState('');
+  const [alias, setAlias] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const meant = d.account ? accountsInfo.value?.list.find((a) => a.id === d.account) : undefined;
+  const hostName = d.host ? (hosts.value.find((h) => h.id === d.host)?.name ?? d.host) : undefined;
+
+  useEffect(() => {
+    hub.account<{ url: string; state: string }>({ op: 'loginStart' }).then(setStart, (e: Error) => setError(e.message));
+  }, []);
+
+  const submit = async (e: Event) => {
+    e.preventDefault();
+    if (!start || !code.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await hub.account<{ alias: string; switched: boolean; other?: boolean }>({
+        op: 'loginFinish',
+        state: start.state,
+        code: code.trim(),
+        alias: alias.trim() || undefined,
+        host: d.host,
+        account: d.account,
+      });
+      close();
+      if (r.other) toast(`Has iniciado sesión con ${r.alias}, no con ${meant?.alias ?? 'la cuenta que tocaba'}: se queda guardada, sin cambiar nada`, 'error');
+      else if (r.switched) toast(`${hostName} usa ahora ${r.alias}`);
+      else toast(meant ? `Sesión de ${r.alias} guardada` : `Cuenta ${r.alias} añadida`);
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  };
+
+  const title = meant ? `Iniciar sesión con ${meant.alias}` : 'Añadir una cuenta de Claude';
+  return (
+    <Sheet title={title} subtitle={meant ? meant.email : hostName ? `Para usarla en ${hostName}` : undefined} onClose={close}>
+      <form class="claude-login" onSubmit={submit}>
+        <ol class="claude-login-steps">
+          <li>
+            Abre la página de Claude e inicia sesión con {meant ? <b>{meant.email}</b> : 'la cuenta que quieras añadir'}. Si el navegador ya tiene abierta otra cuenta en
+            claude.ai, cámbiala antes o usa una ventana privada.
+            <div>
+              <a class={`btn btn-primary ${start ? '' : 'disabled'}`} href={start?.url} target="_blank" rel="noopener noreferrer" aria-disabled={!start}>
+                Abrir el login de Claude
+              </a>
+            </div>
+          </li>
+          <li>
+            Pega aquí el código que te muestra al terminar:
+            <input
+              class="text-input"
+              value={code}
+              placeholder="Código"
+              autocapitalize="off"
+              autocomplete="off"
+              spellcheck={false}
+              onInput={(e) => setCode(e.currentTarget.value)}
+            />
+          </li>
+          {!meant && (
+            <li>
+              Un nombre corto para la barra (opcional):
+              <input class="text-input" value={alias} placeholder="max, team…" autocapitalize="off" autocomplete="off" spellcheck={false} onInput={(e) => setAlias(e.currentTarget.value)} />
+            </li>
+          )}
+        </ol>
+        {error && <p class="claude-login-error">{error}</p>}
+        <div class="sheet-actions">
+          <button type="button" class="btn" onClick={close}>
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" disabled={!start || !code.trim() || busy}>
+            {busy ? 'Comprobando…' : hostName ? `Usar en ${hostName}` : 'Guardar'}
+          </button>
+        </div>
+      </form>
+    </Sheet>
+  );
 }
 
 /** Copies the commands that resume the Claude about to close (the click is the gesture the clipboard needs). */

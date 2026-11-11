@@ -1,6 +1,6 @@
-import type { ActionOp, ClientMessage, ServerMessage, ViewInfo } from '../../shared/types';
+import type { AccountOp, ActionOp, ClientMessage, ServerMessage, ViewInfo } from '../../shared/types';
 import { recheck, signedOut } from './auth';
-import { applyHostOrder, clientId, connections, dictationInfo, hosts, hubSettings, toast, usageSamples, vapidKey, wsStatus } from './state';
+import { accountsInfo, applyHostOrder, clientId, connections, dictationInfo, hosts, hubSettings, toast, usageSamples, vapidKey, wsStatus } from './state';
 import { updateInfo } from './updates';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
@@ -158,12 +158,15 @@ class HubSocket {
       case 'dictation':
         dictationInfo.value = msg.info;
         break;
+      case 'accounts':
+        accountsInfo.value = msg.info;
+        break;
       case 'result': {
         const p = this.pending.get(msg.id);
         if (!p) break;
         this.pending.delete(msg.id);
         if (msg.ok) p.resolve(msg.data);
-        else p.reject(new Error(msg.error ?? 'Error'));
+        else p.reject(Object.assign(new Error(msg.error ?? 'Error'), { code: msg.code }));
         break;
       }
     }
@@ -188,21 +191,30 @@ class HubSocket {
     this.send({ t: 'presence', present });
   }
 
-  /** Runs a tree action; errors become a toast and reject. */
-  action<T = unknown>(host: string, op: ActionOp): Promise<T> {
+  /** Sends a request and waits for its result (rejects with the error, and its code if any). */
+  private request<T>(msg: (id: number) => ClientMessage): Promise<T> {
     const id = ++this.seq;
     return new Promise<T>((resolve, reject) => {
       if (this.ws?.readyState !== WebSocket.OPEN) {
-        toast('Sin conexión con el servidor', 'error');
-        reject(new Error('Sin conexión'));
+        reject(new Error('Sin conexión con el servidor'));
         return;
       }
       this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
-      this.ws.send(JSON.stringify({ t: 'action', id, host, ...op }));
-    }).catch((err: Error) => {
+      this.ws.send(JSON.stringify(msg(id)));
+    });
+  }
+
+  /** Runs a tree action; errors become a toast and reject. */
+  action<T = unknown>(host: string, op: ActionOp): Promise<T> {
+    return this.request<T>((id) => ({ t: 'action', id, host, ...op })).catch((err: Error) => {
       toast(err.message, 'error');
       throw err;
     });
+  }
+
+  /** An account action. Errors reject with their `code` (needsLogin); the caller shows them. */
+  account<T = unknown>(op: AccountOp): Promise<T> {
+    return this.request<T>((id) => ({ t: 'account', id, ...op }));
   }
 }
 

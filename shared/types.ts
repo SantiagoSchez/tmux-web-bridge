@@ -61,6 +61,66 @@ export interface RateLimits {
   account?: string;
 }
 
+/** One usage window of a Claude account: how much of it is used and when it starts over. */
+export interface UsageWindow {
+  pct: number;
+  resetsAt: number; // epoch seconds; 0 when unknown
+}
+
+/** A Claude account's usage as the hub read it from Anthropic (api/oauth/usage). */
+export interface AccountUsage {
+  /** When it was read (epoch seconds). */
+  t: number;
+  fiveHour?: UsageWindow;
+  sevenDay?: UsageWindow;
+  /** Weekly limits of a single model (Fable...), by its name. */
+  models: (UsageWindow & { name: string })[];
+}
+
+/** A Claude account the hub keeps logins of, to see its usage and switch machines to it. */
+export interface ClaudeAccount {
+  /** accountUuid:organizationUuid: one email may belong to several organizations. */
+  id: string;
+  alias: string;
+  email: string;
+  /** Its organization's name, if it has one worth showing. */
+  org?: string;
+  /** "Max 5x", "Team", "Pro"... */
+  plan?: string;
+  usage?: AccountUsage;
+  /** Why its usage could not be read last time, if it could not. */
+  usageError?: string;
+  /** Machines whose Claude Code is logged in with it right now (host ids). */
+  activeOn: string[];
+  /** Logins the hub holds that no machine is using: each one can go to a machine without logging in again. */
+  spare: number;
+  /** Every login the hub had of it stopped working: it needs a new one. */
+  needsLogin: boolean;
+}
+
+/** Everything about the Claude accounts the panel shows. */
+export interface AccountsInfo {
+  list: ClaudeAccount[];
+  /** The account each machine's Claude Code is logged in with (id), as last seen; null when logged out or unknown. */
+  hosts: Record<string, string | null>;
+  /** Machines whose account is being switched right now. */
+  switching: string[];
+}
+
+/** Account actions, from the panel. */
+export type AccountOp =
+  /** Starts a login: the URL to open, and the state that ties its code to it. */
+  | { op: 'loginStart' }
+  /**
+   * Ends it with the code the login page shows; `host`: activate it there right after,
+   * but only if it is `account` (when given): a login with another account is only kept.
+   */
+  | { op: 'loginFinish'; state: string; code: string; alias?: string; host?: string; account?: string }
+  /** Makes `account` the one the machine's Claude Code uses, without restarting it. */
+  | { op: 'switch'; account: string; host: string }
+  | { op: 'rename'; account: string; alias: string }
+  | { op: 'remove'; account: string };
+
 /** One reading of the usage limits, kept by the hub to forecast when they run out. */
 export interface UsageSample {
   account?: string;
@@ -277,7 +337,8 @@ export type ClientMessage =
   | { t: 'updateCheck'; enabled: boolean }
   | { t: 'updateDismiss'; version: string }
   | { t: 'settings'; settings: Partial<HubSettings> }
-  | ({ t: 'action'; id: number; host: string } & ActionOp);
+  | ({ t: 'action'; id: number; host: string } & ActionOp)
+  | ({ t: 'account'; id: number } & AccountOp);
 
 /** Messages from the hub to the browser over /ws. */
 export type ServerMessage =
@@ -292,7 +353,9 @@ export type ServerMessage =
   | { t: 'updates'; info: UpdateInfo }
   | { t: 'settings'; settings: HubSettings }
   | { t: 'dictation'; info: DictationInfo }
-  | { t: 'result'; id: number; ok: boolean; error?: string; data?: unknown };
+  | { t: 'accounts'; info: AccountsInfo }
+  /** code: what kind of failure, when the panel can do something about it ('needsLogin'). */
+  | { t: 'result'; id: number; ok: boolean; error?: string; code?: string; data?: unknown };
 
 /** Body of POST /api/notify, sent by tmux-window-title.sh on each host. */
 export interface NotifyRequest {

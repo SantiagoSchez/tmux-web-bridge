@@ -272,7 +272,8 @@ h3 {
    account, in columns so the meters of every account line up. */
 .limit-meters {
   display: grid;
-  grid-template-columns: auto minmax(0, auto) minmax(0, auto);
+  /* account · 5h · 7d · per model · in use / «Usar aquí» */
+  grid-template-columns: auto minmax(0, auto) minmax(0, auto) auto auto;
   align-items: center;
   gap: 4px 18px;
   min-width: 0;
@@ -281,14 +282,62 @@ h3 {
 .limit-row {
   display: contents;
 }
+.limit-account-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* The phone's copies of «Usar aquí» and ● next to the name. */
+.limit-inline {
+  display: none;
+}
 .limit-account {
   max-width: 34ch;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--subtext1);
+  text-align: left;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border-radius: 6px;
 }
-.limit-domain {
+.limit-account:hover {
+  background: var(--surface0);
+}
+.limit-plan {
+  color: var(--overlay0);
+}
+.limit-warn {
+  color: var(--peach);
+}
+/* The weekly limits of single models (Fable): as many as the account has. */
+.limit-models {
+  display: flex;
+  gap: 18px;
+  min-width: 0;
+}
+.limit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.limit-active {
+  color: var(--mauve);
+}
+.limit-active-hosts {
   color: var(--overlay1);
+}
+.limit-use {
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--surface1);
+  color: var(--text);
+}
+.limit-use:hover,
+.limit-use:active {
+  background: var(--surface0);
 }
 /* With a Claude open, its account stands out and the others fade. The ▸ sits in
    room every email keeps, so nothing moves when it appears. */
@@ -305,7 +354,7 @@ h3 {
 .limit-row.current .limit-account::before {
   visibility: visible;
 }
-.limit-row.dim > :not(.limit-tip) {
+.limit-row.dim > :not(.limit-tip, .limit-actions) {
   opacity: 0.4;
 }
 .limit {
@@ -423,12 +472,25 @@ h3 {
   }
   .limit-meters {
     column-gap: 10px;
+    /* Without the last column: its «Usar aquí» goes next to the name. */
+    grid-template-columns: auto minmax(0, auto) minmax(0, auto) auto;
   }
   .limit-account {
     max-width: 9ch;
   }
-  .limit-domain,
-  .limit-account::before {
+  .limit-account::before,
+  .limit-plan,
+  .limit-label-rest,
+  .limit-active-hosts {
+    display: none;
+  }
+  .limit-models {
+    gap: 10px;
+  }
+  .limit-inline {
+    display: inline;
+  }
+  .limit-actions {
     display: none;
   }
   .limit-bar {
@@ -1639,6 +1701,26 @@ body.dragging-host * {
 .sheet-text {
   margin: 0 4px 16px;
   color: var(--subtext1);
+}
+/* A Claude login from the panel: open Claude's page, paste its code. */
+.claude-login-steps {
+  display: grid;
+  gap: 16px;
+  margin: 0 4px;
+  padding-left: 20px;
+  color: var(--subtext1);
+}
+.claude-login-steps li > div,
+.claude-login-steps .text-input {
+  margin-top: 8px;
+}
+.claude-login-steps a.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+.claude-login-error {
+  margin: 12px 4px 0;
+  color: var(--red);
 }
 .resume-list {
   display: grid;

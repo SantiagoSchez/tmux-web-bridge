@@ -1,9 +1,10 @@
 import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import type { PaneState, RateLimits, UsageSample } from '../../../shared/types';
+import type { ClaudeAccount, PaneState, RateLimits, UsageSample, UsageWindow } from '../../../shared/types';
+import { accountMenu, addAccount, useAccount } from '../accounts';
 import { openWindow, route } from '../router';
-import { findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
+import { accountsInfo, findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
 
 /** "2d23h", "3h37m", "45m": time left until a reset, like the Claude Code statusline. */
 function left(seconds: number): string {
@@ -59,7 +60,7 @@ const tip = signal<Tip | null>(null);
  * run out before then, a ⚠. Only then is it a button: a tap opens the forecast
  * in a tooltip, so its text does not take room from the reset on a phone.
  */
-function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: string; pct: number; resetsAt: number; now: number; runsOut: number | null }) {
+function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: ComponentChildren; pct: number; resetsAt: number; now: number; runsOut: number | null }) {
   const reset = resetsAt > 0 && resetsAt <= now; // the window already restarted since it was read
   const value = reset ? 0 : Math.max(0, Math.min(100, Math.round(pct)));
   const level = value >= 80 ? 'high' : value >= 60 ? 'mid' : 'low';
@@ -67,7 +68,7 @@ function Meter({ id, label, pct, resetsAt, now, runsOut }: { id: string; label: 
   const content = (
     <>
       <span class="limit-label">{label}</span>
-      <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} aria-label={`Uso ${label}`}>
+      <span class={`limit-bar ${level}`} role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} aria-label={`Uso ${id.split('|').pop()}`}>
         <span class="limit-fill" style={{ width: `${value}%` }} />
         <span class="limit-pct">{value}%</span>
       </span>
@@ -179,53 +180,163 @@ function Summary({ groups }: { groups: Group[] }) {
   );
 }
 
-/** The freshest reading of each account among all hosts; those without one (older statuslines) last. */
-function accounts(): RateLimits[] {
+/** The freshest statusline reading of each account among all hosts (by email). */
+function statuslineLimits(): Map<string, RateLimits> {
   const by = new Map<string, RateLimits>();
   for (const h of hosts.value)
     for (const l of h.limits ?? []) {
       const prev = by.get(l.account ?? '');
       if (!prev || l.updatedAt > prev.updatedAt) by.set(l.account ?? '', l);
     }
-  return [...by.values()].sort((a, b) => Number(!a.account) - Number(!b.account) || (a.account ?? '').localeCompare(b.account ?? ''));
+  return by;
 }
 
-/** The account of the Claude in the pane open in the app (its active one if none is picked), if any. */
-function openAccount(): string | undefined {
+/** One row of the strip: an account the hub keeps, or one only a statusline knows of. */
+interface Row {
+  key: string;
+  label: string;
+  email?: string;
+  acc?: ClaudeAccount;
+  five?: UsageWindow;
+  seven?: UsageWindow;
+  models: (UsageWindow & { name: string })[];
+  /** When its 5h/7d were read (epoch seconds), 0 if never. */
+  readAt: number;
+}
+
+/**
+ * The hub's accounts, each with the freshest of its two readings: the hub's own
+ * (every few minutes, with the per-model limits) and a statusline's (live, while a
+ * Claude of it works). An email two accounts share cannot tell which one a statusline
+ * reading is of, so it is left out for both. Then the accounts only a statusline knows.
+ */
+function rows(): Row[] {
+  const live = statuslineLimits();
+  const list = accountsInfo.value?.list ?? [];
+  const out: Row[] = list.map((acc) => {
+    const u = acc.usage;
+    const shared = list.some((b) => b !== acc && b.email === acc.email);
+    const sl = shared ? undefined : live.get(acc.email);
+    const fresher = sl && sl.updatedAt > (u?.t ?? 0);
+    return {
+      key: acc.id,
+      label: acc.alias,
+      email: acc.email,
+      acc,
+      five: fresher ? sl.fiveHour : u?.fiveHour,
+      seven: fresher ? sl.sevenDay : u?.sevenDay,
+      models: u?.models ?? [],
+      readAt: fresher ? sl.updatedAt : (u?.t ?? 0),
+    };
+  });
+  const known = new Set(list.map((a) => a.email));
+  for (const [email, l] of live) {
+    if (known.has(email)) continue;
+    out.push({ key: `sl:${email}`, label: email ? email.split('@')[0] : '—', email: email || undefined, five: l.fiveHour, seven: l.sevenDay, models: [], readAt: l.updatedAt });
+  }
+  return out.sort((a, b) => Number(!a.acc) - Number(!b.acc) || a.label.localeCompare(b.label));
+}
+
+/** The machine and the account of the Claude in the pane open in the app (its active one if none is picked), if any. */
+function openPane(): { host: string; account?: string } | undefined {
   const r = route.value;
   if (r.name !== 'window') return undefined;
   const panes = findWindow(r.host, r.window)?.window.panes ?? [];
   const pane = panes.find((p) => (r.pane ? p.id === r.pane : p.active));
-  return pane?.state && pane.state !== 'ssh' ? pane.account : undefined;
+  return { host: r.host, account: pane?.state && pane.state !== 'ssh' ? pane.account : undefined };
 }
 
-/** One account's row: its email (only the part before @ on phones) and both meters. */
-function Account({ limits, samples, now, dim }: { limits: RateLimits; samples: UsageSample[]; now: number; dim?: boolean }) {
-  const { account, fiveHour, sevenDay } = limits;
-  const mine = samples.filter((s) => s.account === account);
-  const at = account?.indexOf('@') ?? -1;
-  const age = left(now - limits.updatedAt);
+function hostNames(ids: string[]): string {
+  return ids.map((id) => hosts.value.find((h) => h.id === id)?.name ?? id).join(' · ');
+}
+
+/** A model's weekly limit: its name whole on a big screen, its initial on a phone. */
+function modelLabel(name: string) {
+  return (
+    <>
+      {name.slice(0, 1)}
+      <span class="limit-label-rest">{name.slice(1)}</span>
+    </>
+  );
+}
+
+/**
+ * One account's row: its name (a tap opens its menu), its meters, where it is in use
+ * and, with a window open on a machine that uses another one, «Usar aquí».
+ */
+function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: UsageSample[]; now: number; dim?: boolean; here?: string }) {
+  const { acc, email } = row;
+  const mine = samples.filter((s) => s.account === email);
+  const age = row.readAt ? left(now - row.readAt) : null;
+  const switching = accountsInfo.value?.switching ?? [];
+  const title = [
+    acc ? `${acc.alias} · ${acc.email}` : email,
+    acc?.plan,
+    acc?.org && acc.plan === 'Team' ? acc.org : undefined,
+    age ? `leídos hace ${age === '—' ? 'un momento' : age}` : 'sin lecturas todavía',
+    acc?.usageError,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const open = () => (acc ? accountMenu(acc) : addAccount());
+  const canUse = acc && here && !acc.activeOn.includes(here) && !acc.needsLogin;
+  const busy = here !== undefined && switching.includes(here);
+  const use = () => void useAccount(here!, acc!);
   return (
     <div class={`limit-row ${dim === false ? 'current' : dim ? 'dim' : ''}`}>
-      <span class="limit-account" title={`${account ? `${account} · ` : ''}leídos hace ${age === '—' ? 'un momento' : age}`}>
-        {at > 0 ? (
-          <>
-            {account!.slice(0, at)}
-            <span class="limit-domain">{account!.slice(at)}</span>
-          </>
-        ) : (
-          account
+      <span class="limit-account-cell">
+        <button type="button" class="limit-account" title={title} onClick={open}>
+          {row.label}
+          {acc?.plan && <span class="limit-plan"> {acc.plan}</span>}
+          {(acc?.needsLogin || (acc?.usageError && !acc.usage)) && <span class="limit-warn"> ⚠</span>}
+        </button>
+        {/* On a phone the strip scrolls sideways: the switch sits next to the name instead of at the far end. */}
+        {acc && acc.activeOn.length > 0 && (
+          <span class="limit-active limit-inline" title={`En uso en ${hostNames(acc.activeOn)}`}>
+            ●
+          </span>
+        )}
+        {canUse && (
+          <button type="button" class="limit-use limit-inline" disabled={busy} onClick={use}>
+            Usar
+          </button>
         )}
       </span>
-      <Meter id={`${account ?? ''}|5h`} label="5h" pct={fiveHour.pct} resetsAt={fiveHour.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', fiveHour.pct, fiveHour.resetsAt, now)} />
-      <Meter id={`${account ?? ''}|7d`} label="7d" pct={sevenDay.pct} resetsAt={sevenDay.resetsAt} now={now} runsOut={runsOutAt(mine, 'seven', sevenDay.pct, sevenDay.resetsAt, now)} />
+      {row.five ? (
+        <Meter id={`${row.key}|5h`} label="5h" pct={row.five.pct} resetsAt={row.five.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', row.five.pct, row.five.resetsAt, now)} />
+      ) : (
+        <span />
+      )}
+      {row.seven ? (
+        <Meter id={`${row.key}|7d`} label="7d" pct={row.seven.pct} resetsAt={row.seven.resetsAt} now={now} runsOut={runsOutAt(mine, 'seven', row.seven.pct, row.seven.resetsAt, now)} />
+      ) : (
+        <span />
+      )}
+      <span class="limit-models">
+        {row.models.map((m) => (
+          <Meter key={m.name} id={`${row.key}|${m.name}`} label={modelLabel(m.name)} pct={m.pct} resetsAt={m.resetsAt} now={now} runsOut={null} />
+        ))}
+      </span>
+      <span class="limit-actions">
+        {acc && acc.activeOn.length > 0 && (
+          <span class="limit-active" title={`En uso en ${hostNames(acc.activeOn)}`}>
+            ●<span class="limit-active-hosts"> {hostNames(acc.activeOn)}</span>
+          </span>
+        )}
+        {canUse && (
+          <button type="button" class="limit-use" disabled={busy} onClick={use}>
+            Usar aquí
+          </button>
+        )}
+      </span>
     </div>
   );
 }
 
 /**
- * Claude's usage limits (5 h and 7 d), one row per account, shared by all of its
- * agents: the freshest reading published by any host's statusline.
+ * Claude's usage limits (5 h, 7 d and per model), one row per account: those the hub
+ * keeps logins of, read by the hub and by the statuslines, and those only a
+ * statusline knows of. From here a machine switches to another account.
  */
 export function LimitsBar() {
   const [now, setNow] = useState(() => Math.floor(Date.now() / 1000));
@@ -234,21 +345,22 @@ export function LimitsBar() {
     return () => clearInterval(t);
   }, []);
 
-  const list = accounts();
+  const list = rows();
   const states = groups();
   if (!list.length && !states.length) return null;
 
   const samples = usageSamples.value;
   // With a Claude open, the other accounts fade (only if it is one of the rows).
-  const open = openAccount();
-  const current = list.length > 1 && list.some((l) => l.account === open) ? open : undefined;
+  const pane = openPane();
+  const open = pane?.account;
+  const current = list.length > 1 && list.some((r) => r.email === open) ? open : undefined;
   return (
     <div class={`limits ${states.length ? 'has-summary' : ''}`}>
       {states.length > 0 && <Summary groups={states} />}
       {list.length > 0 && (
         <div class="limit-meters">
-          {list.map((l) => (
-            <Account key={l.account ?? ''} limits={l} samples={samples} now={now} dim={current === undefined ? undefined : l.account !== current} />
+          {list.map((r) => (
+            <AccountRow key={r.key} row={r} samples={samples} now={now} dim={current === undefined ? undefined : r.email !== current} here={pane?.host} />
           ))}
         </div>
       )}

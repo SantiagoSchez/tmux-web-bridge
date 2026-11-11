@@ -8,7 +8,9 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
+import type { AccountsInfo, ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
+import { AccountStore, NeedsLoginError } from './account-store.js';
+import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript } from './actions.js';
 import { shq } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
@@ -42,6 +44,7 @@ const limiter = new LoginLimiter();
 const twoFactor = new TwoFactor(config.dataDir);
 const usage = new UsageHistory(config.dataDir);
 const hosts = new Map(config.hosts.map((h) => [h.id, new HostMonitor(h, config)]));
+const accounts = new AccountManager(new AccountStore(config.dataDir), hosts);
 const hostOrder = new HostOrder(config.dataDir, config.hosts.map((h) => h.id));
 const conns = new ConnectionRegistry();
 const push = new PushService(config);
@@ -191,6 +194,18 @@ for (const host of hosts.values()) {
   });
   host.on('transition', (t) => notifier.onTransition(t));
 }
+accounts.on('change', (info: AccountsInfo) => {
+  broadcast({ t: 'accounts', info });
+  // The hub's readings feed the forecast too, keyed like the statusline's: by email,
+  // so only when no other account shares it.
+  let added = false;
+  for (const a of info.list) {
+    const u = a.usage;
+    if (!u?.fiveHour || !u.sevenDay || info.list.some((b) => b !== a && b.email === a.email)) continue;
+    added = usage.add({ fiveHour: u.fiveHour, sevenDay: u.sevenDay, updatedAt: u.t, account: a.email }) || added;
+  }
+  if (added) broadcast({ t: 'usage', samples: usage.list });
+});
 conns.on('change', (list) => broadcast({ t: 'connections', list }));
 updates.on('change', (info) => broadcast({ t: 'updates', info }));
 settings.on('change', (value) => {
@@ -246,6 +261,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'updates', info: updates.info });
   send(ws, { t: 'settings', settings: settings.value });
   send(ws, { t: 'dictation', info: dictation.info });
+  send(ws, { t: 'accounts', info: accounts.info });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -254,7 +270,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
     } catch {
       return;
     }
-    const host = 'host' in msg ? hosts.get(msg.host) : undefined;
+    const host = msg.t === 'action' ? hosts.get(msg.host) : undefined;
     try {
       switch (msg.t) {
         case 'hello':
@@ -293,10 +309,16 @@ app.get('/ws', { websocket: true }, (ws, req) => {
           send(ws, { t: 'result', id, ok: true, data });
           break;
         }
+        case 'account': {
+          const { id, t: _t, ...op } = msg;
+          send(ws, { t: 'result', id, ok: true, data: await accounts.run(op) });
+          break;
+        }
       }
     } catch (err) {
-      if (msg.t === 'action') send(ws, { t: 'result', id: msg.id, ok: false, error: (err as Error).message });
-      else app.log.warn(err);
+      if (msg.t === 'action' || msg.t === 'account') {
+        send(ws, { t: 'result', id: msg.id, ok: false, error: (err as Error).message, code: err instanceof NeedsLoginError ? err.code : undefined });
+      } else app.log.warn(err);
     }
   });
 
@@ -616,6 +638,7 @@ if (existsSync(webDist)) {
 // ---------------------------------------------------------------- start
 
 for (const host of hosts.values()) host.start();
+accounts.start();
 await app.listen({ host: config.listen.host, port: config.listen.port });
 if (notifyApp && config.notifyListen) {
   await notifyApp.listen(config.notifyListen);
@@ -651,6 +674,7 @@ if (process.env.WATCHDOG_TCP) {
 
 const shutdown = () => {
   for (const host of hosts.values()) host.stop();
+  accounts.stop();
   void Promise.all([app.close(), notifyApp?.close()]).then(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();
 };

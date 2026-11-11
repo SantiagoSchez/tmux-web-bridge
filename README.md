@@ -18,7 +18,8 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
 - **Control completo** de spaces, ventanas y paneles; «Nuevo space» abre un proyecto y arranca `claude` en él. Las carpetas que ofrece cada máquina se añaden en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
-- **Límites de uso** de Claude (5 h y semanal) y quién está conectado al panel, siempre a la vista.
+- **Límites de uso** de Claude (5 h, semanal y el semanal de cada modelo) de todas tus cuentas, y quién está conectado al panel, siempre a la vista.
+- **Cambiar de cuenta de Claude con un toque**: «Usar aquí» pasa el Claude Code de esa máquina a otra cuenta, sin reiniciar los Claude que estén abiertos. Ver [Cuentas de Claude](#cuentas-de-claude).
 
 ## En el móvil
 
@@ -109,6 +110,16 @@ El panel saca los límites de uso de una opción global de tmux que publica la s
 </details>
 
 La status line del kit muestra los límites 5h/7d al final, salvo en un panel estrecho (el móvil, donde ya están en la franja de la app). Si la barra de tmux ya los muestra (por ejemplo, con un módulo de catppuccin), quítalos de la status line de todas las máquinas en ⚙️ **Ajustes › Máquinas › Límites en la status line**: el servidor central pone `@claude_limits_in_status` en el tmux de cada una y la vuelve a poner si tmux se reinicia, por encima de lo que diga su `~/.tmux.conf`.
+
+### Cuentas de Claude
+
+El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con ellos lee el uso de todas, también de las que no tienen ningún Claude abierto, y puede pasar cualquier máquina de una cuenta a otra. Todo se gestiona desde la franja de límites:
+
+- **Las cuentas que ya usas aparecen solas.** El servidor central mira por SSH con qué cuenta está Claude Code en cada máquina (al arrancar y cada 10 minutos) y se queda con ella. Para añadir otra, pulsa el nombre de una cuenta › **Añadir otra cuenta**: se abre el login de Claude en otra pestaña y pegas el código que muestra, como con `/login`.
+- **«Usar aquí»**, con una ventana abierta, pasa el Claude Code de esa máquina a esa cuenta. El nombre de cada cuenta abre su menú, con todas las máquinas, para cambiar cualquiera; **●** marca dónde está en uso. Los Claude abiertos siguen con la cuenta nueva sin reiniciarse: en Linux desde el siguiente mensaje y en macOS en unos 30 segundos (lo que tarda en caducar la caché del Llavero).
+- **Un inicio de sesión vale para una sola máquina a la vez**, porque cada token de refresco de Claude solo se puede usar una vez: si dos copias del mismo login se renovaran por su lado, una dejaría a la otra sin sesión. Al cambiar, el login que tenía la máquina vuelve al servidor central como «sesión libre» y la máquina recibe una sesión libre de la cuenta nueva. Para tener la misma cuenta en dos máquinas a la vez hacen falta dos inicios de sesión con ella: si no hay ninguna libre, TWB te pide uno.
+- **Qué toca en cada máquina**: la credencial (`~/.claude/.credentials.json` en Linux; en macOS, el ítem «Claude Code-credentials» del Llavero) y `oauthAccount` en `~/.claude.json`, con los mismos bloqueos que usa Claude Code para que un cambio no se cruce con una renovación del token. Solo la carpeta de configuración por defecto (no `CLAUDE_CONFIG_DIR`). En macOS, el Llavero tiene que estar desbloqueado (la sesión del Mac iniciada).
+- **Dónde se guardan**: en `accounts.json`, dentro de `dataDir` del servidor central, legible solo por su usuario. El uso se consulta como mucho cada 5 minutos por cuenta, para no pasarse del límite de peticiones de Anthropic.
 
 ### 4. En el móvil (Android)
 
