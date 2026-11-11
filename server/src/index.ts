@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ClientMessage, DictateResult, NotifyRequest, RespondRequest, ServerMessage } from '../../shared/types.js';
+import type { AccountsInfo, ClientMessage, DictateResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript } from './actions.js';
@@ -303,7 +303,11 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const machine = { folders: settings.value.folders[host.id] ?? [], command: settings.value.commands[host.id] ?? DEFAULT_COMMAND };
+          const machine = {
+            folders: settings.value.folders[host.id] ?? [],
+            command: settings.value.commands[host.id] ?? DEFAULT_COMMAND,
+            save: (folders: SavedFolder[]) => settings.update({ folders: { [host.id]: folders } }),
+          };
           const data = await runAction(host, op, updates.info.latest?.version ?? null, machine);
           if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });

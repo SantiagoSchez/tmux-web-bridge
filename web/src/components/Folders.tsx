@@ -167,23 +167,19 @@ function CommandSetting({ hostId, value }: { hostId: string; value: string }) {
   );
 }
 
-/** Browses the machine's folders from ~ (or a path typed by hand) and adds the one shown. */
-function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: SavedFolder[]; onAdd: (f: SavedFolder) => void; onCancel: () => void }) {
+/** Moving around a machine's folders, from `start` (or a path typed by hand). */
+export function useDirBrowser(hostId: string, start = '~') {
   const [at, setAt] = useState<DirListing | null>(null);
-  const [path, setPath] = useState('~');
-  const [name, setName] = useState<string | null>(null);
-  const [hidden, setHidden] = useState(false);
-  const [subfolders, setSubfolders] = useState(false);
+  const [path, setPath] = useState(start);
   const [busy, setBusy] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
 
   const go = async (to: string): Promise<DirListing | null> => {
     setBusy(true);
     try {
-      const l = await hub.action<DirListing>(host.id, { op: 'listDirs', path: to.trim() });
+      const l = await hub.action<DirListing>(hostId, { op: 'listDirs', path: to.trim() });
       setAt(l);
       setPath(l.path);
-      setName(null);
       listRef.current?.scrollTo(0, 0);
       return l;
     } catch {
@@ -192,49 +188,44 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
       setBusy(false);
     }
   };
-  useEffect(() => void go('~'), []);
+  useEffect(() => void go(start), []);
 
+  /** A path typed but not opened yet. */
   const typed = path.trim() !== at?.path;
-  const shownName = name ?? (typed ? baseName(path.trim()) : at ? baseName(at.path) : '');
-  const already = at && !typed ? list.find((f) => sameFolder(f, at.path, subfolders)) : undefined;
-  const problem = already ? `Ya está añadida como «${already.name}».` : at ? nameProblem(list, shownName) : null;
+  /** Where it is, opening first a path typed by hand: so only folders that exist are used. */
+  const here = () => (typed ? go(path) : Promise.resolve(at));
+  return { at, path, setPath, busy, go, typed, here, listRef };
+}
 
-  const add = async () => {
-    // A path typed but not opened yet: open it first, so only folders that exist go in.
-    const l = typed ? await go(path) : at;
-    if (!l) return;
-    const finalName = name ?? baseName(l.path);
-    const twin = list.find((f) => sameFolder(f, l.path, subfolders));
-    const why = twin ? `Ya está añadida como «${twin.name}».` : nameProblem(list, finalName);
-    if (why) return toast(why, 'error');
-    onAdd(subfolders ? { name: finalName.trim(), path: l.path, subfolders } : { name: finalName.trim(), path: l.path });
-  };
-
+/** The path field, the folders inside the one shown (hidden ones if asked) and the way up. */
+export function DirBrowser({ b }: { b: ReturnType<typeof useDirBrowser> }) {
+  const [hidden, setHidden] = useState(false);
+  const { at, busy, go } = b;
   const dirs = at ? at.dirs.filter((d) => hidden || !d.startsWith('.')) : [];
   return (
-    <div class="folder-picker">
+    <>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!busy) void go(path);
+          if (!busy) void go(b.path);
         }}
       >
         <input
           class="text-input"
-          value={path}
+          value={b.path}
           placeholder="~/carpeta o /ruta/absoluta"
           aria-label="Ruta de la carpeta"
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}
-          onInput={(e) => setPath(e.currentTarget.value)}
+          onInput={(e) => b.setPath(e.currentTarget.value)}
         />
       </form>
       <label class="kb-check">
         <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.currentTarget.checked)} />
         Mostrar carpetas ocultas
       </label>
-      <ul class="menu folder-dirs" ref={listRef} aria-busy={busy}>
+      <ul class="menu folder-dirs" ref={b.listRef} aria-busy={busy}>
         {!at && <li class="dim pad">Cargando…</li>}
         {at?.parent && (
           <li>
@@ -254,6 +245,36 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
         ))}
         {at && !dirs.length && <li class="dim pad">{at.dirs.length ? 'Solo hay carpetas ocultas.' : 'No hay carpetas dentro.'}</li>}
       </ul>
+    </>
+  );
+}
+
+/** Browses the machine's folders from ~ (or a path typed by hand) and adds the one shown. */
+function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: SavedFolder[]; onAdd: (f: SavedFolder) => void; onCancel: () => void }) {
+  const b = useDirBrowser(host.id);
+  const { at, busy, typed } = b;
+  const [name, setName] = useState<string | null>(null);
+  const [subfolders, setSubfolders] = useState(false);
+  // Somewhere else: the name is that folder's again.
+  useEffect(() => setName(null), [at]);
+
+  const shownName = name ?? (typed ? baseName(b.path.trim()) : at ? baseName(at.path) : '');
+  const already = at && !typed ? list.find((f) => sameFolder(f, at.path, subfolders)) : undefined;
+  const problem = already ? `Ya está añadida como «${already.name}».` : at ? nameProblem(list, shownName) : null;
+
+  const add = async () => {
+    const l = await b.here();
+    if (!l) return;
+    const finalName = name ?? baseName(l.path);
+    const twin = list.find((f) => sameFolder(f, l.path, subfolders));
+    const why = twin ? `Ya está añadida como «${twin.name}».` : nameProblem(list, finalName);
+    if (why) return toast(why, 'error');
+    onAdd(subfolders ? { name: finalName.trim(), path: l.path, subfolders } : { name: finalName.trim(), path: l.path });
+  };
+
+  return (
+    <div class="folder-picker">
+      <DirBrowser b={b} />
       <label class="kb-check">
         <input type="checkbox" checked={subfolders} onChange={(e) => setSubfolders(e.currentTarget.checked)} />
         Incluir todas sus subcarpetas (siempre al día)

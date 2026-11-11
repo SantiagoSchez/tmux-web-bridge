@@ -1838,6 +1838,47 @@ body.dragging-host * {
 .menu-item.missing .project-name {
   text-decoration: line-through;
 }
+/* A folder with subfolders in «Nuevo space»: a small heading (its name, where it is, and ＋ to make
+   one more inside), with the folders inside under it by name only. */
+.project-group {
+  margin-top: 6px;
+}
+.project-parent {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0 0 8px;
+  border-bottom: 1px solid var(--surface0);
+}
+.project-parent.missing {
+  opacity: 0.55;
+}
+.project-parent-text {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--overlay1);
+  overflow-wrap: anywhere;
+}
+.project-parent-name {
+  font-weight: 600;
+  color: var(--subtext0);
+}
+.project-parent .icon-btn {
+  font-size: 18px;
+}
+/* Indented, so a folder on its own after the group does not read as one of them. */
+.project-group > .menu {
+  margin-bottom: 6px;
+  padding-left: 14px;
+}
+.project-group .menu-item {
+  min-height: 44px;
+}
+.project-empty {
+  padding: 10px 8px 10px 58px;
+}
 /* «Carpetas» in the settings: the machine's added folders and the folder picker. */
 /* Which machine's folders: one line however many machines there are. */
 .folder-host {

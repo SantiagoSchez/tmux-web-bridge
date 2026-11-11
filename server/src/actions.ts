@@ -1,4 +1,4 @@
-import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, sameFolder } from '../../shared/folders.js';
+import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, MAX_FOLDERS, sameFolder } from '../../shared/folders.js';
 import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
@@ -102,6 +102,8 @@ export function projectCommand(command: string, skipPermissions: boolean): strin
 export interface MachineFolders {
   folders: SavedFolder[];
   command: string;
+  /** Keeps a new list of the host's folders (a folder made with createFolder goes in). */
+  save?: (folders: SavedFolder[]) => void;
 }
 
 /**
@@ -134,6 +136,30 @@ async function openProject(host: HostMonitor, machine: MachineFolders, action: E
   const [session, pane] = out.trim().split(' ');
   if (machine.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
   return { session, created: true };
+}
+
+/**
+ * «Nueva carpeta» of «Nuevo space»: makes a folder inside `parent` and opens a space in it.
+ * Inside a folder with subfolders it is one more of them (opened if it is there already);
+ * anywhere else it has to be new, and goes into the host's folders, named like it.
+ */
+async function createFolder(host: HostMonitor, machine: MachineFolders, action: Extract<ActionOp, { op: 'createFolder' }>): Promise<{ session: string; created: boolean }> {
+  const name = projectName(String(action.name));
+  const parent = String(action.parent).trim().replace(/(.)\/+$/, '$1');
+  if (!folderPathOk(parent)) throw new Error('La ruta tiene que empezar por / o por ~');
+  const open = { op: 'openProject', skipPermissions: action.skipPermissions } as const;
+  if (machine.folders.some((f) => sameFolder(f, parent, true))) return openProject(host, machine, { ...open, folder: parent, sub: name, create: true });
+
+  const path = childPath(parent, name);
+  if (machine.folders.some((f) => f.name === name)) throw new Error(`Ya hay una carpeta llamada «${name}» en ${host.name}`);
+  if (machine.folders.length >= MAX_FOLDERS) throw new Error(`${host.name} ya tiene ${MAX_FOLDERS} carpetas`);
+  const state = (await host.exec.shell(`if [ -e ${hostPath(path)} ]; then echo there; elif [ -d ${hostPath(parent)} ]; then echo ok; else echo gone; fi`)).trim();
+  if (state === 'gone') throw new Error(`No existe la carpeta ${parent} en ${host.name}`);
+  if (state === 'there') throw new Error(`Ya existe ${path} en ${host.name}`);
+  await host.exec.shell(`mkdir ${hostPath(path)}`);
+  const folders = [...machine.folders, { name, path }];
+  machine.save?.(folders);
+  return openProject(host, { ...machine, folders }, { ...open, folder: path });
 }
 
 /** Reboots the machine. The SSH connection may drop (or hang) before shutdown answers: that is a success. */
@@ -176,6 +202,8 @@ export async function runAction(
       return listProjects(host, machine.folders);
     case 'openProject':
       return openProject(host, machine, action);
+    case 'createFolder':
+      return createFolder(host, machine, action);
     case 'listDirs':
       if (typeof action.path !== 'string') throw new Error('Falta la ruta');
       return listDirs(host, action.path);

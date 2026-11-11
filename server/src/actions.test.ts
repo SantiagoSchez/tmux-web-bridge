@@ -1,22 +1,29 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import type { DirListing, ProjectList } from '../../shared/types.js';
+import type { DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
 import { projectCommand, runAction } from './actions.js';
 import type { HostMonitor } from './host.js';
 
-/** A host without tmux: its shell scripts run here, with `home` as $HOME. */
-function fakeHost(home: string): HostMonitor {
+/**
+ * A host without tmux: its shell scripts run here, with `home` as $HOME. With `tmux`, the
+ * tmux commands are noted there (a new space is $1 with pane %1); without it, none may run.
+ */
+function fakeHost(home: string, tmux?: string[][]): HostMonitor {
   const shell = (script: string) =>
     new Promise<string>((resolve, reject) =>
       execFile('/bin/sh', ['-c', script], { env: { PATH: process.env.PATH, HOME: home } }, (err, out) => (err ? reject(err) : resolve(out))),
     );
   // No tmux here: no spaces open, and nothing may be created.
   const runFormat = async () => '';
-  const run = async () => assert.fail('tmux no se toca en estas pruebas');
+  const run = async (args: string[]) => {
+    if (!tmux) assert.fail('tmux no se toca en estas pruebas');
+    tmux.push(args);
+    return '$1 %1';
+  };
   return { name: 'Prueba', hostConfig: {}, exec: { shell, runFormat, run } } as unknown as HostMonitor;
 }
 
@@ -96,5 +103,38 @@ test(
     await assert.rejects(runAction(host, { op: 'openProject', folder: '~/Proyectos', sub: '../x', create: true }, null, machine), /inválido/);
     await assert.rejects(runAction(host, { op: 'openProject', folder: '~/Proyectos', sub: 'nuevo' }, null, machine), /No existe la carpeta/);
     await assert.rejects(runAction(host, { op: 'openProject', folder: '/Volumes/no-montado' }, null, machine), /no está en Prueba/);
+  }),
+);
+
+test(
+  'createFolder: a new folder anywhere goes into the host\'s folders, and one inside a folder with subfolders does not',
+  withHome(async (home) => {
+    mkdirSync(join(home, 'Proyectos/twb'), { recursive: true });
+    mkdirSync(join(home, 'otros'));
+    const tmux: string[][] = [];
+    const host = fakeHost(home, tmux);
+    let saved: SavedFolder[] | null = null;
+    const machine = { folders: [{ name: 'p', path: '~/Proyectos', subfolders: true }], command: 'claude', save: (f: SavedFolder[]) => (saved = f) };
+
+    const res = await runAction(host, { op: 'createFolder', parent: '~/otros/', name: 'nuevo' }, null, machine);
+    assert.deepEqual(res, { session: '$1', created: true });
+    assert.ok(existsSync(join(home, 'otros/nuevo')));
+    assert.deepEqual(saved, [...machine.folders, { name: 'nuevo', path: '~/otros/nuevo' }]);
+    assert.deepEqual(tmux[0], ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', 'nuevo', '-c', join(home, 'otros/nuevo')]);
+
+    saved = null;
+    await runAction(host, { op: 'createFolder', parent: '~/Proyectos', name: 'blog' }, null, machine);
+    assert.ok(existsSync(join(home, 'Proyectos/blog')));
+    assert.equal(saved, null);
+    // One of those that is there already is opened, as when it is picked from the list.
+    await runAction(host, { op: 'createFolder', parent: '~/Proyectos', name: 'twb' }, null, machine);
+    assert.deepEqual(tmux.filter((a) => a[0] === 'new-session').map((a) => a.at(-1)), [join(home, 'otros/nuevo'), join(home, 'Proyectos/blog'), join(home, 'Proyectos/twb')]);
+
+    await assert.rejects(runAction(host, { op: 'createFolder', parent: '~', name: 'otros' }, null, machine), /Ya existe ~\/otros en Prueba/);
+    await assert.rejects(runAction(host, { op: 'createFolder', parent: '~/otros', name: 'p' }, null, machine), /Ya hay una carpeta llamada «p»/);
+    await assert.rejects(runAction(host, { op: 'createFolder', parent: '~/no-existe', name: 'x' }, null, machine), /No existe la carpeta ~\/no-existe/);
+    await assert.rejects(runAction(host, { op: 'createFolder', parent: '~/otros', name: '../x' }, null, machine), /inválido/);
+    await assert.rejects(runAction(host, { op: 'createFolder', parent: 'relativa', name: 'x' }, null, machine), /tiene que empezar/);
+    assert.equal(saved, null);
   }),
 );

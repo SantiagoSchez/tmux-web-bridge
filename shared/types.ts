@@ -305,6 +305,11 @@ export type ActionOp =
    * subfolders, created first with `create`. An open space of that name is reused.
    */
   | { op: 'openProject'; folder: string; sub?: string; create?: boolean; skipPermissions?: boolean }
+  /**
+   * Makes the folder `name` inside `parent` and opens a space there: one more inside a
+   * folder with subfolders, or, anywhere else, a new one added to the host's folders.
+   */
+  | { op: 'createFolder'; parent: string; name: string; skipPermissions?: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }

@@ -1,10 +1,11 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { childPath, folderNameProblem, homePath } from '../../../shared/folders';
-import type { ProjectList } from '../../../shared/types';
+import { folderNameProblem, homePath } from '../../../shared/folders';
+import type { ActionOp, ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
-import { accountsInfo, dialog, dismissToast, hosts, openFolderSettings, toast, toasts, type Dialog } from '../state';
+import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
+import { DirBrowser, useDirBrowser } from './Folders';
 import { IconClose } from './icons';
 import { hub } from '../ws';
 
@@ -338,25 +339,40 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
   );
 }
 
-/** One row of «Nuevo space»: an added folder, or one inside an added folder with subfolders. */
+/** A folder of «Nuevo space» to open: an added one, or one inside an added folder with subfolders. */
 interface FolderItem {
   key: string;
   name: string;
-  hint: string;
   folder: string;
   sub?: string;
+  /** Its whole path, for an added folder; those inside one go under it without. */
+  hint?: string;
   missing?: boolean;
 }
 
+/** An added folder with subfolders: a small heading, with the folders inside under it. */
+interface FolderGroup {
+  key: string;
+  name: string;
+  path: string;
+  missing: boolean;
+  children: FolderItem[];
+}
+
+/** What «Nuevo space» shows: the folders, where a new one goes, or its name. */
+type ProjectStep = { kind: 'list' } | { kind: 'where'; at: string } | { kind: 'name'; parent: string; back?: string };
+
 /**
- * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder
- * (or type a new name to create it inside one with subfolders) and the space opens
- * there with the host's command (claude) running. An open space of that name is reused.
+ * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder and
+ * the space opens there with the host's command (claude) running; an open space of
+ * that name is reused. A new folder is made inside one with subfolders (its ＋), or
+ * anywhere on the machine, and then it is one more of the host's folders.
  */
 function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; close: () => void }) {
   const [list, setList] = useState<ProjectList | null>(null);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<ProjectStep>({ kind: 'list' });
   useEffect(() => {
     // No focus on the search: on a phone the keyboard would cover the list, which is what
     // you pick from most of the time.
@@ -364,47 +380,76 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   }, []);
 
   const q = query.trim();
-  const all = useMemo(() => {
-    const out: FolderItem[] = [];
-    // Under each one, where it is on the machine: its whole path, with ~ for the home folder.
-    const abs = (path: string) => homePath(path, list?.home ?? '');
+  const abs = (path: string) => homePath(path, list?.home ?? '');
+  const rows = useMemo(() => {
+    const lq = q.toLowerCase();
+    const hit = (name: string) => !lq || name.toLowerCase().includes(lq);
+    const out: (FolderItem | FolderGroup)[] = [];
     for (const f of list?.folders ?? []) {
       const gone = f.missing ? ' · no está' : '';
-      if (f.subfolders && !f.missing) {
-        for (const c of f.children) out.push({ key: `${f.path}\t${c}`, name: c, hint: abs(childPath(f.path, c)), folder: f.path, sub: c });
-      } else {
-        const hint = f.subfolders ? `${abs(f.path)} (subcarpetas)${gone}` : `${abs(f.path)}${gone}`;
-        out.push({ key: `${f.path}\t${f.subfolders ? '*' : ''}`, name: f.name, hint, folder: f.path, missing: f.missing });
+      if (f.subfolders) {
+        // Found by its own name, it comes with everything inside.
+        const all = f.children.map((c) => ({ key: `${f.path}\t${c}`, name: c, folder: f.path, sub: c }));
+        const children = hit(f.name) ? all : all.filter((c) => hit(c.name));
+        if (!lq || children.length) out.push({ key: `${f.path}\t*`, name: f.name, path: f.path, missing: f.missing, children });
+      } else if (hit(f.name)) {
+        out.push({ key: `${f.path}\t`, name: f.name, hint: `${abs(f.path)}${gone}`, folder: f.path, missing: f.missing });
       }
     }
     return out;
-  }, [list]);
-  const items = useMemo(() => {
-    const lq = q.toLowerCase();
-    return lq ? all.filter((i) => i.name.toLowerCase().includes(lq)) : all;
-  }, [all, q]);
-  const usable = items.filter((i) => !i.missing);
+  }, [list, q]);
+  const usable = rows.flatMap((r) => ('children' in r ? r.children : r.missing ? [] : [r]));
   const exact = usable.filter((i) => i.name === q);
-  // New projects go inside a folder with subfolders that does not have one of that name.
-  const parents = (list?.folders ?? []).filter((f) => f.subfolders && !f.missing);
-  const targets = q && !folderNameProblem(q) ? parents.filter((f) => !f.children.includes(q)) : [];
 
-  const open = async (i: { folder: string; sub?: string }, create = false) => {
+  const run = async (op: ActionOp) => {
     setBusy(true);
     try {
-      const res = await hub.action<{ session: string }>(d.host.id, {
-        op: 'openProject',
-        folder: i.folder,
-        sub: i.sub,
-        create,
-        skipPermissions: prefs.value.skipPermissions,
-      });
+      const res = await hub.action<{ session: string }>(d.host.id, op);
       close();
       openSessionWhenReady(d.host.id, res.session);
     } catch {
       setBusy(false); // the error is already a toast
     }
   };
+  const open = (i: FolderItem) => run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+
+  if (step.kind === 'where') {
+    return (
+      <NewFolderWhere
+        d={d}
+        start={step.at}
+        close={close}
+        back={() => setStep({ kind: 'list' })}
+        pick={(at) => setStep({ kind: 'name', parent: at, back: at })}
+      />
+    );
+  }
+  if (step.kind === 'name') {
+    return (
+      <NewFolderName
+        d={d}
+        parent={step.parent}
+        shown={abs(step.parent)}
+        value={q}
+        busy={busy}
+        close={close}
+        back={() => setStep(step.back ? { kind: 'where', at: step.back } : { kind: 'list' })}
+        create={(name) => run({ op: 'createFolder', parent: step.parent, name, skipPermissions: prefs.value.skipPermissions })}
+      />
+    );
+  }
+
+  const item = (i: FolderItem) => (
+    <li key={i.key}>
+      <button class={`menu-item ${i.missing ? 'missing' : ''}`} disabled={busy || i.missing} onClick={() => void open(i)}>
+        <span class="menu-icon">▸</span>
+        <span class="project-text">
+          <span class="project-name">{i.name}</span>
+          {i.hint && <span class="project-hint">{i.hint}</span>}
+        </span>
+      </button>
+    </li>
+  );
 
   return (
     <Sheet title="Nuevo space" subtitle={d.host.name} onClose={close}>
@@ -414,13 +459,12 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           if (busy || !q) return;
           if (exact.length) void open(exact[0]);
           else if (usable.length === 1) void open(usable[0]);
-          else if (targets.length === 1) void open({ folder: targets[0].path, sub: q }, true);
         }}
       >
         <input
           class="text-input"
           value={query}
-          placeholder={parents.length ? 'Buscar o crear un proyecto' : 'Buscar una carpeta'}
+          placeholder="Buscar una carpeta"
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}
@@ -428,30 +472,47 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         />
       </form>
       <ul class="menu project-list">
-        {targets.map((f) => (
-          <li key={`new\t${f.path}`}>
-            <button class="menu-item" disabled={busy} onClick={() => void open({ folder: f.path, sub: q }, true)}>
-              <span class="menu-icon">＋</span>
-              <span class="project-text">
-                <span class="project-name">Crear «{q}»</span>
-                <span class="project-hint">en {homePath(f.path, list?.home ?? '')}</span>
-              </span>
-            </button>
-          </li>
-        ))}
+        <li>
+          <button class="menu-item" disabled={busy} onClick={() => setStep({ kind: 'where', at: '~' })}>
+            <span class="menu-icon">＋</span>
+            <span class="project-text">
+              <span class="project-name">Nueva carpeta…</span>
+              <span class="project-hint">En cualquier sitio de {d.host.name}</span>
+            </span>
+          </button>
+        </li>
         {!list && <li class="dim pad">Cargando…</li>}
-        {items.map((i) => (
-          <li key={i.key}>
-            <button class={`menu-item ${i.missing ? 'missing' : ''}`} disabled={busy || i.missing} onClick={() => void open(i)}>
-              <span class="menu-icon">▸</span>
-              <span class="project-text">
-                <span class="project-name">{i.name}</span>
-                {i.hint && <span class="project-hint">{i.hint}</span>}
-              </span>
-            </button>
-          </li>
-        ))}
-        {list && !items.length && !targets.length && <li class="dim pad">{q ? 'Ninguna carpeta con ese nombre.' : 'No hay carpetas.'}</li>}
+        {rows.map((r) =>
+          'children' in r ? (
+            <li key={r.key} class="project-group">
+              <div class={`project-parent ${r.missing ? 'missing' : ''}`}>
+                <span class="project-parent-text">
+                  <span class="project-parent-name">{r.name}</span> <span class="project-parent-path">{abs(r.path)}</span>
+                  {r.missing && ' · no está'}
+                </span>
+                {!r.missing && (
+                  <button
+                    class="icon-btn small-btn"
+                    disabled={busy}
+                    aria-label={`Nueva carpeta en ${r.name}`}
+                    title={`Nueva carpeta en ${abs(r.path)}`}
+                    onClick={() => setStep({ kind: 'name', parent: r.path })}
+                  >
+                    ＋
+                  </button>
+                )}
+              </div>
+              {r.children.length ? (
+                <ul class="menu">{r.children.map(item)}</ul>
+              ) : (
+                !r.missing && <div class="project-empty dim small">Vacía</div>
+              )}
+            </li>
+          ) : (
+            item(r)
+          ),
+        )}
+        {list && q && !rows.length && <li class="dim pad">Ninguna carpeta con ese nombre.</li>}
       </ul>
       <div class="sheet-actions">
         <SkipPermissions />
@@ -475,6 +536,90 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           Space vacío
         </button>
       </div>
+    </Sheet>
+  );
+}
+
+/** «Nueva carpeta» anywhere: where it goes, browsing the machine's folders. */
+function NewFolderWhere(props: { d: Extract<Dialog, { kind: 'project' }>; start: string; close: () => void; back: () => void; pick: (at: string) => void }) {
+  const b = useDirBrowser(props.d.host.id, props.start);
+  return (
+    <Sheet title="Nueva carpeta" subtitle={`¿Dónde? · ${props.d.host.name}`} onClose={props.close}>
+      <div class="folder-picker">
+        <DirBrowser b={b} />
+      </div>
+      <div class="sheet-actions">
+        <button class="btn" onClick={props.back}>
+          Atrás
+        </button>
+        <button
+          class="btn btn-primary"
+          disabled={b.busy || !b.at}
+          onClick={async () => {
+            const l = await b.here();
+            if (l) props.pick(l.path);
+          }}
+        >
+          Crear aquí…
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/** The name of a new folder inside `parent`: made, and a space opened in it. */
+function NewFolderName(props: {
+  d: Extract<Dialog, { kind: 'project' }>;
+  parent: string;
+  shown: string;
+  value: string;
+  busy: boolean;
+  close: () => void;
+  back: () => void;
+  create: (name: string) => void;
+}) {
+  const [name, setName] = useState(props.value);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    input.current?.focus();
+    input.current?.select();
+  }, []);
+  // Anywhere but inside a folder with subfolders, it becomes one of the host's folders: its name is a new one there.
+  const saved = hubSettings.value?.folders[props.d.host.id] ?? [];
+  const inGroup = saved.some((f) => f.subfolders && f.path === props.parent);
+  const n = name.trim();
+  const problem = !n ? null : (folderNameProblem(n) ?? (!inGroup && saved.some((f) => f.name === n) ? `Ya hay una carpeta llamada «${n}».` : null));
+  return (
+    <Sheet title="Nueva carpeta" subtitle={`en ${props.shown} · ${props.d.host.name}`} onClose={props.close}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!props.busy && n && !problem) props.create(n);
+        }}
+      >
+        <input
+          ref={input}
+          class="text-input"
+          value={name}
+          placeholder="Nombre de la carpeta"
+          aria-label="Nombre de la carpeta"
+          autocapitalize="off"
+          autocomplete="off"
+          spellcheck={false}
+          onInput={(e) => setName(e.currentTarget.value)}
+        />
+        {problem && <p class="settings-state small">{problem}</p>}
+        <p class="dim small">{inGroup ? 'Se abre un space en ella.' : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}</p>
+        <div class="sheet-actions">
+          <SkipPermissions />
+          <button type="button" class="btn" onClick={props.back}>
+            Atrás
+          </button>
+          <button type="submit" class="btn btn-primary" disabled={props.busy || !n || !!problem}>
+            Crear y abrir
+          </button>
+        </div>
+      </form>
     </Sheet>
   );
 }
