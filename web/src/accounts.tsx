@@ -55,18 +55,33 @@ function remove(acc: ClaudeAccount): void {
   };
 }
 
-/** An account's menu: which machines use it (a tap switches one), rename, remove, add another. */
-export function accountMenu(acc: ClaudeAccount): void {
-  const switching = accountsInfo.value?.switching ?? [];
-  const items: MenuItem[] = hosts.value.map((h) => {
-    const active = acc.activeOn.includes(h.id);
-    return {
-      label: active ? `En uso en ${h.name}` : `Usar en ${h.name}`,
-      icon: active ? '●' : '○',
-      disabled: active || h.status !== 'ok' || switching.includes(h.id),
-      run: () => void useAccount(h.id, acc),
-    };
-  });
+/** Whether a machine can be switched now: connected and not already switching. */
+function canSwitch(hostId: string): boolean {
+  const h = hosts.value.find((x) => x.id === hostId);
+  return h?.status === 'ok' && !(accountsInfo.value?.switching ?? []).includes(hostId);
+}
+
+/** The machines that do not use the account yet, to pick one: a list only this step needs. */
+function pickHost(acc: ClaudeAccount, except?: string): void {
+  dialog.value = {
+    kind: 'menu',
+    title: `Usar ${acc.alias} en…`,
+    items: hosts.value
+      .filter((h) => h.id !== except && !acc.activeOn.includes(h.id))
+      .map((h) => ({ label: h.name, icon: '○', disabled: !canSwitch(h.id), run: () => void useAccount(h.id, acc) })),
+  };
+}
+
+/**
+ * An account's menu: where it is in use (as tags, however many machines there are),
+ * switching the open window's machine to it, or another one, and rename, add, remove.
+ */
+export function accountMenu(acc: ClaudeAccount, here?: string): void {
+  const items: MenuItem[] = [];
+  if (here && !acc.activeOn.includes(here))
+    items.push({ label: `Usar en ${hostName(here)}`, icon: '●', disabled: !canSwitch(here), run: () => void useAccount(here, acc) });
+  const others = hosts.value.filter((h) => h.id !== here && !acc.activeOn.includes(h.id));
+  if (others.length) items.push({ label: here ? 'Usar en otra máquina…' : 'Usar en una máquina…', icon: '○', run: () => pickHost(acc, here) });
   if (acc.needsLogin) items.push({ label: 'Iniciar sesión otra vez', icon: '↻', run: () => (dialog.value = { kind: 'claudeLogin', account: acc.id }) });
   items.push(
     { label: 'Renombrar', icon: '✎', run: () => rename(acc) },
@@ -74,5 +89,15 @@ export function accountMenu(acc: ClaudeAccount): void {
     { label: 'Quitar del hub', icon: '✕', danger: true, disabled: acc.activeOn.length > 0, run: () => remove(acc) },
   );
   const spare = acc.spare ? ` · ${acc.spare === 1 ? '1 sesión libre' : `${acc.spare} sesiones libres`}` : '';
-  dialog.value = { kind: 'menu', title: acc.alias, subtitle: `${acc.email}${acc.plan ? ` · ${acc.plan}` : ''}${spare}`, items };
+  const top = (
+    <div class="account-hosts">
+      <span class="account-hosts-label">{acc.activeOn.length ? 'En uso en' : 'Sin usar en ninguna máquina'}</span>
+      {acc.activeOn.map((id) => (
+        <span key={id} class={`pill ${id === here ? 'pill-alert' : ''}`}>
+          {hostName(id)}
+        </span>
+      ))}
+    </div>
+  );
+  dialog.value = { kind: 'menu', title: acc.alias, subtitle: `${acc.email}${acc.plan ? ` · ${acc.plan}` : ''}${spare}`, top, items };
 }

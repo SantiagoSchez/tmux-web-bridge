@@ -298,7 +298,7 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
   ]
     .filter(Boolean)
     .join(' · ');
-  const open = () => (acc ? accountMenu(acc) : addAccount());
+  const open = () => (acc ? accountMenu(acc, here) : addAccount());
   const canUse = acc && here && !acc.activeOn.includes(here) && !acc.needsLogin;
   const busy = here !== undefined && switching.includes(here);
   const use = () => void useAccount(here!, acc!);
@@ -310,17 +310,6 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
           {acc?.plan && <span class="limit-plan"> {acc.plan}</span>}
           {(acc?.needsLogin || (acc?.usageError && !acc.usage)) && <span class="limit-warn"> ⚠</span>}
         </button>
-        {/* On a phone the strip scrolls sideways: the switch sits next to the name instead of at the far end. */}
-        {acc && acc.activeOn.length > 0 && (
-          <span class="limit-active limit-inline" title={`En uso en ${hostNames(acc.activeOn)}`}>
-            ●
-          </span>
-        )}
-        {canUse && (
-          <button type="button" class="limit-use limit-inline" disabled={busy} onClick={use}>
-            Usar
-          </button>
-        )}
       </span>
       {row.five ? (
         <Meter id={`${row.key}|5h`} label="5h" pct={row.five.pct} resetsAt={row.five.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', row.five.pct, row.five.resetsAt, now)} />

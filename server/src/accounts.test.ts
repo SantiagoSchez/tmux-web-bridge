@@ -219,8 +219,9 @@ test('documents of a switch: only the login and the account change', () => {
   );
   assert.equal(snap.config, null);
   assert.equal(snap.cred?.refreshToken, 'rt-max');
-  const docs = switchedDocs({ ...snap, config: { numStartups: 3, oauthAccount: { ...oauthAccount('max'), seatTier: 'x' } } }, cred('team'), oauthAccount('team'));
-  assert.deepEqual(JSON.parse(docs.creds), { claudeAiOauth: cred('team'), mcpOAuth: { s: 1 } });
+  const team = cred('team');
+  const docs = switchedDocs({ ...snap, config: { numStartups: 3, oauthAccount: { ...oauthAccount('max'), seatTier: 'x' } } }, team, oauthAccount('team'));
+  assert.deepEqual(JSON.parse(docs.creds), { claudeAiOauth: team, mcpOAuth: { s: 1 } });
   // No field of the old account survives.
   assert.deepEqual(JSON.parse(docs.config), { numStartups: 3, oauthAccount: oauthAccount('team') });
 });

@@ -288,10 +288,6 @@ h3 {
   gap: 6px;
   min-width: 0;
 }
-/* The phone's copies of «Usar aquí» and ● next to the name. */
-.limit-inline {
-  display: none;
-}
 .limit-account {
   max-width: 34ch;
   overflow: hidden;
@@ -472,7 +468,7 @@ h3 {
   }
   .limit-meters {
     column-gap: 10px;
-    /* Without the last column: its «Usar aquí» goes next to the name. */
+    /* Without the last column: on a phone, the account's menu switches machines. */
     grid-template-columns: auto minmax(0, auto) minmax(0, auto) auto;
   }
   .limit-account {
@@ -486,9 +482,6 @@ h3 {
   }
   .limit-models {
     gap: 10px;
-  }
-  .limit-inline {
-    display: inline;
   }
   .limit-actions {
     display: none;
@@ -1773,6 +1766,19 @@ body.dragging-host * {
     transform: translateY(24px);
     opacity: 0.6;
   }
+}
+/* An account's menu: the machines it is in use on, as tags that wrap. */
+.account-hosts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 12px;
+}
+.account-hosts-label {
+  color: var(--overlay1);
+  font-size: 13px;
+  margin-right: 2px;
 }
 .menu {
   list-style: none;
