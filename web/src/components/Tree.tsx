@@ -336,8 +336,8 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
 
 /**
  * The detailed list's second line of a window: the git worktree its active pane is in or
- * else the branch, and its folder, cut at the start if it does not fit (the end is what
- * tells one from another).
+ * else the branch; out of a repo, its folder, cut at the start if it does not fit (the
+ * end is what tells one from another).
  */
 function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined }) {
   if (prefs.value.listView === 'compact' || !pane?.path) return null;
@@ -345,19 +345,20 @@ function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined 
   const path = homePath(pane.path, host.home ?? '');
   return (
     <span class="win-meta win-where">
-      {git && (
-        <span class="win-git" title={git.worktree ? `Worktree de git: ${git.worktree}` : `Rama de git: ${git.branch}`}>
+      {git ? (
+        <span class="win-git" title={`${git.worktree ? `Worktree de git: ${git.worktree}` : `Rama de git: ${git.branch}`}\n${path}`}>
           {/* Nerd Font icons (in the mono font, not the UI's): a tree, or the branch symbol. */}
           <span class="git-icon" aria-hidden="true">
             {git.worktree ? '\uf1bb' : '\ue0a0'}
           </span>
           {git.worktree ?? git.branch}
         </span>
+      ) : (
+        // Right to left, so the ellipsis goes at the start; the marks keep ~ and / where they are.
+        <span class="win-path" title={path}>
+          {`\u200e${path}\u200e`}
+        </span>
       )}
-      {/* Right to left, so the ellipsis goes at the start; the marks keep ~ and / where they are. */}
-      <span class="win-path" title={path}>
-        {`\u200e${path}\u200e`}
-      </span>
     </span>
   );
 }

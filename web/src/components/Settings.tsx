@@ -257,8 +257,8 @@ function DeviceSettings() {
       <section class="setting">
         <h3>Vista de la lista</h3>
         <p class="dim small">
-          Cómo se ven los spaces y sus ventanas en este dispositivo. «Detallada» añade la carpeta de cada ventana y su worktree de git (o, si no está en uno, la
-          rama); «Condensada» deja cada una en una sola línea, más baja, para que quepan más.
+          Cómo se ven los spaces y sus ventanas en este dispositivo. «Detallada» añade a cada ventana su worktree de git o, si no está en uno, la rama (fuera de
+          un repo, su carpeta); «Condensada» deja cada una en una sola línea, más baja, para que quepan más.
         </p>
         <div class="seg" role="radiogroup" aria-label="Vista de la lista">
           {LIST_VIEWS.map(([id, label]) => (

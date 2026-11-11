@@ -1071,14 +1071,13 @@ body.dragging-host * {
   min-width: 5em;
   font-size: 12px;
 }
-/* The detailed list's second line: the git worktree or branch, and the folder, cut at its start. */
+/* The detailed list's second line: the git worktree or branch or, out of a repo, the folder cut at its start. */
 .win-where {
   display: flex;
-  gap: 8px;
 }
 .win-git {
   flex: 0 1 auto;
-  max-width: 65%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
