@@ -247,23 +247,18 @@ function openPane(): { host: string; account?: string } | undefined {
 }
 
 /**
- * The row of the account the open window's Claude uses. The machine's login says it
- * best (it changes the moment a switch lands, and an email shared by two accounts, a
- * personal and a Team one, cannot tell them apart); a statusline reading of another
- * account wins, though: a Claude with its own config folder, or one that has not sent
- * a message since the switch.
+ * The row of the account the open window's machine uses. Its login says it: it changes
+ * the moment a switch lands, while a Claude's statusline keeps the old email until
+ * its next message, and an email shared by two accounts (a personal and a Team one)
+ * cannot tell them apart. The statusline's email only counts on a machine the hub
+ * knows no account of.
  */
 function currentRow(list: Row[], pane: { host: string; account?: string } | undefined): string | undefined {
   if (!pane) return undefined;
   const onHost = list.filter((r) => r.acc?.activeOn.includes(pane.host));
-  const email = pane.account;
-  if (email) {
-    const both = onHost.filter((r) => r.email === email);
-    if (both.length === 1) return both[0].key;
-    const byEmail = list.filter((r) => r.email === email);
-    if (byEmail.length === 1) return byEmail[0].key;
-  }
-  return onHost.length === 1 ? onHost[0].key : undefined;
+  if (onHost.length === 1) return onHost[0].key;
+  const byEmail = pane.account ? list.filter((r) => r.email === pane.account) : [];
+  return byEmail.length === 1 ? byEmail[0].key : undefined;
 }
 
 function hostNames(ids: string[]): string {
