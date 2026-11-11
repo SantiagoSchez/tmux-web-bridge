@@ -10,9 +10,11 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY scripts ./scripts
 COPY server/package.json server/
 COPY web/package.json web/
+COPY trello-extension/package.json trello-extension/
 RUN pnpm install --frozen-lockfile
 COPY . .
-RUN pnpm build \
+# Only the hub: the Trello extension (trello-extension/) is built on the desktop.
+RUN pnpm --filter server --filter web build \
  && pnpm --filter server deploy --prod --legacy /out/server \
  && cp -r server/dist /out/server/dist \
  && mkdir -p /out/web && cp -r web/dist /out/web/dist \

@@ -1,6 +1,7 @@
 packages:
   - server
   - web
+  - trello-extension
 onlyBuiltDependencies:
   - node-pty
   - esbuild

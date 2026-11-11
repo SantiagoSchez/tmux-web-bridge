@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - '**.md'
       - 'host-kit/**'
+      - 'trello-extension/**'
       - 'deploy/install-hub.sh'
       - 'deploy/tmux-web-bridge.service'
   workflow_dispatch:

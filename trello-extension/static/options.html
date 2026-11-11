@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trello → twb: opciones</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Trello → twb</h1>
+      <p class="lead">Un botón en cada tarjeta de Trello que lanza un Claude con ella en tmux-web-bridge y la mueve a Doing.</p>
+
+      <form id="form" novalidate>
+        <fieldset>
+          <legend>tmux-web-bridge</legend>
+          <label class="field">
+            <span>Dirección del panel</span>
+            <input id="hubUrl" type="url" placeholder="https://twb.example.com" autocomplete="off" required />
+          </label>
+          <label class="field">
+            <span>Token de la extensión</span>
+            <input id="hubToken" type="password" placeholder="twbx_…" autocomplete="off" spellcheck="false" required />
+            <small>Se genera en el panel, en ⚙️ Ajustes › Trello.</small>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Trello</legend>
+          <label class="field">
+            <span>API key</span>
+            <input id="trelloKey" type="text" autocomplete="off" spellcheck="false" required />
+          </label>
+          <label class="field">
+            <span>Token</span>
+            <input id="trelloToken" type="password" autocomplete="off" spellcheck="false" required />
+            <small>La API key y el token de un Power-Up tuyo, en <a href="https://trello.com/power-ups/admin" target="_blank" rel="noreferrer">trello.com/power-ups/admin</a>. Con ellos se mueve la tarjeta a Doing y se comenta.</small>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Prompt</legend>
+          <label class="field">
+            <span>Plantilla</span>
+            <textarea id="promptTemplate" rows="3" spellcheck="false"></textarea>
+            <small>Con <code>{url}</code>, <code>{name}</code>, <code>{shortLink}</code> y <code>{board}</code> de la tarjeta. Se puede retocar en el diálogo antes de lanzar.</small>
+          </label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="primary">Guardar y probar</button>
+        </div>
+        <ul id="status" class="status" aria-live="polite"></ul>
+      </form>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

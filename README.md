@@ -65,7 +65,7 @@
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
 - **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
-- **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**. Ver [API de la extensión](#api-de-la-extensión-de-trello).
+- **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**. Está en [`trello-extension/`](trello-extension/README.md).
 
 ### 📊 Límites y cuentas de Claude siempre a la vista
 
@@ -108,6 +108,7 @@ El servidor central lee el árbol de tmux de cada máquina cada segundo y lo man
 | `web/` | App web (Preact, xterm.js), instalable como PWA |
 | `shared/` | Tipos compartidos |
 | `host-kit/` | Kit de cada máquina: estados de Claude, spaces, status line, hooks e instalador |
+| `trello-extension/` | Extensión de Chrome que lanza un Claude con una tarjeta de Trello |
 | `deploy/` | Instalación del servidor central (systemd o Docker) |
 
 ## Instalación
@@ -263,7 +264,7 @@ Con el clon en una release, `git pull` ya no funciona («You are not currently o
 
 ### API de la extensión de Trello
 
-Todas con `Authorization: Bearer <token>`, desde cualquier origen:
+La usa [`trello-extension/`](trello-extension/README.md). Todas con `Authorization: Bearer <token>`, desde cualquier origen:
 
 | Ruta | Qué hace |
 | --- | --- |

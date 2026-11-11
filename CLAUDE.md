@@ -6,8 +6,12 @@ Cada push a `master` despliega el hub automáticamente (`.github/workflows/deplo
 
 - Al terminar una feature o un bugfix, haz commit y push directamente para desplegarlo, sin preguntar.
 - Tras el push, sigue el run de `deploy` y avisa de si ha ido bien.
-- Los cambios que solo tocan `**.md`, `host-kit/**`, `deploy/install-hub.sh` o `deploy/tmux-web-bridge.service` no lanzan el despliegue: dilo al hacer el push.
+- Los cambios que solo tocan `**.md`, `host-kit/**`, `trello-extension/**`, `deploy/install-hub.sh` o `deploy/tmux-web-bridge.service` no lanzan el despliegue: dilo al hacer el push.
 - El kit de `host-kit/` llega a cada máquina por git: la primera vez con `git clone` y `host-kit/install.sh`, y después siempre a una release, nunca a `master`: con el botón «Actualizar» del panel (aviso de versión o menú de la máquina), o a mano con `git fetch --tags && git checkout vX.Y.Z` en su clon (un hook de git vuelve a aplicarlo). El clon queda en HEAD separado, así que `git pull` ya no sirve. Un cambio en el kit no llega a las máquinas hasta la siguiente release: recuérdalo al hacer el push.
+
+## Extensión de Trello
+
+`trello-extension/` es la extensión de Chrome que lanza un Claude con una tarjeta de Trello por `/api/ext/*` (`server/src/ext.ts`). Comparten los tipos `Ext*` de `shared/types.ts`: un cambio en la API toca los dos lados en el mismo commit. No se despliega: se construye con `pnpm --filter trello-extension build` y se recarga a mano en `chrome://extensions`. Al tocarla, recuérdalo. Su versión es la de `VERSION`.
 
 ## Releases
 
