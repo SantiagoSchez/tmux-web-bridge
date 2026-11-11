@@ -246,6 +246,26 @@ function openPane(): { host: string; account?: string } | undefined {
   return { host: r.host, account: pane?.state && pane.state !== 'ssh' ? pane.account : undefined };
 }
 
+/**
+ * The row of the account the open window's Claude uses. The machine's login says it
+ * best (it changes the moment a switch lands, and an email shared by two accounts, a
+ * personal and a Team one, cannot tell them apart); a statusline reading of another
+ * account wins, though: a Claude with its own config folder, or one that has not sent
+ * a message since the switch.
+ */
+function currentRow(list: Row[], pane: { host: string; account?: string } | undefined): string | undefined {
+  if (!pane) return undefined;
+  const onHost = list.filter((r) => r.acc?.activeOn.includes(pane.host));
+  const email = pane.account;
+  if (email) {
+    const both = onHost.filter((r) => r.email === email);
+    if (both.length === 1) return both[0].key;
+    const byEmail = list.filter((r) => r.email === email);
+    if (byEmail.length === 1) return byEmail[0].key;
+  }
+  return onHost.length === 1 ? onHost[0].key : undefined;
+}
+
 function hostNames(ids: string[]): string {
   return ids.map((id) => hosts.value.find((h) => h.id === id)?.name ?? id).join(' · ');
 }
@@ -350,17 +370,16 @@ export function LimitsBar() {
   if (!list.length && !states.length) return null;
 
   const samples = usageSamples.value;
-  // With a Claude open, the other accounts fade (only if it is one of the rows).
+  // With a window open, its account stands out and the others fade.
   const pane = openPane();
-  const open = pane?.account;
-  const current = list.length > 1 && list.some((r) => r.email === open) ? open : undefined;
+  const current = list.length > 1 ? currentRow(list, pane) : undefined;
   return (
     <div class={`limits ${states.length ? 'has-summary' : ''}`}>
       {states.length > 0 && <Summary groups={states} />}
       {list.length > 0 && (
         <div class="limit-meters">
           {list.map((r) => (
-            <AccountRow key={r.key} row={r} samples={samples} now={now} dim={current === undefined ? undefined : r.email !== current} here={pane?.host} />
+            <AccountRow key={r.key} row={r} samples={samples} now={now} dim={current === undefined ? undefined : r.key !== current} here={pane?.host} />
           ))}
         </div>
       )}
