@@ -239,8 +239,8 @@ test('a script error comes back as a sentence', () => {
  * Runs the real script with /bin/sh in a made-up HOME: it only touches files there
  * (no tmux), so nothing of this machine's own Claude Code is at stake.
  */
-function fakeExec(home: string): TmuxExec {
-  const env = { ...process.env, HOME: home, USER: 'tester' };
+function fakeExec(home: string, bin?: string): TmuxExec {
+  const env = { ...process.env, HOME: home, USER: 'tester', ...(bin ? { PATH: `${bin}:${process.env.PATH}` } : {}) };
   return {
     shell: (script: string) =>
       new Promise<string>((resolve, reject) =>
@@ -313,4 +313,48 @@ test('a switch the hub calls off writes nothing', withDir(async (dir) => {
   assert.equal(written, false);
   assert.equal(readFileSync(join(dir, '.claude', '.credentials.json'), 'utf8'), before);
   assert.equal(existsSync(join(dir, '.claude.lock')), false);
+}));
+
+test('a Mac whose Keychain refuses the hub (SSH) switches through the file, as Claude Code does', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const home = join(dir, 'home');
+  const bin = join(dir, 'bin');
+  mkdirSync(home);
+  mkdirSync(bin);
+  fakeHome(home);
+  // A made-up macOS: uname says Darwin and the Keychain answers as it does over SSH.
+  writeFileSync(join(bin, 'uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o755 });
+  writeFileSync(join(bin, 'security'), '#!/bin/sh\necho "security: SecKeychainItemCreateFromContent (<default>): User interaction is not allowed." >&2\nexit 36\n', { mode: 0o755 });
+  const snap = await inspectHost(fakeExec(home, bin));
+  assert.equal(snap.os, 'Darwin');
+  assert.equal(snap.store, 'file');
+  assert.equal(snap.cred?.refreshToken, 'rt-max');
+  const { written } = await switchHost(fakeExec(home, bin), () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  assert.equal(written, true);
+  const creds = JSON.parse(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'));
+  assert.equal(creds.claudeAiOauth.refreshToken, 'rt-team');
+  assert.deepEqual(creds.mcpOAuth, { srv: { token: 't' } });
+}));
+
+test('a Mac whose Keychain answers is switched in the Keychain, and its file is left alone', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const home = join(dir, 'home');
+  const bin = join(dir, 'bin');
+  mkdirSync(home);
+  mkdirSync(bin);
+  fakeHome(home);
+  const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
+  writeFileSync(join(home, 'kc'), JSON.stringify({ claudeAiOauth: cred('pro') }));
+  writeFileSync(join(bin, 'uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o755 });
+  // A Keychain that answers: reads come from ~/kc, `security -i` leaves its input in ~/kc.in.
+  writeFileSync(join(bin, 'security'), '#!/bin/sh\ncase "$1" in find-generic-password) cat "$HOME/kc";; -i) cat > "$HOME/kc.in";; *) exit 1;; esac\n', { mode: 0o755 });
+  const { snap, written } = await switchHost(fakeExec(home, bin), () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  assert.equal(written, true);
+  assert.equal(snap.store, 'keychain');
+  assert.equal(snap.cred?.refreshToken, 'rt-pro');
+  const cmd = readFileSync(join(home, 'kc.in'), 'utf8');
+  const hex = /-s "Claude Code-credentials" -X "([0-9a-f]+)"/.exec(cmd)?.[1];
+  assert.ok(cmd.startsWith('add-generic-password -U -a "tester"') && hex, cmd);
+  assert.equal(JSON.parse(Buffer.from(hex, 'hex').toString('utf8')).claudeAiOauth.refreshToken, 'rt-team');
+  assert.equal(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'), fileBefore);
 }));

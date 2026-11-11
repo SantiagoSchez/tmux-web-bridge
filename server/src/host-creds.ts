@@ -7,10 +7,14 @@ import type { TmuxExec } from './exec.js';
 // for tmux. Only POSIX sh and tools every Mac and Linux has: no host-kit needed.
 //
 // Where Claude Code keeps it (default config folder only, as the statusline):
-// - the login: ~/.claude/.credentials.json on Linux, the Keychain item
-//   "Claude Code-credentials" (account $USER) on macOS. Claude Code re-reads the
-//   file when its mtime changes, and the Keychain within ~30 s, so a running Claude
-//   picks a switch up on its own.
+// - the login: ~/.claude/.credentials.json on Linux. On macOS, the Keychain item
+//   "Claude Code-credentials" (account $USER) when Claude Code can reach the Keychain,
+//   and the same file when it cannot: from SSH, and from a tmux server not started in
+//   the Mac's graphical session, the login Keychain refuses ("User interaction is not
+//   allowed") and Claude Code keeps the login in the file instead. The script goes by
+//   what it can read: the Keychain if it answers with a login, the file otherwise.
+//   Claude Code re-reads the file when its mtime changes, and the Keychain within
+//   ~30 s, so a running Claude picks a switch up on its own.
 // - who it is: `oauthAccount` in ~/.claude.json.
 //
 // A switch takes the locks Claude Code takes for the same files (proper-lockfile:
@@ -48,8 +52,11 @@ if [ "$MODE" = switch ]; then
   mkdir -p "$C"
   take "$C/.oauth_refresh.lock"; take "$H/.claude.lock"; take "$CONF.lock"
 fi
+STORE=file
+if [ "$OS" = Darwin ] && K=$(security find-generic-password -s "$SVC" -a "$U" -w 2>/dev/null) && [ -n "$K" ]; then STORE=keychain; fi
+echo "STORE $STORE"
 printf 'CRED '
-if [ "$OS" = Darwin ]; then security find-generic-password -s "$SVC" -a "$U" -w 2>/dev/null | b64; else cat "$CREDS" 2>/dev/null | b64; fi
+if [ $STORE = keychain ]; then printf %s "$K" | b64; else cat "$CREDS" 2>/dev/null | b64; fi
 echo
 printf 'CONF '; gzip -c "$CONF" 2>/dev/null | b64; echo
 [ "$MODE" = switch ] || exit 0
@@ -58,8 +65,8 @@ read -r cmd || exit 4
 [ "$cmd" = WRITE ] || { echo SKIPPED; exit 0; }
 read -r conf || exit 4
 read -r cred || exit 4
-# The login first: on a Mac the Keychain is what may refuse, and then nothing has changed.
-if [ "$OS" = Darwin ]; then
+# The login first: if it is refused, nothing has changed.
+if [ $STORE = keychain ]; then
   line="add-generic-password -U -a \"$U\" -s \"$SVC\" -X \"$cred\""
   if [ "$(printf %s "$line" | wc -c)" -le 4032 ]; then printf '%s\n' "$line" | security -i >/dev/null 2>&1; else security add-generic-password -U -a "$U" -s "$SVC" -X "$cred" >/dev/null 2>&1; fi || { echo "ERR keychain"; exit 6; }
 else
@@ -72,6 +79,8 @@ echo DONE
 /** What the script prints before it waits for the hub (switch) or ends (inspect). */
 export interface HostSnapshot extends HostLogin {
   os: string;
+  /** Where the login is kept: the Keychain (a Mac that lets the hub in) or the file. */
+  store: 'keychain' | 'file';
   /** The whole credentials document: it may hold more than the login (MCP servers' tokens). */
   credsDoc: Record<string, unknown> | null;
   /** The whole ~/.claude.json, null if missing. */
@@ -81,7 +90,7 @@ export interface HostSnapshot extends HostLogin {
 const SCRIPT_ERRORS: Record<string, string> = {
   lock: 'Claude Code tiene ocupados sus ficheros (se está renovando la sesión); prueba otra vez en unos segundos',
   conf: 'no se pudo escribir ~/.claude.json',
-  keychain: 'no se pudo escribir en el Llavero (¿está bloqueado? Inicia sesión en el Mac)',
+  keychain: 'no se pudo escribir en el Llavero del Mac',
   creds: 'no se pudo escribir ~/.claude/.credentials.json',
 };
 
@@ -102,6 +111,7 @@ export function parseSnapshot(out: string): HostSnapshot {
   const line = (key: string) => new RegExp(`^${key} ?(.*)$`, 'm').exec(out)?.[1] ?? null;
   const os = line('OS');
   if (!os) throw new Error('la máquina no ha contestado como se esperaba');
+  const store = line('STORE') === 'keychain' ? 'keychain' : 'file';
   let credsDoc: Record<string, unknown> | null = null;
   const credRaw = line('CRED');
   if (credRaw) {
@@ -122,7 +132,7 @@ export function parseSnapshot(out: string): HostSnapshot {
   }
   const cred = (credsDoc?.claudeAiOauth as OAuthCred | undefined) ?? null;
   const oauthAccount = (config?.oauthAccount as Record<string, unknown> | undefined) ?? null;
-  return { os, credsDoc, config, cred: cred?.refreshToken ? cred : null, oauthAccount };
+  return { os, store, credsDoc, config, cred: cred?.refreshToken ? cred : null, oauthAccount };
 }
 
 /** What Claude Code is logged in with on a machine. Read only: no locks taken. */
@@ -175,7 +185,7 @@ export function switchHost(
         const write = decide(snap);
         if (!write) return void child.stdin!.end('SKIP\n');
         const docs = switchedDocs(snap, write.cred, write.oauthAccount);
-        const creds = Buffer.from(docs.creds, 'utf8').toString(snap.os === 'Darwin' ? 'hex' : 'base64');
+        const creds = Buffer.from(docs.creds, 'utf8').toString(snap.store === 'keychain' ? 'hex' : 'base64');
         child.stdin!.end(`WRITE\n${gzipSync(docs.config).toString('base64')}\n${creds}\n`);
       } catch (e) {
         failure = e as Error;
