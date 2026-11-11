@@ -33,5 +33,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter trello-extension
       - run: pnpm --filter trello-extension typecheck
       - run: pnpm --filter trello-extension test
-      - run: pnpm --filter trello-extension package
-      - run: gh release upload "$TAG" trello-extension/twb-trello-extension-*.zip --clobber
+      - run: pnpm --filter trello-extension build
+      # Zipped here and not with the package script, so any tag works (even one older than it).
+      - run: cd trello-extension/dist && zip -qr "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" .
+      - run: gh release upload "$TAG" "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" --clobber
