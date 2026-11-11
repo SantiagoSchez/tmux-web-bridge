@@ -308,50 +308,56 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
           <span class="session-num">{session.num ?? '·'}</span>
           <span class="win-icon">{window.icon || session.icon}</span>
           <span class="win-body">
-            <span class="session-name">{session.name}</span>
-            <span class="win-meta">{meta.join(' · ')}</span>
+            <span class="win-line">
+              <span class="session-name">{session.name}</span>
+              <span class="win-meta">{meta.join(' · ')}</span>
+            </span>
             <WhereLine host={host} pane={active} />
           </span>
           {session.attached > 0 && <span class="attached" title="Hay un cliente de tmux conectado" />}
           {window.bell && <span class="flag flag-bell" title="Campana" />}
           {window.activity && <span class="flag flag-activity" title="Actividad" />}
         </button>
-        <button class="win-act" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
-          <IconPlus />
-        </button>
-        <button class="win-act" aria-label={`Acciones de ${session.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
-          <IconMore />
-        </button>
-        <button class="win-act win-close" aria-label={`Cerrar el space ${session.name}`} title="Cerrar space" onClick={() => killSession(host, session, current)}>
-          <IconClose />
-        </button>
+        <span class="win-acts">
+          <button class="win-act" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
+            <IconPlus />
+          </button>
+          <button class="win-act" aria-label={`Acciones de ${session.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
+            <IconMore />
+          </button>
+          <button class="win-act win-close" aria-label={`Cerrar el space ${session.name}`} title="Cerrar space" onClick={() => killSession(host, session, current)}>
+            <IconClose />
+          </button>
+        </span>
       </div>
     </div>
   );
 }
 
 /**
- * The detailed list's extra line of a window: the git worktree its active pane is in or
- * else the branch (first: cut short, the folder goes), and where it is.
+ * The detailed list's second line of a window: the git worktree its active pane is in or
+ * else the branch, and its folder, cut at the start if it does not fit (the end is what
+ * tells one from another).
  */
 function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined }) {
   if (prefs.value.listView === 'compact' || !pane?.path) return null;
   const git = pane.git;
+  const path = homePath(pane.path, host.home ?? '');
   return (
     <span class="win-meta win-where">
       {git && (
-        <>
-          <span class="win-git" title={git.worktree ? 'Worktree de git' : 'Rama de git'}>
-            {/* Nerd Font icons (in the mono font, not the UI's): a tree, or the branch symbol. */}
-            <span class="git-icon" aria-hidden="true">
-              {git.worktree ? '\uf1bb' : '\ue0a0'}
-            </span>
-            {git.worktree ?? git.branch}
+        <span class="win-git" title={git.worktree ? `Worktree de git: ${git.worktree}` : `Rama de git: ${git.branch}`}>
+          {/* Nerd Font icons (in the mono font, not the UI's): a tree, or the branch symbol. */}
+          <span class="git-icon" aria-hidden="true">
+            {git.worktree ? '\uf1bb' : '\ue0a0'}
           </span>
-          {' · '}
-        </>
+          {git.worktree ?? git.branch}
+        </span>
       )}
-      {homePath(pane.path, host.home ?? '')}
+      {/* Right to left, so the ellipsis goes at the start; the marks keep ~ and / where they are. */}
+      <span class="win-path" title={path}>
+        {`\u200e${path}\u200e`}
+      </span>
     </span>
   );
 }
@@ -366,23 +372,27 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
         <span class="win-index">{window.index}</span>
         <span class="win-icon">{window.icon}</span>
         <span class="win-body">
-          <span class={`win-name ${window.pinned ? 'pinned' : ''}`}>{window.name}</span>
-          <span class="win-meta">
-            {active?.command}
-            {window.panes.length > 1 ? ` · ${window.panes.length} paneles` : ''}
-            {window.zoomed ? ' · zoom' : ''}
+          <span class="win-line">
+            <span class={`win-name ${window.pinned ? 'pinned' : ''}`}>{window.name}</span>
+            <span class="win-meta">
+              {active?.command}
+              {window.panes.length > 1 ? ` · ${window.panes.length} paneles` : ''}
+              {window.zoomed ? ' · zoom' : ''}
+            </span>
           </span>
           <WhereLine host={host} pane={active} />
         </span>
         {window.bell && <span class="flag flag-bell" title="Campana" />}
         {window.activity && <span class="flag flag-activity" title="Actividad" />}
       </button>
-      <button class="win-act" aria-label={`Acciones de la ventana ${window.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
-        <IconMore />
-      </button>
-      <button class="win-act win-close" aria-label={`Cerrar la ventana ${window.name}`} title="Cerrar ventana" onClick={() => killWindow(host, window, current)}>
-        <IconClose />
-      </button>
+      <span class="win-acts">
+        <button class="win-act" aria-label={`Acciones de la ventana ${window.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
+          <IconMore />
+        </button>
+        <button class="win-act win-close" aria-label={`Cerrar la ventana ${window.name}`} title="Cerrar ventana" onClick={() => killWindow(host, window, current)}>
+          <IconClose />
+        </button>
+      </span>
     </li>
   );
 }

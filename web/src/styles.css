@@ -941,11 +941,17 @@ body.dragging-host * {
   border-top: 1px solid color-mix(in srgb, var(--surface0) 50%, transparent);
 }
 .win-row {
+  --row-bg: var(--base);
   display: flex;
   align-items: stretch;
 }
 .win-row.current {
+  --row-bg: var(--surface0);
   background: var(--surface0);
+}
+.win-acts {
+  flex-shrink: 0;
+  display: flex;
 }
 .win-act {
   flex-shrink: 0;
@@ -968,15 +974,26 @@ body.dragging-host * {
 .win-act + .win-act {
   margin-left: -8px;
 }
-/* With a mouse, only on the row under it (or the one you are on). */
+/* With a mouse, only on the row under it, over its end: the name and the rest of the row take
+   the whole width (on a narrow sidebar the buttons would leave them little). */
 @media (hover: hover) and (pointer: fine) {
-  .win-act {
-    opacity: 0;
+  .win-row {
+    position: relative;
   }
-  .win-row:hover .win-act,
-  .win-row.current .win-act,
-  .win-act:focus-visible {
+  .win-acts {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    padding-left: 20px;
+    background: linear-gradient(to right, transparent, var(--row-bg) 20px);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .win-row:hover .win-acts,
+  .win-acts:focus-within {
     opacity: 1;
+    pointer-events: auto;
   }
 }
 .win {
@@ -1037,9 +1054,44 @@ body.dragging-host * {
   background: var(--lavender);
 }
 
-/* The detailed list's extra line: the window's folder, and its git worktree or branch. */
+/* A row's first line: the name and, small after it, the command (and panes, zoom), which keeps
+   a little room even when the name is long. */
+.win-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.win-line > :first-child {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.win-line .win-meta {
+  flex: 1 1 0;
+  min-width: 5em;
+  font-size: 12px;
+}
+/* The detailed list's second line: the git worktree or branch, and the folder, cut at its start. */
+.win-where {
+  display: flex;
+  gap: 8px;
+}
 .win-git {
+  flex: 0 1 auto;
+  max-width: 65%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--subtext0);
+}
+.win-path {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
 }
 .git-icon {
   font-family: var(--mono);
@@ -1072,22 +1124,18 @@ body.dragging-host * {
   top: 6px;
   bottom: 6px;
 }
-.tree.compact .win-body,
 .tree.compact .card-body {
   flex-direction: row;
   align-items: baseline;
   gap: 8px;
 }
-.tree.compact .win-name,
-.tree.compact .win-body .session-name,
 .tree.compact .card-title {
   flex: 0 1 auto;
   min-width: 0;
 }
-.tree.compact .win-meta,
 .tree.compact .card-meta {
   flex: 1 1 0;
-  min-width: 0;
+  min-width: 5em;
   font-size: 12px;
 }
 .tree.compact .pending {
