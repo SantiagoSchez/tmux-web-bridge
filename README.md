@@ -25,13 +25,25 @@
   <a href="#seguridad">Seguridad</a>
 </p>
 
-![twb en el escritorio](docs/screenshots/escritorio.png)
-
 <p align="center">
-  <img src="docs/screenshots/movil-lista.png" alt="Lista de máquinas y pendientes en el móvil" width="300">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/movil-ventana.png" alt="Una ventana de tmux en el móvil" width="300">
+  <img src="docs/videos/escritorio.webp" alt="En el escritorio: se da permiso a un Claude, pasan los tests y queda terminado; se contesta la pregunta de otro con las flechas; la vista de ventanas muestra todos los agentes en vivo" width="100%">
 </p>
+
+<table>
+  <tr>
+    <td width="300" align="center">
+      <img src="docs/videos/movil.webp" alt="En el móvil: se da permiso con el Enter de la barra de teclas, se desliza la cabecera para cambiar de ventana, se contesta una pregunta con las flechas y se abre el cajón con todas las máquinas" width="280">
+    </td>
+    <td>
+      <h3>Y desde el móvil, igual de rápido</h3>
+      <p>💬 <b>Un permiso</b>: lo abres desde Pendientes y lo das con el <code>Enter</code> de la barra de teclas.</p>
+      <p>👉 <b>Otra ventana</b>: deslizas la cabecera.</p>
+      <p>🙋 <b>Una pregunta</b>: eliges la respuesta con <code>↑</code> <code>↓</code>.</p>
+      <p>☰ <b>Todas tus máquinas</b>: deslizas desde el borde.</p>
+      <p>🔔 Y si no estás mirando, te llega una <b>notificación</b> con la pregunta y botones para responder.</p>
+    </td>
+  </tr>
+</table>
 
 ## Qué hace
 
@@ -98,22 +110,28 @@ El servidor central lee el árbol de tmux de cada máquina cada segundo y lo man
 
 ## Instalación
 
-En resumen: un **servidor central** siempre encendido, **acceso SSH** desde él a cada máquina, el **kit** en cada máquina con Claude Code y la app en el **móvil**. El dictado es opcional.
+Cuatro pasos. Necesitas:
 
-### 1. Servidor central
+- **Un Linux siempre encendido** para el servidor central (un mini PC, una Raspberry Pi, un LXC…), con Node.js 22+, `build-essential` y `python3`.
+- **Tailscale** en él y en tus máquinas (macOS, Linux o WSL), cada una con **tmux 3.2+**.
 
-Necesita un Linux siempre encendido. Hay dos formas:
+### 1. Instala el servidor central
 
-**Con systemd y `tailscale serve`** (Node.js 22+, `build-essential`, `python3`, `ssh`):
+En el Linux que hará de servidor central:
 
 ```sh
 git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 ~/tmux-web-bridge/deploy/install-hub.sh
+sudo loginctl enable-linger $USER   # que siga en marcha sin tener la sesión abierta
+sudo tailscale serve --bg 7681      # el panel, con HTTPS, solo en tu tailnet
 ```
 
-Compila, crea `config.yaml` con un `notifyToken` aleatorio, genera la clave SSH e instala el servicio de usuario. Después: pon tus máquinas en `config.yaml`, activa `sudo loginctl enable-linger $USER` y publica con `sudo tailscale serve --bg 7681`. Se entra con tu identidad de Tailscale, sin contraseña.
+El instalador compila, crea `config.yaml`, genera la clave SSH del servidor e instala el servicio. **Al terminar imprime lo que necesitas para los pasos siguientes**: la URL del panel, la clave pública y el comando del kit con tu token. Se entra con tu identidad de Tailscale, sin contraseña.
 
-**Con Docker, detrás de tu proxy y con contraseña** (por ejemplo, en un LXC de Proxmox). Así funciona también desde la LAN sin Tailscale:
+<details>
+<summary>Alternativa: con Docker, detrás de tu proxy y con contraseña</summary>
+
+Por ejemplo, en un LXC de Proxmox. Así funciona también desde la LAN sin Tailscale:
 
 ```sh
 mkdir -p ~/docker/stacks/twb && cd ~/docker/stacks/twb
@@ -127,32 +145,54 @@ docker compose up -d --build
 ```
 
 Tailscale va como contenedor auxiliar (modo userspace) y el servidor central entra a las máquinas por su proxy SOCKS5. Los detalles están comentados en `compose.yaml` y `config.example.yaml`. En el proxy, admite WebSocket y sube `proxy_read_timeout`, porque las terminales pasan horas abiertas.
+</details>
 
-### 2. Acceso SSH a cada máquina
+### 2. Añade tus máquinas
 
-Añade la clave pública del servidor central a `~/.ssh/authorized_keys` de cada máquina, limitada a su IP:
+En `~/tmux-web-bridge/config.yaml`, una entrada por máquina en `hosts` (el ejemplo comentado trae más opciones):
+
+```yaml
+hosts:
+  - id: mac                    # el que usarás al instalar el kit
+    name: MacBook              # el que verás en el panel
+    ssh: usuario@macbook       # su nombre en la tailnet
+    identityFile: ~/.ssh/tmux-web-bridge_ed25519
+```
+
+Reinicia el servidor con `systemctl --user restart tmux-web-bridge`. Después, en **cada máquina**, pega en `~/.ssh/authorized_keys` la línea con la clave que imprimió el instalador:
 
 ```
-from="100.x.y.z" ssh-ed25519 AAAA... twb
+from="100.x.y.z" ssh-ed25519 AAAA... tmux-web-bridge
 ```
 
-Hace falta tmux 3.2 o posterior. En Linux, activa también `loginctl enable-linger`; sin él, systemd mata tus sesiones de tmux al cerrarse la última conexión SSH. En WSL, instala Tailscale dentro de la distro o usa `networkingMode=mirrored`.
+<details>
+<summary>Linux, WSL, tmux en otra ruta y el propio servidor como máquina</summary>
 
-### 3. Kit de cada máquina
+- **Linux**: activa también `sudo loginctl enable-linger $USER` en la máquina; sin él, systemd mata tus sesiones de tmux al cerrarse la última conexión SSH.
+- **WSL**: instala Tailscale dentro de la distro o usa `networkingMode=mirrored`.
+- **tmux fuera del `PATH`** (por ejemplo, Homebrew en macOS): `tmux: /opt/homebrew/bin/tmux`. Para un servidor de tmux no estándar, `socketName` o `socketPath`.
+- **El propio servidor central** también puede ser una máquina, sin SSH: `local: true`.
+</details>
 
-En cada máquina con Claude Code:
+### 3. Instala el kit en cada máquina
+
+En cada máquina con Claude Code, el comando que imprimió el instalador (con la URL del panel, el `id` de la máquina y tu token):
 
 ```sh
 git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
-~/tmux-web-bridge/host-kit/install.sh --hub https://<url-del-panel> --host <id-en-config.yaml> --token <notifyToken>
+~/tmux-web-bridge/host-kit/install.sh --hub https://<url-del-panel> --host <id> --token <notifyToken>
 ```
 
-Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Con `install.sh --check` se comprueba la conexión. Para actualizarlo, ver [Actualizaciones](#actualizaciones).
+Con eso, el panel ya ve los estados de Claude y te avisa en el móvil. Para comprobar la conexión, `install.sh --check`; para actualizarlo, ver [Actualizaciones](#actualizaciones).
 
 <details>
-<summary>Dotfiles compartidos y otra carpeta de configuración de Claude Code</summary>
+<summary>Qué toca el kit en la máquina</summary>
+
+Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`.
 
 Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones.
+
+La status line del kit muestra los límites 5h/7d al final, salvo en un panel estrecho (el móvil, donde ya están en la franja de la app). Si la barra de tmux ya los muestra (por ejemplo, con un módulo de catppuccin), quítalos de la status line de todas las máquinas en ⚙️ **Ajustes › Máquinas › Límites en la status line**: el servidor central pone `@claude_limits_in_status` en el tmux de cada una y la vuelve a poner si tmux se reinicia, por encima de lo que diga su `~/.tmux.conf`.
 </details>
 
 <details>
@@ -161,20 +201,22 @@ Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.
 El panel saca los límites de uso de una opción global de tmux que publica la status line (Claude Code solo le pasa `rate_limits` a ella), con una entrada por cuenta separada por `;`: `pct5h reset5h pct7d reset7d actualizado email`. El email sale de `oauthAccount.emailAddress` en `.claude.json` y la barra muestra una fila por cuenta. Si instalas con `--skip-claude`, copia a la tuya el bloque «Límites de uso para el panel web» de [`host-kit/statusline.sh`](host-kit/statusline.sh), después de leer el JSON en `$input` y sacar de él `PCT_5H`, `RESET_5H`, `PCT_7D` y `RESET_7D`.
 </details>
 
-La status line del kit muestra los límites 5h/7d al final, salvo en un panel estrecho (el móvil, donde ya están en la franja de la app). Si la barra de tmux ya los muestra (por ejemplo, con un módulo de catppuccin), quítalos de la status line de todas las máquinas en ⚙️ **Ajustes › Máquinas › Límites en la status line**: el servidor central pone `@claude_limits_in_status` en el tmux de cada una y la vuelve a poner si tmux se reinicia, por encima de lo que diga su `~/.tmux.conf`.
+### 4. Ábrelo en el móvil
 
-### 4. En el móvil (Android)
+Abre la URL del panel en Chrome (Android), **Añadir a pantalla de inicio**, y activa las notificaciones en ⚙️ **Ajustes › Dispositivo › Notificaciones**. Listo.
 
-Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y activa las notificaciones en ⚙️ **Ajustes › Dispositivo › Notificaciones**.
+### Extra: dictado
 
-### 5. Dictado (opcional)
+Se activa en ⚙️ **Ajustes › Dictado** y vale para todos los dispositivos. Todo corre en CPU en tu servidor central. El navegador necesita HTTPS para usar el micrófono.
 
-Se activa en ⚙️ **Ajustes › Dictado** y vale para todos los dispositivos. Todo corre en CPU en tu servidor central:
+<details>
+<summary>Modelos, memoria y cómo activar la limpieza del texto</summary>
 
 - **Transcripción**: Parakeet TDT 0.6B v3 (sherpa-onnx) dentro del propio servidor. Se descarga en `data/models` la primera vez (unos 670 MB), ocupa ~1 GB de RAM y transcribe 30 s de audio en unos 2 s con 4 hilos.
 - **Limpieza** (opcional): Qwen3.5 4B Q4_K_M detrás de llama-server, unos 3 GB de RAM. Con Docker es el servicio `llm` de `compose.yaml` (`docker compose up -d llm`). Sin Docker, arranca tú `llama-server -hf unsloth/Qwen3.5-4B-GGUF:Q4_K_M --jinja` y pon su URL en `dictation.llmUrl` de `config.yaml`. Tarda unos segundos por dictado; si pasa del tiempo máximo que elijas en Ajustes (10 s por defecto), el texto va tal y como se oyó. El glosario viene con términos habituales de Claude Code, git y Docker, y se edita ahí mismo.
 
-Los modelos más pequeños (Qwen3.5 0.8B y 2B) se probaron con dictados en español y no sirven para esto: el 0.8B cambia el sentido de las frases y el 2B casi no limpia. El navegador necesita HTTPS para usar el micrófono.
+Los modelos más pequeños (Qwen3.5 0.8B y 2B) se probaron con dictados en español y no sirven para esto: el 0.8B cambia el sentido de las frases y el 2B casi no limpia.
+</details>
 
 ## Cuentas de Claude
 
