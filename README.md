@@ -65,6 +65,7 @@
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
 - **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
+- **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**. Ver [API de la extensión](#api-de-la-extensión-de-trello).
 
 ### 📊 Límites y cuentas de Claude siempre a la vista
 
@@ -258,6 +259,17 @@ Con el clon en una release, `git pull` ya no funciona («You are not currently o
   - `password`: detrás de cualquier otro proxy, con hash scrypt, cookie `HttpOnly`, límite de intentos, verificación en dos pasos opcional (TOTP) y cierre remoto de sesiones. Las cabeceras de Tailscale se ignoran.
 - La API y los WebSocket exigen sesión y mismo origen; `/api/notify` exige el `notifyToken`.
 - El servidor central entra en las máquinas con su propia clave, limitable con `from=`. `config.yaml`, `notify.env` y las claves VAPID se guardan con permisos 600.
+- La extensión de Trello solo llega a `/api/ext/*`, y solo con su token (`Authorization: Bearer`). El servidor central guarda su hash en `ext-token.json`, con permisos 600; revocarlo en Ajustes lo invalida al momento.
+
+### API de la extensión de Trello
+
+Todas con `Authorization: Bearer <token>`, desde cualquier origen:
+
+| Ruta | Qué hace |
+| --- | --- |
+| `GET /api/ext/ping` | Comprueba la dirección y el token. |
+| `GET /api/ext/targets` | Cada máquina con su estado, sus spaces abiertos y sus carpetas de «Nuevo space» (`ExtTargets` en `shared/types.ts`). |
+| `POST /api/ext/launch` | `{ host, target: { session } \| { folder, sub? }, prompt, name?, skipPermissions? }`. Abre una ventana nueva llamada `name` (fijada) en ese space, o en el de la carpeta, que se crea si no está abierto (y entonces la tarea va en su primera ventana), y escribe `claude --permission-mode auto '<prompt>'` (o `--dangerously-skip-permissions`). Usa el comando de la máquina si es `claude …`; si no, `claude`. |
 
 ## Desarrollo
 

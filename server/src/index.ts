@@ -8,15 +8,16 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ClientMessage, DictateResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage } from '../../shared/types.js';
+import type { AccountsInfo, ClientMessage, DictateResult, ExtLaunchRequest, NotifyRequest, RespondRequest, SavedFolder, ServerMessage } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
-import { READ_ONLY_OPS, runAction, runTitleScript } from './actions.js';
+import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
 import { shq } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig } from './config.js';
 import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
+import { ExtTokenStore, hostTargets, launchTask } from './ext.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -52,6 +53,7 @@ const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
+const extTokens = new ExtTokenStore(config.dataDir);
 // The folders of «Nuevo space» live in the hub now: a `projects` block becomes one, once.
 const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
 for (const h of config.hosts.filter((x) => x.legacyProjects)) {
@@ -128,6 +130,12 @@ const PUBLIC_API = new Set(['/api/session', '/api/login', '/api/logout', '/api/h
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/notify')) {
     if (!tokenOk(req)) return reply.code(401).send({ error: 'token inválido' });
+    return;
+  }
+  // The Trello extension: only its token, from any origin (a bearer token is no ambient
+  // credential another site's page could ride on). Decided on the matched route.
+  if ((req.routeOptions.url ?? '').startsWith('/api/ext/')) {
+    if (!extTokens.check(req.headers.authorization)) return reply.code(401).send({ error: 'Token de la extensión inválido o revocado' });
     return;
   }
   if (passwordAuth) {
@@ -249,6 +257,15 @@ async function pasteText(host: HostMonitor, pane: string, text: string): Promise
   await host.exec.run(['paste-buffer', '-p', '-r', '-d', '-b', buffer, '-t', pane]);
 }
 
+/** A host's folders for «Nuevo space» and what is typed into a space opened there. */
+function machineFolders(host: HostMonitor): MachineFolders {
+  return {
+    folders: settings.value.folders[host.id] ?? [],
+    command: settings.value.commands[host.id] ?? DEFAULT_COMMAND,
+    save: (folders: SavedFolder[]) => settings.update({ folders: { [host.id]: folders } }),
+  };
+}
+
 app.get('/ws', { websocket: true }, (ws, req) => {
   bindSession(req, ws);
   heartbeat.watch(ws);
@@ -303,12 +320,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const machine = {
-            folders: settings.value.folders[host.id] ?? [],
-            command: settings.value.commands[host.id] ?? DEFAULT_COMMAND,
-            save: (folders: SavedFolder[]) => settings.update({ folders: { [host.id]: folders } }),
-          };
-          const data = await runAction(host, op, updates.info.latest?.version ?? null, machine);
+          const data = await runAction(host, op, updates.info.latest?.version ?? null, machineFolders(host));
           if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
           break;
@@ -442,6 +454,44 @@ app.get('/api/health', async (req) =>
     ? { ok: true }
     : { ok: true, hosts: [...hosts.values()].map((h) => ({ id: h.id, status: h.snapshot.status, error: h.snapshot.error })) },
 );
+
+// ---------------------------------------------------------------- Trello extension
+
+/** Settings › Trello: whether the extension has a token (only its hash is kept). */
+app.get('/api/ext-token', async () => extTokens.info);
+/** A new token for the extension, replacing the one there was. The only time it is shown. */
+app.post('/api/ext-token', async () => {
+  const token = extTokens.generate();
+  console.log('[ext] token nuevo para la extensión de Trello');
+  return { token, info: extTokens.info };
+});
+app.post('/api/ext-token/revoke', async () => {
+  extTokens.revoke();
+  console.log('[ext] token de la extensión de Trello revocado');
+  return extTokens.info;
+});
+
+/** The extension checks its URL and token. */
+app.get('/api/ext/ping', async () => ({ ok: true }));
+
+/** Where the extension can launch a task: every machine's open spaces and folders. */
+app.get('/api/ext/targets', async () => ({
+  hosts: await Promise.all(hostOrder.list.map((id) => hosts.get(id)!).map((h) => hostTargets(h, machineFolders(h)))),
+}));
+
+app.post('/api/ext/launch', async (req, reply) => {
+  const body = (req.body ?? {}) as Partial<ExtLaunchRequest>;
+  const host = typeof body.host === 'string' ? hosts.get(body.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  try {
+    const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest);
+    await host.refresh();
+    console.log(`[ext] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', space nuevo' : ''})`);
+    return result;
+  } catch (err) {
+    return reply.code(400).send({ error: (err as Error).message });
+  }
+});
 
 // ---------------------------------------------------------------- password login
 

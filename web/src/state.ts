@@ -133,7 +133,7 @@ export interface MenuItem {
 export const dialog = signal<Dialog | null>(null);
 export const sheet = signal<'connections' | 'settings' | null>(null);
 
-export type SettingsTab = 'device' | 'machines' | 'folders' | 'dictation' | 'keys' | 'account';
+export type SettingsTab = 'device' | 'machines' | 'folders' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */
 export const settingsTab = signal<SettingsTab | null>(null);
 

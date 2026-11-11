@@ -217,6 +217,60 @@ export interface DictateResult {
   fallback?: 'timeout' | 'error' | 'unavailable';
 }
 
+/** The token of the Trello extension (Settings › Trello): whether there is one, and since when. */
+export interface ExtTokenInfo {
+  active: boolean;
+  /** Epoch milliseconds. */
+  createdAt?: number;
+}
+
+/** Where the Trello extension can launch a task on one machine (GET /api/ext/targets). */
+export interface ExtHostTargets {
+  id: string;
+  name: string;
+  status: HostStatus;
+  error?: string;
+  /** Its open spaces (not the panel's own terminals). */
+  spaces: { id: string; name: string; windows: number }[];
+  /** Its folders of «Nuevo space», as listProjects reads them; missing when they could not be read. */
+  folders?: ProjectList['folders'];
+  foldersError?: string;
+}
+
+export interface ExtTargets {
+  hosts: ExtHostTargets[];
+}
+
+/** An open space (its id), or an added folder (or `sub`, one inside a folder with subfolders). */
+export type ExtLaunchTarget = { session: string } | { folder: string; sub?: string };
+
+/**
+ * POST /api/ext/launch: a new window in the target's space (the space is made first for a
+ * folder without one) running claude with the prompt.
+ */
+export interface ExtLaunchRequest {
+  host: string;
+  target: ExtLaunchTarget;
+  prompt: string;
+  /** The window's name (pinned); the kit's automatic title when missing. */
+  name?: string;
+  skipPermissions?: boolean;
+}
+
+export interface ExtLaunchResult {
+  host: string;
+  hostName: string;
+  session: string;
+  /** The space's name. */
+  space: string;
+  window: string;
+  /** The window's name as tmux took it. */
+  windowName: string;
+  pane: string;
+  /** The space was made for this task. */
+  createdSpace: boolean;
+}
+
 /** The daily check for a new release of twb on GitHub, set for the whole hub. */
 export interface UpdateInfo {
   enabled: boolean;

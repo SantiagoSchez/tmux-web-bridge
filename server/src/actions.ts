@@ -46,7 +46,7 @@ function projectName(name: string): string {
  * A host's folders for «Nuevo space» as they are now: whether each one is there and,
  * for those with subfolders, the folders inside (not hidden ones), read every time.
  */
-async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
+export async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
   const script = [`printf 'H\t%s\n' "$HOME"`]
     .concat(saved.map((f, i) => {
       const dir = hostPath(f.path);
@@ -112,6 +112,36 @@ export interface MachineFolders {
  * subfolders (created first if asked). If a space of that name is open, it is reused.
  */
 async function openProject(host: HostMonitor, machine: MachineFolders, action: Extract<ActionOp, { op: 'openProject' }>): Promise<{ session: string; created: boolean }> {
+  const space = await openSpace(host, machine, action);
+  if (!space.pane) return { session: space.session, created: false };
+  // The space starts in a shell (with its .zshrc) and the command is typed into it,
+  // as `c` does: quitting claude leaves you in the project's folder.
+  if (machine.command) await host.exec.run(['send-keys', '-t', space.pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
+  return { session: space.session, created: true };
+}
+
+/** A space of an added folder, as openSpace leaves it. */
+export interface OpenedSpace {
+  session: string;
+  /** Its name (the folder's). */
+  name: string;
+  /** Its folder on the host, as an absolute path ('' if it is gone). */
+  dir: string;
+  /** Its first pane, with a bare shell, when the space was made now (missing: it was open already). */
+  pane?: string;
+}
+
+/**
+ * The space of an added folder (or of `sub`, a folder inside one with subfolders, made
+ * first with `create`): the open one of that name, or a new one there with a bare shell.
+ * `windowName` names (and pins) the first window of a new space.
+ */
+export async function openSpace(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: { folder: string; sub?: string; create?: boolean },
+  windowName?: string,
+): Promise<OpenedSpace> {
   const sub = action.sub === undefined ? undefined : projectName(String(action.sub));
   const folder = machine.folders.find((f) => sameFolder(f, String(action.folder), sub !== undefined));
   if (!folder) throw new Error(`Esa carpeta no está entre las de ${host.name}`);
@@ -120,7 +150,10 @@ async function openProject(host: HostMonitor, machine: MachineFolders, action: E
   const space = sessionName(name);
   const existing = await host.exec.runFormat(['list-sessions', '-F', '#{session_id}\t#{session_name}']).catch(() => '');
   const open = existing.split('\n').find((l) => l.split('\t')[1] === space);
-  if (open) return { session: open.split('\t')[0], created: false };
+  if (open) {
+    const abs = windowName === undefined ? '' : (await host.exec.shell(`cd ${hostPath(dir)} 2>/dev/null && pwd || true`)).trim();
+    return { session: open.split('\t')[0], name: space, dir: abs };
+  }
 
   // Only inside a folder that is there: a disk not mounted gets no folders made under it.
   const state = (await host.exec.shell(`if [ -d ${hostPath(dir)} ]; then echo ok; elif [ -d ${hostPath(folder.path)} ]; then echo new; else echo gone; fi`)).trim();
@@ -129,13 +162,12 @@ async function openProject(host: HostMonitor, machine: MachineFolders, action: E
     if (!sub || !action.create) throw new Error(`No existe la carpeta ${dir}`);
     await host.exec.shell(`mkdir ${hostPath(dir)}`);
   }
-  // The space starts in a shell (with its .zshrc) and the command is typed into it,
-  // as `c` does: quitting claude leaves you in the project's folder.
   const abs = (await host.exec.shell(`cd ${hostPath(dir)} && pwd`)).trim();
-  const out = await host.exec.run(['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs]);
-  const [session, pane] = out.trim().split(' ');
-  if (machine.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
-  return { session, created: true };
+  const args = ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs];
+  if (windowName) args.push('-n', windowName.replace(/#/g, '##'));
+  const [session, pane] = (await host.exec.run(args)).trim().split(' ');
+  if (windowName) await host.exec.run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
+  return { session, name: space, dir: abs, pane };
 }
 
 /**
