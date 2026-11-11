@@ -24,7 +24,12 @@ export interface PaneInfo {
   account?: string;
   /** Session id of the Claude Code in it (@claude_session, from host-kit/tmux-window-title.sh), to resume it. */
   claudeSession?: string;
+  /** The git worktree or branch of its folder, when it is in a repo (read by the hub every few seconds). */
+  git?: PaneGit;
 }
+
+/** A linked worktree (its folder's name) or, in the repo's own folder, the branch checked out. */
+export type PaneGit = { worktree: string; branch?: undefined } | { branch: string; worktree?: undefined };
 
 export interface WindowInfo {
   id: string; // @3
@@ -145,6 +150,8 @@ export interface HostInfo {
   reboot?: boolean;
   /** Version of its host-kit (@twb_kit_version, set by the kit's tmux.conf); missing before 1.0.0. */
   kit?: string;
+  /** Its home folder, to show the panes' folders under ~. */
+  home?: string;
 }
 
 /** Settings of the whole hub (every device sees and changes the same ones). */

@@ -96,7 +96,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 }
 
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
-  { id: 'device', label: 'Dispositivo', hint: 'Tema y notificaciones de este dispositivo' },
+  { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
   { id: 'machines', label: 'Máquinas', hint: 'Lista de spaces, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo space» en cada máquina' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
@@ -193,6 +193,11 @@ const THEMES: [Prefs['theme'], string][] = [
   ['system', 'Sistema'],
 ];
 
+const LIST_VIEWS: [Prefs['listView'], string][] = [
+  ['detailed', 'Detallada'],
+  ['compact', 'Condensada'],
+];
+
 /** This browser only: its look, its notifications and whether using it silences them. */
 function DeviceSettings() {
   const [push, setPush] = useState<PushState>('busy');
@@ -234,6 +239,7 @@ function DeviceSettings() {
 
   const presence = presenceState.value;
   const theme = prefs.value.theme;
+  const listView = prefs.value.listView;
   return (
     <>
       <section class="setting">
@@ -242,6 +248,21 @@ function DeviceSettings() {
         <div class="seg" role="radiogroup" aria-label="Tema">
           {THEMES.map(([id, label]) => (
             <button key={id} role="radio" aria-checked={theme === id} class={theme === id ? 'on' : ''} onClick={() => setPref('theme', id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section class="setting">
+        <h3>Vista de la lista</h3>
+        <p class="dim small">
+          Cómo se ven los spaces y sus ventanas en este dispositivo. «Detallada» añade la carpeta de cada ventana y su worktree de git (o, si no está en uno, la
+          rama); «Condensada» deja cada una en una sola línea, más baja, para que quepan más.
+        </p>
+        <div class="seg" role="radiogroup" aria-label="Vista de la lista">
+          {LIST_VIEWS.map(([id, label]) => (
+            <button key={id} role="radio" aria-checked={listView === id} class={listView === id ? 'on' : ''} onClick={() => setPref('listView', id)}>
               {label}
             </button>
           ))}

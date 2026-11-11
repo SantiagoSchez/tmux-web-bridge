@@ -11,9 +11,11 @@ export interface Prefs {
   theme: 'dark' | 'light' | 'system';
   /** "Abrir proyecto" and "Recargar" start claude with --dangerously-skip-permissions instead of auto mode. */
   skipPermissions: boolean;
+  /** The list of spaces: with each window's folder and git worktree or branch, or one short line per row. */
+  listView: 'detailed' | 'compact';
 }
 
-const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false };
+const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed' };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {

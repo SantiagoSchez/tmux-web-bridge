@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import type { HostInfo, PaneInfo, PaneState, RateLimits, SessionInfo, WindowInfo } from '../../shared/types.js';
 import type { Config, HostConfig } from './config.js';
 import { TmuxError, TmuxExec } from './exec.js';
+import { GitScanner } from './git.js';
 
 /** Prefix of the grouped sessions opened by web terminals (hidden from the tree). */
 export const WEB_SESSION_PREFIX = '_tw-';
@@ -220,6 +221,7 @@ export class HostMonitor extends EventEmitter {
   private offlineSince: number | null = null;
   private polling: Promise<void> | null = null;
   private prefixLoaded = false;
+  private readonly git: GitScanner;
   /** Web terminal sessions with a live pty on this hub (never reaped). */
   readonly liveWebSessions = new Set<string>();
   /**
@@ -237,6 +239,12 @@ export class HostMonitor extends EventEmitter {
     this.id = hostConfig.id;
     this.name = hostConfig.name;
     this.exec = new TmuxExec(hostConfig, config);
+    // Read after the tree went out: it goes again with the worktrees and branches in.
+    this.git = new GitScanner(this.exec, () => {
+      if (this.info.status !== 'ok') return;
+      this.git.apply(this.info.sessions);
+      this.update({ ...this.info, home: this.git.home });
+    });
     this.info = { id: this.id, name: this.name, status: 'connecting', sessions: [], reboot: hostConfig.local ? undefined : true };
   }
 
@@ -303,7 +311,8 @@ export class HostMonitor extends EventEmitter {
     this.failures = 0;
     this.offlineSince = null;
     const prev = this.info;
-    this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits, kit });
+    this.git.apply(sessions);
+    this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits, kit, home: this.git.home });
     this.detectTransitions(prev, this.info);
     void this.reapWebSessions(webSessions);
   }

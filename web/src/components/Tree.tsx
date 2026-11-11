@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import { homePath } from '../../../shared/folders';
+import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, sessionMenu, windowMenu } from '../menus';
 import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
@@ -12,7 +13,7 @@ import { IconClose, IconMore, IconPlus } from './icons';
 export function Tree() {
   const list = hosts.value;
   return (
-    <div class="tree scroll">
+    <div class={`tree scroll ${prefs.value.listView === 'compact' ? 'compact' : ''}`}>
       {wsStatus.value === 'closed' && <div class="banner">Sin conexión con el servidor central. Reintentando…</div>}
       <Pending />
       {list.map((h, i) => (
@@ -309,6 +310,7 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
           <span class="win-body">
             <span class="session-name">{session.name}</span>
             <span class="win-meta">{meta.join(' · ')}</span>
+            <WhereLine host={host} pane={active} />
           </span>
           {session.attached > 0 && <span class="attached" title="Hay un cliente de tmux conectado" />}
           {window.bell && <span class="flag flag-bell" title="Campana" />}
@@ -328,6 +330,32 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
   );
 }
 
+/**
+ * The detailed list's extra line of a window: the git worktree its active pane is in or
+ * else the branch (first: cut short, the folder goes), and where it is.
+ */
+function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined }) {
+  if (prefs.value.listView === 'compact' || !pane?.path) return null;
+  const git = pane.git;
+  return (
+    <span class="win-meta win-where">
+      {git && (
+        <>
+          <span class="win-git" title={git.worktree ? 'Worktree de git' : 'Rama de git'}>
+            {/* Nerd Font icons (in the mono font, not the UI's): a tree, or the branch symbol. */}
+            <span class="git-icon" aria-hidden="true">
+              {git.worktree ? '\uf1bb' : '\ue0a0'}
+            </span>
+            {git.worktree ?? git.branch}
+          </span>
+          {' · '}
+        </>
+      )}
+      {homePath(pane.path, host.home ?? '')}
+    </span>
+  );
+}
+
 function WindowRow({ host, session, window }: { host: HostInfo; session: SessionInfo; window: WindowInfo }) {
   const r = route.value;
   const current = r.name === 'window' && r.host === host.id && r.window === window.id;
@@ -344,6 +372,7 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
             {window.panes.length > 1 ? ` · ${window.panes.length} paneles` : ''}
             {window.zoomed ? ' · zoom' : ''}
           </span>
+          <WhereLine host={host} pane={active} />
         </span>
         {window.bell && <span class="flag flag-bell" title="Campana" />}
         {window.activity && <span class="flag flag-activity" title="Actividad" />}

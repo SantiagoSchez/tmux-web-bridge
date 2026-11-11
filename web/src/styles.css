@@ -1037,6 +1037,74 @@ body.dragging-host * {
   background: var(--lavender);
 }
 
+/* The detailed list's extra line: the window's folder, and its git worktree or branch. */
+.win-git {
+  color: var(--subtext0);
+}
+.git-icon {
+  font-family: var(--mono);
+  margin-right: 4px;
+}
+
+/* The condensed list (Ajustes › Este dispositivo): each row one line, lower, less space between
+   spaces; what goes under the name in the detailed one follows it, small, cut if it does not fit. */
+.tree.compact .host {
+  padding-top: 8px;
+}
+.tree.compact .host-toggle {
+  min-height: 34px;
+}
+.tree.compact .session {
+  margin-top: 4px;
+}
+.tree.compact .session-head {
+  min-height: 34px;
+  padding: 0 4px 0 12px;
+}
+.tree.compact .session-toggle {
+  min-height: 32px;
+}
+.tree.compact .win {
+  min-height: 38px;
+  padding: 4px 12px;
+}
+.tree.compact .win.current::before {
+  top: 6px;
+  bottom: 6px;
+}
+.tree.compact .win-body,
+.tree.compact .card-body {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+.tree.compact .win-name,
+.tree.compact .win-body .session-name,
+.tree.compact .card-title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.tree.compact .win-meta,
+.tree.compact .card-meta {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 12px;
+}
+.tree.compact .pending {
+  padding-top: 8px;
+}
+.tree.compact .cards {
+  gap: 4px;
+}
+.tree.compact .card {
+  min-height: 40px;
+  padding: 6px 12px;
+  gap: 10px;
+}
+.tree.compact .card-icon {
+  font-size: 17px;
+}
+
 /* ------------------------------------------------------------ windows grid */
 
 .gv {
