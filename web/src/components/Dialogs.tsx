@@ -363,7 +363,7 @@ interface FolderGroup {
 }
 
 /** What «Nuevo space» shows: the folders, where a new one goes, or its name. */
-type ProjectStep = { kind: 'list' } | { kind: 'where'; at: string } | { kind: 'name'; parent: string; back?: string };
+type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent: string };
 
 /**
  * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder and
@@ -432,31 +432,16 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
     }
   };
 
-  if (step.kind === 'where') {
-    return (
-      <NewFolderWhere
-        d={d}
-        start={step.at}
-        close={close}
-        back={() => setStep({ kind: 'list' })}
-        pick={(at) => setStep({ kind: 'name', parent: at, back: at })}
-      />
-    );
-  }
+  const make = (parent: string, name: string, subfolders: boolean) =>
+    subfolders ? addGroup(parent, name) : run({ op: 'createFolder', parent, name, skipPermissions: prefs.value.skipPermissions });
+  const back = () => setStep({ kind: 'list' });
+  if (step.kind === 'where') return <NewFolderWhere d={d} value={q} busy={busy} close={close} back={back} create={make} />;
   if (step.kind === 'name') {
+    const parent = step.parent;
     return (
-      <NewFolderName
-        d={d}
-        parent={step.parent}
-        shown={abs(step.parent)}
-        value={q}
-        busy={busy}
-        close={close}
-        back={() => setStep(step.back ? { kind: 'where', at: step.back } : { kind: 'list' })}
-        create={(name, subfolders) =>
-          subfolders ? addGroup(step.parent, name) : run({ op: 'createFolder', parent: step.parent, name, skipPermissions: prefs.value.skipPermissions })
-        }
-      />
+      <Sheet title="Nueva carpeta" subtitle={`en ${abs(parent)} · ${d.host.name}`} onClose={close}>
+        <NewFolderForm hostId={d.host.id} parent={parent} value={q} busy={busy} focus back={back} create={(name, sub) => make(parent, name, sub)} />
+      </Sheet>
     );
   }
 
@@ -494,7 +479,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
       </form>
       <ul class="menu project-list">
         <li>
-          <button class="menu-item" disabled={busy} onClick={() => setStep({ kind: 'where', at: '~' })}>
+          <button class="menu-item" disabled={busy} onClick={() => setStep({ kind: 'where' })}>
             <span class="menu-icon">＋</span>
             <span class="project-text">
               <span class="project-name">Nueva carpeta…</span>
@@ -561,41 +546,52 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   );
 }
 
-/** «Nueva carpeta» anywhere: where it goes, browsing the machine's folders. */
-function NewFolderWhere(props: { d: Extract<Dialog, { kind: 'project' }>; start: string; close: () => void; back: () => void; pick: (at: string) => void }) {
-  const b = useDirBrowser(props.d.host.id, props.start);
+/**
+ * «Nueva carpeta» anywhere, as Ajustes › Carpetas adds one: browsing to where it goes,
+ * with its name and whether it offers its subfolders.
+ */
+function NewFolderWhere(props: {
+  d: Extract<Dialog, { kind: 'project' }>;
+  value: string;
+  busy: boolean;
+  close: () => void;
+  back: () => void;
+  create: (parent: string, name: string, subfolders: boolean) => void;
+}) {
+  const b = useDirBrowser(props.d.host.id);
   return (
     <Sheet title="Nueva carpeta" subtitle={`¿Dónde? · ${props.d.host.name}`} onClose={props.close}>
       <div class="folder-picker">
         <DirBrowser b={b} />
-      </div>
-      <div class="sheet-actions">
-        <button class="btn" onClick={props.back}>
-          Atrás
-        </button>
-        <button
-          class="btn btn-primary"
-          disabled={b.busy || !b.at}
-          onClick={async () => {
+        <NewFolderForm
+          hostId={props.d.host.id}
+          parent={b.at?.path ?? null}
+          value={props.value}
+          busy={props.busy || b.busy}
+          back={props.back}
+          create={async (name, subfolders) => {
+            // A path typed but not opened yet: opened first, so it goes where it says.
             const l = await b.here();
-            if (l) props.pick(l.path);
+            if (l) props.create(l.path, name, subfolders);
           }}
-        >
-          Crear aquí…
-        </button>
+        />
       </div>
     </Sheet>
   );
 }
 
-/** The name of a new folder inside `parent`: made, and a space opened in it. */
-function NewFolderName(props: {
-  d: Extract<Dialog, { kind: 'project' }>;
-  parent: string;
-  shown: string;
+/**
+ * The name of a new folder inside `parent` and how it goes in: made, and a space opened
+ * in it. Anywhere but inside a folder with subfolders it becomes one of the host's
+ * folders, and may be one with subfolders: then no space opens.
+ */
+function NewFolderForm(props: {
+  hostId: string;
+  parent: string | null;
   value: string;
   busy: boolean;
-  close: () => void;
+  /** Straight to the name (no folders to browse above): the keyboard is wanted. */
+  focus?: boolean;
   back: () => void;
   create: (name: string, subfolders: boolean) => void;
 }) {
@@ -603,53 +599,53 @@ function NewFolderName(props: {
   const [subfolders, setSubfolders] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    if (!props.focus) return;
     input.current?.focus();
     input.current?.select();
   }, []);
-  // Anywhere but inside a folder with subfolders, it becomes one of the host's folders: its name is a new one there.
-  const saved = hubSettings.value?.folders[props.d.host.id] ?? [];
+  const saved = hubSettings.value?.folders[props.hostId] ?? [];
   const inGroup = saved.some((f) => f.subfolders && f.path === props.parent);
+  const group = subfolders && !inGroup;
   const n = name.trim();
   const problem = !n ? null : inGroup ? folderNameProblem(n) : nameProblem(saved, n);
   return (
-    <Sheet title="Nueva carpeta" subtitle={`en ${props.shown} · ${props.d.host.name}`} onClose={props.close}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!props.busy && n && !problem) props.create(n, !inGroup && subfolders);
-        }}
-      >
-        <input
-          ref={input}
-          class="text-input"
-          value={name}
-          placeholder="Nombre de la carpeta"
-          aria-label="Nombre de la carpeta"
-          autocapitalize="off"
-          autocomplete="off"
-          spellcheck={false}
-          onInput={(e) => setName(e.currentTarget.value)}
-        />
-        {problem && <p class="settings-state small">{problem}</p>}
-        {!inGroup && <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />}
-        <p class="dim small">
-          {inGroup
-            ? 'Se abre un space en ella.'
-            : subfolders
-              ? 'Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ningún space, crea dentro las que quieras con su ＋.'
-              : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}
-        </p>
-        <div class="sheet-actions">
-          {!(subfolders && !inGroup) && <SkipPermissions />}
-          <button type="button" class="btn" onClick={props.back}>
-            Atrás
-          </button>
-          <button type="submit" class="btn btn-primary" disabled={props.busy || !n || !!problem}>
-            {subfolders && !inGroup ? 'Crear' : 'Crear y abrir'}
-          </button>
-        </div>
-      </form>
-    </Sheet>
+    <form
+      class="folder-picker"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!props.busy && props.parent && n && !problem) props.create(n, group);
+      }}
+    >
+      {!inGroup && <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />}
+      <input
+        ref={input}
+        class="text-input"
+        value={name}
+        placeholder="Nombre de la carpeta"
+        aria-label="Nombre de la carpeta"
+        autocapitalize="off"
+        autocomplete="off"
+        spellcheck={false}
+        onInput={(e) => setName(e.currentTarget.value)}
+      />
+      {problem && <p class="settings-state small">{problem}</p>}
+      <p class="dim small">
+        {inGroup
+          ? 'Se abre un space en ella.'
+          : group
+            ? 'Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ningún space, crea dentro las que quieras con su ＋.'
+            : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}
+      </p>
+      <div class="sheet-actions">
+        {!group && <SkipPermissions />}
+        <button type="button" class="btn" onClick={props.back}>
+          Atrás
+        </button>
+        <button type="submit" class="btn btn-primary" disabled={props.busy || !props.parent || !n || !!problem}>
+          {group ? 'Crear' : 'Crear y abrir'}
+        </button>
+      </div>
+    </form>
   );
 }
 
