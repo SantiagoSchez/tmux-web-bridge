@@ -141,9 +141,14 @@ async function openProject(host: HostMonitor, machine: MachineFolders, action: E
 /**
  * «Nueva carpeta» of «Nuevo space»: makes a folder inside `parent` and opens a space in it.
  * Inside a folder with subfolders it is one more of them (opened if it is there already);
- * anywhere else it has to be new, and goes into the host's folders, named like it.
+ * anywhere else it has to be new, and goes into the host's folders, named like it. One
+ * added with subfolders opens nothing: there is nothing inside to open yet.
  */
-async function createFolder(host: HostMonitor, machine: MachineFolders, action: Extract<ActionOp, { op: 'createFolder' }>): Promise<{ session: string; created: boolean }> {
+async function createFolder(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: Extract<ActionOp, { op: 'createFolder' }>,
+): Promise<{ session: string; created: boolean } | { folder: string }> {
   const name = projectName(String(action.name));
   const parent = String(action.parent).trim().replace(/(.)\/+$/, '$1');
   if (!folderPathOk(parent)) throw new Error('La ruta tiene que empezar por / o por ~');
@@ -157,9 +162,10 @@ async function createFolder(host: HostMonitor, machine: MachineFolders, action: 
   if (state === 'gone') throw new Error(`No existe la carpeta ${parent} en ${host.name}`);
   if (state === 'there') throw new Error(`Ya existe ${path} en ${host.name}`);
   await host.exec.shell(`mkdir ${hostPath(path)}`);
-  const folders = [...machine.folders, { name, path }];
+  const subfolders = action.subfolders === true;
+  const folders = [...machine.folders, subfolders ? { name, path, subfolders } : { name, path }];
   machine.save?.(folders);
-  return openProject(host, { ...machine, folders }, { ...open, folder: path });
+  return subfolders ? { folder: path } : openProject(host, { ...machine, folders }, { ...open, folder: path });
 }
 
 /** Reboots the machine. The SSH connection may drop (or hang) before shutdown answers: that is a success. */

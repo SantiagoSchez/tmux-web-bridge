@@ -376,11 +376,10 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<ProjectStep>({ kind: 'list' });
-  useEffect(() => {
-    // No focus on the search: on a phone the keyboard would cover the list, which is what
-    // you pick from most of the time.
-    hub.action<ProjectList>(d.host.id, { op: 'listProjects' }).then(setList, close);
-  }, []);
+  const load = () => hub.action<ProjectList>(d.host.id, { op: 'listProjects' }).then(setList, close);
+  // No focus on the search: on a phone the keyboard would cover the list, which is what
+  // you pick from most of the time.
+  useEffect(() => void load(), []);
 
   const q = query.trim();
   const abs = (path: string) => homePath(path, list?.home ?? '');
@@ -418,6 +417,20 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
     }
   };
   const open = (i: FolderItem) => run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+  /** A new folder with subfolders opens no space: back to the list, where it is a group now, empty. */
+  const addGroup = async (parent: string, name: string) => {
+    setBusy(true);
+    try {
+      await hub.action(d.host.id, { op: 'createFolder', parent, name, subfolders: true });
+      setQuery('');
+      await load();
+      setStep({ kind: 'list' });
+    } catch {
+      // the error is already a toast
+    } finally {
+      setBusy(false);
+    }
+  };
 
   if (step.kind === 'where') {
     return (
@@ -440,7 +453,9 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         busy={busy}
         close={close}
         back={() => setStep(step.back ? { kind: 'where', at: step.back } : { kind: 'list' })}
-        create={(name) => run({ op: 'createFolder', parent: step.parent, name, skipPermissions: prefs.value.skipPermissions })}
+        create={(name, subfolders) =>
+          subfolders ? addGroup(step.parent, name) : run({ op: 'createFolder', parent: step.parent, name, skipPermissions: prefs.value.skipPermissions })
+        }
       />
     );
   }
@@ -582,9 +597,10 @@ function NewFolderName(props: {
   busy: boolean;
   close: () => void;
   back: () => void;
-  create: (name: string) => void;
+  create: (name: string, subfolders: boolean) => void;
 }) {
   const [name, setName] = useState(props.value);
+  const [subfolders, setSubfolders] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => {
     input.current?.focus();
@@ -600,7 +616,7 @@ function NewFolderName(props: {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!props.busy && n && !problem) props.create(n);
+          if (!props.busy && n && !problem) props.create(n, !inGroup && subfolders);
         }}
       >
         <input
@@ -615,14 +631,26 @@ function NewFolderName(props: {
           onInput={(e) => setName(e.currentTarget.value)}
         />
         {problem && <p class="settings-state small">{problem}</p>}
-        <p class="dim small">{inGroup ? 'Se abre un space en ella.' : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}</p>
+        {!inGroup && (
+          <label class="kb-check">
+            <input type="checkbox" checked={subfolders} onChange={(e) => setSubfolders(e.currentTarget.checked)} />
+            Incluir todas sus subcarpetas (siempre al día)
+          </label>
+        )}
+        <p class="dim small">
+          {inGroup
+            ? 'Se abre un space en ella.'
+            : subfolders
+              ? 'Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ningún space, crea dentro las que quieras con su ＋.'
+              : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}
+        </p>
         <div class="sheet-actions">
-          <SkipPermissions />
+          {!(subfolders && !inGroup) && <SkipPermissions />}
           <button type="button" class="btn" onClick={props.back}>
             Atrás
           </button>
           <button type="submit" class="btn btn-primary" disabled={props.busy || !n || !!problem}>
-            Crear y abrir
+            {subfolders && !inGroup ? 'Crear' : 'Crear y abrir'}
           </button>
         </div>
       </form>

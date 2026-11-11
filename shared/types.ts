@@ -308,8 +308,10 @@ export type ActionOp =
   /**
    * Makes the folder `name` inside `parent` and opens a space there: one more inside a
    * folder with subfolders, or, anywhere else, a new one added to the host's folders.
+   * With `subfolders` (not inside a folder with subfolders) it is added as one of those,
+   * and no space opens: it offers the folders made inside it.
    */
-  | { op: 'createFolder'; parent: string; name: string; skipPermissions?: boolean }
+  | { op: 'createFolder'; parent: string; name: string; subfolders?: boolean; skipPermissions?: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }

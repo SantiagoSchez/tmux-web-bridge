@@ -130,6 +130,14 @@ test(
     await runAction(host, { op: 'createFolder', parent: '~/Proyectos', name: 'twb' }, null, machine);
     assert.deepEqual(tmux.filter((a) => a[0] === 'new-session').map((a) => a.at(-1)), [join(home, 'otros/nuevo'), join(home, 'Proyectos/blog'), join(home, 'Proyectos/twb')]);
 
+    // Added with subfolders, it opens nothing: what it offers are the folders made inside.
+    const group = await runAction(host, { op: 'createFolder', parent: '~/otros', name: 'grupo', subfolders: true }, null, machine);
+    assert.deepEqual(group, { folder: '~/otros/grupo' });
+    assert.ok(existsSync(join(home, 'otros/grupo')));
+    assert.deepEqual(saved, [...machine.folders, { name: 'grupo', path: '~/otros/grupo', subfolders: true }]);
+    assert.equal(tmux.filter((a) => a[0] === 'new-session').length, 3);
+
+    saved = null;
     await assert.rejects(runAction(host, { op: 'createFolder', parent: '~', name: 'otros' }, null, machine), /Ya existe ~\/otros en Prueba/);
     await assert.rejects(runAction(host, { op: 'createFolder', parent: '~/otros', name: 'p' }, null, machine), /Ya hay una carpeta llamada «p»/);
     await assert.rejects(runAction(host, { op: 'createFolder', parent: '~/no-existe', name: 'x' }, null, machine), /No existe la carpeta ~\/no-existe/);
