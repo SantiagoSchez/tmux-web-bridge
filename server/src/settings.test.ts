@@ -193,3 +193,19 @@ test('the projects block of an old config becomes a folder with subfolders, once
     assert.deepEqual(again.migrateProjects(hosts), []);
     assert.equal(again.value.folders.dev, undefined);
   }));
+
+test('only the hub sets which machines keep the Trello extension, and it survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.deepEqual(store.value.trelloExtension, {});
+    // From a client, as any other setting: ignored.
+    store.update({ trelloExtension: { mac: '/tmp/x' } } as never);
+    assert.deepEqual(store.value.trelloExtension, {});
+    store.setTrelloExtension('mac', '/Users/ana/.local/share/tmux-web-bridge/trello-extension');
+    store.setTrelloExtension('dev', '/home/ana/.local/share/tmux-web-bridge/trello-extension');
+    store.setTrelloExtension('dev', null);
+    assert.deepEqual(new SettingsStore(dir).value.trelloExtension, { mac: '/Users/ana/.local/share/tmux-web-bridge/trello-extension' });
+    // A hand-edited file keeps only absolute folders.
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ trelloExtension: { a: 'relativa', b: 3, c: '/ok/trello-extension' } }));
+    assert.deepEqual(new SettingsStore(dir).value.trelloExtension, { c: '/ok/trello-extension' });
+  }));

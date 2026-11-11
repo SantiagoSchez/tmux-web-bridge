@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
-import { kitDir, kitScript, kitTag, updateKit } from './kit.js';
+import { kitDir, kitScript, kitTag, trelloScript, updateKit } from './kit.js';
 
 test('kitTag takes only plain X.Y.Z versions', () => {
   assert.equal(kitTag('1.2.3'), 'v1.2.3');
@@ -24,6 +24,26 @@ test('kitScript checks out the tag without hooks and then applies the kit', () =
   assert.ok(s.indexOf('git status --porcelain') < s.indexOf('git fetch'));
   assert.ok(s.indexOf('git remote get-url origin') < s.indexOf('git fetch'));
   assert.match(s, /TWB_NO_TMUX_RELOAD=1 host-kit\/install\.sh --quiet/);
+});
+
+test('kitScript asks a kit that knows it for the Trello extension, only when the machine has it on', () => {
+  assert.match(kitScript(kitDir(null), 'v1.1.0'), /^trello=$/m);
+  const on = kitScript(kitDir(null), 'v1.1.0', true);
+  // An older install.sh refuses unknown options: the flag goes only to one that has it.
+  assert.match(on, /^trello=; grep -q -- '--trello-extension\)' host-kit\/install\.sh && trello=--trello-extension$/m);
+  assert.match(on, /install\.sh --quiet \$trello /);
+  assert.ok(on.indexOf('trello=;') > on.indexOf('checkout --quiet'));
+});
+
+test('trelloScript turns it on or off without touching tmux or Claude Code, and says where it is', () => {
+  const on = trelloScript(kitDir('/home/ana/twb'), true);
+  assert.match(on, /^dir='\/home\/ana\/twb'$/m);
+  assert.match(on, /anterior a la extensión de Trello/);
+  assert.match(on, /install\.sh --quiet --skip-tmux --skip-claude --trello-extension /);
+  assert.match(on, /TWB_TRELLO_DIR=/);
+  const off = trelloScript(kitDir(null), false);
+  assert.match(off, /--no-trello-extension /);
+  assert.doesNotMatch(off, /TWB_TRELLO_DIR=/);
 });
 
 /** A host whose shell fails like `err` (tmux answers nothing: no @twb_kit_dir). */

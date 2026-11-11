@@ -27,6 +27,11 @@
 #                   se recuerda en ~/.config/tmux-web-bridge/claude-dir para los hooks de git
 #   --skip-tmux     no toca ~/.tmux.conf
 #   --skip-claude   no toca ~/.claude (hooks y status line)
+#   --trello-extension     descarga la extensión de Trello de la release del kit en
+#                   ~/.local/share/tmux-web-bridge/trello-extension (para «Cargar descomprimida» en
+#                   Chrome) y la pone al día en cada actualización; se recuerda en
+#                   ~/.config/tmux-web-bridge/trello-extension. Lo activa el panel (Ajustes › Trello)
+#   --no-trello-extension  deja de ponerla al día (la carpeta se queda)
 #   --check         solo comprueba la conexión con el servidor central
 #   --quiet         solo cuenta lo que cambia (lo usan los hooks de git)
 #
@@ -39,7 +44,8 @@ KIT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-web-bridge"
 ENV_FILE="$CONF_DIR/notify.env"
 CLAUDE_DIR_FILE="$CONF_DIR/claude-dir"
-HUB="" HOST_ID="" TOKEN="" CLAUDE_DIR="" SKIP_TMUX=0 SKIP_CLAUDE=0 CHECK_ONLY=0 QUIET=0
+TRELLO_FILE="$CONF_DIR/trello-extension"
+HUB="" HOST_ID="" TOKEN="" CLAUDE_DIR="" SKIP_TMUX=0 SKIP_CLAUDE=0 CHECK_ONLY=0 QUIET=0 TRELLO=""
 STAMP="$(date +%Y%m%d-%H%M%S)"
 
 say() { printf '\033[1;35m›\033[0m %s\n' "$*"; }
@@ -55,9 +61,11 @@ while [ $# -gt 0 ]; do
         --claude-dir) CLAUDE_DIR="${2:-}"; shift 2 ;;
         --skip-tmux) SKIP_TMUX=1; shift ;;
         --skip-claude) SKIP_CLAUDE=1; shift ;;
+        --trello-extension) TRELLO=on; shift ;;
+        --no-trello-extension) TRELLO=off; shift ;;
         --check) CHECK_ONLY=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,35p' "$0"; exit 0 ;;
         *) die "Opción desconocida: $1" ;;
     esac
 done
@@ -219,6 +227,55 @@ if [ "$SKIP_CLAUDE" = 0 ]; then
         cat "$tmp" > "$SETTINGS"
         rm -f "$tmp"
         say "Hooks y status line de Claude Code en $SETTINGS (copia: $SETTINGS.bak.$STAMP)"
+    fi
+fi
+
+# ------------------------------------------------------------ extensión de Trello
+# La de la release del kit (su VERSION), del .zip que el workflow trello-extension adjunta a
+# cada release. Se sustituye la carpeta entera, en el mismo sitio: Chrome la carga por su ruta.
+# Un fallo (sin red, release sin el .zip todavía) no para el resto: se reintenta la próxima vez.
+if [ "$TRELLO" = on ]; then
+    printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/tmux-web-bridge/trello-extension" > "$TRELLO_FILE"
+elif [ "$TRELLO" = off ] && [ -f "$TRELLO_FILE" ]; then
+    rm -f "$TRELLO_FILE"
+    say "La extensión de Trello ya no se pone al día aquí (su carpeta se queda)"
+fi
+if [ -f "$TRELLO_FILE" ]; then
+    EXT_DIR="$(cat "$TRELLO_FILE")"
+    EXT_VERSION="$(cat "$KIT/../VERSION" 2>/dev/null || true)"
+    EXT_HAVE="$(jq -r '.version // empty' "$EXT_DIR/manifest.json" 2>/dev/null || true)"
+    # Solo una carpeta suya: lo que hay dentro se borra al poner la nueva.
+    case "$EXT_DIR" in /*/trello-extension) EXT_OK=1 ;; *) EXT_OK=0 ;; esac
+    if [ "$EXT_OK" = 0 ]; then
+        warn "Carpeta de la extensión de Trello inesperada en $TRELLO_FILE ($EXT_DIR): no se toca"
+    elif [ -z "$EXT_VERSION" ]; then
+        warn "Sin VERSION en el clon: no se sabe qué extensión de Trello descargar"
+    elif [ "$EXT_HAVE" = "$EXT_VERSION" ]; then
+        same "Extensión de Trello al día ($EXT_VERSION) en $EXT_DIR"
+    elif ! command -v unzip >/dev/null; then
+        warn "Falta unzip: no se puede poner al día la extensión de Trello (sudo apt install unzip)"
+    else
+        # La release de la que viene el clon (un fork tiene las suyas); TWB_RELEASES_URL, para las pruebas.
+        REPO_SLUG="$(git -C "$KIT" remote get-url origin 2>/dev/null | sed -nE 's#^.*github\.com[:/]([^/]+/[^/]+)$#\1#p' | sed 's/\.git$//')"
+        RELEASES="${TWB_RELEASES_URL:-https://github.com/${REPO_SLUG:-SantiagoSchez/tmux-web-bridge}/releases/download}"
+        ZIP_URL="$RELEASES/v$EXT_VERSION/twb-trello-extension-v$EXT_VERSION.zip"
+        tmp="$(mktemp -d)"
+        if curl -fsSL -m 60 -o "$tmp/ext.zip" "$ZIP_URL" && unzip -q "$tmp/ext.zip" -d "$tmp/ext" && [ -f "$tmp/ext/manifest.json" ]; then
+            mkdir -p "$(dirname "$EXT_DIR")"
+            rm -rf "$EXT_DIR.new"
+            mv "$tmp/ext" "$EXT_DIR.new"
+            rm -rf "$EXT_DIR"
+            mv "$EXT_DIR.new" "$EXT_DIR"
+            if [ -n "$EXT_HAVE" ]; then
+                say "Extensión de Trello $EXT_HAVE → $EXT_VERSION en $EXT_DIR (se recarga desde chrome://extensions o al reiniciar Chrome)"
+            else
+                say "Extensión de Trello $EXT_VERSION en $EXT_DIR: cárgala una vez en chrome://extensions › Cargar descomprimida"
+            fi
+        else
+            # Por la salida normal: el panel enseña lo que dice install.sh, no sus errores.
+            say "Aviso: no se pudo descargar la extensión de Trello $EXT_VERSION ($ZIP_URL); se reintenta en la próxima actualización"
+        fi
+        rm -rf "$tmp"
     fi
 fi
 

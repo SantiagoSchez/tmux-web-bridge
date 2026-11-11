@@ -74,6 +74,18 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 4
 .muted { margin: 0; color: var(--ds-text-subtle, #44546f); }
 .small { font-size: 12px; line-height: 16px; }
 .small:empty { display: none; }
+.update {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 24px 0;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--ds-background-information, #e9f2ff);
+  color: var(--ds-text-information, #0055cc);
+  font-size: 13px;
+}
+.update span { flex: 1; }
 .error { margin: 0; padding: 8px 12px; border-radius: 4px; background: var(--ds-background-danger, #ffeceb); color: var(--ds-text-danger, #ae2e24); }
 footer { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 24px 20px; }
 .btn {

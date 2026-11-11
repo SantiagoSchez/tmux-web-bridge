@@ -1,10 +1,12 @@
-# Adjunta la extensión de Trello, construida y en un .zip, a cada release de GitHub. A mano
+# Adjunta la extensión de Trello, construida y en un .zip, a cada release de GitHub. Arranca al
+# subir el tag y espera a que exista su release (en borrador): así el .zip está antes de
+# publicarla, y los kits que se actualizan al ver la release nueva ya lo encuentran. A mano
 # (workflow_dispatch), a una release que ya existe: por ejemplo, si este workflow falló.
 name: trello-extension
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -19,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v5
@@ -36,4 +38,7 @@ jobs:
       - run: pnpm --filter trello-extension build
       # Zipped here and not with the package script, so any tag works (even one older than it).
       - run: cd trello-extension/dist && zip -qr "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" .
-      - run: gh release upload "$TAG" "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" --clobber
+      - name: Espera a la release del tag (hasta 15 minutos) y le adjunta el .zip
+        run: |
+          for i in $(seq 90); do gh release view "$TAG" >/dev/null 2>&1 && break; sleep 10; done
+          gh release upload "$TAG" "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" --clobber

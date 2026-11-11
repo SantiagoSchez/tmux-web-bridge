@@ -65,7 +65,7 @@
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
 - **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
-- **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**. Está en [`trello-extension/`](trello-extension/README.md).
+- **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**, donde también se activa en la máquina donde usas Chrome: su kit la descarga y la pone al día en cada actualización. Está en [`trello-extension/`](trello-extension/README.md).
 
 ### 📊 Límites y cuentas de Claude siempre a la vista
 

@@ -2292,6 +2292,28 @@ body.dragging-host * {
   color: var(--text);
 }
 
+/* Settings › Trello: one row per machine, with whether its kit keeps the extension. */
+.trello-hosts {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.trello-hosts li + li {
+  border-top: 1px solid var(--surface0);
+}
+.trello-host {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.trello-host-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .ext-token {
   display: block;
   margin: 0 0 12px;

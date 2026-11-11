@@ -257,12 +257,14 @@ async function pasteText(host: HostMonitor, pane: string, text: string): Promise
   await host.exec.run(['paste-buffer', '-p', '-r', '-d', '-b', buffer, '-t', pane]);
 }
 
-/** A host's folders for «Nuevo space» and what is typed into a space opened there. */
+/** A host's folders for «Nuevo space», what is typed into a space opened there, and whether its kit keeps the Trello extension. */
 function machineFolders(host: HostMonitor): MachineFolders {
   return {
     folders: settings.value.folders[host.id] ?? [],
     command: settings.value.commands[host.id] ?? DEFAULT_COMMAND,
     save: (folders: SavedFolder[]) => settings.update({ folders: { [host.id]: folders } }),
+    trelloExtension: settings.value.trelloExtension[host.id],
+    saveTrelloExtension: (dir: string | null) => settings.setTrelloExtension(host.id, dir),
   };
 }
 

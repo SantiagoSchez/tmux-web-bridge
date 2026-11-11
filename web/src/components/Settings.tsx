@@ -9,7 +9,7 @@ import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Dialogs';
-import { ExtTokenSettings } from './ExtToken';
+import { ExtTokenSettings, TrelloMachines } from './ExtToken';
 import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
 import { TwoFactorSettings } from './TwoFactor';
@@ -101,7 +101,7 @@ const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo space» en cada máquina' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
   { id: 'keys', label: 'Teclas', hint: 'La barra de teclas del móvil' },
-  { id: 'trello', label: 'Trello', hint: 'Token de la extensión de Trello' },
+  { id: 'trello', label: 'Trello', hint: 'Token de la extensión e instalación en las máquinas' },
   { id: 'account', label: 'Cuenta', hint: 'Verificación en dos pasos y sesiones' },
 ];
 
@@ -181,7 +181,12 @@ function SettingsSection({ id }: { id: SettingsTab }) {
     case 'keys':
       return <KeybarSettings />;
     case 'trello':
-      return <ExtTokenSettings />;
+      return (
+        <>
+          <ExtTokenSettings />
+          <TrelloMachines />
+        </>
+      );
     case 'account':
       return <AccountSettings />;
   }

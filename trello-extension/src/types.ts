@@ -55,6 +55,10 @@ export interface LaunchOutcome {
 export type Request =
   | { type: 'context'; cardId: string }
   | { type: 'launch'; card: CardInfo; req: ExtLaunchRequest; destination: string }
-  | { type: 'openOptions' };
+  | { type: 'openOptions' }
+  /** A newer version waiting on disk (the kit downloaded it), or null. */
+  | { type: 'update' }
+  /** Its card in chrome://extensions, where it reloads. */
+  | { type: 'openExtensions' };
 
 export type Reply<T> = { ok: true; data: T } | { ok: false; error: string; setup?: boolean };

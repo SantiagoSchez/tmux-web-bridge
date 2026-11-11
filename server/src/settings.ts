@@ -26,6 +26,7 @@ const DEFAULTS: HubSettings = {
   keybarScale: KEYBAR_SCALE_DEFAULT,
   folders: {},
   commands: {},
+  trelloExtension: {},
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
@@ -63,6 +64,12 @@ function mergeCommands(current: HubSettings['commands'], patch: unknown): HubSet
   return next;
 }
 
+/** The machines with the Trello extension, as kept: host id → an absolute folder. */
+function sanitizeTrelloExtension(value: unknown): HubSettings['trelloExtension'] {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([, dir]) => typeof dir === 'string' && dir.startsWith('/') && !/[\n\0]/.test(dir)));
+}
+
 /**
  * Settings of the whole hub, chosen in the web app and kept in dataDir so every
  * device sees the same ones.
@@ -88,6 +95,7 @@ export class SettingsStore extends EventEmitter {
         keybarScale: sanitizeKeybarScale(saved.keybarScale) ?? DEFAULTS.keybarScale,
         folders: mergeFolders({}, saved.folders),
         commands: mergeCommands({}, saved.commands),
+        trelloExtension: sanitizeTrelloExtension(saved.trelloExtension),
       };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
@@ -134,6 +142,19 @@ export class SettingsStore extends EventEmitter {
     this.state = next;
     this.save();
     this.emit('change', next);
+  }
+
+  /**
+   * A machine starts (its folder) or stops (null) keeping the Trello extension up to date.
+   * Not in update(): only the hub sets it, once install.sh did it on the machine.
+   */
+  setTrelloExtension(hostId: string, dir: string | null): void {
+    const next = { ...this.state.trelloExtension };
+    if (dir) next[hostId] = dir;
+    else delete next[hostId];
+    this.state = { ...this.state, trelloExtension: next };
+    this.save();
+    this.emit('change', this.state);
   }
 
   /**

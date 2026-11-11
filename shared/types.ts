@@ -192,6 +192,12 @@ export interface HubSettings {
    * which gets the permission mode chosen; empty: only the shell). Patched like folders.
    */
   commands: Record<string, string>;
+  /**
+   * Machines that keep the Trello extension up to date with their kit (install.sh
+   * --trello-extension), by host id: the folder it is in there, for «Cargar descomprimida».
+   * Only the hub changes it, after running install.sh on the machine (op trelloExtension).
+   */
+  trelloExtension: Record<string, string>;
 }
 
 /** A folder of a machine added in the panel: «Nuevo space» opens a space there. */
@@ -373,6 +379,8 @@ export type ActionOp =
    * and no space opens: it offers the folders made inside it.
    */
   | { op: 'createFolder'; parent: string; name: string; subfolders?: boolean; skipPermissions?: boolean }
+  /** Whether the machine's kit downloads the Trello extension of its release (and keeps it up to date). */
+  | { op: 'trelloExtension'; on: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }

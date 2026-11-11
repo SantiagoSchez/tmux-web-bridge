@@ -9,6 +9,8 @@
   --brand-hover: #0055cc;
   --ok: #216e4e;
   --err: #ae2e24;
+  --info: #0055cc;
+  --info-bg: #e9f2ff;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -21,6 +23,8 @@
     --brand-hover: #85b8ff;
     --ok: #4bce97;
     --err: #f87168;
+    --info: #85b8ff;
+    --info-bg: #1c2b41;
   }
 }
 * { box-sizing: border-box; }
@@ -76,3 +80,6 @@ button:disabled { opacity: .6; cursor: progress; }
 .status li { margin-bottom: 4px; }
 .status .ok { color: var(--ok); }
 .status .err { color: var(--err); }
+/* A newer version on disk (downloaded by the twb kit), waiting for a reload. */
+.update:not([hidden]) { display: flex; align-items: center; gap: 12px; margin: 0 0 24px; padding: 12px 14px; border-radius: 8px; background: var(--info-bg); color: var(--info); }
+.update span { flex: 1; }

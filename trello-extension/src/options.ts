@@ -78,3 +78,13 @@ form.addEventListener('submit', async (e) => {
 void loadSettings().then((s) => {
   for (const f of FIELDS) input(f).value = s[f];
 });
+
+// A newer version on disk (the kit downloaded it): it loads with the reload button of its card.
+void chrome.runtime.sendMessage({ type: 'update' }).then((reply: { ok: boolean; data?: { version: string | null } }) => {
+  const version = reply?.ok ? reply.data?.version : null;
+  if (!version) return;
+  (document.getElementById('update-text') as HTMLElement).textContent =
+    `Versión ${version} lista (tienes la ${chrome.runtime.getManifest().version}): recárgala con el botón de su tarjeta en chrome://extensions, o reinicia Chrome.`;
+  document.getElementById('update-open')!.addEventListener('click', () => void chrome.runtime.sendMessage({ type: 'openExtensions' }));
+  (document.getElementById('update') as HTMLElement).hidden = false;
+});

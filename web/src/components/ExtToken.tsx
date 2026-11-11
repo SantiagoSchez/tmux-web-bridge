@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { ExtTokenInfo } from '../../../shared/types';
-import { dialog, toast } from '../state';
+import type { ExtTokenInfo, HostInfo } from '../../../shared/types';
+import { dialog, hosts, hubSettings, toast } from '../state';
+import { newer } from '../updates';
+import { hub } from '../ws';
 
 async function api<T>(path: string, post = false): Promise<T> {
   const res = await fetch(path, post ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } : undefined);
@@ -113,6 +115,81 @@ export function ExtTokenSettings() {
           {info.active ? 'Generar otro' : 'Generar token'}
         </button>
       </div>
+    </section>
+  );
+}
+
+/** The first kit whose install.sh downloads the Trello extension (--trello-extension). */
+const TRELLO_KIT = '1.17.0';
+
+/**
+ * Settings › Trello: the machines whose kit downloads the extension of its release (and
+ * again on every update), into a folder to load once in chrome://extensions.
+ */
+export function TrelloMachines() {
+  const list = hosts.value;
+  const on = hubSettings.value?.trelloExtension ?? {};
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const toggle = async (h: HostInfo, want: boolean) => {
+    setBusy(h.id);
+    try {
+      const res = await hub.action<{ dir: string | null }>(h.id, { op: 'trelloExtension', on: want });
+      toast(want ? `Extensión descargada en ${h.name}: ${res.dir}` : `${h.name} ya no pone al día la extensión`);
+    } catch {
+      // the error is already a toast
+    } finally {
+      setBusy(null);
+    }
+  };
+  const copy = (dir: string) =>
+    navigator.clipboard.writeText(dir).then(
+      () => toast('Carpeta copiada'),
+      () => toast('No se pudo copiar', 'error'),
+    );
+
+  return (
+    <section class="setting">
+      <h3>Instalarla en las máquinas</h3>
+      <p class="dim small">
+        En la máquina donde usas Chrome, el kit descarga la extensión de su versión y la pone al día en cada actualización. Cárgala una vez en{' '}
+        <code>chrome://extensions</code> › <strong>Cargar descomprimida</strong>, eligiendo su carpeta: cuando haya otra versión, la extensión avisa y se recarga
+        con un clic (o al reiniciar Chrome).
+      </p>
+      <ul class="trello-hosts">
+        {list.map((h) => {
+          const dir = on[h.id];
+          const oldKit = !h.kit || newer(TRELLO_KIT, h.kit);
+          const why = h.status !== 'ok' ? 'Sin conexión.' : oldKit && !dir ? `Necesita el kit ${TRELLO_KIT} o posterior: actualízalo desde el menú de la máquina.` : null;
+          return (
+            <li key={h.id}>
+              <div class="trello-host">
+                <span class="trello-host-text">
+                  <span class="project-name">{h.name}</span>
+                  {dir ? (
+                    <span class="project-hint">{dir}</span>
+                  ) : (
+                    why && <span class="project-hint">{why}</span>
+                  )}
+                </span>
+                {dir && (
+                  <button class="btn" onClick={() => void copy(dir)}>
+                    Copiar carpeta
+                  </button>
+                )}
+                <button
+                  class={`switch ${dir ? 'on' : ''}`}
+                  role="switch"
+                  aria-checked={!!dir}
+                  aria-label={`Extensión de Trello en ${h.name}`}
+                  disabled={busy !== null || (!dir && !!why)}
+                  onClick={() => void toggle(h, !dir)}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </section>
   );
 }

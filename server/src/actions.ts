@@ -2,7 +2,7 @@ import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, MAX_FOLDER
 import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
-import { updateKit } from './kit.js';
+import { setTrelloExtension, updateKit } from './kit.js';
 
 const SESSION_ID = /^\$\d+$/;
 const WINDOW_ID = /^@\d+$/;
@@ -104,6 +104,10 @@ export interface MachineFolders {
   command: string;
   /** Keeps a new list of the host's folders (a folder made with createFolder goes in). */
   save?: (folders: SavedFolder[]) => void;
+  /** Its kit keeps the Trello extension up to date: the folder it is in there. */
+  trelloExtension?: string;
+  /** Keeps whether it does, once install.sh did it there: its folder, or null. */
+  saveTrelloExtension?: (dir: string | null) => void;
 }
 
 /**
@@ -215,7 +219,7 @@ async function reboot(host: HostMonitor): Promise<void> {
 }
 
 /** Actions that only read: the tree needs no refresh after them. */
-export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs']);
+export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'trelloExtension']);
 
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
@@ -333,7 +337,12 @@ export async function runAction(
       await reboot(host);
       return;
     case 'updateKit':
-      return updateKit(host, latestRelease);
+      return updateKit(host, latestRelease, !!machine.trelloExtension);
+    case 'trelloExtension': {
+      const res = await setTrelloExtension(host, action.on === true);
+      machine.saveTrelloExtension?.(res.dir);
+      return res;
+    }
     default:
       throw new Error(`Operación desconocida: ${(action as { op: string }).op}`);
   }

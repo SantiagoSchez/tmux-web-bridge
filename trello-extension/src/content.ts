@@ -119,6 +119,14 @@ function openDialog(cardId: string, fallbackName: string): void {
     }
   };
 
+  // A newer version on disk: said above the form, with the way to load it.
+  ask<{ version: string | null }>({ type: 'update' }).then(({ version }) => {
+    if (!version || open?.close !== close) return;
+    const reload = el('button', { type: 'button', class: 'btn' }, 'Recargar');
+    reload.addEventListener('click', () => void ask({ type: 'openExtensions' }));
+    dialog.insertBefore(el('div', { class: 'update' }, el('span', {}, `Versión ${version} de la extensión lista: recárgala en chrome://extensions.`), reload), body);
+  }, () => {});
+
   ask<LaunchContext>({ type: 'context', cardId }).then((ctx) => {
     if (open?.close !== close) return;
     sub.textContent = ctx.card.name;

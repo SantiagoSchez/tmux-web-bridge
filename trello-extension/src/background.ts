@@ -114,6 +114,30 @@ async function launch(req: Extract<Request, { type: 'launch' }>): Promise<Launch
   return { result, movedTo, commented, warnings };
 }
 
+// ---------------------------------------------------------------- updates
+
+/**
+ * A newer version on disk than the one running: the kit put it in this extension's folder
+ * (install.sh --trello-extension). Chrome reads it on a reload, or when it starts again.
+ */
+async function waitingVersion(): Promise<string | null> {
+  try {
+    const disk = (await (await fetch(chrome.runtime.getURL('manifest.json'), { cache: 'no-store' })).json()) as { version?: string };
+    return disk.version && disk.version !== chrome.runtime.getManifest().version ? disk.version : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The icon tells it too, so it shows without opening a dialog. */
+async function markUpdate(): Promise<string | null> {
+  const version = await waitingVersion();
+  await chrome.action.setBadgeText({ text: version ? '↑' : '' });
+  await chrome.action.setTitle({ title: version ? `Trello → twb: versión ${version} lista, recárgala en chrome://extensions` : 'Trello → twb: opciones' });
+  return version;
+}
+void markUpdate();
+
 async function handle(msg: Request): Promise<unknown> {
   switch (msg.type) {
     case 'context':
@@ -122,6 +146,11 @@ async function handle(msg: Request): Promise<unknown> {
       return launch(msg);
     case 'openOptions':
       await chrome.runtime.openOptionsPage();
+      return null;
+    case 'update':
+      return { version: await markUpdate() };
+    case 'openExtensions':
+      await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
       return null;
   }
 }

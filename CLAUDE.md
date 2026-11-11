@@ -19,8 +19,9 @@ Al terminar una feature (desplegada y comprobada), propón sacar una release: di
 
 1. Sube `VERSION` según lo que haya desde la última release (`git log v<anterior>..`): parche para arreglos, menor para funciones nuevas, mayor para cambios que obliguen a tocar la configuración o reinstalar.
 2. Commit «Release X.Y.Z» y push (despliega el hub).
-3. `git tag vX.Y.Z && git push origin vX.Y.Z`, y `gh release create vX.Y.Z --title vX.Y.Z --notes "…"` con las novedades en español, agrupadas, a partir de los commits.
-4. Al publicarse, el workflow `trello-extension` (runner de GitHub) adjunta la extensión construida, `twb-trello-extension-vX.Y.Z.zip`: síguelo con `gh run watch` y comprueba que la release la lleva. Si falla, se relanza con `gh workflow run trello-extension -f tag=vX.Y.Z`.
+3. `git tag vX.Y.Z && git push origin vX.Y.Z`, y `gh release create vX.Y.Z --draft --title vX.Y.Z --notes "…"` con las novedades en español, agrupadas, a partir de los commits. En borrador: el panel aún no la anuncia.
+4. El tag lanza el workflow `trello-extension` (runner de GitHub), que adjunta al borrador la extensión construida, `twb-trello-extension-vX.Y.Z.zip`. Síguelo con `gh run watch`; si falla, se relanza con `gh workflow run trello-extension -f tag=vX.Y.Z`.
+5. Con el `.zip` en la release, publícala: `gh release edit vX.Y.Z --draft=false`. Antes no: las máquinas con la extensión activada (Ajustes › Trello) la descargan al actualizar el kit.
 
 ## Pruebas
 
