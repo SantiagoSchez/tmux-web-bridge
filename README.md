@@ -1,6 +1,29 @@
-# tmux web bridge
+<p align="center">
+  <img src="web/public/icons/icon.svg" alt="" width="96">
+</p>
 
-Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code que corren en ellas, desde el móvil o desde cualquier otro equipo. Solo dentro de tu tailnet de Tailscale o de tu LAN.
+<h1 align="center">tmux web bridge</h1>
+
+<p align="center">
+  <b>Tus sesiones de tmux y tus agentes de Claude Code, en el bolsillo.</b><br>
+  Un panel web autoalojado (<b>twb</b>) para seguir, responder y dirigir a Claude Code en todas tus máquinas desde el móvil o desde cualquier navegador, sin salir de tu tailnet de Tailscale ni de tu LAN.
+</p>
+
+<p align="center">
+  <a href="https://github.com/SantiagoSchez/tmux-web-bridge/releases/latest"><img src="https://img.shields.io/github/v/release/SantiagoSchez/tmux-web-bridge?label=versi%C3%B3n&color=ca9ee6" alt="Última versión"></a>
+  <img src="https://img.shields.io/badge/m%C3%A1quinas-macOS%20%C2%B7%20Linux%20%C2%B7%20WSL-8caaee" alt="macOS, Linux y WSL">
+  <img src="https://img.shields.io/badge/app-PWA%20instalable-a6d189" alt="PWA instalable">
+  <img src="https://img.shields.io/badge/autoalojado-sin%20nube-e5c890" alt="Autoalojado">
+</p>
+
+<p align="center">
+  <a href="#qué-hace">Qué hace</a> ·
+  <a href="#en-el-móvil">En el móvil</a> ·
+  <a href="#cómo-funciona">Cómo funciona</a> ·
+  <a href="#instalación">Instalación</a> ·
+  <a href="#cuentas-de-claude">Cuentas de Claude</a> ·
+  <a href="#seguridad">Seguridad</a>
+</p>
 
 ![twb en el escritorio](docs/screenshots/escritorio.png)
 
@@ -10,15 +33,29 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
   <img src="docs/screenshots/movil-ventana.png" alt="Una ventana de tmux en el móvil" width="300">
 </p>
 
+## Qué hace
+
+### 🙋 Claude te avisa y tú contestas desde donde estés
+
 - **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas.
-- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y titulada «space › ventana». Un toque abre la que quieras.
-- **Terminal completa** (xterm.js) con barra de teclas para el móvil, editable en ⚙️ **Ajustes › Teclas** para todos los dispositivos: reordenas los botones arrastrándolos, les cambias el nombre, los quitas o creas los tuyos (una tecla con Ctrl/Alt, o un texto como `/clear` con o sin Enter). Cada pestaña tiene su propia ventana actual, así que navegar desde el móvil no mueve el tmux del ordenador.
+- **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
+- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «space › ventana». Un toque abre la que quieras.
+
+### 📱 Una terminal de verdad en el móvil
+
+- **Terminal completa** (xterm.js) con una barra de teclas para el móvil que editas en ⚙️ **Ajustes › Teclas** para todos los dispositivos: reordenas los botones arrastrándolos, les cambias el nombre, los quitas o creas los tuyos (una tecla con Ctrl/Alt, o un texto como `/clear` con o sin Enter). Cada pestaña tiene su propia ventana actual, así que navegar desde el móvil no mueve el tmux del ordenador.
 - **Seleccionar y copiar con el dedo**: pulsación larga, asas para ajustar cada extremo y una lupa sobre el dedo. Al copiar (con el dedo, arrastrando en tmux o con Option+arrastrar y Cmd+C), los párrafos de Claude Code salen enteros: sin los saltos de línea que pone al ancho de la pantalla, sin la barra «▎» de las citas y sin su «●» ni su sangría. Si eso cambia algo, el aviso trae «Copiar tal cual» para copiar el texto como estaba.
 - **Dictado sin salir de tu red**: mantienes pulsado 🎤 (o el atajo, Ctrl+Shift+Espacio por defecto) mientras hablas, sueltas y el texto aparece en el panel. En los ajustes eliges entre mantener o tocar y volver a tocar, y cambias el atajo. Lo transcribe Parakeet v3 en el servidor central, y un modelo local (Qwen3.5 4B) quita las muletillas y corrige los términos técnicos con lo que hay en la pantalla.
-- **Control completo** de spaces, ventanas y paneles; «Nuevo space» abre un proyecto y arranca `claude` en él. Las carpetas que ofrece cada máquina se añaden en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
-- **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
+
+### 🖥️ Todas tus máquinas en un solo panel
+
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
-- **Límites de uso** de Claude (5 h, semanal y el semanal de cada modelo) de todas tus cuentas, y quién está conectado al panel, siempre a la vista.
+- **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él.
+- **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
+
+### 📊 Límites y cuentas de Claude siempre a la vista
+
+- **Límites de uso** de Claude (5 h, semanal y el semanal de cada modelo) de todas tus cuentas, y quién está conectado al panel.
 - **Cambiar de cuenta de Claude con un toque**: «Usar aquí» (o el menú de la cuenta) pasa el Claude Code de una máquina a otra cuenta, sin reiniciar los Claude que estén abiertos. Ver [Cuentas de Claude](#cuentas-de-claude).
 
 ## En el móvil
@@ -36,15 +73,17 @@ Panel web (**twb**) para usar tus sesiones de tmux, y los agentes de Claude Code
   </tr>
 </table>
 
-Toca un vídeo para verlo a más resolución (WebM).
+<p align="center"><sub>Toca un vídeo para verlo a más resolución (WebM).</sub></p>
 
 ## Cómo funciona
 
-```
- móvil / PC ──HTTPS──▶ servidor central (Node + Fastify + node-pty, :7681)
-                         ├── tmux local ........ (opcional)
-                         └── ssh <máquina> ──▶ tmux    (una conexión por máquina)
- cada máquina: hooks de Claude ──POST /api/notify──▶ servidor central ──Web Push──▶ móvil
+```mermaid
+flowchart LR
+  B["📱 Móvil / 💻 PC"] -- "HTTPS + WebSocket" --> H["Servidor central<br/>Node · Fastify · node-pty<br/>:7681"]
+  H -- "SSH, una conexión por máquina" --> M["tmux de cada máquina"]
+  H -. "opcional" .-> L["tmux local"]
+  M -- "hooks de Claude:<br/>POST /api/notify" --> H
+  H -- "Web Push" --> B
 ```
 
 El servidor central lee el árbol de tmux de cada máquina cada segundo y lo manda a los navegadores por WebSocket. Cada terminal es una sesión de tmux agrupada (`_tw-*`) que se destruye al cerrar la pestaña. Los estados salen de las opciones `@pane_icon`/`@win_icon` que pone el kit de cada máquina.
@@ -59,28 +98,35 @@ El servidor central lee el árbol de tmux de cada máquina cada segundo y lo man
 
 ## Instalación
 
+En resumen: un **servidor central** siempre encendido, **acceso SSH** desde él a cada máquina, el **kit** en cada máquina con Claude Code y la app en el **móvil**. El dictado es opcional.
+
 ### 1. Servidor central
 
 Necesita un Linux siempre encendido. Hay dos formas:
 
-- **Con systemd y `tailscale serve`** (Node.js 22+, `build-essential`, `python3`, `ssh`):
-  ```sh
-  git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
-  ~/tmux-web-bridge/deploy/install-hub.sh
-  ```
-  Compila, crea `config.yaml` con un `notifyToken` aleatorio, genera la clave SSH e instala el servicio de usuario. Después: pon tus máquinas en `config.yaml`, activa `sudo loginctl enable-linger $USER` y publica con `sudo tailscale serve --bg 7681`. Se entra con tu identidad de Tailscale, sin contraseña.
-- **Con Docker, detrás de tu proxy y con contraseña** (por ejemplo, en un LXC de Proxmox). Así funciona también desde la LAN sin Tailscale:
-  ```sh
-  mkdir -p ~/docker/stacks/twb && cd ~/docker/stacks/twb
-  git clone https://github.com/SantiagoSchez/tmux-web-bridge.git app
-  cp app/deploy/docker/compose.yaml . && cp app/config.example.yaml config.yaml
-  mkdir -p data ssh tailscale/state && chmod 700 ssh
-  ssh-keygen -t ed25519 -N '' -C twb -f ssh/id_ed25519
-  docker compose run --rm -it twb node server/dist/index.js hash-password   # → auth.passwordHash
-  printf 'TS_HOSTNAME=mi-twb\nTS_AUTHKEY=tskey-auth-...\nTWB_BIND=10.0.0.5\n' > .env && chmod 600 .env
-  docker compose up -d --build
-  ```
-  Tailscale va como contenedor auxiliar (modo userspace) y el servidor central entra a las máquinas por su proxy SOCKS5. Los detalles están comentados en `compose.yaml` y `config.example.yaml`. En el proxy, admite WebSocket y sube `proxy_read_timeout`, porque las terminales pasan horas abiertas.
+**Con systemd y `tailscale serve`** (Node.js 22+, `build-essential`, `python3`, `ssh`):
+
+```sh
+git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
+~/tmux-web-bridge/deploy/install-hub.sh
+```
+
+Compila, crea `config.yaml` con un `notifyToken` aleatorio, genera la clave SSH e instala el servicio de usuario. Después: pon tus máquinas en `config.yaml`, activa `sudo loginctl enable-linger $USER` y publica con `sudo tailscale serve --bg 7681`. Se entra con tu identidad de Tailscale, sin contraseña.
+
+**Con Docker, detrás de tu proxy y con contraseña** (por ejemplo, en un LXC de Proxmox). Así funciona también desde la LAN sin Tailscale:
+
+```sh
+mkdir -p ~/docker/stacks/twb && cd ~/docker/stacks/twb
+git clone https://github.com/SantiagoSchez/tmux-web-bridge.git app
+cp app/deploy/docker/compose.yaml . && cp app/config.example.yaml config.yaml
+mkdir -p data ssh tailscale/state && chmod 700 ssh
+ssh-keygen -t ed25519 -N '' -C twb -f ssh/id_ed25519
+docker compose run --rm -it twb node server/dist/index.js hash-password   # → auth.passwordHash
+printf 'TS_HOSTNAME=mi-twb\nTS_AUTHKEY=tskey-auth-...\nTWB_BIND=10.0.0.5\n' > .env && chmod 600 .env
+docker compose up -d --build
+```
+
+Tailscale va como contenedor auxiliar (modo userspace) y el servidor central entra a las máquinas por su proxy SOCKS5. Los detalles están comentados en `compose.yaml` y `config.example.yaml`. En el proxy, admite WebSocket y sube `proxy_read_timeout`, porque las terminales pasan horas abiertas.
 
 ### 2. Acceso SSH a cada máquina
 
@@ -101,7 +147,13 @@ git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 ~/tmux-web-bridge/host-kit/install.sh --hub https://<url-del-panel> --host <id-en-config.yaml> --token <notifyToken>
 ```
 
-Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones. Para actualizarlo, ver [Actualizaciones](#actualizaciones). Con `install.sh --check` se comprueba la conexión.
+Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Con `install.sh --check` se comprueba la conexión. Para actualizarlo, ver [Actualizaciones](#actualizaciones).
+
+<details>
+<summary>Dotfiles compartidos y otra carpeta de configuración de Claude Code</summary>
+
+Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones.
+</details>
 
 <details>
 <summary>Usar tu propia status line en vez de la del kit</summary>
@@ -111,19 +163,9 @@ El panel saca los límites de uso de una opción global de tmux que publica la s
 
 La status line del kit muestra los límites 5h/7d al final, salvo en un panel estrecho (el móvil, donde ya están en la franja de la app). Si la barra de tmux ya los muestra (por ejemplo, con un módulo de catppuccin), quítalos de la status line de todas las máquinas en ⚙️ **Ajustes › Máquinas › Límites en la status line**: el servidor central pone `@claude_limits_in_status` en el tmux de cada una y la vuelve a poner si tmux se reinicia, por encima de lo que diga su `~/.tmux.conf`.
 
-### Cuentas de Claude
-
-El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con ellos lee el uso de todas, también de las que no tienen ningún Claude abierto, y puede pasar cualquier máquina de una cuenta a otra. Todo se gestiona desde la franja de límites:
-
-- **Las cuentas que ya usas aparecen solas.** El servidor central mira por SSH con qué cuenta está Claude Code en cada máquina (al arrancar y cada 10 minutos) y se queda con ella. Para añadir otra, pulsa el nombre de una cuenta › **Añadir otra cuenta**: se abre el login de Claude en otra pestaña y pegas el código que muestra, como con `/login`.
-- **«Usar aquí»**, con una ventana abierta, pasa el Claude Code de esa máquina a esa cuenta (en pantalla ancha; **●** marca dónde está en uso). El nombre de cada cuenta abre su menú: las máquinas donde está en uso y «Usar en una máquina…», con la de la ventana abierta la primera; en el móvil, se cambia desde ahí. Los Claude abiertos siguen con la cuenta nueva sin reiniciarse: desde el siguiente mensaje (o en unos 30 segundos, en un Mac que guarde la sesión en el Llavero).
-- **Un inicio de sesión vale para una sola máquina a la vez**, porque cada token de refresco de Claude solo se puede usar una vez: si dos copias del mismo login se renovaran por su lado, una dejaría a la otra sin sesión. Al cambiar, el login que tenía la máquina vuelve al servidor central como «sesión libre» y la máquina recibe una sesión libre de la cuenta nueva. Para tener la misma cuenta en dos máquinas a la vez hacen falta dos inicios de sesión con ella: si no hay ninguna libre, TWB te pide uno.
-- **Qué toca en cada máquina**: la credencial (`~/.claude/.credentials.json`; en macOS, el ítem «Claude Code-credentials» del Llavero si Claude Code llega a él, y el mismo fichero si no) y `oauthAccount` en `~/.claude.json`, con los mismos bloqueos que usa Claude Code para que un cambio no se cruce con una renovación del token. Solo la carpeta de configuración por defecto (no `CLAUDE_CONFIG_DIR`). En macOS, el Llavero de inicio de sesión no se abre por SSH ni a un tmux arrancado fuera de la sesión gráfica, y Claude Code guarda entonces la sesión en ese fichero; el hub usa lo que encuentre: el Llavero si le contesta, el fichero si no. Un Claude abierto desde la sesión gráfica del Mac (fuera de tmux) lee antes el Llavero, así que puede seguir con la cuenta que haya allí.
-- **Dónde se guardan**: en `accounts.json`, dentro de `dataDir` del servidor central, legible solo por su usuario. El uso se consulta como mucho cada 5 minutos por cuenta, para no pasarse del límite de peticiones de Anthropic.
-
 ### 4. En el móvil (Android)
 
-Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y en ⚙️ **Ajustes › Dispositivo › Notificaciones**.
+Abre la URL del panel en Chrome, **Añadir a pantalla de inicio**, y activa las notificaciones en ⚙️ **Ajustes › Dispositivo › Notificaciones**.
 
 ### 5. Dictado (opcional)
 
@@ -134,13 +176,31 @@ Se activa en ⚙️ **Ajustes › Dictado** y vale para todos los dispositivos. 
 
 Los modelos más pequeños (Qwen3.5 0.8B y 2B) se probaron con dictados en español y no sirven para esto: el 0.8B cambia el sentido de las frases y el 2B casi no limpia. El navegador necesita HTTPS para usar el micrófono.
 
+## Cuentas de Claude
+
+El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con ellos lee el uso de todas, también de las que no tienen ningún Claude abierto, y puede pasar cualquier máquina de una cuenta a otra. Todo se gestiona desde la franja de límites:
+
+- **Las cuentas que ya usas aparecen solas.** El servidor central mira por SSH con qué cuenta está Claude Code en cada máquina (al arrancar y cada 10 minutos) y se queda con ella. Para añadir otra, pulsa el nombre de una cuenta › **Añadir otra cuenta**: se abre el login de Claude en otra pestaña y pegas el código que muestra, como con `/login`.
+- **«Usar aquí»**, con una ventana abierta, pasa el Claude Code de esa máquina a esa cuenta (en pantalla ancha; **●** marca dónde está en uso). El nombre de cada cuenta abre su menú: las máquinas donde está en uso y «Usar en una máquina…», con la de la ventana abierta la primera; en el móvil, se cambia desde ahí.
+- **Sin reiniciar nada**: los Claude abiertos siguen con la cuenta nueva desde su siguiente mensaje (o en unos 30 segundos, en un Mac que guarde la sesión en el Llavero).
+
+<details>
+<summary>Cómo funciona por dentro</summary>
+
+- **Un inicio de sesión vale para una sola máquina a la vez**, porque cada token de refresco de Claude solo se puede usar una vez: si dos copias del mismo login se renovaran por su lado, una dejaría a la otra sin sesión. Al cambiar, el login que tenía la máquina vuelve al servidor central como «sesión libre» y la máquina recibe una sesión libre de la cuenta nueva. Para tener la misma cuenta en dos máquinas a la vez hacen falta dos inicios de sesión con ella: si no hay ninguna libre, TWB te pide uno.
+- **Qué toca en cada máquina**: la credencial (`~/.claude/.credentials.json`; en macOS, el ítem «Claude Code-credentials» del Llavero si Claude Code llega a él, y el mismo fichero si no) y `oauthAccount` en `~/.claude.json`, con los mismos bloqueos que usa Claude Code para que un cambio no se cruce con una renovación del token. Solo la carpeta de configuración por defecto (no `CLAUDE_CONFIG_DIR`).
+- **macOS**: el Llavero de inicio de sesión no se abre por SSH ni a un tmux arrancado fuera de la sesión gráfica, y Claude Code guarda entonces la sesión en ese fichero; el hub usa lo que encuentre: el Llavero si le contesta, el fichero si no. Un Claude abierto desde la sesión gráfica del Mac (fuera de tmux) lee antes el Llavero, así que puede seguir con la cuenta que haya allí.
+- **Dónde se guardan**: en `accounts.json`, dentro de `dataDir` del servidor central, legible solo por su usuario. El uso se consulta como mucho cada 5 minutos por cuenta, para no pasarse del límite de peticiones de Anthropic.
+</details>
+
 ## Actualizaciones
 
 La versión está en [`VERSION`](VERSION) y cada una se publica como release en GitHub. Una vez al día el servidor central consulta la última release (solo hace esa petición, no envía ningún dato) y, si es más nueva que él o que el kit de alguna máquina, el panel lo avisa con una franja arriba que se queda hasta que la cierras. Cerrada, no vuelve hasta la siguiente release. Se desactiva para todos los dispositivos en ⚙️ **Ajustes › Máquinas › Buscar actualizaciones**.
 
-Para actualizar el servidor central, `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker).
+- **Servidor central**: `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker).
+- **Kit de las máquinas**: desde el propio panel, con el botón **Actualizar** del aviso o con **Actualizar el kit a vX.Y.Z** en el menú de cada máquina. Tras confirmar, el servidor central entra en ella por el mismo SSH de siempre, pasa el clon a la última release (`git fetch --tags` y `git checkout vX.Y.Z`, que deja el clon en HEAD separado), vuelve a aplicar el kit y recarga su `tmux.conf`. Nunca fuerza nada: con cambios locales en el clon, no lo toca. No se cierra ningún space y los Claude abiertos no se reinician.
 
-El kit de las máquinas se actualiza desde el propio panel: con el botón **Actualizar** del aviso, o con **Actualizar el kit a vX.Y.Z** en el menú de cada máquina. Tras confirmar, el servidor central entra en ella por el mismo SSH de siempre, pasa el clon a la última release (`git fetch --tags` y `git checkout vX.Y.Z`, que deja el clon en HEAD separado), vuelve a aplicar el kit y recarga su `tmux.conf`. Nunca fuerza nada: con cambios locales en el clon, no lo toca. No se cierra ningún space y los Claude abiertos no se reinician. A mano es lo mismo, en el clon:
+A mano es lo mismo, en el clon:
 
 ```sh
 git fetch --tags && git checkout vX.Y.Z   # un hook de git vuelve a aplicar el kit
@@ -150,7 +210,7 @@ Con el clon en una release, `git pull` ya no funciona («You are not currently o
 
 ## Seguridad
 
-- Dos formas de entrar, nunca mezcladas (`auth.method`):
+- **Dos formas de entrar, nunca mezcladas** (`auth.method`):
   - `tailscale`: solo por `tailscale serve`, con la cabecera `Tailscale-User-Login` y la lista `auth.allowedLogins`.
   - `password`: detrás de cualquier otro proxy, con hash scrypt, cookie `HttpOnly`, límite de intentos, verificación en dos pasos opcional (TOTP) y cierre remoto de sesiones. Las cabeceras de Tailscale se ignoran.
 - La API y los WebSocket exigen sesión y mismo origen; `/api/notify` exige el `notifyToken`.
