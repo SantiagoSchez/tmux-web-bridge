@@ -5,7 +5,7 @@ import type { ActionOp, ProjectList } from '../../../shared/types';
 import { newSession, openSessionWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
-import { DirBrowser, useDirBrowser } from './Folders';
+import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
 import { IconClose } from './icons';
 import { hub } from '../ws';
 
@@ -610,7 +610,7 @@ function NewFolderName(props: {
   const saved = hubSettings.value?.folders[props.d.host.id] ?? [];
   const inGroup = saved.some((f) => f.subfolders && f.path === props.parent);
   const n = name.trim();
-  const problem = !n ? null : (folderNameProblem(n) ?? (!inGroup && saved.some((f) => f.name === n) ? `Ya hay una carpeta llamada «${n}».` : null));
+  const problem = !n ? null : inGroup ? folderNameProblem(n) : nameProblem(saved, n);
   return (
     <Sheet title="Nueva carpeta" subtitle={`en ${props.shown} · ${props.d.host.name}`} onClose={props.close}>
       <form
@@ -631,12 +631,7 @@ function NewFolderName(props: {
           onInput={(e) => setName(e.currentTarget.value)}
         />
         {problem && <p class="settings-state small">{problem}</p>}
-        {!inGroup && (
-          <label class="kb-check">
-            <input type="checkbox" checked={subfolders} onChange={(e) => setSubfolders(e.currentTarget.checked)} />
-            Incluir todas sus subcarpetas (siempre al día)
-          </label>
-        )}
+        {!inGroup && <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />}
         <p class="dim small">
           {inGroup
             ? 'Se abre un space en ella.'

@@ -13,7 +13,7 @@ function folderCount(n: number): string {
 }
 
 /** Why a folder can't be added (or renamed) with this name, or null. */
-function nameProblem(list: SavedFolder[], name: string, except?: SavedFolder): string | null {
+export function nameProblem(list: SavedFolder[], name: string, except?: SavedFolder): string | null {
   const why = folderNameProblem(name);
   if (why) return why;
   return list.some((f) => f !== except && f.name === name.trim()) ? `Ya hay una carpeta llamada «${name.trim()}».` : null;
@@ -167,6 +167,16 @@ function CommandSetting({ hostId, value }: { hostId: string; value: string }) {
   );
 }
 
+/** «Subcarpetas» for a folder about to be added: it offers each folder inside instead. */
+export function SubfoldersCheck({ checked, onChange }: { checked: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label class="kb-check">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.currentTarget.checked)} />
+      Incluir todas sus subcarpetas (siempre al día)
+    </label>
+  );
+}
+
 /** Moving around a machine's folders, from `start` (or a path typed by hand). */
 export function useDirBrowser(hostId: string, start = '~') {
   const [at, setAt] = useState<DirListing | null>(null);
@@ -275,10 +285,7 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
   return (
     <div class="folder-picker">
       <DirBrowser b={b} />
-      <label class="kb-check">
-        <input type="checkbox" checked={subfolders} onChange={(e) => setSubfolders(e.currentTarget.checked)} />
-        Incluir todas sus subcarpetas (siempre al día)
-      </label>
+      <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />
       <label class="folder-name">
         <span class="dim small">{subfolders ? 'Nombre (para reconocerla en esta lista)' : 'Nombre del space'}</span>
         <input
