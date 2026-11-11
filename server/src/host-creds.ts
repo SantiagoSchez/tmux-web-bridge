@@ -17,8 +17,8 @@ import type { TmuxExec } from './exec.js';
 //   ~30 s, so a running Claude picks a switch up on its own.
 // - who it is: `oauthAccount` in ~/.claude.json.
 //
-// A switch takes the locks Claude Code takes for the same files (proper-lockfile:
-// a directory per lock, stale after a minute at most): the two of a token refresh,
+// A switch takes the locks Claude Code takes for the same files (a directory per
+// lock, stale after a minute at most): the two of a token refresh,
 // ~/.claude/.oauth_refresh.lock and ~/.claude.lock, and the config's,
 // ~/.claude.json.lock. With them held, a refresh cannot land halfway through a switch,
 // and Claude Code finds the new login when it gets them back.
