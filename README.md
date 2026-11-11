@@ -26,13 +26,13 @@
 </p>
 
 <p align="center">
-  <img src="docs/videos/escritorio.webp" alt="En el escritorio: se da permiso a un Claude, pasan los tests y queda terminado; se contesta la pregunta de otro con las flechas; la vista de ventanas muestra todos los agentes en vivo" width="100%">
+  <img src="docs/videos/escritorio.webp" alt="En el escritorio: se da permiso a un Claude, pasan los tests y queda terminado; se contesta la pregunta de otro con las flechas; con «Usar aquí», el MacBook pasa a otra cuenta de Claude y la barra de límites lo refleja; la vista de ventanas muestra todos los agentes en vivo" width="100%">
 </p>
 
 <table>
   <tr>
     <td width="300" align="center">
-      <img src="docs/videos/movil.webp" alt="En el móvil: se da permiso con el Enter de la barra de teclas, se desliza la cabecera para cambiar de ventana, se contesta una pregunta con las flechas y se abre el cajón con todas las máquinas" width="280">
+      <img src="docs/videos/movil.webp" alt="En el móvil: se da permiso con el Enter de la barra de teclas, se desliza la cabecera para cambiar de ventana, se contesta una pregunta con las flechas, se abre el cajón con todas las máquinas y, desde el menú de una cuenta, la máquina pasa a otra cuenta de Claude" width="280">
     </td>
     <td>
       <h3>Y desde el móvil, igual de rápido</h3>
@@ -40,6 +40,7 @@
       <p>👉 <b>Otra ventana</b>: deslizas la cabecera.</p>
       <p>🙋 <b>Una pregunta</b>: eliges la respuesta con <code>↑</code> <code>↓</code>.</p>
       <p>☰ <b>Todas tus máquinas</b>: deslizas desde el borde.</p>
+      <p>🔁 <b>Otra cuenta de Claude</b>: tocas su nombre en la barra de límites y eliges la máquina.</p>
       <p>🔔 Y si no estás mirando, te llega una <b>notificación</b> con la pregunta y botones para responder.</p>
     </td>
   </tr>
