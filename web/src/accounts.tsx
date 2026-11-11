@@ -61,27 +61,31 @@ function canSwitch(hostId: string): boolean {
   return h?.status === 'ok' && !(accountsInfo.value?.switching ?? []).includes(hostId);
 }
 
-/** The machines that do not use the account yet, to pick one: a list only this step needs. */
-function pickHost(acc: ClaudeAccount, except?: string): void {
+/**
+ * The machines that do not use the account yet, to pick one: a list only this step
+ * needs. The open window's machine comes first.
+ */
+function pickHost(acc: ClaudeAccount, here?: string): void {
+  const free = hosts.value.filter((h) => !acc.activeOn.includes(h.id));
   dialog.value = {
     kind: 'menu',
     title: `Usar ${acc.alias} en…`,
-    items: hosts.value
-      .filter((h) => h.id !== except && !acc.activeOn.includes(h.id))
-      .map((h) => ({ label: h.name, icon: '○', disabled: !canSwitch(h.id), run: () => void useAccount(h.id, acc) })),
+    items: [...free.filter((h) => h.id === here), ...free.filter((h) => h.id !== here)].map((h) => ({
+      label: h.id === here ? `${h.name} (esta ventana)` : h.name,
+      icon: h.id === here ? '●' : '○',
+      disabled: !canSwitch(h.id),
+      run: () => void useAccount(h.id, acc),
+    })),
   };
 }
 
 /**
  * An account's menu: where it is in use (as tags, however many machines there are),
- * switching the open window's machine to it, or another one, and rename, add, remove.
+ * switching a machine to it (picked in a second step), and rename, add, remove.
  */
 export function accountMenu(acc: ClaudeAccount, here?: string): void {
   const items: MenuItem[] = [];
-  if (here && !acc.activeOn.includes(here))
-    items.push({ label: `Usar en ${hostName(here)}`, icon: '●', disabled: !canSwitch(here), run: () => void useAccount(here, acc) });
-  const others = hosts.value.filter((h) => h.id !== here && !acc.activeOn.includes(h.id));
-  if (others.length) items.push({ label: here ? 'Usar en otra máquina…' : 'Usar en una máquina…', icon: '○', run: () => pickHost(acc, here) });
+  if (hosts.value.some((h) => !acc.activeOn.includes(h.id))) items.push({ label: 'Usar en una máquina…', icon: '○', run: () => pickHost(acc, here) });
   if (acc.needsLogin) items.push({ label: 'Iniciar sesión otra vez', icon: '↻', run: () => (dialog.value = { kind: 'claudeLogin', account: acc.id }) });
   items.push(
     { label: 'Renombrar', icon: '✎', run: () => rename(acc) },
