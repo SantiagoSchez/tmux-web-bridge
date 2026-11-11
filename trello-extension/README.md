@@ -19,14 +19,14 @@ Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se de
 
 ## Instalación
 
-1. En la raíz del repo, `pnpm install && pnpm --filter trello-extension build`, que deja la extensión en `trello-extension/dist/`.
-2. En `chrome://extensions`, activa el **Modo de desarrollador**, pulsa **Cargar descomprimida** y elige la carpeta `trello-extension/dist/`.
+1. Descarga `twb-trello-extension-vX.Y.Z.zip` de la [release de GitHub](https://github.com/SantiagoSchez/tmux-web-bridge/releases/latest) de la misma versión que tu servidor central y descomprímelo en una carpeta que vayas a conservar: Chrome la carga desde ahí cada vez. También puedes construirla tú: en la raíz del repo, `pnpm install && pnpm --filter trello-extension build`, que la deja en `trello-extension/dist/`.
+2. En `chrome://extensions`, activa el **Modo de desarrollador**, pulsa **Cargar descomprimida** y elige esa carpeta (la que tiene `manifest.json`).
 3. Se abren las opciones (también con el icono de la extensión). Rellena:
    - **Dirección del panel de twb** y **token de la extensión**: el token se genera en el panel, en ⚙️ **Ajustes › Trello**, y solo se muestra una vez.
    - **API key y token de Trello**: los de un Power-Up tuyo, en [trello.com/power-ups/admin](https://trello.com/power-ups/admin).
 4. **Guardar y probar** pide permiso para llegar al panel y comprueba las dos conexiones.
 
-Para actualizarla: `pnpm --filter trello-extension build` y el botón de recargar de la extensión en `chrome://extensions`. Después, recarga la pestaña de Trello. Una release nueva de twb puede cambiar la API (`/api/ext/*`): conviene actualizar a la vez el servidor central y la extensión.
+Para actualizarla: descomprime el `.zip` de la release nueva encima de la misma carpeta (o `pnpm --filter trello-extension build`) y pulsa el botón de recargar de la extensión en `chrome://extensions`; sus opciones se conservan. Después, recarga la pestaña de Trello. Una release nueva de twb puede cambiar la API (`/api/ext/*`): conviene actualizar a la vez el servidor central y la extensión.
 
 ## Cómo funciona
 
@@ -46,6 +46,7 @@ Desde la raíz del repo, `pnpm typecheck` y `pnpm test` la incluyen junto con el
 
 ```sh
 pnpm --filter trello-extension dev        # build en modo vigilancia
+pnpm --filter trello-extension package    # build y twb-trello-extension-vX.Y.Z.zip, el de las releases
 pnpm --filter trello-extension typecheck
 pnpm --filter trello-extension test
 ```

@@ -9,6 +9,7 @@ on:
       - '**.md'
       - 'host-kit/**'
       - 'trello-extension/**'
+      - '.github/workflows/trello-extension.yml'
       - 'deploy/install-hub.sh'
       - 'deploy/tmux-web-bridge.service'
   workflow_dispatch:

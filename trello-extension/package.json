@@ -5,6 +5,7 @@
   "description": "Chrome extension: launch a Claude Code task on a Trello card through twb",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "package": "node scripts/build.mjs && node scripts/package.mjs",
     "dev": "node scripts/build.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "tsx --test src/*.test.ts"

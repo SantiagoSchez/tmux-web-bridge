@@ -4,3 +4,4 @@ data/
 config.yaml
 *.log
 .DS_Store
+trello-extension/*.zip
