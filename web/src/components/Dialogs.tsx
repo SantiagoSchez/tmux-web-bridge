@@ -350,12 +350,15 @@ interface FolderItem {
   missing?: boolean;
 }
 
-/** An added folder with subfolders: a small heading, with the folders inside under it. */
+/**
+ * A small heading with folders under it: an added folder with subfolders (its `path`)
+ * and the folders inside, or «Sueltas», the added folders without subfolders.
+ */
 interface FolderGroup {
   key: string;
   name: string;
-  path: string;
-  missing: boolean;
+  path?: string;
+  missing?: boolean;
   children: FolderItem[];
 }
 
@@ -384,7 +387,8 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const rows = useMemo(() => {
     const lq = q.toLowerCase();
     const hit = (name: string) => !lq || name.toLowerCase().includes(lq);
-    const out: (FolderItem | FolderGroup)[] = [];
+    const out: FolderGroup[] = [];
+    const loose: FolderItem[] = [];
     for (const f of list?.folders ?? []) {
       const gone = f.missing ? ' · no está' : '';
       if (f.subfolders) {
@@ -393,12 +397,14 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         const children = hit(f.name) ? all : all.filter((c) => hit(c.name));
         if (!lq || children.length) out.push({ key: `${f.path}\t*`, name: f.name, path: f.path, missing: f.missing, children });
       } else if (hit(f.name)) {
-        out.push({ key: `${f.path}\t`, name: f.name, hint: `${abs(f.path)}${gone}`, folder: f.path, missing: f.missing });
+        loose.push({ key: `${f.path}\t`, name: f.name, hint: `${abs(f.path)}${gone}`, folder: f.path, missing: f.missing });
       }
     }
+    // After the folders with subfolders: on their own they would read as one of the group above.
+    if (loose.length) out.push({ key: '\tsueltas', name: 'Sueltas', children: loose });
     return out;
   }, [list, q]);
-  const usable = rows.flatMap((r) => ('children' in r ? r.children : r.missing ? [] : [r]));
+  const usable = rows.flatMap((r) => r.children.filter((i) => !i.missing));
   const exact = usable.filter((i) => i.name === q);
 
   const run = async (op: ActionOp) => {
@@ -482,21 +488,23 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           </button>
         </li>
         {!list && <li class="dim pad">Cargando…</li>}
-        {rows.map((r) =>
-          'children' in r ? (
+        {rows.map((r) => {
+          const path = r.path;
+          return (
             <li key={r.key} class="project-group">
               <div class={`project-parent ${r.missing ? 'missing' : ''}`}>
                 <span class="project-parent-text">
-                  <span class="project-parent-name">{r.name}</span> <span class="project-parent-path">{abs(r.path)}</span>
+                  <span class="project-parent-name">{r.name}</span>
+                  {path && <span class="project-parent-path"> {abs(path)}</span>}
                   {r.missing && ' · no está'}
                 </span>
-                {!r.missing && (
+                {path && !r.missing && (
                   <button
                     class="icon-btn small-btn"
                     disabled={busy}
                     aria-label={`Nueva carpeta en ${r.name}`}
-                    title={`Nueva carpeta en ${abs(r.path)}`}
-                    onClick={() => setStep({ kind: 'name', parent: r.path })}
+                    title={`Nueva carpeta en ${abs(path)}`}
+                    onClick={() => setStep({ kind: 'name', parent: path })}
                   >
                     ＋
                   </button>
@@ -508,10 +516,8 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
                 !r.missing && <div class="project-empty dim small">Vacía</div>
               )}
             </li>
-          ) : (
-            item(r)
-          ),
-        )}
+          );
+        })}
         {list && q && !rows.length && <li class="dim pad">Ninguna carpeta con ese nombre.</li>}
       </ul>
       <div class="sheet-actions">

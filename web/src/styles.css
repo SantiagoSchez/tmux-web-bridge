@@ -1839,7 +1839,8 @@ body.dragging-host * {
   text-decoration: line-through;
 }
 /* A folder with subfolders in «Nuevo space»: a small heading (its name, where it is, and ＋ to make
-   one more inside), with the folders inside under it by name only. */
+   one more inside), with the folders inside under it by name only. «Sueltas», the added folders
+   without subfolders, is one more heading, with their whole paths. */
 .project-group {
   margin-top: 6px;
 }
@@ -1847,6 +1848,7 @@ body.dragging-host * {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 36px;
   padding: 0 0 0 8px;
   border-bottom: 1px solid var(--surface0);
 }
@@ -1868,7 +1870,6 @@ body.dragging-host * {
 .project-parent .icon-btn {
   font-size: 18px;
 }
-/* Indented, so a folder on its own after the group does not read as one of them. */
 .project-group > .menu {
   margin-bottom: 6px;
   padding-left: 14px;
