@@ -18,10 +18,11 @@ Cada push a `master` despliega el hub automáticamente (`.github/workflows/deplo
 Al terminar una feature (desplegada y comprobada), propón sacar una release: di qué versión tocaría y qué entraría, y sácala solo cuando el usuario diga que sí. Los bugfixes y retoques sueltos no lo piden por sí solos, pero entran en la siguiente. Versión SemVer en `VERSION` (la leen el hub y el `tmux.conf` del kit, que la publica en `@twb_kit_version`); el panel avisa cuando la última release de GitHub es más nueva que el hub o que el kit de alguna máquina.
 
 1. Sube `VERSION` según lo que haya desde la última release (`git log v<anterior>..`): parche para arreglos, menor para funciones nuevas, mayor para cambios que obliguen a tocar la configuración o reinstalar.
-2. Commit «Release X.Y.Z» y push (despliega el hub).
+2. Commit «Release X.Y.Z», sin subir aún `master`.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z`, y `gh release create vX.Y.Z --draft --title vX.Y.Z --notes "…"` con las novedades en español, agrupadas, a partir de los commits. En borrador: el panel aún no la anuncia.
 4. El tag lanza el workflow `trello-extension` (runner de GitHub), que adjunta al borrador la extensión construida, `twb-trello-extension-vX.Y.Z.zip`. Síguelo con `gh run watch`; si falla, se relanza con `gh workflow run trello-extension -f tag=vX.Y.Z`.
 5. Con el `.zip` en la release, publícala: `gh release edit vX.Y.Z --draft=false`. Antes no: las máquinas con la extensión activada (Ajustes › Trello) la descargan al actualizar el kit.
+6. Ahora sí, `git push` de `master`: despliega el hub, que al arrancar ve la release ya publicada y avisa de los kits por actualizar. (Si se sube antes, el hub vuelve a mirar cada 2 minutos hasta que salga la release de su versión.)
 
 ## Pruebas
 

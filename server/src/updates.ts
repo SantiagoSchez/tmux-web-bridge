@@ -5,6 +5,8 @@ import type { UpdateInfo } from '../../shared/types.js';
 
 export const REPO = 'SantiagoSchez/tmux-web-bridge';
 const DAY_MS = 24 * 3600_000;
+/** How often it asks while the running version has no release yet (GitHub allows 60 an hour). */
+const WAITING_MS = 2 * 60_000;
 
 /** The version this hub was built from: VERSION at the repo root (copied next to server/ in the image). */
 function readVersion(): string {
@@ -55,17 +57,20 @@ export class UpdateChecker extends EventEmitter {
   }
 
   /**
-   * Checks now if the last check is a day old, and then every hour asks again (deploys
-   * restart the hub often). Without the running version's release (just deployed, its
-   * release not out yet) it asks every hour until it is.
+   * Checks now if the last check is a day old (deploys restart the hub often), and then
+   * once a day. Without the running version's release (just deployed, its release still a
+   * draft) it asks every few minutes until it is out: the kits' notice waits for it.
    */
   start(): void {
     const due = () => {
       const { enabled, checkedAt, current } = this.state;
-      if (enabled && (Date.now() - checkedAt >= DAY_MS || current?.version !== this.current)) void this.check();
+      if (!enabled) return;
+      const waiting = current?.version !== this.current;
+      if (Date.now() - checkedAt >= (waiting ? WAITING_MS : DAY_MS)) void this.check();
     };
-    due();
-    setInterval(due, 3600_000).unref();
+    // At start, also when its release is missing: a new version was just deployed.
+    if (this.state.enabled && (Date.now() - this.state.checkedAt >= DAY_MS || this.state.current?.version !== this.current)) void this.check();
+    setInterval(due, WAITING_MS).unref();
   }
 
   setEnabled(enabled: boolean): void {
