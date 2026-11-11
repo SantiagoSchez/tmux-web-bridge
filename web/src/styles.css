@@ -1093,8 +1093,10 @@ body.dragging-host * {
   text-align: left;
 }
 .git-icon {
-  font-family: var(--mono);
-  margin-right: 4px;
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 5px;
+  color: var(--overlay1);
 }
 
 /* The condensed list (Ajustes › Este dispositivo): each row one line, lower, less space between

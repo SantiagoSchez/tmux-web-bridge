@@ -79,3 +79,20 @@ export const IconGrip = () => (
     <circle cx="15" cy="18" r="1" />
   </Svg>
 );
+/** A git branch, as in the detailed list of spaces. */
+export const IconBranch = () => (
+  <Svg size={13}>
+    <circle cx="6" cy="18" r="2.5" />
+    <circle cx="18" cy="6" r="2.5" />
+    <path d="M6 3v12.5M18 8.5a9 9 0 0 1-9 9" />
+  </Svg>
+);
+/** A git worktree: a folder with a branch in it. */
+export const IconWorktree = () => (
+  <Svg size={13}>
+    <path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.7.9l.8 1.2a2 2 0 0 0 1.7.9H20a2 2 0 0 1 2 2v4" />
+    <circle cx="14" cy="13" r="1.8" />
+    <circle cx="20" cy="18" r="1.8" />
+    <path d="M14 15v6M18.2 18H17a3 3 0 0 1-3-3" />
+  </Svg>
+);

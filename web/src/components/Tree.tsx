@@ -7,7 +7,7 @@ import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
 import { hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
 import { updateInfo } from '../updates';
-import { IconClose, IconMore, IconPlus } from './icons';
+import { IconBranch, IconClose, IconMore, IconPlus, IconWorktree } from './icons';
 
 /** Home: what needs you first, then every host → space → window. */
 export function Tree() {
@@ -347,10 +347,7 @@ function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined 
     <span class="win-meta win-where">
       {git ? (
         <span class="win-git" title={`${git.worktree ? `Worktree de git: ${git.worktree}` : `Rama de git: ${git.branch}`}\n${path}`}>
-          {/* Nerd Font icons (in the mono font, not the UI's): a tree, or the branch symbol. */}
-          <span class="git-icon" aria-hidden="true">
-            {git.worktree ? '\uf1bb' : '\ue0a0'}
-          </span>
+          <span class="git-icon">{git.worktree ? <IconWorktree /> : <IconBranch />}</span>
           {git.worktree ?? git.branch}
         </span>
       ) : (
