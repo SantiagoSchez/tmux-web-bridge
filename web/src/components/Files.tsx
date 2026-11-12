@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { GitChange, GitChanges, GitDiffMode } from '../../../shared/types';
+import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
 import { toast } from '../state';
 import { Sheet } from './Dialogs';
 
@@ -387,5 +387,56 @@ function DiffView({ origin, changes, file, close, back }: { origin: FileOrigin; 
         </div>
       )}
     </Sheet>
+  );
+}
+
+// ---------------------------------------------------------------- the window's ± button
+
+/** «12», «1,2k». */
+function count(n: number): string {
+  return n < 1000 ? String(n) : `${(n / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })}k`;
+}
+
+/**
+ * Next to the window's ··· : the lines added and removed in its repo since HEAD, read
+ * when the window opens, every 15 s while it is on screen and when its Claude changes
+ * state. Opens «Ficheros cambiados». Not shown outside a repo.
+ */
+export function ChangesButton({ host, window, paneId }: { host: HostInfo; window: WindowInfo; paneId?: string }) {
+  const [stat, setStat] = useState<GitStat | null>(null);
+  const origin: FileOrigin = { host: host.id, window: window.id, pane: paneId };
+  useEffect(() => {
+    let alive = true;
+    const ctl = new AbortController();
+    const load = () => {
+      if (document.hidden) return;
+      fetch(`/api/git/stat?${qs({ host: origin.host, window: origin.window, pane: origin.pane })}`, { signal: ctl.signal })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((s: GitStat | null) => alive && setStat(s), () => {});
+    };
+    load();
+    const t = setInterval(load, 15_000);
+    document.addEventListener('visibilitychange', load);
+    return () => {
+      alive = false;
+      ctl.abort();
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', load);
+    };
+  }, [host.id, window.id, paneId, window.state, host.status]);
+  if (!stat) return null;
+  const clean = !stat.added && !stat.removed && !stat.files;
+  const label = clean ? 'Ficheros cambiados: ninguno' : `Ficheros cambiados: ${stat.files}, +${stat.added} −${stat.removed} líneas`;
+  return (
+    <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin)}>
+      {clean ? (
+        <span class="changes-none">±</span>
+      ) : (
+        <>
+          <span class="changes-add">+{count(stat.added)}</span>
+          <span class="changes-del">−{count(stat.removed)}</span>
+        </>
+      )}
+    </button>
   );
 }

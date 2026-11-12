@@ -22,7 +22,7 @@ import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
-import { FileError, gitChanges, gitDiff, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
+import { FileError, gitChanges, gitDiff, gitStat, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -701,6 +701,19 @@ app.get('/api/git/changes', async (req, reply) => {
   if (!cwd) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
   try {
     return await gitChanges(host, cwd, q.mode === 'branch' ? 'branch' : 'head');
+  } catch (err) {
+    return fileError(reply, err);
+  }
+});
+
+app.get('/api/git/stat', async (req, reply) => {
+  const q = req.query as { host?: string; window?: string; pane?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  const cwd = paneFolders(host, q.window, q.pane)[0];
+  if (!cwd || host.snapshot.status !== 'ok') return null;
+  try {
+    return await gitStat(host, cwd);
   } catch (err) {
     return fileError(reply, err);
   }

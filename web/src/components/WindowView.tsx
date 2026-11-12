@@ -12,6 +12,7 @@ import { PendingStrip } from './Assist';
 import { IconBack, IconMore } from './icons';
 import { MicButton } from './Mic';
 import { EDGE } from './Drawer';
+import { ChangesButton } from './Files';
 import { TerminalView } from './TerminalView';
 
 interface Props {
@@ -136,6 +137,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
           </div>
         </div>
         {!desktop && <ConnectionsButton count={connections.value.length} />}
+        <ChangesButton host={host} window={window} paneId={pane?.id} />
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
           <IconMore />
         </button>

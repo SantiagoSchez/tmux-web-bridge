@@ -1,6 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { posix } from 'node:path';
-import type { GitChange, GitChanges, GitDiffMode } from '../../shared/types.js';
+import type { GitChange, GitChanges, GitDiffMode, GitStat } from '../../shared/types.js';
 import type { HostMonitor } from './host.js';
 
 // Files of a machine for the panel's viewer: a path seen in a pane (relative to its
@@ -175,6 +175,36 @@ export async function gitChanges(host: HostMonitor, cwd: string, mode: GitDiffMo
   }
   res.files.sort((a, b) => a.path.localeCompare(b.path));
   return res;
+}
+
+/**
+ * How much the repo a pane is in has changed since HEAD, for the window's ± button:
+ * lines added and removed (an untracked text file counts as all added) and
+ * files touched. null when the pane is not in a repo.
+ */
+export async function gitStat(host: HostMonitor, cwd: string): Promise<GitStat | null> {
+  // Portable to macOS (no head -z, no xargs -r). Untracked text files count all their lines; binary ones (grep -I), none.
+  const script =
+    `cd ${shPath(cwd)} 2>/dev/null || exit 0; root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; cd "$root"; echo REPO; ` +
+    `git diff --numstat HEAD 2>/dev/null; ` +
+    `printf 'U\\t%s\\t' "$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')"; ` +
+    `git ls-files --others --exclude-standard -z | xargs -0 grep -Ihc '' 2>/dev/null | awk '{ s += $1 } END { print s + 0 }'`;
+  const out = await host.exec.shell(script, 15_000);
+  const lines = out.split('\n');
+  if (lines[0] !== 'REPO') return null;
+  const stat: GitStat = { added: 0, removed: 0, files: 0 };
+  for (const l of lines.slice(1)) {
+    const [a, d, rest] = l.split('\t');
+    if (a === 'U') {
+      stat.files += Number(d) || 0;
+      stat.added += Number(rest) || 0;
+    } else if (rest !== undefined) {
+      stat.files++;
+      stat.added += Number(a) || 0;
+      stat.removed += Number(d) || 0;
+    }
+  }
+  return stat;
 }
 
 /** The diff of one file of the repo at `root` (a path inside it): since HEAD or since the branch's base commit. */

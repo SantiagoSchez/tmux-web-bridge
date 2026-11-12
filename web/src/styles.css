@@ -3058,3 +3058,30 @@ textarea.text-input {
   font-size: 14px;
   margin: 4px 0;
 }
+
+/* The window header's ± button: lines added and removed in its repo. */
+.changes-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--surface1);
+  font: 600 13px var(--mono);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.changes-btn:hover {
+  background: var(--surface0);
+}
+.changes-add {
+  color: var(--green);
+}
+.changes-del {
+  color: var(--red);
+}
+.changes-btn.clean {
+  color: var(--overlay1);
+  padding: 0 12px;
+}

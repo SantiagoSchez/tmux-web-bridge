@@ -576,6 +576,13 @@ export interface GitChange {
   from?: string;
 }
 
+/** GET /api/git/stat: how much a window's repo changed since HEAD (null: not in a repo). */
+export interface GitStat {
+  added: number;
+  removed: number;
+  files: number;
+}
+
 /** GET /api/git/changes: the repo a pane is in and its changed files. */
 export interface GitChanges {
   root: string;
