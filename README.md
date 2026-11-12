@@ -26,7 +26,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/videos/escritorio.webp" alt="En el escritorio: se da permiso a un Claude, pasan los tests y queda terminado; se contesta la pregunta de otro con las flechas; con «Usar aquí», el MacBook pasa a otra cuenta de Claude y la barra de límites lo refleja; la vista de ventanas muestra todos los agentes en vivo" width="100%">
+  <img src="docs/videos/escritorio.webp" alt="En el escritorio: se da permiso a un Claude, pasan los tests y queda terminado; se contesta la pregunta de otro con las flechas; con «Usar aquí», el MacBook pasa a otra cuenta de Claude y la barra de límites lo refleja; con el ＋ de un espacio se elige una carpeta y se abre en ella un Claude nuevo; la vista de ventanas muestra todos los agentes en vivo" width="100%">
 </p>
 
 <table>
