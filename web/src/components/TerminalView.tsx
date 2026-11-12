@@ -2,6 +2,8 @@ import { ClipboardAddon, type ClipboardSelectionType, type IClipboardProvider } 
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { fileLinkProvider } from '../fileLinks';
+import { openFile } from './Files';
 import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
@@ -643,6 +645,8 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   const wsRef = useRef<WebSocket | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const target = useRef({ window: window.id, pane: pane.id });
+  const hostId = useRef(host.id);
+  hostId.current = host.id;
   const [mods, setMods] = useState<Set<Mod>>(new Set());
   const modsRef = useRef(mods);
   modsRef.current = mods;
@@ -771,6 +775,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon(activate));
+    // File paths (Update(src/x.ts), /tmp/shot.png…) open in the panel's viewer.
+    term.registerLinkProvider(
+      fileLinkProvider(term, (e, path, line) => {
+        if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
+        openFile({ host: hostId.current, window: target.current.window, pane: target.current.pane }, path, line);
+      }),
+    );
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider(term)));
     const unicode = new Unicode11Addon();
     term.loadAddon(unicode);

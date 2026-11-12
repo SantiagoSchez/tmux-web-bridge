@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -22,6 +22,7 @@ import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
+import { FileError, gitChanges, gitDiff, paneFolders, readHostFile, resolvePath } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -639,6 +640,79 @@ app.post('/api/automations/:id/run', async (req, reply) => {
     return await automations.runNow((req.params as { id: string }).id);
   } catch (err) {
     return reply.code(400).send({ error: (err as Error).message });
+  }
+});
+
+// ---------------------------------------------------------------- files and git of a pane
+
+const MIME: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp',
+  ico: 'image/x-icon', svg: 'image/svg+xml', pdf: 'application/pdf',
+};
+
+function fileError(reply: FastifyReply, err: unknown) {
+  return reply.code(err instanceof FileError ? err.status : 500).send({ error: (err as Error).message });
+}
+
+/**
+ * A file of a machine, for the viewer: a path seen in a window (relative to its panes'
+ * folders). Images and PDFs with their type, anything else as text; never run by the
+ * browser (sandboxed), even opened on its own.
+ */
+app.get('/api/files', async (req, reply) => {
+  const q = req.query as { host?: string; window?: string; pane?: string; path?: string; probe?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  try {
+    const raw = String(q.path ?? '');
+    const isRel = !raw.startsWith('/') && !raw.startsWith('~');
+    const folders = isRel ? paneFolders(host, q.window, q.pane) : [''];
+    if (!folders.length) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
+    // probe: only whether it is there, and its whole path (an image or a PDF loads from the URL after).
+    const { path, data } = await readHostFile(
+      host,
+      folders.map((f) => resolvePath(raw, f)),
+      q.probe === '1',
+    );
+    if (q.probe === '1') return { path };
+    const ext = path.split('.').pop()?.toLowerCase() ?? '';
+    // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
+    if (ext !== 'pdf') reply.header('Content-Security-Policy', 'sandbox');
+    return reply
+      .header('Content-Type', MIME[ext] ?? 'text/plain; charset=utf-8')
+      .header('X-Content-Type-Options', 'nosniff')
+      .header('Cache-Control', 'no-store')
+      .header('X-File-Path', encodeURIComponent(path))
+      .send(data);
+  } catch (err) {
+    return fileError(reply, err);
+  }
+});
+
+app.get('/api/git/changes', async (req, reply) => {
+  const q = req.query as { host?: string; window?: string; pane?: string; mode?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  const cwd = paneFolders(host, q.window, q.pane)[0];
+  if (!cwd) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
+  try {
+    return await gitChanges(host, cwd, q.mode === 'branch' ? 'branch' : 'head');
+  } catch (err) {
+    return fileError(reply, err);
+  }
+});
+
+app.get('/api/git/diff', async (req, reply) => {
+  const q = req.query as { host?: string; root?: string; file?: string; mode?: string; base?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  if (!q.root?.startsWith('/')) return reply.code(400).send({ error: 'Falta el repo' });
+  try {
+    const mode: GitDiffMode = q.mode === 'branch' ? 'branch' : 'head';
+    const diff = await gitDiff(host, q.root, String(q.file ?? ''), mode, q.base);
+    return reply.header('Content-Type', 'text/plain; charset=utf-8').header('Cache-Control', 'no-store').send(diff);
+  } catch (err) {
+    return fileError(reply, err);
   }
 });
 

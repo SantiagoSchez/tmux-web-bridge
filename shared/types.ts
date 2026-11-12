@@ -565,6 +565,27 @@ export interface AutomationInfo extends Automation {
   runs: AutomationRun[];
 }
 
+/** «Ficheros cambiados»: since HEAD (what has no commit yet), or since the branch left the main one. */
+export type GitDiffMode = 'head' | 'branch';
+
+/** A changed file: M modified, A added, D deleted, R renamed (from), ? untracked, U in conflict. */
+export interface GitChange {
+  /** Relative to the repo's root. */
+  path: string;
+  status: 'M' | 'A' | 'D' | 'R' | '?' | 'U';
+  from?: string;
+}
+
+/** GET /api/git/changes: the repo a pane is in and its changed files. */
+export interface GitChanges {
+  root: string;
+  branch: string;
+  mode: GitDiffMode;
+  /** The main branch it is compared with, and the commit where they part (branch mode). */
+  base?: { ref: string; commit: string };
+  files: GitChange[];
+}
+
 /**
  * What happened, for the panel's «Actividad»: a Claude asked, wanted permission or
  * finished (and how long it worked), a task was launched (from where), an automation

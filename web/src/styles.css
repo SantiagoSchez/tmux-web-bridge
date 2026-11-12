@@ -2756,11 +2756,7 @@ textarea.text-input {
 .tl-blue, .tl-sky { background: color-mix(in srgb, var(--blue) 30%, var(--base)); }
 .tl-lime { background: color-mix(in srgb, var(--teal) 30%, var(--base)); }
 .tl-pink { background: color-mix(in srgb, var(--lavender) 30%, var(--base)); }
-@media (min-width: 900px) {
-  .trello-sheet {
-    max-width: 640px;
-  }
-}
+
 
 /* ------------------------------------------------------------ automations */
 
@@ -2831,14 +2827,13 @@ textarea.text-input {
 .act-skipped .project-hint {
   color: var(--yellow);
 }
-@media (min-width: 900px) {
-  .activity-sheet {
-    max-width: 640px;
-  }
-}
 
-/* A narrow phone: the header's buttons (grid, activity, Trello, connections, settings) take the room the words would. */
-@media (max-width: 420px) {
+
+/* A narrow header (a phone, or the sidebar): its buttons (grid, activity, Trello, connections, settings) take the room the words would. */
+.topbar {
+  container-type: inline-size;
+}
+@container (max-width: 440px) {
   .pill-word {
     display: none;
   }
@@ -2848,4 +2843,157 @@ textarea.text-input {
   .topbar .conn-btn {
     padding: 0 8px;
   }
+}
+
+/* ------------------------------------------------------------ file viewer and diffs */
+
+.file-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.file-actions .seg {
+  flex: 1;
+  min-width: 220px;
+}
+.file-image {
+  display: flex;
+  justify-content: center;
+  background: repeating-conic-gradient(var(--surface0) 0% 25%, transparent 0% 50%) 50% / 16px 16px;
+  border-radius: 10px;
+}
+.file-image img {
+  max-width: 100%;
+  height: auto;
+}
+.file-pdf {
+  width: 100%;
+  height: 70dvh;
+  border: 0;
+  border-radius: 10px;
+  background: var(--base);
+}
+.code-view {
+  font: 12px/1.5 var(--mono);
+  background: var(--crust);
+  border-radius: 10px;
+  padding: 6px 0;
+  overflow-x: auto;
+}
+.code-line {
+  display: flex;
+  min-width: max-content;
+}
+.code-line.hit {
+  background: color-mix(in srgb, var(--yellow) 22%, transparent);
+}
+.code-num {
+  flex: none;
+  width: 4.5ch;
+  padding-right: 1ch;
+  text-align: right;
+  color: var(--overlay0);
+  user-select: none;
+}
+.code-text {
+  white-space: pre;
+  padding-right: 12px;
+}
+.diff-sign {
+  flex: none;
+  width: 2ch;
+  text-align: center;
+  user-select: none;
+}
+.diff-add {
+  background: color-mix(in srgb, var(--green) 16%, transparent);
+}
+.diff-add .diff-sign {
+  color: var(--green);
+}
+.diff-del {
+  background: color-mix(in srgb, var(--red) 16%, transparent);
+}
+.diff-del .diff-sign {
+  color: var(--red);
+}
+.diff-hunk {
+  padding: 4px 10px;
+  margin-top: 4px;
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
+  white-space: pre;
+}
+.diff-meta {
+  padding: 2px 10px;
+  color: var(--overlay1);
+}
+.git-badge {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font: 700 12px var(--mono);
+  background: var(--surface0);
+}
+.git-m { color: var(--yellow); }
+.git-a, .git-u { color: var(--green); }
+.git-d { color: var(--red); }
+.git-r { color: var(--blue); }
+.markdown {
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.markdown pre {
+  background: var(--crust);
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+}
+.markdown code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+}
+.markdown :not(pre) > code {
+  background: var(--surface0);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.markdown img {
+  max-width: 100%;
+}
+.markdown table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--surface1);
+  padding: 4px 8px;
+}
+.markdown a {
+  color: var(--blue);
+}
+.markdown blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--surface1);
+  color: var(--subtext0);
+}
+/* Wider than the other sheets on a big screen: code and diffs need the room. */
+.layout.desktop .sheet.file-sheet {
+  max-width: min(960px, 92vw);
+}
+.layout.desktop .sheet.trello-sheet,
+.layout.desktop .sheet.activity-sheet {
+  max-width: 640px;
+}
+.sheet-head p {
+  overflow-wrap: anywhere;
 }
