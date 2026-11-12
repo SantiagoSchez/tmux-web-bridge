@@ -112,8 +112,8 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
     // The tile takes the shape of the window, so there are no bands around it. Cells are 0.6 × 1.2.
     <li class="tile-item" style={size ? { '--ratio': size.cols / (size.rows * 2) } : undefined}>
       <button
-        class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''}`}
-        title={window.state ? `${label} · ${STATE_LABEL[window.state]}` : label}
+        class={`tile ${window.state ? `state-${window.state}` : ''} ${current ? 'current' : ''} ${window.temp ? 'temp' : ''}`}
+        title={[label, window.state && STATE_LABEL[window.state], window.temp && 'temporal'].filter(Boolean).join(' · ')}
         onClick={() => openWindow(host.id, window.id)}
       >
         <span class="tile-head">

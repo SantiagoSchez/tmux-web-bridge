@@ -30,6 +30,7 @@ import { HostOrder } from './order.js';
 import { PreviewCache } from './preview.js';
 import { PushService } from './push.js';
 import { SettingsStore } from './settings.js';
+import { TempFolders } from './temp.js';
 import { openTerminal } from './terminal.js';
 import { TwoFactor } from './twofactor.js';
 import { UpdateChecker } from './updates.js';
@@ -201,6 +202,7 @@ function broadcast(msg: ServerMessage): void {
 }
 
 for (const host of hosts.values()) {
+  new TempFolders(host);
   host.on('change', (info) => {
     broadcast({ t: 'host', host: info });
     let added = false;

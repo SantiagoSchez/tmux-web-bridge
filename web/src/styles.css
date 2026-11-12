@@ -1078,6 +1078,15 @@ body.dragging-host * {
 .win.current {
   background: var(--surface0);
 }
+/* A throwaway window (in a temp folder): a dashed outline inside the row. */
+.win.temp::after {
+  content: '';
+  position: absolute;
+  inset: 4px 6px;
+  border: 1px dashed var(--overlay0);
+  border-radius: 8px;
+  pointer-events: none;
+}
 .win.current::before {
   content: '';
   position: absolute;
@@ -1290,6 +1299,16 @@ body.dragging-host * {
 .tile:hover {
   border-color: var(--surface2);
   border-top-color: var(--state-color, var(--surface2));
+}
+/* A throwaway window: dashed sides and bottom; the top keeps its state colour. */
+.tile.temp {
+  border-style: solid dashed dashed;
+  border-color: var(--overlay0);
+  border-top-color: var(--state-color, var(--overlay0));
+}
+.tile.temp:hover {
+  border-color: var(--overlay1);
+  border-top-color: var(--state-color, var(--overlay1));
 }
 .tile.current {
   border-color: color-mix(in srgb, var(--mauve) 60%, transparent);

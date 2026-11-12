@@ -328,6 +328,19 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
           onInput={(e) => setValue(e.currentTarget.value)}
         />
         <div class="sheet-actions">
+          {d.extra && (
+            <button
+              type="button"
+              class="btn"
+              title={d.extra.title}
+              onClick={() => {
+                close();
+                d.extra!.run();
+              }}
+            >
+              {d.extra.label}
+            </button>
+          )}
           <button type="button" class="btn" onClick={close}>
             Cancelar
           </button>
@@ -495,6 +508,20 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
             <span class="project-text">
               <span class="project-name">Nueva carpeta…</span>
               <span class="project-hint">En cualquier sitio de {d.host.name}</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button
+            class="menu-item"
+            disabled={busy || inWorktree}
+            title={inWorktree ? 'Una carpeta temporal no es un repo de git: no admite worktrees' : undefined}
+            onClick={() => void run({ op: 'tempSpace', session: win?.id, skipPermissions: prefs.value.skipPermissions })}
+          >
+            <span class="menu-icon">⌛</span>
+            <span class="project-text">
+              <span class="project-name">Carpeta temporal</span>
+              <span class="project-hint">Para usar y tirar: se borra al cerrar {win ? 'la ventana' : 'el espacio'}</span>
             </span>
           </button>
         </li>

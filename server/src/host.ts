@@ -17,7 +17,7 @@ const OFFLINE_GRACE_MS = 60_000;
 const SEP = '\x1f';
 const FIELDS = [
   'session_id', 'session_name', '@space_num', '@space_icon', 'session_attached', 'session_created',
-  'window_id', 'window_index', 'window_name', 'window_active', '@win_icon', '@win_state', '@name_pinned',
+  'window_id', 'window_index', 'window_name', 'window_active', '@win_icon', '@win_state', '@name_pinned', '@twb_temp',
   'window_bell_flag', 'window_activity_flag', 'window_zoomed_flag',
   'pane_id', 'pane_index', 'pane_active', 'pane_current_command', 'pane_current_path', 'pane_title',
   '@pane_icon', 'pane_width', 'pane_height', 'pane_dead', 'pane_in_mode', '@claude_account', '@claude_session',
@@ -167,6 +167,7 @@ function parse(output: string): Parsed {
         icon: r['@win_icon'],
         state: stateOf(r['@win_icon'], r['@win_state']),
         pinned: r['@name_pinned'] === '1',
+        temp: r['@twb_temp'] || undefined,
         bell: r.window_bell_flag === '1',
         activity: r.window_activity_flag === '1',
         zoomed: r.window_zoomed_flag === '1',

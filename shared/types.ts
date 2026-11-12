@@ -42,6 +42,8 @@ export interface WindowInfo {
   icon: string; // @win_icon
   state: PaneState | null; // @win_state
   pinned: boolean; // @name_pinned
+  /** A throwaway window (a «Carpeta temporal»): its folder, removed by the hub once nothing uses it. @twb_temp */
+  temp?: string;
   bell: boolean;
   activity: boolean;
   zoomed: boolean;
@@ -457,6 +459,12 @@ export type ActionOp =
    * with `create`), in that folder and running the host's command, as openProject does.
    */
   | { op: 'newWindow'; session: string; name?: string; folder?: string; sub?: string; create?: boolean; skipPermissions?: boolean }
+  /**
+   * A space in a new folder of the machine's temp dir, running its command, or, with
+   * `session`, a new window of that space there. The hub removes the folder once nothing
+   * uses it. Answers { session } or { window, pane }.
+   */
+  | { op: 'tempSpace'; session?: string; skipPermissions?: boolean }
   | { op: 'renameWindow'; window: string; name: string }
   | { op: 'killWindow'; window: string }
   | { op: 'splitPane'; pane: string; direction: 'h' | 'v' }

@@ -71,6 +71,14 @@ export function newSession(host: HostInfo, plain = false): void {
       const res = await hub.action<{ session: string }>(host.id, { op: 'newSession', name: name || undefined });
       if (res?.session) whenSessionReady(host.id, res.session, (s) => unfold(host.id, s));
     },
+    extra: {
+      label: 'Temporal',
+      title: 'En una carpeta temporal, con Claude: se borra al cerrar el espacio',
+      run: async () => {
+        const res = await hub.action<{ session: string }>(host.id, { op: 'tempSpace', skipPermissions: prefs.value.skipPermissions });
+        if (res?.session) openSessionWhenReady(host.id, res.session);
+      },
+    },
   };
 }
 
@@ -95,6 +103,14 @@ export function newWindow(host: HostInfo, session: SessionInfo, open = true, pla
     onSubmit: async (name) => {
       const res = await hub.action<{ window: string; pane: string }>(host.id, { op: 'newWindow', session: session.id, name: name || undefined });
       if (open && res?.window) openNewWindow(host.id, res);
+    },
+    extra: {
+      label: 'Temporal',
+      title: 'En una carpeta temporal, con Claude: se borra al cerrar la ventana',
+      run: async () => {
+        const res = await hub.action<{ window: string; pane: string }>(host.id, { op: 'tempSpace', session: session.id, skipPermissions: prefs.value.skipPermissions });
+        if (open && res?.window) openNewWindow(host.id, res);
+      },
     },
   };
 }

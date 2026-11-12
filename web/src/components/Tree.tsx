@@ -310,7 +310,7 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
   return (
     <div class="session solo">
       <div class={`win-row ${current ? 'current' : ''}`}>
-        <button class={`win ${current ? 'current' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
+        <button class={`win ${current ? 'current' : ''} ${window.temp ? 'temp' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
           <span class="session-num">{session.num ?? '·'}</span>
           <span class="win-icon">{window.icon || session.icon}</span>
           <span class="win-body">
@@ -372,7 +372,7 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
   const active = window.panes.find((p) => p.active) ?? window.panes[0];
   return (
     <li class={`win-row ${current ? 'current' : ''}`}>
-      <button class={`win ${current ? 'current' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
+      <button class={`win ${current ? 'current' : ''} ${window.temp ? 'temp' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
         <span class="win-index">{window.index}</span>
         <span class="win-icon">{window.icon}</span>
         <span class="win-body">

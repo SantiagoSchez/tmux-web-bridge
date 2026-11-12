@@ -3,6 +3,7 @@ import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../share
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { setTrelloExtension, updateKit } from './kit.js';
+import { makeTempDir, TEMP_OPTION, tempSuffix } from './temp.js';
 
 const SESSION_ID = /^\$\d+$/;
 const WINDOW_ID = /^@\d+$/;
@@ -259,6 +260,32 @@ async function createFolder(
   return subfolders ? { folder: path } : open({ ...machine, folders }, { folder: path });
 }
 
+/**
+ * «Carpeta temporal»: a new folder in the machine's temp dir and, running the host's
+ * command there, a space named tmp-xxxx or, with `session`, a window of that space
+ * (named and pinned so). The window carries its folder in @twb_temp: TempFolders removes it.
+ */
+async function tempSpace(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: Extract<ActionOp, { op: 'tempSpace' }>,
+): Promise<{ session: string } | { window: string; pane: string }> {
+  const session = action.session === undefined ? undefined : check(String(action.session), SESSION_ID, 'Espacio');
+  const suffix = tempSuffix();
+  const dir = await makeTempDir(host, suffix);
+  const name = `tmp-${suffix}`;
+  const args = session
+    ? ['new-window', '-P', '-F', '#{session_id} #{window_id} #{pane_id}', '-t', `${session}:`, '-c', dir, '-n', name]
+    : ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{window_id} #{pane_id}', '-s', name, '-c', dir];
+  const [sid, window, pane] = (await host.exec.run(args)).trim().split(' ');
+  await host.exec.run([
+    'set-option', '-w', '-t', window, TEMP_OPTION, dir,
+    ...(session ? [';', 'set-option', '-w', '-t', window, '@name_pinned', '1'] : []),
+  ]);
+  if (machine.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
+  return session ? { window, pane } : { session: sid };
+}
+
 /** Reboots the machine. The SSH connection may drop (or hang) before shutdown answers: that is a success. */
 async function reboot(host: HostMonitor): Promise<void> {
   if (host.hostConfig.local) throw new Error('El servidor central no se reinicia desde el panel');
@@ -320,6 +347,8 @@ export async function runAction(
       if (name) await run(['set-option', '-w', '-t', window, '@name_pinned', '1']);
       return { window, pane };
     }
+    case 'tempSpace':
+      return tempSpace(host, machine, action);
     case 'renameWindow': {
       const win = check(action.window, WINDOW_ID, 'ventana');
       const name = action.name.trim();
