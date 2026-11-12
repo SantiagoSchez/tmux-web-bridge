@@ -1025,11 +1025,17 @@ body.dragging-host * {
 .win-act + .win-act {
   margin-left: -8px;
 }
-/* Without a mouse the buttons keep their room: only «⋯» (its menu also opens a window and closes
-   it), so the name has more of the row. */
+/* Without a mouse the buttons keep their room at the row's end: narrow (the row's height
+   is the rest of their target), close together and to the name, so it is left more. */
 @media not ((hover: hover) and (pointer: fine)) {
-  .win-extra {
-    display: none;
+  .win {
+    padding-right: 4px;
+  }
+  .win-acts {
+    padding-right: 4px;
+  }
+  .win-act {
+    width: 28px;
   }
   .win-act + .win-act {
     margin-left: 0;
@@ -1185,7 +1191,7 @@ body.dragging-host * {
 }
 .tree.compact .win {
   min-height: 38px;
-  padding: 4px 12px;
+  padding-block: 4px;
 }
 .tree.compact .win.current::before {
   top: 6px;

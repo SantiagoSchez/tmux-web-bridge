@@ -325,13 +325,13 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
           {window.activity && <span class="flag flag-activity" title="Actividad" />}
         </button>
         <span class="win-acts">
-          <button class="win-act win-extra" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
+          <button class="win-act" aria-label={`Nueva ventana en ${session.name}`} title="Nueva ventana" onClick={() => newWindow(host, session)}>
             <IconPlus />
           </button>
           <button class="win-act" aria-label={`Acciones de ${session.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
             <IconMore />
           </button>
-          <button class="win-act win-close win-extra" aria-label={`Cerrar el espacio ${session.name}`} title="Cerrar espacio" onClick={() => killSession(host, session, current)}>
+          <button class="win-act win-close" aria-label={`Cerrar el espacio ${session.name}`} title="Cerrar espacio" onClick={() => killSession(host, session, current)}>
             <IconClose />
           </button>
         </span>
@@ -393,7 +393,7 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
         <button class="win-act" aria-label={`Acciones de la ventana ${window.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
           <IconMore />
         </button>
-        <button class="win-act win-close win-extra" aria-label={`Cerrar la ventana ${window.name}`} title="Cerrar ventana" onClick={() => killWindow(host, window, current)}>
+        <button class="win-act win-close" aria-label={`Cerrar la ventana ${window.name}`} title="Cerrar ventana" onClick={() => killWindow(host, window, current)}>
           <IconClose />
         </button>
       </span>
