@@ -978,6 +978,16 @@ body.dragging-host * {
 .win-act + .win-act {
   margin-left: -8px;
 }
+/* Without a mouse the buttons keep their room: only «⋯» (its menu also opens a window and closes
+   it), so the name has more of the row. */
+@media not ((hover: hover) and (pointer: fine)) {
+  .win-extra {
+    display: none;
+  }
+  .win-act + .win-act {
+    margin-left: 0;
+  }
+}
 /* With a mouse, only on the row under it, over its end: the name and the rest of the row take
    the whole width (on a narrow sidebar the buttons would leave them little). */
 @media (hover: hover) and (pointer: fine) {
