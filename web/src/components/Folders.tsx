@@ -19,7 +19,7 @@ export function nameProblem(list: SavedFolder[], name: string, except?: SavedFol
   return list.some((f) => f !== except && f.name === name.trim()) ? `Ya hay una carpeta llamada «${name.trim()}».` : null;
 }
 
-/** «Carpetas»: the folders each machine offers in «Nuevo space», added from here. */
+/** «Carpetas»: the folders each machine offers in «Nuevo espacio», added from here. */
 export function FolderSettings() {
   const all = hosts.value;
   const host = all.find((h) => h.id === folderHost.value) ?? all[0];
@@ -35,7 +35,7 @@ export function FolderSettings() {
       title: 'Cambiar el nombre',
       label: f.path,
       value: f.name,
-      placeholder: 'Nombre del space',
+      placeholder: 'Nombre del espacio',
       confirm: 'Guardar',
       onSubmit: (name) => {
         if (name.trim() === f.name) return;
@@ -56,7 +56,7 @@ export function FolderSettings() {
   return (
     <>
       <p class="settings-scope dim small">
-        Las carpetas que ofrece «Nuevo space» en cada máquina. Al elegir una se abre un space con su nombre, en esa carpeta y con el comando de la máquina. Con
+        Las carpetas que ofrece «Nuevo espacio» en cada máquina. Al elegir una se abre un espacio con su nombre, en esa carpeta y con el comando de la máquina. Con
         «Subcarpetas», la carpeta ofrece cada una de las que tiene dentro, siempre al día, y en ella se pueden crear proyectos nuevos. Se guardan en el servidor
         central.
       </p>
@@ -100,7 +100,7 @@ export function FolderSettings() {
             ))}
           </ul>
         ) : (
-          <p class="dim small">Ninguna carpeta todavía: «Nuevo space» abre un space vacío.</p>
+          <p class="dim small">Ninguna carpeta todavía: «Nuevo espacio» abre un espacio vacío.</p>
         )}
         {picking ? (
           <FolderPicker
@@ -135,7 +135,7 @@ function CommandSetting({ hostId, value }: { hostId: string; value: string }) {
     <section class="setting">
       <h3>Comando al abrir</h3>
       <p class="dim small">
-        Lo que se escribe en el space al abrirlo desde una carpeta; al salir queda la shell. A <code>claude</code> se le añade el modo de permisos de la casilla
+        Lo que se escribe en el espacio al abrirlo desde una carpeta; al salir queda la shell. A <code>claude</code> se le añade el modo de permisos de la casilla
         «Saltarse los permisos». Vacío: solo la shell.
       </p>
       <form
@@ -287,11 +287,11 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
       <DirBrowser b={b} />
       <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />
       <label class="folder-name">
-        <span class="dim small">{subfolders ? 'Nombre (para reconocerla en esta lista)' : 'Nombre del space'}</span>
+        <span class="dim small">{subfolders ? 'Nombre (para reconocerla en esta lista)' : 'Nombre del espacio'}</span>
         <input
           class="text-input"
           value={shownName}
-          aria-label={subfolders ? 'Nombre' : 'Nombre del space'}
+          aria-label={subfolders ? 'Nombre' : 'Nombre del espacio'}
           autocapitalize="off"
           autocomplete="off"
           spellcheck={false}

@@ -43,7 +43,7 @@ function projectName(name: string): string {
 }
 
 /**
- * A host's folders for «Nuevo space» as they are now: whether each one is there and,
+ * A host's folders for «Nuevo espacio» as they are now: whether each one is there and,
  * for those with subfolders, the folders inside (not hidden ones), read every time.
  */
 export async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
@@ -98,7 +98,7 @@ export function projectCommand(command: string, skipPermissions: boolean): strin
   return `${command} ${skipPermissions ? '--dangerously-skip-permissions' : '--permission-mode auto'}`;
 }
 
-/** The folders a host offers in «Nuevo space» and what is typed into a space opened there. */
+/** The folders a host offers in «Nuevo espacio» and what is typed into a space opened there. */
 export interface MachineFolders {
   folders: SavedFolder[];
   command: string;
@@ -205,7 +205,7 @@ export async function folderWindow(
   action: { session: string; folder: string; sub?: string; create?: boolean },
   windowName?: string,
 ): Promise<{ window: string; pane: string }> {
-  const session = check(String(action.session), SESSION_ID, 'Space');
+  const session = check(String(action.session), SESSION_ID, 'Espacio');
   const abs = await folderOnHost(host, pickFolder(host, machine, action), action.create === true);
   const args = ['new-window', '-P', '-F', '#{window_id} #{pane_id}', '-t', `${session}:`, '-c', abs.replace(/#/g, '##')];
   if (windowName) args.push('-n', windowName.replace(/#/g, '##'));
@@ -226,7 +226,7 @@ async function openFolderWindow(
 }
 
 /**
- * «Nueva carpeta» of «Nuevo space»: makes a folder inside `parent` and opens a space in it.
+ * «Nueva carpeta» of «Nuevo espacio»: makes a folder inside `parent` and opens a space in it.
  * Inside a folder with subfolders it is one more of them (opened if it is there already);
  * anywhere else it has to be new, and goes into the host's folders, named like it. One
  * added with subfolders opens nothing: there is nothing inside to open yet.
@@ -279,7 +279,7 @@ export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
  * is the version updateKit moves the kit to (the hub's last check, never the client's);
- * `machine`, the host's folders for «Nuevo space».
+ * `machine`, the host's folders for «Nuevo espacio».
  */
 export async function runAction(
   host: HostMonitor,

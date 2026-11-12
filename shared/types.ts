@@ -186,7 +186,7 @@ export interface HubSettings {
   /** The size of the key bar's buttons, in % (see KEYBAR_SCALE_* in shared/keybar.ts). */
   keybarScale: number;
   /**
-   * The folders «Nuevo space» offers, by host id. A patch replaces the list of each
+   * The folders «Nuevo espacio» offers, by host id. A patch replaces the list of each
    * host it names (an empty list removes it) and keeps the others.
    */
   folders: Record<string, SavedFolder[]>;
@@ -205,7 +205,7 @@ export interface HubSettings {
   trelloPromptTemplate: string;
 }
 
-/** A folder of a machine added in the panel: «Nuevo space» opens a space there. */
+/** A folder of a machine added in the panel: «Nuevo espacio» opens a space there. */
 export interface SavedFolder {
   name: string;
   /** On that machine: absolute, or under ~ (written ~/…). */
@@ -250,7 +250,7 @@ export interface ExtHostTargets {
   error?: string;
   /** Its open spaces (not the panel's own terminals). */
   spaces: { id: string; name: string; windows: number }[];
-  /** Its folders of «Nuevo space», as listProjects reads them; missing when they could not be read. */
+  /** Its folders of «Nuevo espacio», as listProjects reads them; missing when they could not be read. */
   folders?: ProjectList['folders'];
   foldersError?: string;
 }
@@ -362,7 +362,7 @@ export interface UpdateInfo {
 }
 
 /**
- * A host's folders for «Nuevo space», as they are now: missing, the folder is not
+ * A host's folders for «Nuevo espacio», as they are now: missing, the folder is not
  * there (moved, deleted, or a disk not mounted); children, the folders inside one
  * with subfolders (hidden ones left out).
  */

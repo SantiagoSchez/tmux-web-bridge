@@ -62,7 +62,7 @@ export function spaceChoices(host: ExtHostTargets): SpaceChoice[] {
 }
 
 /**
- * The folders of «Nuevo space» a task can go in: each with subfolders as a group of its
+ * The folders of «Nuevo espacio» a task can go in: each with subfolders as a group of its
  * own, the loose ones together. With `tagOpen`, those whose space is open say so.
  */
 export function folderGroups(host: ExtHostTargets, tagOpen = true): DestinationGroup[] {

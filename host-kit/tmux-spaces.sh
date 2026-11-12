@@ -1,11 +1,11 @@
 #!/bin/bash
-# Spaces sobre tmux: cada sesión es un space, numerado por orden de creación.
+# Espacios sobre tmux: cada sesión es un espacio, numerado por orden de creación.
 #
 # Uso:
 #   tmux-spaces.sh renumber                    recalcula @space_num (1..n) de cada sesión
-#   tmux-spaces.sh goto <client> <n>           va al space n
-#   tmux-spaces.sh next|prev <client>          space siguiente / anterior (cíclico)
-#   tmux-spaces.sh new <client> <cwd> [nombre] crea un space y cambia a él
+#   tmux-spaces.sh goto <client> <n>           va al espacio n
+#   tmux-spaces.sh next|prev <client>          espacio siguiente / anterior (cíclico)
+#   tmux-spaces.sh new <client> <cwd> [nombre] crea un espacio y cambia a él
 #   tmux-spaces.sh pending <client> <pane-id>  salta al agente más urgente (🙋 > 💬 > ✅);
 #                                              repetido, recorre el resto
 #   tmux-spaces.sh cheatsheet [toggle]         aplica (o alterna) la línea de atajos
@@ -24,7 +24,7 @@ set -u
 STATE_DIR="/tmp/tmux-window-state-$(id -u)-$(printf '%s' "$TMUX" | cut -d, -f2)"
 CHEATSHEET_FLAG="$HOME/.cache/tmux/cheatsheet-hidden"
 # Las sesiones _tw-* son las terminales del panel web (tmux-web-bridge), agrupadas
-# con un space real: no cuentan como spaces ni duplican sus paneles.
+# con un espacio real: no cuentan como espacios ni duplican sus paneles.
 NOT_WEB='#{?#{m:_tw-*,#{session_name}},0,1}'
 
 # Sesiones en orden de creación: "<session_id>\t<nombre>" (el id $N crece al crear).
@@ -55,7 +55,7 @@ cmd_goto() {
     if [ -n "$sid" ]; then
         switch_to "$client" "$sid"
     else
-        tmux display-message -c "$client" "No existe el space $n"
+        tmux display-message -c "$client" "No existe el espacio $n"
     fi
 }
 
@@ -77,7 +77,7 @@ cmd_new() {
         # tmux no admite '.' ni ':' en nombres de sesión.
         name="${name//[.:]/-}"
         if tmux has-session -t "=$name" 2>/dev/null; then
-            tmux display-message -c "$client" "Ya existe un space llamado '$name'"
+            tmux display-message -c "$client" "Ya existe un espacio llamado '$name'"
             return 0
         fi
         sid="$(tmux new-session -d -P -F '#{session_id}' -s "$name" -c "$cwd")"
@@ -156,7 +156,7 @@ resurrect_dir() {
     printf '%s' "$dir"
 }
 
-# Tras guardar: 1) reordena el fichero de resurrect para que los spaces se
+# Tras guardar: 1) reordena el fichero de resurrect para que los espacios se
 # restauren en su orden (resurrect crea las sesiones en el orden del fichero);
 # 2) guarda los session_id de Claude por panel y los nombres de ventana fijados.
 cmd_resurrect_save() {

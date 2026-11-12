@@ -140,8 +140,8 @@ function Tile({ host, session, window, previews }: { host: HostInfo; session: Se
       {/* Outside the tile: a button cannot hold another. The only window of a space closes the space, as in its menu. */}
       <button
         class="icon-btn tile-close"
-        aria-label={`Cerrar ${solo ? 'el space' : 'la ventana'} ${label}`}
-        title={solo ? 'Cerrar space' : 'Cerrar ventana'}
+        aria-label={`Cerrar ${solo ? 'el espacio' : 'la ventana'} ${label}`}
+        title={solo ? 'Cerrar espacio' : 'Cerrar ventana'}
         onClick={() => (solo ? killSession(host, session) : killWindow(host, window))}
       >
         <IconClose />

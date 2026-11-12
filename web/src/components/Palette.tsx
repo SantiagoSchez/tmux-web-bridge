@@ -100,7 +100,7 @@ function PaletteSheet() {
         ref={input}
         class="text-input"
         value={query}
-        placeholder="Space, ventana, comando o carpeta"
+        placeholder="Espacio, ventana, comando o carpeta"
         autocapitalize="off"
         autocomplete="off"
         spellcheck={false}

@@ -61,7 +61,7 @@ const settings = new SettingsStore(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
 const activity = new ActivityLog(config.dataDir);
 const trello = new TrelloService(config.dataDir);
-// The folders of «Nuevo space» live in the hub now: a `projects` block becomes one, once.
+// The folders of «Nuevo espacio» live in the hub now: a `projects` block becomes one, once.
 const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
 for (const h of config.hosts.filter((x) => x.legacyProjects)) {
   const what = migrated.includes(h.id) ? 'la carpeta de «projects» pasa a Ajustes › Carpetas, con sus subcarpetas' : '«projects» ya no se usa (las carpetas están en Ajustes › Carpetas)';
@@ -268,7 +268,7 @@ async function pasteText(host: HostMonitor, pane: string, text: string): Promise
   await host.exec.run(['paste-buffer', '-p', '-r', '-d', '-b', buffer, '-t', pane]);
 }
 
-/** A host's folders for «Nuevo space», what is typed into a space opened there, and whether its kit keeps the Trello extension. */
+/** A host's folders for «Nuevo espacio», what is typed into a space opened there, and whether its kit keeps the Trello extension. */
 function machineFolders(host: HostMonitor): MachineFolders {
   return {
     folders: settings.value.folders[host.id] ?? [],
@@ -538,7 +538,7 @@ async function launchFromRequest(body: Partial<ExtLaunchRequest>, from: string):
   if (card && !trello.configured) throw new TrelloSetupError('El panel no tiene cuenta de Trello: añade la API key y el token en Ajustes › Trello.');
   const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest);
   await host.refresh();
-  console.log(`[${from}] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', space nuevo' : ''}${body.worktree ? `, worktree ${body.worktree}` : ''})`);
+  console.log(`[${from}] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', espacio nuevo' : ''}${body.worktree ? `, worktree ${body.worktree}` : ''})`);
   if (card) result.trello = await trello.afterLaunch(card, result);
   logLaunch(result, from === 'ext' ? 'extension' : 'trello', body.worktree);
   return result;

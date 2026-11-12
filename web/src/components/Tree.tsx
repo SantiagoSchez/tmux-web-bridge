@@ -207,11 +207,11 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
                 sin conexión
               </span>
             ) : (
-              <span class="dim small">{host.status === 'ok' ? `${host.sessions.length} spaces` : 'conectando…'}</span>
+              <span class="dim small">{host.status === 'ok' ? `${host.sessions.length} espacios` : 'conectando…'}</span>
             )}
           </button>
           {host.status === 'ok' && (
-            <button class="icon-btn small-btn" aria-label={`Nuevo space en ${host.name}`} title="Nuevo space" onClick={() => newSession(host)}>
+            <button class="icon-btn small-btn" aria-label={`Nuevo espacio en ${host.name}`} title="Nuevo espacio" onClick={() => newSession(host)}>
               <IconPlus />
             </button>
           )}
@@ -221,8 +221,8 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
         </div>
       ) : (
         <div class="host-head">
-          <h2 class="section-title">Spaces</h2>
-          <button class="icon-btn small-btn" aria-label="Nuevo space" title="Nuevo space" onClick={() => newSession(host)}>
+          <h2 class="section-title">Espacios</h2>
+          <button class="icon-btn small-btn" aria-label="Nuevo espacio" title="Nuevo espacio" onClick={() => newSession(host)}>
             <IconPlus />
           </button>
           <button class="icon-btn small-btn" aria-label="Acciones" onClick={() => hostMenu(host)}>
@@ -234,9 +234,9 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
         <>
           {host.status === 'ok' && host.sessions.length === 0 && (
             <div class="host-empty">
-              <span class="dim">tmux no tiene sesiones abiertas.</span>
+              <span class="dim">No hay ningún espacio abierto.</span>
               <button class="btn" onClick={() => newSession(host)}>
-                Nuevo space
+                Nuevo espacio
               </button>
             </div>
           )}
@@ -331,7 +331,7 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
           <button class="win-act" aria-label={`Acciones de ${session.name}`} title="Acciones" onClick={() => windowMenu(host, session, window, { leave: current })}>
             <IconMore />
           </button>
-          <button class="win-act win-close" aria-label={`Cerrar el space ${session.name}`} title="Cerrar space" onClick={() => killSession(host, session, current)}>
+          <button class="win-act win-close" aria-label={`Cerrar el espacio ${session.name}`} title="Cerrar espacio" onClick={() => killSession(host, session, current)}>
             <IconClose />
           </button>
         </span>

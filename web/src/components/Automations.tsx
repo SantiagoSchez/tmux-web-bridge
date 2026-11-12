@@ -98,7 +98,7 @@ export function AutomationSettings() {
       <section class="setting">
         <p class="dim small">
           Prompts que el servidor central lanza solo, a su hora (la de Madrid): «sube las dependencias cada noche», «repasa los tests inestables los lunes». Cada
-          ejecución abre una ventana nueva en el space de la carpeta, si quieres en un worktree nuevo, y te avisa como cualquier otro Claude. Si la anterior sigue
+          ejecución abre una ventana nueva en el espacio de la carpeta, si quieres en un worktree nuevo, y te avisa como cualquier otro Claude. Si la anterior sigue
           trabajando o esperándote, esa vez se salta.
         </p>
         <div class="row-btns">

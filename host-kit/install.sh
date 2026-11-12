@@ -8,7 +8,7 @@
 #
 # Enlaza al clon (así actualizar el clon los pone al día):
 #   ~/.scripts/tmux-window-title.sh     estados de Claude en tmux + aviso al servidor central
-#   ~/.scripts/tmux-spaces.sh           spaces numerados (@space_num) y sus atajos
+#   ~/.scripts/tmux-spaces.sh           espacios numerados (@space_num) y sus atajos
 #   ~/.claude/scripts/statusline.sh     status line de Claude Code (publica los límites de uso)
 # y además:
 #   ~/.tmux.conf                        source-file del tmux.conf del kit (hooks, atajos, ratón)
@@ -178,7 +178,7 @@ if [ "$SKIP_TMUX" = 0 ]; then
         say "$TMUX_CONF carga ahora $KIT/tmux.conf (copia: $TMUX_CONF.bak.$STAMP)"
     else
         [ -f "$TMUX_CONF" ] && cp "$TMUX_CONF" "$TMUX_CONF.bak.$STAMP"
-        printf '\n# tmux-web-bridge: estados de Claude, spaces y lo que necesita el panel web\n%s\n' "$LINE" >> "$TMUX_CONF"
+        printf '\n# tmux-web-bridge: estados de Claude, espacios y lo que necesita el panel web\n%s\n' "$LINE" >> "$TMUX_CONF"
         say "Añadido a $TMUX_CONF: $LINE"
     fi
     if [ "${TWB_NO_TMUX_RELOAD:-0}" != 1 ] && tmux info >/dev/null 2>&1; then

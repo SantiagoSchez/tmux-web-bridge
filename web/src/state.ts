@@ -107,7 +107,7 @@ export type Dialog =
   | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; permissions?: boolean; onSubmit: () => void }
   /** top: shown above the items, and the menu stays open while it is used (the font size). */
   | { kind: 'menu'; title: string; subtitle?: string; top?: ComponentChildren; items: MenuItem[] }
-  /** «Nuevo space» from a folder, or, with `session`, «Nueva ventana» of that space in a folder. */
+  /** «Nuevo espacio» from a folder, or, with `session`, «Nueva ventana» of that space in a folder. */
   | { kind: 'project'; host: HostInfo; session?: SessionInfo }
   /**
    * A Claude login from the panel. host: the machine to switch to it right after;
@@ -149,7 +149,7 @@ export function openSettings(): void {
 /** The machine whose folders the «Carpetas» tab shows (null: the first one). */
 export const folderHost = signal<string | null>(null);
 
-/** Opens the settings on a machine's folders for «Nuevo space». */
+/** Opens the settings on a machine's folders for «Nuevo espacio». */
 export function openFolderSettings(hostId: string): void {
   folderHost.value = hostId;
   settingsTab.value = 'folders';

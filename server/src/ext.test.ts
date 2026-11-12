@@ -238,7 +238,7 @@ test(
     const host = fakeHost(home, tmux, [{ id: '$3', name: 'otro' }]);
     const machine = { folders: [{ name: 'twb', path: '~/twb' }], command: 'claude' };
     await assert.rejects(launchTask(host, machine, { target: { session: '$3' }, prompt: '   ' }), /Falta el prompt/);
-    await assert.rejects(launchTask(host, machine, { target: { session: '$3; kill-server' }, prompt: 'x' }), /Space inválido/);
+    await assert.rejects(launchTask(host, machine, { target: { session: '$3; kill-server' }, prompt: 'x' }), /Espacio inválido/);
     await assert.rejects(launchTask(host, machine, { target: { session: '$4' }, prompt: 'x' }), /ya no está abierto/);
     await assert.rejects(launchTask(host, machine, { target: { folder: '/etc' }, prompt: 'x' }), /no está entre las de Mac/);
     await assert.rejects(launchTask(host, machine, { target: { folder: '~/twb', sub: 'nuevo' }, prompt: 'x' }), /no está entre las de Mac/);

@@ -53,7 +53,7 @@
 - **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas, con desde cuándo esperan y, si terminaron, cuánto trabajaron.
 - **Actividad** (el botón con el pulso de la cabecera): lo que ha pasado en los últimos 7 días en todas las máquinas, agrupado por días. Recoge qué Claude preguntó, cuál pidió permiso y cuál terminó, y tras cuánto tiempo; qué tareas se lanzaron y desde dónde (Trello, la extensión, el panel o una automatización); y qué automatizaciones se saltaron o fallaron. Tocar una fila abre su ventana, si sigue abierta.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
-- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «space › ventana». Un toque abre la que quieras.
+- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «espacio › ventana». Un toque abre la que quieras.
 
 ### 📱 Una terminal de verdad en el móvil
 
@@ -65,10 +65,10 @@
 ### 🖥️ Todas tus máquinas en un solo panel
 
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
-- **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él. Con **«En un worktree nuevo»**, Claude arranca en un git worktree propio (`claude --worktree <nombre>`, que pasa por tu hook `WorktreeCreate` si lo tienes), en una ventana con ese nombre y con un prompt opcional.
+- **Control completo** de espacios (cada uno es una sesión de tmux), ventanas y paneles. «Nuevo espacio» abre un proyecto y arranca `claude` en él; «Nueva ventana» ofrece las mismas carpetas y abre la ventana en ese espacio. Con **«En un worktree nuevo»**, Claude arranca en un git worktree propio (`claude --worktree <nombre>`, que pasa por tu hook `WorktreeCreate` si lo tienes), en una ventana con ese nombre y con un prompt opcional.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
-- **Automatizaciones** en ⚙️ **Ajustes › Automatizaciones**: prompts que el servidor central lanza solo, a su hora (la del servidor central; Europe/Madrid en Docker), en una ventana nueva del space de una carpeta y, si quieres, cada vez en un worktree nuevo (`deps-nocturnas-20261112-1800`). El horario se elige por días y hora, cada N horas o con una expresión cron. Si la ejecución anterior sigue trabajando o esperándote, esa vez se salta y queda apuntado; si una no se puede lanzar (la máquina sin conexión, por ejemplo), llega una notificación. También se ejecutan a mano con «Ejecutar ahora».
-- **Tareas desde Trello**: con la cuenta de Trello del panel (⚙️ **Ajustes › Trello**), el botón de tablero de la cabecera enseña las listas y tarjetas de tus tableros, con un buscador por título o número; una tarjeta lanza un Claude con ella («Haz la tarjeta …», plantilla editable) en la máquina y el space o la carpeta que elijas, si quieres en un worktree nuevo (`142-arreglar-login-movil`), y la mueve a Doing con un comentario. Lo mismo hace, desde trello.com, una extensión de Chrome que añade un botón a cada tarjeta. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**, donde también se activa en la máquina donde usas Chrome: su kit la descarga y la pone al día en cada actualización. Está en [`trello-extension/`](trello-extension/README.md).
+- **Automatizaciones** en ⚙️ **Ajustes › Automatizaciones**: prompts que el servidor central lanza solo, a su hora (la del servidor central; Europe/Madrid en Docker), en una ventana nueva del espacio de una carpeta y, si quieres, cada vez en un worktree nuevo (`deps-nocturnas-20261112-1800`). El horario se elige por días y hora, cada N horas o con una expresión cron. Si la ejecución anterior sigue trabajando o esperándote, esa vez se salta y queda apuntado; si una no se puede lanzar (la máquina sin conexión, por ejemplo), llega una notificación. También se ejecutan a mano con «Ejecutar ahora».
+- **Tareas desde Trello**: con la cuenta de Trello del panel (⚙️ **Ajustes › Trello**), el botón de tablero de la cabecera enseña las listas y tarjetas de tus tableros, con un buscador por título o número; una tarjeta lanza un Claude con ella («Haz la tarjeta …», plantilla editable) en la máquina que elijas, en el espacio de una carpeta o en una ventana nueva de un espacio abierto (en su carpeta o en otra), si quieres en un worktree nuevo (`142-arreglar-login-movil`), y la mueve a Doing con un comentario. Lo mismo hace, desde trello.com, una extensión de Chrome que añade un botón a cada tarjeta. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**, donde también se activa en la máquina donde usas Chrome: su kit la descarga y la pone al día en cada actualización. Está en [`trello-extension/`](trello-extension/README.md).
 
 ### 📊 Límites y cuentas de Claude siempre a la vista
 
@@ -79,7 +79,7 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><a href="docs/videos/navegar.webm"><img src="docs/videos/navegar.webp" width="250" alt="Abrir un pendiente, cambiar de ventana deslizando la cabecera y de space desde el cajón lateral"></a></td>
+    <td align="center" width="33%"><a href="docs/videos/navegar.webm"><img src="docs/videos/navegar.webp" width="250" alt="Abrir un pendiente, cambiar de ventana deslizando la cabecera y de espacio desde el cajón lateral"></a></td>
     <td align="center" width="33%"><a href="docs/videos/responder.webm"><img src="docs/videos/responder.webp" width="250" alt="Responder a un permiso de Claude con las flechas y Enter de la barra de teclas"></a></td>
     <td align="center" width="33%"><a href="docs/videos/seleccionar.webm"><img src="docs/videos/seleccionar.webp" width="250" alt="Seleccionar texto con pulsación larga, la lupa y las asas, y copiarlo"></a></td>
   </tr>
@@ -110,7 +110,7 @@ El servidor central lee el árbol de tmux de cada máquina cada segundo y lo man
 | `server/` | Servidor central (TypeScript, Fastify, node-pty, web-push) |
 | `web/` | App web (Preact, xterm.js), instalable como PWA |
 | `shared/` | Tipos compartidos |
-| `host-kit/` | Kit de cada máquina: estados de Claude, spaces, status line, hooks e instalador |
+| `host-kit/` | Kit de cada máquina: estados de Claude, espacios, status line, hooks e instalador |
 | `trello-extension/` | Extensión de Chrome que lanza un Claude con una tarjeta de Trello |
 | `deploy/` | Instalación del servidor central (systemd o Docker) |
 
@@ -194,7 +194,7 @@ Con eso, el panel ya ve los estados de Claude y te avisa en el móvil. Para comp
 <details>
 <summary>Qué toca el kit en la máquina</summary>
 
-Enlaza los scripts de estados de Claude, de spaces y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`.
+Enlaza los scripts de estados de Claude, de espacios y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`.
 
 Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones.
 
@@ -246,7 +246,7 @@ El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con 
 La versión está en [`VERSION`](VERSION) y cada una se publica como release en GitHub. Una vez al día el servidor central consulta la última release (solo hace esa petición, no envía ningún dato) y, si es más nueva que él o que el kit de alguna máquina, el panel lo avisa con una franja arriba que se queda hasta que la cierras. Cerrada, no vuelve hasta la siguiente release. Se desactiva para todos los dispositivos en ⚙️ **Ajustes › Máquinas › Buscar actualizaciones**.
 
 - **Servidor central**: `git pull` en su clon y otra vez `deploy/install-hub.sh` (o reconstruir la imagen de Docker).
-- **Kit de las máquinas**: desde el propio panel, con el botón **Actualizar** del aviso o con **Actualizar el kit a vX.Y.Z** en el menú de cada máquina. Tras confirmar, el servidor central entra en ella por el mismo SSH de siempre, pasa el clon a la última release (`git fetch --tags` y `git checkout vX.Y.Z`, que deja el clon en HEAD separado), vuelve a aplicar el kit y recarga su `tmux.conf`. Nunca fuerza nada: con cambios locales en el clon, no lo toca. No se cierra ningún space y los Claude abiertos no se reinician.
+- **Kit de las máquinas**: desde el propio panel, con el botón **Actualizar** del aviso o con **Actualizar el kit a vX.Y.Z** en el menú de cada máquina. Tras confirmar, el servidor central entra en ella por el mismo SSH de siempre, pasa el clon a la última release (`git fetch --tags` y `git checkout vX.Y.Z`, que deja el clon en HEAD separado), vuelve a aplicar el kit y recarga su `tmux.conf`. Nunca fuerza nada: con cambios locales en el clon, no lo toca. No se cierra ningún espacio y los Claude abiertos no se reinician.
 
 A mano es lo mismo, en el clon:
 
@@ -274,8 +274,8 @@ La usa [`trello-extension/`](trello-extension/README.md). Todas con `Authorizati
 | `GET /api/ext/ping` | Comprueba la dirección y el token. |
 | `GET /api/ext/trello` | Si el panel tiene cuenta de Trello, y cuál (`TrelloInfo`). |
 | `GET /api/ext/card/:id` | La tarjeta y la plantilla del prompt (`TrelloCardContext`). |
-| `GET /api/ext/targets` | Cada máquina con su estado, sus spaces abiertos y sus carpetas de «Nuevo space» (`ExtTargets` en `shared/types.ts`). |
-| `POST /api/ext/launch` | `{ host, target: { session } \| { folder, sub? }, prompt, name?, skipPermissions?, worktree? }`. Abre una ventana nueva llamada `name` (fijada) en ese space, o en el de la carpeta, que se crea si no está abierto (y entonces la tarea va en su primera ventana), y escribe `claude --permission-mode auto '<prompt>'` (o `--dangerously-skip-permissions`), con `--worktree '<worktree>'` si se pide; entonces el prompt es opcional. Con `card` (el id de la tarjeta), el panel la mueve después a Doing y la comenta, y lo cuenta en `trello` (`TrelloAfterLaunch`). Usa el comando de la máquina si es `claude …`; si no, `claude`. |
+| `GET /api/ext/targets` | Cada máquina con su estado, sus espacios abiertos y sus carpetas de «Nuevo espacio» (`ExtTargets` en `shared/types.ts`). |
+| `POST /api/ext/launch` | `{ host, target: { session } \| { folder, sub? } \| { session, folder, sub? }, prompt, name?, skipPermissions?, worktree? }`. Abre una ventana nueva llamada `name` (fijada) en ese espacio, o en el de la carpeta, que se crea si no está abierto (y entonces la tarea va en su primera ventana); con los dos, en ese espacio y en la carpeta, y escribe `claude --permission-mode auto '<prompt>'` (o `--dangerously-skip-permissions`), con `--worktree '<worktree>'` si se pide; entonces el prompt es opcional. Con `card` (el id de la tarjeta), el panel la mueve después a Doing y la comenta, y lo cuenta en `trello` (`TrelloAfterLaunch`). Usa el comando de la máquina si es `claude …`; si no, `claude`. |
 
 ## Desarrollo
 
@@ -292,7 +292,7 @@ scripts/test-kit-update.sh   # «Actualizar el kit» de punta a punta, aislado (
 
 | Síntoma | Causa probable |
 | --- | --- |
-| Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. Sus spaces dejan de mostrarse al minuto sin respuesta, porque ya no se sabe qué tiene abierto. |
+| Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. Sus espacios dejan de mostrarse al minuto sin respuesta, porque ya no se sabe qué tiene abierto. |
 | No llegan notificaciones | ⚙️ Ajustes › Dispositivo › Enviar prueba; `host-kit/install.sh --check` en la máquina. |
 | 401 al abrir el panel | Con `auth.method: tailscale`, estás entrando sin `tailscale serve`. |
 | «Código incorrecto» en la verificación en dos pasos | La hora del móvil o del servidor va desfasada más de 30 s. |

@@ -364,11 +364,11 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
               </select>
             </label>
             <label class="folder-name">
-              <span class="dim small">Space</span>
+              <span class="dim small">Espacio</span>
               <select class="text-input" value={space} onChange={(e) => setSpaceKey(e.currentTarget.value)}>
                 <option value="">El de la carpeta (nuevo o abierto)</option>
                 {spaces.length > 0 && (
-                  <optgroup label="Spaces abiertos (ventana nueva)">
+                  <optgroup label="Espacios abiertos (ventana nueva)">
                     {spaces.map((s) => (
                       <option key={s.key} value={s.key}>
                         {s.label}
@@ -382,7 +382,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
               <span class="dim small">Carpeta</span>
               <select class="text-input" value={folder} onChange={(e) => setDestKey(e.currentTarget.value)}>
                 <option value="" disabled={!space}>
-                  {space ? 'La del space (donde esté)' : 'Elige una carpeta…'}
+                  {space ? 'La del espacio (donde esté)' : 'Elige una carpeta…'}
                 </option>
                 {groups.map((g) => (
                   <optgroup key={g.label} label={g.label}>
@@ -396,7 +396,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
               </select>
             </label>
             {host?.foldersError && <p class="settings-state small">No se han podido leer las carpetas: {host.foldersError}</p>}
-            {host && !spaces.length && !groups.length && <p class="settings-state small">Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas.</p>}
+            {host && !spaces.length && !groups.length && <p class="settings-state small">Esta máquina no tiene espacios abiertos ni carpetas en Ajustes › Carpetas.</p>}
           </>
         )}
         <label class="folder-name">

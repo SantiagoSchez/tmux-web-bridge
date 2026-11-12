@@ -126,7 +126,10 @@ git -C "$KIT" -c core.hooksPath=/dev/null checkout -q -- README.md
 expect "Un tag que no existe dice qué clon" "$(update 99.0.0)" "^ERR maquina: No existe el tag v99.0.0 en el clon del kit \($KIT"
 expect "Los errores dejan el clon donde estaba" "$(git -C "$KIT" describe --tags)" "^$OLD\$"
 
-expect "Un kit sin --trello-extension lo dice" "$(run trello on)" "^ERR maquina: El kit de esta máquina es anterior a la extensión de Trello"
+# Solo con un kit anterior a la extensión (1.17.0): con uno posterior, esto la activaría.
+if [ "$(printf '%s\n' "${OLD#v}" 1.17.0 | sort -V | head -1)" != 1.17.0 ]; then
+  expect "Un kit sin --trello-extension lo dice" "$(run trello on)" "^ERR maquina: El kit de esta máquina es anterior a la extensión de Trello"
+fi
 
 # ------------------------------------------------------------ actualización
 expect "Actualiza a la release" "$(update "$NEW")" "^OK $NEW\$"

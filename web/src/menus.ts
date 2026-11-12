@@ -61,8 +61,8 @@ export function newSession(host: HostInfo, plain = false): void {
   }
   dialog.value = {
     kind: 'prompt',
-    title: 'Nuevo space',
-    label: `Sesión nueva en ${host.name}`,
+    title: 'Nuevo espacio',
+    label: `Espacio nuevo en ${host.name}`,
     value: '',
     placeholder: 'Nombre (vacío = automático)',
     confirm: 'Crear',
@@ -80,7 +80,7 @@ export function openNewWindow(hostId: string, res: { window: string; pane: strin
 }
 
 export function newWindow(host: HostInfo, session: SessionInfo, open = true, plain = false): void {
-  // Hosts with folders: pick one, as «Nuevo space» does, and the window opens there.
+  // Hosts with folders: pick one, as «Nuevo espacio» does, and the window opens there.
   if (hubSettings.value?.folders[host.id]?.length && !plain) {
     dialog.value = { kind: 'project', host, session };
     return;
@@ -102,7 +102,7 @@ export function newWindow(host: HostInfo, session: SessionInfo, open = true, pla
 export function renameSession(host: HostInfo, session: SessionInfo): void {
   dialog.value = {
     kind: 'prompt',
-    title: 'Renombrar space',
+    title: 'Renombrar espacio',
     value: session.name,
     confirm: 'Guardar',
     onSubmit: (name) => {
@@ -160,12 +160,12 @@ export function killSession(host: HostInfo, session: SessionInfo, leave = false)
   );
   dialog.value = {
     kind: 'confirm',
-    title: `¿Cerrar el space «${session.name}»?`,
+    title: `¿Cerrar el espacio «${session.name}»?`,
     message:
       (session.windows.length === 1
         ? 'Se terminará lo que se esté ejecutando en él.'
         : `Se cerrarán sus ${session.windows.length} ventanas y todo lo que se esté ejecutando en ellas.`) + claudeWarning(resume),
-    confirm: 'Cerrar space',
+    confirm: 'Cerrar espacio',
     danger: true,
     resume,
     onSubmit: async () => {
@@ -249,9 +249,9 @@ export function windowMenu(
   const items: MenuItem[] = [
     ...(inView ? [] : [{ label: 'Ficheros cambiados', icon: '±', run: () => openChanges({ host: host.id, window: window.id, pane: target?.id }) }]),
     { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
-    ...(solo ? [{ label: 'Renombrar space', icon: '✎', run: () => renameSession(host, session) }] : []),
+    ...(solo ? [{ label: 'Renombrar espacio', icon: '✎', run: () => renameSession(host, session) }] : []),
     { label: 'Renombrar ventana', icon: '✎', run: () => renameWindow(host, window) },
-    { label: 'Nueva ventana en este space', icon: '＋', run: () => newWindow(host, session) },
+    { label: 'Nueva ventana en este espacio', icon: '＋', run: () => newWindow(host, session) },
     { label: 'Dividir lado a lado  │', icon: '◫', run: () => target && void hub.action(host.id, { op: 'splitPane', pane: target.id, direction: 'h' }) },
     { label: 'Dividir arriba y abajo  ─', icon: '⊟', run: () => target && void hub.action(host.id, { op: 'splitPane', pane: target.id, direction: 'v' }) },
   ];
@@ -260,7 +260,7 @@ export function windowMenu(
   items.push(...extra);
   items.push(
     solo
-      ? { label: 'Cerrar space', icon: '✕', danger: true, run: () => killSession(host, session, leave) }
+      ? { label: 'Cerrar espacio', icon: '✕', danger: true, run: () => killSession(host, session, leave) }
       : { label: 'Cerrar ventana', icon: '✕', danger: true, run: () => killWindow(host, window, leave) },
   );
   const title = solo ? session.name : window.name;
@@ -271,8 +271,8 @@ export function windowMenu(
 export function sessionMenu(host: HostInfo, session: SessionInfo): void {
   const items: MenuItem[] = [
     { label: 'Nueva ventana', icon: '＋', run: () => newWindow(host, session) },
-    { label: 'Renombrar space', icon: '✎', run: () => renameSession(host, session) },
-    { label: 'Cerrar space', icon: '✕', danger: true, run: () => killSession(host, session) },
+    { label: 'Renombrar espacio', icon: '✎', run: () => renameSession(host, session) },
+    { label: 'Cerrar espacio', icon: '✕', danger: true, run: () => killSession(host, session) },
   ];
   dialog.value = { kind: 'menu', title: session.name, subtitle: host.name, items };
 }
@@ -293,7 +293,7 @@ export function moveHost(id: string, index: number): void {
 }
 
 export function hostMenu(host: HostInfo): void {
-  const items: MenuItem[] = [{ label: 'Nuevo space', icon: '＋', disabled: host.status !== 'ok', run: () => newSession(host) }];
+  const items: MenuItem[] = [{ label: 'Nuevo espacio', icon: '＋', disabled: host.status !== 'ok', run: () => newSession(host) }];
   if (multiHost.value) {
     const i = hosts.value.findIndex((h) => h.id === host.id);
     items.push(
@@ -337,7 +337,7 @@ export function rebootHost(host: HostInfo): void {
   const busy = host.sessions.flatMap((s) => s.windows.flatMap((w) => w.panes)).filter((p) => p.state === 'busy').length;
   let message =
     host.status === 'ok' && host.sessions.length
-      ? `Se cerrarán sus ${host.sessions.length} spaces (${windows} ventanas) y todo lo que se esté ejecutando en ellos.`
+      ? `Se cerrarán sus ${host.sessions.length} espacios (${windows} ventanas) y todo lo que se esté ejecutando en ellos.`
       : 'Se reiniciará el sistema operativo.';
   if (busy) message += ` ⚠️ Claude está trabajando en ${busy === 1 ? 'un panel' : `${busy} paneles`}.`;
   message += ' Volverá a aparecer en la lista cuando arranque.';

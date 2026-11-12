@@ -340,7 +340,7 @@ function PromptDialog({ d, close }: { d: Extract<Dialog, { kind: 'prompt' }>; cl
   );
 }
 
-/** A folder of «Nuevo space» to open: an added one, or one inside an added folder with subfolders. */
+/** A folder of «Nuevo espacio» to open: an added one, or one inside an added folder with subfolders. */
 interface FolderItem {
   key: string;
   name: string;
@@ -363,11 +363,11 @@ interface FolderGroup {
   children: FolderItem[];
 }
 
-/** What «Nuevo space» shows: the folders, where a new one goes, or its name. */
+/** What «Nuevo espacio» shows: the folders, where a new one goes, or its name. */
 type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent: string } | { kind: 'worktree'; item: FolderItem };
 
 /**
- * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder and
+ * "Nuevo espacio" on a host with folders, like the `c` shell function: pick a folder and
  * the space opens there with the host's command (claude) running; an open space of
  * that name is reused. A new folder is made inside one with subfolders (its ＋), or
  * anywhere on the machine, and then it is one more of the host's folders. From «Nueva
@@ -469,7 +469,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   );
 
   return (
-    <Sheet title={win ? 'Nueva ventana' : 'Nuevo space'} subtitle={win ? `En ${win.name} · ${d.host.name}` : d.host.name} onClose={close}>
+    <Sheet title={win ? 'Nueva ventana' : 'Nuevo espacio'} subtitle={win ? `En ${win.name} · ${d.host.name}` : d.host.name} onClose={close}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -555,7 +555,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
             else newSession(d.host, true);
           }}
         >
-          {win ? 'Ventana vacía' : 'Space vacío'}
+          {win ? 'Ventana vacía' : 'Espacio vacío'}
         </button>
       </div>
     </Sheet>
@@ -563,7 +563,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
 }
 
 /**
- * «Nuevo space» with «En un worktree nuevo»: the worktree's name and, if wanted, a prompt.
+ * «Nuevo espacio» with «En un worktree nuevo»: the worktree's name and, if wanted, a prompt.
  * Claude starts there with `--worktree`, in a new window named after it, in the folder's
  * space (opened first if it is not), or, from «Nueva ventana», in that space.
  */
@@ -722,8 +722,8 @@ function NewFolderForm(props: {
       {problem && <p class="settings-state small">{problem}</p>}
       <p class="dim small">
         {group
-          ? `Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ${props.space ? 'ninguna ventana' : 'ningún space'}, crea dentro las que quieras con su ＋.`
-          : `${props.space ? `Se abre una ventana de ${props.space} en ella` : 'Se abre un space en ella'}${inGroup ? '.' : ' y queda entre las carpetas de esta máquina.'}`}
+          ? `Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ${props.space ? 'ninguna ventana' : 'ningún espacio'}, crea dentro las que quieras con su ＋.`
+          : `${props.space ? `Se abre una ventana de ${props.space} en ella` : 'Se abre un espacio en ella'}${inGroup ? '.' : ' y queda entre las carpetas de esta máquina.'}`}
       </p>
       <div class="sheet-actions">
         {!group && <SkipPermissions />}

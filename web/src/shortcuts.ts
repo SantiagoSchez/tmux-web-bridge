@@ -82,7 +82,7 @@ export function bindShortcuts(): () => void {
       if (!host) return;
       if (host.status !== 'ok') return toast(`${host.name}: sin conexión`, 'error');
       target = hostWindow(host);
-      if (!target) return toast(`${host.name} no tiene spaces abiertos`);
+      if (!target) return toast(`${host.name} no tiene espacios abiertos`);
     } else if (e.shiftKey) {
       if (!host) return;
       target = spaceWindow(host, n);

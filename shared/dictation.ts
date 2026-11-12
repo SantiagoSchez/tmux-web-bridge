@@ -50,7 +50,7 @@ export function shortcutProblem(sc: Shortcut): string | null {
   const fn = /^F\d+$/.test(sc.code);
   if (!sc.ctrl && !sc.alt && !sc.meta && !fn) return 'Necesita Ctrl, Alt o Cmd (o una tecla F1–F12): si no, se escribiría en el terminal.';
   if (sc.ctrl && !sc.alt && !sc.shift && !sc.meta && /^Key/.test(sc.code)) return 'Ctrl con una letra es del terminal (Ctrl+C, Ctrl+R…): añade Shift o Alt.';
-  if (sc.ctrl && !sc.meta && /^Digit[1-9]$/.test(sc.code)) return 'Ctrl con un número ya es de la app (ir a una ventana, un space o una máquina).';
+  if (sc.ctrl && !sc.meta && /^Digit[1-9]$/.test(sc.code)) return 'Ctrl con un número ya es de la app (ir a una ventana, un espacio o una máquina).';
   if (sc.meta && !sc.ctrl && !sc.alt && !sc.shift && sc.code === 'KeyK') return 'Cmd+K ya abre la búsqueda.';
   return null;
 }

@@ -6,7 +6,7 @@ import type { HostMonitor } from './host.js';
 
 // Tasks: a new window running claude with a prompt, in an open space or in the space of
 // an added folder, optionally in a new git worktree. Launched from the Trello extension,
-// the panel's Trello drawer, «Nuevo space» with a worktree, and the automations.
+// the panel's Trello drawer, «Nuevo espacio» with a worktree, and the automations.
 
 const MAX_PROMPT = 10_000;
 const MAX_WINDOW_NAME = 30;
@@ -112,9 +112,9 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
   let dir = '#{pane_current_path}';
   let createdSpace = false;
   if (typeof target.session === 'string') {
-    if (!SESSION_ID.test(target.session)) throw new Error(`Space inválido: ${target.session}`);
+    if (!SESSION_ID.test(target.session)) throw new Error(`Espacio inválido: ${target.session}`);
     const found = host.snapshot.sessions.find((s) => s.id === target.session);
-    if (!found) throw new Error(`Ese space ya no está abierto en ${host.name}`);
+    if (!found) throw new Error(`Ese espacio ya no está abierto en ${host.name}`);
     session = found.id;
     space = found.name;
     // With a folder too: a new window of that space, in the folder.
@@ -140,7 +140,7 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
     pane = (await run(args)).trim();
     if (name) await run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
   }
-  // Typed into the window's shell, as «Nuevo space» does: quitting claude leaves you there.
+  // Typed into the window's shell, as «Nuevo espacio» does: quitting claude leaves you there.
   await run(['send-keys', '-t', pane, '-l', taskCommand(machine.command, req.skipPermissions === true, prompt, worktree || undefined)]);
   await run(['send-keys', '-t', pane, 'Enter']);
   const [window, windowName] = (await host.exec.runFormat(['display-message', '-p', '-t', pane, '#{window_id}\t#{window_name}'])).trim().split('\t');

@@ -81,7 +81,7 @@ export function ExtTokenSettings() {
     <section class="setting">
       <h3>Extensión de Trello</h3>
       <p class="dim small">
-        La extensión de Chrome añade a cada tarjeta de Trello un botón que lanza un Claude con ella en la máquina y el space que elijas, y la mueve a Doing. Se conecta a este
+        La extensión de Chrome añade a cada tarjeta de Trello un botón que lanza un Claude con ella en la máquina y el espacio que elijas, y la mueve a Doing. Se conecta a este
         panel con su propio token: pégalo en las opciones de la extensión junto con la dirección del panel.
       </p>
 

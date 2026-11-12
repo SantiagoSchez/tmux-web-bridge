@@ -5,7 +5,8 @@ Extensión de Chrome que añade a cada tarjeta de Trello un botón para lanzar u
 Al pasar el ratón por una tarjeta aparece un botón con el icono de una terminal. Lo pulsas y eliges:
 
 - **Máquina**: las de twb, con las que no están conectadas desactivadas.
-- **Destino**: un space abierto, donde se abre una ventana nueva, o una carpeta de «Nuevo space» (⚙️ Ajustes › Carpetas en twb). Si su space ya está abierto, la tarea va a una ventana nueva en él; si no, se crea el space.
+- **Espacio**: el de la carpeta (si ya está abierto, la tarea va a una ventana nueva en él; si no, se crea el espacio) o uno de los espacios abiertos, donde se abre una ventana nueva.
+- **Carpeta**: una de «Nuevo espacio» (⚙️ Ajustes › Carpetas en twb). Con un espacio abierto es opcional: sin ella, la ventana nueva se abre donde esté ese espacio.
 - **Prompt**: sale de la plantilla del panel, en ⚙️ Ajustes › Trello (`Haz la tarjeta {url}` por defecto), y se puede retocar antes de lanzar.
 - **En un worktree nuevo**: Claude arranca con `claude --worktree <nombre>`, que por defecto es el número y el título de la tarjeta (`142-arreglar-login-movil`) y se puede cambiar. Recuerda su último valor.
 - **Saltar permisos**: arranca con `--dangerously-skip-permissions` en lugar de `--permission-mode auto`. Recuerda su último valor.
@@ -16,7 +17,7 @@ Con «Lanzar» (o Ctrl/Cmd+Enter):
 2. El panel mueve la tarjeta al final de la lista «Doing» de su tablero (la que se llame así, con emoji o sin él).
 3. Y comenta en ella: «🤖 Lanzada en Mac › proyecto · ventana «…»».
 
-El panel lo hace con su propia cuenta de Trello (⚙️ Ajustes › Trello): la extensión no habla con Trello. Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se deshace nada. El diálogo recuerda la última máquina y el último destino de cada tablero.
+El panel lo hace con su propia cuenta de Trello (⚙️ Ajustes › Trello): la extensión no habla con Trello. Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se deshace nada. El diálogo recuerda la última máquina, el último espacio y la última carpeta de cada tablero.
 
 ## Instalación
 

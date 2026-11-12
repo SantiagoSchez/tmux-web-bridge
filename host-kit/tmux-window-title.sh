@@ -1,5 +1,5 @@
 #!/bin/bash
-# Título de las ventanas de tmux: nombre + icono de estado (y el icono de cada space).
+# Título de las ventanas de tmux: nombre + icono de estado (y el icono de cada espacio).
 #
 # Separa dos conceptos que antes se pisaban entre sí:
 #   - NOMBRE de la ventana: lo pone el usuario (prefix + r, queda "fijado") o,
@@ -9,7 +9,7 @@
 #     ventana (🙋 pregunta > 💬 atención > ✅ terminado sin ver > 🔨 trabajando >
 #     🤖 sesión > 📡 ssh). Se pinta en la statusline, nunca forma parte del
 #     nombre, así que jamás pisa el nombre fijado.
-# Además, cada sesión (space) recibe @space_icon: el más urgente de sus ventanas.
+# Además, cada sesión (espacio) recibe @space_icon: el más urgente de sus ventanas.
 #
 # Uso:
 #   tmux-window-title.sh refresh [window-id]   recalcula nombre e icono
@@ -154,7 +154,7 @@ state_of_pane() {
     [ -n "$host" ] && printf 'ssh\t%s' "$host"
 }
 
-# Icono del space (sesión): el estado más urgente de todas sus ventanas.
+# Icono del espacio (sesión): el estado más urgente de todas sus ventanas.
 refresh_space() {
     local sess="$1" top_prio=0 top_state="" state prio
     [ -n "$sess" ] || return 0
@@ -171,7 +171,7 @@ refresh_space() {
     fi
 }
 
-# Recalcula nombre e icono de una ventana. Con "nospace" no toca el icono del space
+# Recalcula nombre e icono de una ventana. Con "nospace" no toca el icono del espacio
 # (refresh-all lo recalcula una sola vez por sesión al final).
 cmd_refresh() {
     local win="${1:-}" nospace="${2:-}"
@@ -361,8 +361,8 @@ notify_clear() {
 }
 
 # Un solo cambio de estado a la vez por servidor tmux: dos hooks a la vez (dos Claude en
-# un space, herramientas en paralelo) leerían iconos a medio escribir y el último en
-# escribir dejaría uno viejo en la ventana o en el space. mkdir es atómico en macOS y en
+# un espacio, herramientas en paralelo) leerían iconos a medio escribir y el último en
+# escribir dejaría uno viejo en la ventana o en el espacio. mkdir es atómico en macOS y en
 # Linux (flock no viene en macOS). Un candado de más de 2 s es de un proceso que murió.
 lock() {
     local dir="$STATE_DIR/.lock" tries=0
@@ -546,7 +546,7 @@ cmd_reload() {
 
 # ------------------------------------------------------------ cerrar con Claude abierto
 # tmux no tiene un hook que pueda cancelar un cierre: los atajos que cierran paneles,
-# ventanas y spaces pasan por `close`, que cierra sin más si no hay ningún Claude y,
+# ventanas y espacios pasan por `close`, que cierra sin más si no hay ningún Claude y,
 # si lo hay, lo cuenta en un popup con el comando para reanudar cada conversación.
 
 SELF="$HOME/.scripts/tmux-window-title.sh"
@@ -613,7 +613,7 @@ kill_target() {
     esac
 }
 
-# Atajo de cerrar: popup si hay un Claude; si no, cierra (el space pregunta igualmente).
+# Atajo de cerrar: popup si hay un Claude; si no, cierra (el espacio pregunta igualmente).
 cmd_close() {
     local kind="$1" target="$2" client="${3:-}" list lines l width height cw ch title what
     [ -n "$target" ] || return 0
@@ -621,7 +621,7 @@ cmd_close() {
     if [ -z "$list" ]; then
         if [ "$kind" = "session" ]; then
             what="$(tmux display-message -p -t "$target" '#S' 2>/dev/null)"
-            tmux confirm-before ${client:+-t "$client"} -p "¿Cerrar el space ${what//#/##}? (y/n)" "kill-session -t '$target'"
+            tmux confirm-before ${client:+-t "$client"} -p "¿Cerrar el espacio ${what//#/##}? (y/n)" "kill-session -t '$target'"
         else
             kill_target "$kind" "$target"
         fi
@@ -631,7 +631,7 @@ cmd_close() {
     case "$kind" in
         pane)    title="Cerrar el panel" ;;
         window)  title="Cerrar la ventana «$(tmux display-message -p -t "$target" '#W' 2>/dev/null)»" ;;
-        session) title="Cerrar el space «$(tmux display-message -p -t "$target" '#S' 2>/dev/null)»" ;;
+        session) title="Cerrar el espacio «$(tmux display-message -p -t "$target" '#S' 2>/dev/null)»" ;;
     esac
     # Tamaño a la medida del texto, sin pasarse del cliente.
     # ${#l} cuenta caracteres (no bytes); el margen cubre los emojis, que ocupan dos.

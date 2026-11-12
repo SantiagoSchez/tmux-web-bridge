@@ -99,8 +99,8 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
-  { id: 'machines', label: 'Máquinas', hint: 'Lista de spaces, status line y actualizaciones' },
-  { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo space» en cada máquina' },
+  { id: 'machines', label: 'Máquinas', hint: 'Lista de espacios, status line y actualizaciones' },
+  { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
   { id: 'keys', label: 'Teclas', hint: 'La barra de teclas del móvil' },
@@ -268,7 +268,7 @@ function DeviceSettings() {
       <section class="setting">
         <h3>Vista de la lista</h3>
         <p class="dim small">
-          Cómo se ven los spaces y sus ventanas en este dispositivo. «Detallada» añade a cada ventana su worktree de git o, si no está en uno, la rama (fuera de
+          Cómo se ven los espacios y sus ventanas en este dispositivo. «Detallada» añade a cada ventana su worktree de git o, si no está en uno, la rama (fuera de
           un repo, su carpeta); «Condensada» deja cada una en una sola línea, más baja, para que quepan más.
         </p>
         <div class="seg" role="radiogroup" aria-label="Vista de la lista">
@@ -325,8 +325,8 @@ function MachineSettings() {
       <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos.</p>
       {s && (
         <Toggle
-          title="Spaces de una ventana en una fila"
-          desc="Un space con una sola ventana se muestra como una única fila, sin cabecera aparte. Desactívalo para ver siempre el space y sus ventanas por separado."
+          title="Espacios de una ventana en una fila"
+          desc="Un espacio con una sola ventana se muestra como una única fila, sin cabecera aparte. Desactívalo para ver siempre el espacio y sus ventanas por separado."
           on={s.soloSpaces}
           onChange={(on) => hub.send({ t: 'settings', settings: { soloSpaces: on } })}
         />

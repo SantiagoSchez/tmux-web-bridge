@@ -157,7 +157,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   /** The folder list: with an open space picked, its own folder first; without one, a folder is a must. */
   const fillFolders = (host: ExtHostTargets | undefined, wanted: string) => {
     const inSpace = !!spaceSel.value;
-    destSel.replaceChildren(el('option', { value: '', disabled: !inSpace }, inSpace ? 'La del space (donde esté)' : 'Elige una carpeta…'));
+    destSel.replaceChildren(el('option', { value: '', disabled: !inSpace }, inSpace ? 'La del espacio (donde esté)' : 'Elige una carpeta…'));
     for (const g of host ? folderGroups(host, !inSpace) : []) {
       const group = el('optgroup', { label: g.label });
       for (const d of g.items) group.append(el('option', { value: d.key }, d.label));
@@ -171,7 +171,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     note.textContent = '';
     const spaces = host ? spaceChoices(host) : [];
     if (spaces.length) {
-      const group = el('optgroup', { label: 'Spaces abiertos (ventana nueva)' });
+      const group = el('optgroup', { label: 'Espacios abiertos (ventana nueva)' });
       for (const s of spaces) group.append(el('option', { value: s.key }, s.label));
       spaceSel.append(group);
     }
@@ -179,7 +179,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     if (spaceSel.value !== wanted.space) spaceSel.value = '';
     fillFolders(host, wanted.folder);
     if (host?.foldersError) note.textContent = `No se han podido leer las carpetas: ${host.foldersError}`;
-    else if (host && !spaces.length && !folderGroups(host).length) note.textContent = 'Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas de twb.';
+    else if (host && !spaces.length && !folderGroups(host).length) note.textContent = 'Esta máquina no tiene espacios abiertos ni carpetas en Ajustes › Carpetas de twb.';
     update();
   };
   const target = () => {
@@ -212,7 +212,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
 
   body.replaceChildren(
     el('label', { class: 'field' }, el('span', {}, 'Máquina'), hostSel),
-    el('label', { class: 'field' }, el('span', {}, 'Space'), spaceSel),
+    el('label', { class: 'field' }, el('span', {}, 'Espacio'), spaceSel),
     el('label', { class: 'field' }, el('span', {}, 'Carpeta'), destSel),
     note,
     el('label', { class: 'field' }, el('span', {}, 'Prompt'), prompt),
