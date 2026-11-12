@@ -1,6 +1,7 @@
 import { route, toggleGrid } from '../router';
 import { connections, openSettings, pending, sheet, wsStatus } from '../state';
-import { IconActivity, IconBoard, IconGear, IconGrid, IconUsers } from './icons';
+import { isDesktop, SIDEBAR_KEY, toggleSidebar } from '../prefs';
+import { IconActivity, IconBoard, IconGear, IconGrid, IconSidebar, IconUsers } from './icons';
 import { trelloInfo } from './Trello';
 
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
@@ -13,6 +14,11 @@ export function Header() {
   return (
     <header class="topbar">
       <div class="brand">
+        {isDesktop.value && (
+          <button class="icon-btn sidebar-btn" aria-label="Ocultar la lista" title={`Ocultar la lista (${SIDEBAR_KEY})`} onClick={toggleSidebar}>
+            <IconSidebar />
+          </button>
+        )}
         <span class={`dot dot-${status}`} title={STATUS_LABEL[status]} />
         <span class="brand-name">twb</span>
         {waiting > 0 && (

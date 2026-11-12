@@ -20,10 +20,12 @@ export interface Prefs {
   trelloLaunch: Record<string, { host: string; destination: string; space?: string }>;
   /** Tasks on Trello cards start in a new worktree. */
   trelloWorktree: boolean;
+  /** On a wide screen, the list folded into a narrow strip. */
+  sidebarCollapsed: boolean;
 }
 
 const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed',
-  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false };
+  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, sidebarCollapsed: false };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {
@@ -51,5 +53,13 @@ export function setPref<K extends keyof Prefs>(key: K, value: Prefs[K]): void {
 /** Wide screen with a fine pointer: sidebar layout. */
 export const isDesktop = signal(matchMedia('(min-width: 900px)').matches);
 matchMedia('(min-width: 900px)').addEventListener('change', (e) => (isDesktop.value = e.matches));
+
+/** Folds the list into a strip on the left, or unfolds it (wide screens only). */
+export function toggleSidebar(): void {
+  setPref('sidebarCollapsed', !prefs.value.sidebarCollapsed);
+}
+
+/** How to fold the list from the keyboard, for the buttons' titles. */
+export const SIDEBAR_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘B' : 'Ctrl+Shift+B';
 
 export const isTouch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;

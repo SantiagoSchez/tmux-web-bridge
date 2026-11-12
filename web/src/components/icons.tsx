@@ -125,3 +125,9 @@ export const IconFileDiff = () => (
     <path d="M9.5 11.5h5M12 9v5M9.5 17.5h5" />
   </Svg>
 );
+export const IconSidebar = () => (
+  <Svg>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <path d="M9 4v16" />
+  </Svg>
+);

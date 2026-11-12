@@ -1,5 +1,6 @@
 import { effect } from '@preact/signals';
 import type { HostInfo } from '../../shared/types';
+import { isDesktop, toggleSidebar } from './prefs';
 import { openWindow, route } from './router';
 import { findWindow, hosts, paletteOpen, toast } from './state';
 
@@ -50,7 +51,8 @@ function hostWindow(host: HostInfo): string | null {
  * current space and Ctrl+Shift+1..9 to space N (its @space_num, as tmux-spaces.sh
  * numbers them), on the machine you are on (from the list, the last one you were
  * on). Ctrl+Shift+Alt+1..9 goes to machine N, in the list's order. Cmd+K (Mac)
- * opens the search to jump to any window by name.
+ * opens the search to jump to any window by name. On a wide screen, Cmd+B (Mac) or
+ * Ctrl+Shift+B folds the list into a strip or unfolds it (not Ctrl+B: tmux's prefix).
  *
  * They move the app like a click in the list, so the web terminal never switches
  * by itself behind the app's back. Capture phase on window: they fire before the
@@ -62,6 +64,13 @@ export function bindShortcuts(): () => void {
       e.preventDefault();
       e.stopPropagation();
       paletteOpen.value = !paletteOpen.value;
+      return;
+    }
+    const foldKey = e.code === 'KeyB' && !e.altKey && (e.metaKey ? !e.ctrlKey && !e.shiftKey : e.ctrlKey && e.shiftKey);
+    if (foldKey && isDesktop.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleSidebar();
       return;
     }
     if (!e.ctrlKey || e.metaKey || (e.altKey && !e.shiftKey)) return;

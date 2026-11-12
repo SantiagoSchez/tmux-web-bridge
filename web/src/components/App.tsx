@@ -1,6 +1,6 @@
 import { useEffect } from 'preact/hooks';
 import { auth } from '../auth';
-import { isDesktop } from '../prefs';
+import { isDesktop, prefs } from '../prefs';
 import { route } from '../router';
 import { findWindow, hosts, wsStatus } from '../state';
 import { ActivitySheet } from './Activity';
@@ -14,6 +14,7 @@ import { Header } from './Header';
 import { LimitsBar } from './LimitsBar';
 import { Login } from './Login';
 import { Palette } from './Palette';
+import { Rail } from './Rail';
 import { Settings } from './Settings';
 import { loadTrelloInfo, TrelloSheet } from './Trello';
 import { Tree } from './Tree';
@@ -53,14 +54,21 @@ export function App() {
     ) : null;
 
   if (desktop) {
+    const folded = prefs.value.sidebarCollapsed;
     return (
-      <div class="layout desktop">
+      <div class={`layout desktop ${folded ? 'folded' : ''}`}>
         <LimitsBar />
         <UpdateBanner />
-        <aside class="sidebar">
-          <Header />
-          <Tree />
-        </aside>
+        {folded ? (
+          <aside class="sidebar rail">
+            <Rail />
+          </aside>
+        ) : (
+          <aside class="sidebar">
+            <Header />
+            <Tree />
+          </aside>
+        )}
         <main class="main">{main ?? <Empty />}</main>
         <Overlays />
       </div>
