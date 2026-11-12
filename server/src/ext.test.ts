@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import type { HostInfo, SavedFolder } from '../../shared/types.js';
-import { ExtTokenStore, hostTargets, launchTask, shellWord, taskCommand, taskWindowName } from './ext.js';
+import { ExtTokenStore } from './ext.js';
+import { cardWorktreeName, runWorktreeName, WORKTREE_MAX, worktreeNameProblem } from '../../shared/worktree.js';
+import { hostTargets, launchTask, shellWord, taskCommand, taskWindowName } from './tasks.js';
 import type { HostMonitor } from './host.js';
 
 function tempDir(prefix: string): string {
@@ -81,6 +83,24 @@ test('a task runs the machine command when it is claude, and plain claude otherw
   assert.equal(taskCommand('claude --model opus', true, 'hola'), "claude --model opus --dangerously-skip-permissions 'hola'");
   assert.equal(taskCommand('', false, 'hola'), "claude --permission-mode auto 'hola'");
   assert.equal(taskCommand('nvim', false, 'hola'), "claude --permission-mode auto 'hola'");
+});
+
+test('a task in a worktree starts claude with --worktree, with or without a prompt', () => {
+  assert.equal(taskCommand('claude', false, 'hola', '142-login'), "claude --permission-mode auto --worktree '142-login' 'hola'");
+  assert.equal(taskCommand('claude', true, '', 'feat/x'), "claude --dangerously-skip-permissions --worktree 'feat/x'");
+});
+
+test('worktree names: a card number and its title, a run and its date, and what is not valid', () => {
+  assert.equal(cardWorktreeName(142, 'Arreglar el login del móvil'), '142-arreglar-el-login-del-movil');
+  assert.equal(cardWorktreeName(undefined, '¡Hola!'), 'hola');
+  const long = cardWorktreeName(7, 'una tarjeta con un título larguísimo que no cabe entero en el nombre de un worktree');
+  assert.ok(long.length <= WORKTREE_MAX && long.startsWith('7-') && !long.endsWith('-'), long);
+  assert.equal(runWorktreeName('Deps nocturnas', new Date(2026, 10, 12, 18, 0)), 'deps-nocturnas-20261112-1800');
+  assert.equal(worktreeNameProblem('142-login'), null);
+  assert.equal(worktreeNameProblem('feat/login'), null);
+  assert.ok(worktreeNameProblem('con espacios'));
+  assert.ok(worktreeNameProblem('a/../b'));
+  assert.ok(worktreeNameProblem('x'.repeat(65)));
 });
 
 /**
@@ -179,6 +199,18 @@ test(
     assert.ok(!tmux.some((a) => a[0] === 'set-option'));
     assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto 'hola'"]);
     assert.equal(res.space, 'otro');
+  }),
+);
+
+test(
+  'a task in a worktree needs no prompt, and its window is named after the worktree',
+  withHome(async (home) => {
+    const tmux: string[][] = [];
+    const host = fakeHost(home, tmux, [{ id: '$3', name: 'otro' }]);
+    await launchTask(host, { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt: '', worktree: '142-login' });
+    assert.deepEqual(tmux.find((a) => a[0] === 'new-window')?.slice(-2), ['-n', '142-login']);
+    assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto --worktree '142-login'"]);
+    await assert.rejects(launchTask(host, { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt: 'x', worktree: 'no vale' }), /solo admite/);
   }),
 );
 

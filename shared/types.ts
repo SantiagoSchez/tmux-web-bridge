@@ -265,9 +265,11 @@ export interface ExtLaunchRequest {
   host: string;
   target: ExtLaunchTarget;
   prompt: string;
-  /** The window's name (pinned); the kit's automatic title when missing. */
+  /** The window's name (pinned); the worktree's, or the kit's automatic title, when missing. */
   name?: string;
   skipPermissions?: boolean;
+  /** Start claude in a new git worktree of this name (`claude --worktree`); the prompt may be left out then. */
+  worktree?: string;
 }
 
 export interface ExtLaunchResult {
@@ -379,6 +381,8 @@ export type ActionOp =
    * and no space opens: it offers the folders made inside it.
    */
   | { op: 'createFolder'; parent: string; name: string; subfolders?: boolean; skipPermissions?: boolean }
+  /** A task, as the Trello extension launches it (ExtLaunchRequest without `host`): answers an ExtLaunchResult. */
+  | ({ op: 'launchTask' } & Omit<ExtLaunchRequest, 'host' | 'prompt'> & { prompt?: string })
   /** Whether the machine's kit downloads the Trello extension of its release (and keeps it up to date). */
   | { op: 'trelloExtension'; on: boolean }
   /** The folders inside one, for the folder picker. */

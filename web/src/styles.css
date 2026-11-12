@@ -2692,3 +2692,11 @@ kbd.shortcut {
   flex: 1;
   font-size: 14px;
 }
+textarea.text-input {
+  height: auto;
+  min-height: 72px;
+  padding: 10px 14px;
+  resize: vertical;
+  font-family: inherit;
+  line-height: 1.4;
+}

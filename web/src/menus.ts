@@ -31,6 +31,19 @@ function unfold(hostId: string, s: SessionInfo): void {
   if (collapsedSessions.includes(key)) setPref('collapsedSessions', collapsedSessions.filter((k) => k !== key));
 }
 
+/** Opens a window just launched in a space as soon as it shows up in the tree (a task, from Trello or a worktree). */
+export function openWindowWhenReady(hostId: string, sessionId: string, windowId: string): void {
+  const started = Date.now();
+  const tick = () => {
+    const s = hosts.value.find((h) => h.id === hostId)?.sessions.find((x) => x.id === sessionId);
+    if (s?.windows.some((w) => w.id === windowId)) {
+      unfold(hostId, s);
+      openWindow(hostId, windowId);
+    } else if (Date.now() - started < 5000) setTimeout(tick, 200);
+  };
+  tick();
+}
+
 /** Opens the first window of a space as soon as it shows up in the tree (it was just created). */
 export function openSessionWhenReady(hostId: string, sessionId: string): void {
   whenSessionReady(hostId, sessionId, (s) => {

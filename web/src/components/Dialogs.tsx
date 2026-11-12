@@ -1,8 +1,9 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { folderNameProblem, homePath } from '../../../shared/folders';
-import type { ActionOp, ProjectList } from '../../../shared/types';
-import { newSession, openSessionWhenReady } from '../menus';
+import type { ActionOp, ExtLaunchResult, ProjectList } from '../../../shared/types';
+import { worktreeNameProblem } from '../../../shared/worktree';
+import { newSession, openSessionWhenReady, openWindowWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
@@ -363,7 +364,7 @@ interface FolderGroup {
 }
 
 /** What «Nuevo space» shows: the folders, where a new one goes, or its name. */
-type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent: string };
+type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent: string } | { kind: 'worktree'; item: FolderItem };
 
 /**
  * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder and
@@ -376,6 +377,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<ProjectStep>({ kind: 'list' });
+  const [inWorktree, setInWorktree] = useState(false);
   const load = () => hub.action<ProjectList>(d.host.id, { op: 'listProjects' }).then(setList, close);
   // No focus on the search: on a phone the keyboard would cover the list, which is what
   // you pick from most of the time.
@@ -416,7 +418,8 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
       setBusy(false); // the error is already a toast
     }
   };
-  const open = (i: FolderItem) => run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+  const open = (i: FolderItem) =>
+    inWorktree ? setStep({ kind: 'worktree', item: i }) : run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
   /** A new folder with subfolders opens no space: back to the list, where it is a group now, empty. */
   const addGroup = async (parent: string, name: string) => {
     setBusy(true);
@@ -435,6 +438,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const make = (parent: string, name: string, subfolders: boolean) =>
     subfolders ? addGroup(parent, name) : run({ op: 'createFolder', parent, name, skipPermissions: prefs.value.skipPermissions });
   const back = () => setStep({ kind: 'list' });
+  if (step.kind === 'worktree') return <WorktreeStep d={d} item={step.item} close={close} back={back} />;
   if (step.kind === 'where') return <NewFolderWhere d={d} value={q} busy={busy} close={close} back={back} create={make} />;
   if (step.kind === 'name') {
     const parent = step.parent;
@@ -522,6 +526,10 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
       </ul>
       <div class="sheet-actions">
         <SkipPermissions />
+        <label class="kb-check" title="Claude arranca en un git worktree nuevo (claude --worktree), en una ventana con su nombre">
+          <input type="checkbox" checked={inWorktree} onChange={(e) => setInWorktree(e.currentTarget.checked)} />
+          En un worktree nuevo
+        </label>
         <button
           class="btn"
           title="Añadir o quitar carpetas de esta máquina"
@@ -542,6 +550,77 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           Space vacío
         </button>
       </div>
+    </Sheet>
+  );
+}
+
+/**
+ * «Nuevo space» with «En un worktree nuevo»: the worktree's name and, if wanted, a prompt.
+ * Claude starts there with `--worktree`, in a new window named after it, in the folder's
+ * space (opened first if it is not).
+ */
+function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: FolderItem; close: () => void; back: () => void }) {
+  const { d, item, close, back } = props;
+  const [name, setName] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [busy, setBusy] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.focus(), []);
+  const problem = name.trim() ? worktreeNameProblem(name.trim()) : null;
+  const launch = async () => {
+    if (busy || !name.trim() || problem) return;
+    setBusy(true);
+    try {
+      const res = await hub.action<ExtLaunchResult>(d.host.id, {
+        op: 'launchTask',
+        target: { folder: item.folder, sub: item.sub },
+        worktree: name.trim(),
+        prompt: prompt.trim(),
+        skipPermissions: prefs.value.skipPermissions,
+      });
+      close();
+      openWindowWhenReady(d.host.id, res.session, res.window);
+    } catch {
+      setBusy(false); // the error is already a toast
+    }
+  };
+  return (
+    <Sheet title="Nuevo worktree" subtitle={`${item.name} · ${d.host.name}`} onClose={close}>
+      <form
+        class="folder-picker"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void launch();
+        }}
+      >
+        <label class="folder-name">
+          <span class="dim small">Nombre (también el de la rama)</span>
+          <input
+            class="text-input"
+            value={name}
+            placeholder="p. ej. 142-arreglar-login"
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck={false}
+            ref={input}
+            onInput={(e) => setName(e.currentTarget.value)}
+          />
+        </label>
+        {problem && <p class="settings-state small">{problem}</p>}
+        <label class="folder-name">
+          <span class="dim small">Prompt (opcional)</span>
+          <textarea class="text-input" rows={3} value={prompt} onInput={(e) => setPrompt(e.currentTarget.value)} />
+        </label>
+        <div class="sheet-actions">
+          <SkipPermissions />
+          <button type="button" class="btn" onClick={back}>
+            Atrás
+          </button>
+          <button type="submit" class="btn btn-primary" disabled={busy || !name.trim() || !!problem}>
+            {busy ? 'Lanzando…' : 'Lanzar'}
+          </button>
+        </div>
+      </form>
     </Sheet>
   );
 }

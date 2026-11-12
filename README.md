@@ -63,7 +63,7 @@
 ### 🖥️ Todas tus máquinas en un solo panel
 
 - **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
-- **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él.
+- **Control completo** de spaces, ventanas y paneles. «Nuevo space» abre un proyecto y arranca `claude` en él. Con **«En un worktree nuevo»**, Claude arranca en un git worktree propio (`claude --worktree <nombre>`, que pasa por tu hook `WorktreeCreate` si lo tienes), en una ventana con ese nombre y con un prompt opcional.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
 - **Tareas desde Trello**: una extensión de Chrome añade a cada tarjeta un botón que lanza un Claude con ella («Haz la tarjeta …») en la máquina y el space o la carpeta que elijas, y la mueve a Doing. Se conecta con su propio token, que se genera y se revoca en ⚙️ **Ajustes › Trello**, donde también se activa en la máquina donde usas Chrome: su kit la descarga y la pone al día en cada actualización. Está en [`trello-extension/`](trello-extension/README.md).
 
@@ -270,7 +270,7 @@ La usa [`trello-extension/`](trello-extension/README.md). Todas con `Authorizati
 | --- | --- |
 | `GET /api/ext/ping` | Comprueba la dirección y el token. |
 | `GET /api/ext/targets` | Cada máquina con su estado, sus spaces abiertos y sus carpetas de «Nuevo space» (`ExtTargets` en `shared/types.ts`). |
-| `POST /api/ext/launch` | `{ host, target: { session } \| { folder, sub? }, prompt, name?, skipPermissions? }`. Abre una ventana nueva llamada `name` (fijada) en ese space, o en el de la carpeta, que se crea si no está abierto (y entonces la tarea va en su primera ventana), y escribe `claude --permission-mode auto '<prompt>'` (o `--dangerously-skip-permissions`). Usa el comando de la máquina si es `claude …`; si no, `claude`. |
+| `POST /api/ext/launch` | `{ host, target: { session } \| { folder, sub? }, prompt, name?, skipPermissions?, worktree? }`. Abre una ventana nueva llamada `name` (fijada) en ese space, o en el de la carpeta, que se crea si no está abierto (y entonces la tarea va en su primera ventana), y escribe `claude --permission-mode auto '<prompt>'` (o `--dangerously-skip-permissions`), con `--worktree '<worktree>'` si se pide; entonces el prompt es opcional. Usa el comando de la máquina si es `claude …`; si no, `claude`. |
 
 ## Desarrollo
 

@@ -17,7 +17,8 @@ import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionS
 import { loadConfig } from './config.js';
 import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
-import { ExtTokenStore, hostTargets, launchTask } from './ext.js';
+import { ExtTokenStore } from './ext.js';
+import { hostTargets, launchTask } from './tasks.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -322,7 +323,10 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');
           const { id, t: _t, host: _h, ...op } = msg;
-          const data = await runAction(host, op, updates.info.latest?.version ?? null, machineFolders(host));
+          const data =
+            op.op === 'launchTask'
+              ? await launchTask(host, machineFolders(host), { ...op, prompt: op.prompt ?? '' })
+              : await runAction(host, op, updates.info.latest?.version ?? null, machineFolders(host));
           if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
           break;
