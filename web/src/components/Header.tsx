@@ -50,7 +50,7 @@ export function Header() {
 }
 
 /** Live counter of browsers connected to the panel; more than one stands out. */
-export function ConnectionsButton({ count }: { count: number }) {
+function ConnectionsButton({ count }: { count: number }) {
   return (
     <button
       class={`conn-btn ${count > 1 ? 'conn-many' : ''}`}

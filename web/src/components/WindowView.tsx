@@ -4,10 +4,9 @@ import { killPane, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
-import { connections, hubSettings, isSolo, multiHost, STATE_LABEL, type MenuItem } from '../state';
+import { hubSettings, isSolo, multiHost, STATE_LABEL, type MenuItem } from '../state';
 import { uploadFiles } from '../upload';
 import { hub } from '../ws';
-import { ConnectionsButton } from './Header';
 import { PendingStrip } from './Assist';
 import { IconBack, IconMore } from './icons';
 import { MicButton } from './Mic';
@@ -136,7 +135,6 @@ export function WindowView({ host, session, window, paneId }: Props) {
             {window.state && <span class={`state-chip state-${window.state}`}>{STATE_LABEL[window.state]}</span>}
           </div>
         </div>
-        {!desktop && <ConnectionsButton count={connections.value.length} />}
         <ChangesButton host={host} window={window} paneId={pane?.id} />
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
           <IconMore />
