@@ -34,8 +34,19 @@ export function openFile(origin: FileOrigin, path: string, line?: number): void 
   fileViewer.value = { origin, stack: [{ kind: 'file', path, line }] };
 }
 
+/** What «Ficheros cambiados» is filtered by: kept going into a diff and back, cleared when it opens again. */
+const changesQuery = signal('');
+
+/** Lower case and without accents, to search. */
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+
 export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   leaveTerminal();
+  changesQuery.value = '';
   fileViewer.value = { origin, stack: [{ kind: 'changes', mode }] };
 }
 
@@ -255,6 +266,12 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
   useEffect(load, [asked]);
 
   const subtitle = changes ? `${changes.branch}${changes.base && mode === 'branch' ? ` · desde ${changes.base.ref}` : ''} · ${changes.root}` : undefined;
+  // Every word has to be in the path (or the old one of a rename), in any order: «comp dial» finds components/Dialogs.tsx.
+  const words = fold(changesQuery.value).split(/\s+/).filter(Boolean);
+  const files = (changes?.files ?? []).filter((f) => {
+    const hay = fold(`${f.path} ${f.from ?? ''}`);
+    return words.every((w) => hay.includes(w));
+  });
   return (
     <Sheet title="Ficheros cambiados" subtitle={subtitle} back={back} class="file-sheet" onClose={close}>
       <div class="file-actions">
@@ -274,15 +291,34 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
           <IconReload />
         </button>
       </div>
+      {!!changes?.files.length && (
+        <input
+          class="text-input changes-search"
+          type="search"
+          value={changesQuery.value}
+          placeholder={`Buscar entre los ${changes.files.length} ficheros`}
+          aria-label="Buscar un fichero"
+          autocomplete="off"
+          spellcheck={false}
+          onInput={(e) => (changesQuery.value = e.currentTarget.value)}
+        />
+      )}
       {error ? (
         <p class="settings-state">{error}</p>
       ) : !changes || (loading && changes.mode !== mode) ? (
         <p class="dim pad">Cargando…</p>
       ) : !changes.files.length ? (
         <p class="dim pad">{mode === 'head' ? 'Nada sin commit.' : 'Esta rama no tiene cambios respecto a la principal.'}</p>
+      ) : !files.length ? (
+        <p class="dim pad">Ningún fichero cambiado coincide.</p>
       ) : (
         <ul class="menu">
-          {changes.files.map((f) => {
+          {words.length > 0 && (
+            <li class="dim small changes-found">
+              {files.length} de {changes.files.length} ficheros
+            </li>
+          )}
+          {files.map((f) => {
             const slash = f.path.lastIndexOf('/');
             return (
               <li key={f.path}>
