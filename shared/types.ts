@@ -259,8 +259,11 @@ export interface ExtTargets {
   hosts: ExtHostTargets[];
 }
 
-/** An open space (its id), or an added folder (or `sub`, one inside a folder with subfolders). */
-export type ExtLaunchTarget = { session: string } | { folder: string; sub?: string };
+/**
+ * An open space (its id), an added folder (or `sub`, one inside a folder with subfolders),
+ * whose space is opened or reused, or both: a new window of that space, in that folder.
+ */
+export type ExtLaunchTarget = { session: string } | { folder: string; sub?: string } | { session: string; folder: string; sub?: string };
 
 /**
  * POST /api/ext/launch: a new window in the target's space (the space is made first for a
@@ -437,9 +440,10 @@ export type ActionOp =
    * Makes the folder `name` inside `parent` and opens a space there: one more inside a
    * folder with subfolders, or, anywhere else, a new one added to the host's folders.
    * With `subfolders` (not inside a folder with subfolders) it is added as one of those,
-   * and no space opens: it offers the folders made inside it.
+   * and no space opens: it offers the folders made inside it. With `session` (from «Nueva
+   * ventana»), it opens in a new window of that space instead.
    */
-  | { op: 'createFolder'; parent: string; name: string; subfolders?: boolean; skipPermissions?: boolean }
+  | { op: 'createFolder'; parent: string; name: string; subfolders?: boolean; skipPermissions?: boolean; session?: string }
   /** A task, as the Trello extension launches it (ExtLaunchRequest without `host`): answers an ExtLaunchResult. */
   | ({ op: 'launchTask' } & Omit<ExtLaunchRequest, 'host' | 'prompt'> & { prompt?: string })
   /** Whether the machine's kit downloads the Trello extension of its release (and keeps it up to date). */
@@ -448,7 +452,11 @@ export type ActionOp =
   | { op: 'listDirs'; path: string }
   | { op: 'renameSession'; session: string; name: string }
   | { op: 'killSession'; session: string }
-  | { op: 'newWindow'; session: string; name?: string }
+  /**
+   * A new window in the space. With `folder` (an added one, or `sub` inside it, made first
+   * with `create`), in that folder and running the host's command, as openProject does.
+   */
+  | { op: 'newWindow'; session: string; name?: string; folder?: string; sub?: string; create?: boolean; skipPermissions?: boolean }
   | { op: 'renameWindow'; window: string; name: string }
   | { op: 'killWindow'; window: string }
   | { op: 'splitPane'; pane: string; direction: 'h' | 'v' }

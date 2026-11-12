@@ -107,7 +107,8 @@ export type Dialog =
   | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resume?: ClaudeResume[]; permissions?: boolean; onSubmit: () => void }
   /** top: shown above the items, and the menu stays open while it is used (the font size). */
   | { kind: 'menu'; title: string; subtitle?: string; top?: ComponentChildren; items: MenuItem[] }
-  | { kind: 'project'; host: HostInfo }
+  /** «Nuevo space» from a folder, or, with `session`, «Nueva ventana» of that space in a folder. */
+  | { kind: 'project'; host: HostInfo; session?: SessionInfo }
   /**
    * A Claude login from the panel. host: the machine to switch to it right after;
    * account: the account it is meant for (re-login), if any.

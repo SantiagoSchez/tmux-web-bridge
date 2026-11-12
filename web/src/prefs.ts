@@ -16,7 +16,8 @@ export interface Prefs {
   /** The Trello drawer: the board shown, the list shown on each board, and where tasks of each board went last. */
   trelloBoard: string;
   trelloLists: Record<string, string>;
-  trelloLaunch: Record<string, { host: string; destination: string }>;
+  /** destination: the folder's key ('' for the space's own); space: the open space's ('' for the folder's), missing before there were both. */
+  trelloLaunch: Record<string, { host: string; destination: string; space?: string }>;
   /** Tasks on Trello cards start in a new worktree. */
   trelloWorktree: boolean;
 }

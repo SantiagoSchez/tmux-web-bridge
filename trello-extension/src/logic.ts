@@ -1,6 +1,18 @@
 // What the dialog and the hub share (template, Doing list, destinations, comment) lives in
 // shared/trello.ts, which this extension bundles.
-export { commentText, DEFAULT_TEMPLATE, destinations, findDoingList, renderTemplate, spaceName, type Destination, type DestinationGroup } from '../../shared/trello';
+export {
+  commentText,
+  DEFAULT_TEMPLATE,
+  findDoingList,
+  folderGroups,
+  launchTarget,
+  rememberedChoice,
+  renderTemplate,
+  spaceChoices,
+  spaceName,
+  type Destination,
+  type DestinationGroup,
+} from '../../shared/trello';
 export { cardWorktreeName, worktreeNameProblem } from '../../shared/worktree';
 
 /** The panel's address as the extension keeps it: http(s), origin and path, no trailing slash. */

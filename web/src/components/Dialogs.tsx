@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { folderNameProblem, homePath } from '../../../shared/folders';
 import type { ActionOp, ExtLaunchResult, ProjectList } from '../../../shared/types';
 import { worktreeNameProblem } from '../../../shared/worktree';
-import { newSession, openSessionWhenReady, openWindowWhenReady } from '../menus';
+import { newSession, newWindow, openNewWindow, openSessionWhenReady, openWindowWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
@@ -370,7 +370,8 @@ type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent
  * "Nuevo space" on a host with folders, like the `c` shell function: pick a folder and
  * the space opens there with the host's command (claude) running; an open space of
  * that name is reused. A new folder is made inside one with subfolders (its ＋), or
- * anywhere on the machine, and then it is one more of the host's folders.
+ * anywhere on the machine, and then it is one more of the host's folders. From «Nueva
+ * ventana» (with `d.session`), the same, but in a new window of that space.
  */
 function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; close: () => void }) {
   const [list, setList] = useState<ProjectList | null>(null);
@@ -408,18 +409,24 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const usable = rows.flatMap((r) => r.children.filter((i) => !i.missing));
   const exact = usable.filter((i) => i.name === q);
 
+  const win = d.session;
   const run = async (op: ActionOp) => {
     setBusy(true);
     try {
-      const res = await hub.action<{ session: string }>(d.host.id, op);
+      const res = await hub.action<{ session: string } | { window: string; pane: string }>(d.host.id, op);
       close();
-      openSessionWhenReady(d.host.id, res.session);
+      if ('window' in res) openNewWindow(d.host.id, res);
+      else openSessionWhenReady(d.host.id, res.session);
     } catch {
       setBusy(false); // the error is already a toast
     }
   };
   const open = (i: FolderItem) =>
-    inWorktree ? setStep({ kind: 'worktree', item: i }) : run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+    inWorktree
+      ? setStep({ kind: 'worktree', item: i })
+      : win
+        ? run({ op: 'newWindow', session: win.id, folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions })
+        : run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
   /** A new folder with subfolders opens no space: back to the list, where it is a group now, empty. */
   const addGroup = async (parent: string, name: string) => {
     setBusy(true);
@@ -436,7 +443,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   };
 
   const make = (parent: string, name: string, subfolders: boolean) =>
-    subfolders ? addGroup(parent, name) : run({ op: 'createFolder', parent, name, skipPermissions: prefs.value.skipPermissions });
+    subfolders ? addGroup(parent, name) : run({ op: 'createFolder', parent, name, skipPermissions: prefs.value.skipPermissions, session: win?.id });
   const back = () => setStep({ kind: 'list' });
   if (step.kind === 'worktree') return <WorktreeStep d={d} item={step.item} close={close} back={back} />;
   if (step.kind === 'where') return <NewFolderWhere d={d} value={q} busy={busy} close={close} back={back} create={make} />;
@@ -444,7 +451,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
     const parent = step.parent;
     return (
       <Sheet title="Nueva carpeta" subtitle={`en ${abs(parent)} · ${d.host.name}`} onClose={close}>
-        <NewFolderForm hostId={d.host.id} parent={parent} value={q} busy={busy} focus back={back} create={(name, sub) => make(parent, name, sub)} />
+        <NewFolderForm hostId={d.host.id} space={win?.name} parent={parent} value={q} busy={busy} focus back={back} create={(name, sub) => make(parent, name, sub)} />
       </Sheet>
     );
   }
@@ -462,7 +469,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   );
 
   return (
-    <Sheet title="Nuevo space" subtitle={d.host.name} onClose={close}>
+    <Sheet title={win ? 'Nueva ventana' : 'Nuevo space'} subtitle={win ? `En ${win.name} · ${d.host.name}` : d.host.name} onClose={close}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -544,10 +551,11 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
           class="btn"
           onClick={() => {
             close();
-            newSession(d.host, true);
+            if (win) newWindow(d.host, win, true, true);
+            else newSession(d.host, true);
           }}
         >
-          Space vacío
+          {win ? 'Ventana vacía' : 'Space vacío'}
         </button>
       </div>
     </Sheet>
@@ -557,7 +565,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
 /**
  * «Nuevo space» with «En un worktree nuevo»: the worktree's name and, if wanted, a prompt.
  * Claude starts there with `--worktree`, in a new window named after it, in the folder's
- * space (opened first if it is not).
+ * space (opened first if it is not), or, from «Nueva ventana», in that space.
  */
 function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: FolderItem; close: () => void; back: () => void }) {
   const { d, item, close, back } = props;
@@ -573,7 +581,7 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
     try {
       const res = await hub.action<ExtLaunchResult>(d.host.id, {
         op: 'launchTask',
-        target: { folder: item.folder, sub: item.sub },
+        target: d.session ? { session: d.session.id, folder: item.folder, sub: item.sub } : { folder: item.folder, sub: item.sub },
         worktree: name.trim(),
         prompt: prompt.trim(),
         skipPermissions: prefs.value.skipPermissions,
@@ -585,7 +593,7 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
     }
   };
   return (
-    <Sheet title="Nuevo worktree" subtitle={`${item.name} · ${d.host.name}`} onClose={close}>
+    <Sheet title="Nuevo worktree" subtitle={`${item.name}${d.session ? ` · en ${d.session.name}` : ''} · ${d.host.name}`} onClose={close}>
       <form
         class="folder-picker"
         onSubmit={(e) => {
@@ -644,6 +652,7 @@ function NewFolderWhere(props: {
         <DirBrowser b={b} />
         <NewFolderForm
           hostId={props.d.host.id}
+          space={props.d.session?.name}
           parent={b.at?.path ?? null}
           value={props.value}
           busy={props.busy || b.busy}
@@ -661,11 +670,14 @@ function NewFolderWhere(props: {
 
 /**
  * The name of a new folder inside `parent` and how it goes in: made, and a space opened
- * in it. Anywhere but inside a folder with subfolders it becomes one of the host's
- * folders, and may be one with subfolders: then no space opens.
+ * in it (or, with `space`, a new window of that space). Anywhere but inside a folder with
+ * subfolders it becomes one of the host's folders, and may be one with subfolders: then
+ * nothing opens.
  */
 function NewFolderForm(props: {
   hostId: string;
+  /** From «Nueva ventana»: the space the window goes in. */
+  space?: string;
   parent: string | null;
   value: string;
   busy: boolean;
@@ -709,11 +721,9 @@ function NewFolderForm(props: {
       />
       {problem && <p class="settings-state small">{problem}</p>}
       <p class="dim small">
-        {inGroup
-          ? 'Se abre un space en ella.'
-          : group
-            ? 'Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ningún space, crea dentro las que quieras con su ＋.'
-            : 'Se abre un space en ella y queda entre las carpetas de esta máquina.'}
+        {group
+          ? `Queda entre las carpetas de esta máquina, con sus subcarpetas: no se abre ${props.space ? 'ninguna ventana' : 'ningún space'}, crea dentro las que quieras con su ＋.`
+          : `${props.space ? `Se abre una ventana de ${props.space} en ella` : 'Se abre un space en ella'}${inGroup ? '.' : ' y queda entre las carpetas de esta máquina.'}`}
       </p>
       <div class="sheet-actions">
         {!group && <SkipPermissions />}

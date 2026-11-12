@@ -33,12 +33,12 @@ export function spaceName(name: string): string {
   return name.replace(/[.:]/g, '-').trim();
 }
 
-/** One choice of the destination list. */
+/** One folder of the destination's folder list. */
 export interface Destination {
-  /** Stable across restarts (a space by its name, a folder by its path), for remembering it. */
+  /** Stable across restarts (a folder by its path), for remembering it. */
   key: string;
   label: string;
-  target: ExtLaunchTarget;
+  target: { folder: string; sub?: string };
 }
 
 export interface DestinationGroup {
@@ -46,21 +46,29 @@ export interface DestinationGroup {
   items: Destination[];
 }
 
+/** One open space of the destination's space list. */
+export interface SpaceChoice {
+  /** Stable across restarts (a space by its name), for remembering it. */
+  key: string;
+  label: string;
+  id: string;
+}
+
+/** The open spaces a task can get a new window in, by name. */
+export function spaceChoices(host: ExtHostTargets): SpaceChoice[] {
+  return [...host.spaces]
+    .sort((a, b) => a.name.localeCompare(b.name, 'es'))
+    .map((s) => ({ key: `space:${s.name}`, label: s.name, id: s.id }));
+}
+
 /**
- * Where a task can go on a machine: its open spaces first, then the folders of
- * «Nuevo space» (each with subfolders as a group of its own, the loose ones together).
+ * The folders of «Nuevo space» a task can go in: each with subfolders as a group of its
+ * own, the loose ones together. With `tagOpen`, those whose space is open say so.
  */
-export function destinations(host: ExtHostTargets): DestinationGroup[] {
+export function folderGroups(host: ExtHostTargets, tagOpen = true): DestinationGroup[] {
   const open = new Set(host.spaces.map((s) => s.name));
-  const tag = (name: string) => (open.has(spaceName(name)) ? ' · abierto' : '');
+  const tag = (name: string) => (tagOpen && open.has(spaceName(name)) ? ' · abierto' : '');
   const groups: DestinationGroup[] = [];
-  const spaces = [...host.spaces].sort((a, b) => a.name.localeCompare(b.name, 'es'));
-  if (spaces.length) {
-    groups.push({
-      label: 'Spaces abiertos (ventana nueva)',
-      items: spaces.map((s) => ({ key: `space:${s.name}`, label: s.name, target: { session: s.id } })),
-    });
-  }
   const loose: Destination[] = [];
   for (const f of host.folders ?? []) {
     if (f.missing) continue;
@@ -76,6 +84,26 @@ export function destinations(host: ExtHostTargets): DestinationGroup[] {
   }
   if (loose.length) groups.push({ label: 'Carpetas', items: loose });
   return groups;
+}
+
+/**
+ * Where the two choices launch a task: in the folder's space (opened or reused) when no
+ * open space is picked, a new window of the open space in its current folder when no
+ * folder is, or a new window of it in the folder. Undefined while neither is (or one is gone).
+ */
+export function launchTarget(host: ExtHostTargets, spaceKey: string, folderKey: string): ExtLaunchTarget | undefined {
+  const space = spaceKey ? spaceChoices(host).find((s) => s.key === spaceKey) : undefined;
+  const folder = folderKey ? folderGroups(host).flatMap((g) => g.items).find((d) => d.key === folderKey) : undefined;
+  if ((spaceKey && !space) || (folderKey && !folder)) return undefined;
+  if (space) return folder ? { session: space.id, ...folder.target } : { session: space.id };
+  return folder?.target;
+}
+
+/** A remembered destination as the two choices; one of before (a space or a folder alone) still reads. */
+export function rememberedChoice(r: { destination: string; space?: string } | undefined): { space: string; folder: string } {
+  if (!r) return { space: '', folder: '' };
+  if (r.space !== undefined) return { space: r.space, folder: r.destination };
+  return r.destination.startsWith('space:') ? { space: r.destination, folder: '' } : { space: '', folder: r.destination };
 }
 
 /** The comment left on the card. */

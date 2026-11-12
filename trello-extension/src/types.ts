@@ -17,7 +17,8 @@ export interface Settings {
 
 /** The last choice of the launch dialog: per board, and the checkboxes for all. */
 export interface Memory {
-  boards: Record<string, { host: string; destination: string }>;
+  /** destination: the folder's key ('' for the space's own); space: the open space's ('' for the folder's), missing before there were both. */
+  boards: Record<string, { host: string; destination: string; space?: string }>;
   skipPermissions: boolean;
   worktree: boolean;
 }
@@ -27,7 +28,7 @@ export interface LaunchContext {
   card: TrelloCard;
   targets: ExtTargets;
   promptTemplate: string;
-  remembered?: { host: string; destination: string };
+  remembered?: { host: string; destination: string; space?: string };
   skipPermissions: boolean;
   worktree: boolean;
 }
@@ -35,7 +36,7 @@ export interface LaunchContext {
 /** From the content script to the service worker. */
 export type Request =
   | { type: 'context'; cardId: string }
-  | { type: 'launch'; card: TrelloCard; req: ExtLaunchRequest; destination: string; worktree: boolean }
+  | { type: 'launch'; card: TrelloCard; req: ExtLaunchRequest; destination: string; space: string; worktree: boolean }
   | { type: 'openOptions' }
   /** A newer version waiting on disk (the kit downloaded it), or null. */
   | { type: 'update' }

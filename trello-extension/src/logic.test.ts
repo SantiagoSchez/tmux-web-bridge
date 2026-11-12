@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { commentText, destinations, findDoingList, normalizeHubUrl, renderTemplate, spaceName } from './logic';
+import { commentText, findDoingList, folderGroups, launchTarget, normalizeHubUrl, rememberedChoice, renderTemplate, spaceChoices, spaceName } from './logic';
 import type { CardInfo, ExtHostTargets } from './types';
 
 const card: CardInfo = {
@@ -55,34 +55,53 @@ const host: ExtHostTargets = {
   ],
 };
 
-test('destinations: open spaces, then each folder with subfolders, then the loose ones', () => {
-  const groups = destinations(host);
+test('destinations: the open spaces by name, and the folders, each with subfolders on its own, then the loose ones', () => {
+  assert.deepEqual(spaceChoices(host), [
+    { key: 'space:blog', label: 'blog', id: '$1' },
+    { key: 'space:twb', label: 'twb', id: '$2' },
+  ]);
+  const groups = folderGroups(host);
   assert.deepEqual(
     groups.map((g) => g.label),
-    ['Spaces abiertos (ventana nueva)', 'Proyectos (carpetas)', 'Carpetas'],
+    ['Proyectos (carpetas)', 'Carpetas'],
   );
-  assert.deepEqual(groups[0].items, [
-    { key: 'space:blog', label: 'blog', target: { session: '$1' } },
-    { key: 'space:twb', label: 'twb', target: { session: '$2' } },
-  ]);
   assert.deepEqual(
-    groups[1].items.map((d) => [d.label, d.target]),
+    groups[0].items.map((d) => [d.label, d.target]),
     [
       ['api.v2', { folder: '~/Proyectos', sub: 'api.v2' }],
       ['twb · abierto', { folder: '~/Proyectos', sub: 'twb' }],
     ],
   );
-  assert.deepEqual(groups[2].items, [{ key: 'folder:~/dotfiles', label: 'dotfiles', target: { folder: '~/dotfiles' } }]);
+  assert.deepEqual(groups[1].items, [{ key: 'folder:~/dotfiles', label: 'dotfiles', target: { folder: '~/dotfiles' } }]);
+  assert.equal(folderGroups(host, false)[0].items[1].label, 'twb');
 });
 
 test('a folder is open when a space has the name tmux gives it', () => {
-  const groups = destinations({ ...host, spaces: [{ id: '$3', name: 'api-v2', windows: 1 }] });
-  assert.equal(groups[1].items[0].label, 'api.v2 · abierto');
+  const groups = folderGroups({ ...host, spaces: [{ id: '$3', name: 'api-v2', windows: 1 }] });
+  assert.equal(groups[0].items[0].label, 'api.v2 · abierto');
   assert.equal(spaceName('a.b:c'), 'a-b-c');
 });
 
+test('the target: the folder\'s space, an open space where it is, or an open space in a folder', () => {
+  const sub = 'sub:~/Proyectos\napi.v2';
+  assert.deepEqual(launchTarget(host, '', sub), { folder: '~/Proyectos', sub: 'api.v2' });
+  assert.deepEqual(launchTarget(host, 'space:twb', ''), { session: '$2' });
+  assert.deepEqual(launchTarget(host, 'space:twb', sub), { session: '$2', folder: '~/Proyectos', sub: 'api.v2' });
+  assert.equal(launchTarget(host, '', ''), undefined);
+  assert.equal(launchTarget(host, 'space:cerrado', ''), undefined);
+  assert.equal(launchTarget(host, 'space:twb', 'folder:~/no-esta'), undefined);
+});
+
+test('a remembered destination of before, a space or a folder alone, still reads', () => {
+  assert.deepEqual(rememberedChoice({ destination: 'space:twb' }), { space: 'space:twb', folder: '' });
+  assert.deepEqual(rememberedChoice({ destination: 'folder:~/dotfiles' }), { space: '', folder: 'folder:~/dotfiles' });
+  assert.deepEqual(rememberedChoice({ destination: 'folder:~/dotfiles', space: 'space:twb' }), { space: 'space:twb', folder: 'folder:~/dotfiles' });
+  assert.deepEqual(rememberedChoice(undefined), { space: '', folder: '' });
+});
+
 test('a machine without spaces or readable folders offers nothing', () => {
-  assert.deepEqual(destinations({ ...host, spaces: [], folders: undefined }), []);
+  const none = { ...host, spaces: [], folders: undefined };
+  assert.deepEqual([spaceChoices(none), folderGroups(none)], [[], []]);
 });
 
 test('the comment on the card', () => {

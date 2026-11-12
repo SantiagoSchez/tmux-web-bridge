@@ -135,6 +135,38 @@ export interface OpenedSpace {
   pane?: string;
 }
 
+/** An added folder, or `sub`, one inside an added folder with subfolders: its name and path. */
+interface PickedFolder {
+  name: string;
+  /** As the host's folders give it (under ~ or absolute). */
+  dir: string;
+  /** The added folder it is (inside). */
+  root: string;
+  sub?: string;
+}
+
+function pickFolder(host: HostMonitor, machine: MachineFolders, action: { folder: string; sub?: string }): PickedFolder {
+  const sub = action.sub === undefined ? undefined : projectName(String(action.sub));
+  const folder = machine.folders.find((f) => sameFolder(f, String(action.folder), sub !== undefined));
+  if (!folder) throw new Error(`Esa carpeta no está entre las de ${host.name}`);
+  return { name: sub ?? folder.name, dir: sub ? childPath(folder.path, sub) : folder.path, root: folder.path, sub };
+}
+
+/**
+ * The folder's absolute path on the host. Only inside a folder that is there (a disk not
+ * mounted gets no folders made under it), and made first only with `create`, inside a
+ * folder with subfolders.
+ */
+async function folderOnHost(host: HostMonitor, f: PickedFolder, create: boolean): Promise<string> {
+  const state = (await host.exec.shell(`if [ -d ${hostPath(f.dir)} ]; then echo ok; elif [ -d ${hostPath(f.root)} ]; then echo new; else echo gone; fi`)).trim();
+  if (state === 'gone') throw new Error(`La carpeta ${f.root} no está en ${host.name}`);
+  if (state === 'new') {
+    if (!f.sub || !create) throw new Error(`No existe la carpeta ${f.dir}`);
+    await host.exec.shell(`mkdir ${hostPath(f.dir)}`);
+  }
+  return (await host.exec.shell(`cd ${hostPath(f.dir)} && pwd`)).trim();
+}
+
 /**
  * The space of an added folder (or of `sub`, a folder inside one with subfolders, made
  * first with `create`): the open one of that name, or a new one there with a bare shell.
@@ -146,32 +178,51 @@ export async function openSpace(
   action: { folder: string; sub?: string; create?: boolean },
   windowName?: string,
 ): Promise<OpenedSpace> {
-  const sub = action.sub === undefined ? undefined : projectName(String(action.sub));
-  const folder = machine.folders.find((f) => sameFolder(f, String(action.folder), sub !== undefined));
-  if (!folder) throw new Error(`Esa carpeta no está entre las de ${host.name}`);
-  const name = sub ?? folder.name;
-  const dir = sub ? childPath(folder.path, sub) : folder.path;
-  const space = sessionName(name);
+  const f = pickFolder(host, machine, action);
+  const space = sessionName(f.name);
   const existing = await host.exec.runFormat(['list-sessions', '-F', '#{session_id}\t#{session_name}']).catch(() => '');
   const open = existing.split('\n').find((l) => l.split('\t')[1] === space);
   if (open) {
-    const abs = windowName === undefined ? '' : (await host.exec.shell(`cd ${hostPath(dir)} 2>/dev/null && pwd || true`)).trim();
+    const abs = windowName === undefined ? '' : (await host.exec.shell(`cd ${hostPath(f.dir)} 2>/dev/null && pwd || true`)).trim();
     return { session: open.split('\t')[0], name: space, dir: abs };
   }
 
-  // Only inside a folder that is there: a disk not mounted gets no folders made under it.
-  const state = (await host.exec.shell(`if [ -d ${hostPath(dir)} ]; then echo ok; elif [ -d ${hostPath(folder.path)} ]; then echo new; else echo gone; fi`)).trim();
-  if (state === 'gone') throw new Error(`La carpeta ${folder.path} no está en ${host.name}`);
-  if (state === 'new') {
-    if (!sub || !action.create) throw new Error(`No existe la carpeta ${dir}`);
-    await host.exec.shell(`mkdir ${hostPath(dir)}`);
-  }
-  const abs = (await host.exec.shell(`cd ${hostPath(dir)} && pwd`)).trim();
+  const abs = await folderOnHost(host, f, action.create === true);
   const args = ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs];
   if (windowName) args.push('-n', windowName.replace(/#/g, '##'));
   const [session, pane] = (await host.exec.run(args)).trim().split(' ');
   if (windowName) await host.exec.run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
   return { session, name: space, dir: abs, pane };
+}
+
+/**
+ * A new window in an open space, in an added folder (or `sub`, made first with `create`),
+ * with a bare shell. `windowName` names (and pins) it; without one, the kit names it.
+ */
+export async function folderWindow(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: { session: string; folder: string; sub?: string; create?: boolean },
+  windowName?: string,
+): Promise<{ window: string; pane: string }> {
+  const session = check(String(action.session), SESSION_ID, 'Space');
+  const abs = await folderOnHost(host, pickFolder(host, machine, action), action.create === true);
+  const args = ['new-window', '-P', '-F', '#{window_id} #{pane_id}', '-t', `${session}:`, '-c', abs.replace(/#/g, '##')];
+  if (windowName) args.push('-n', windowName.replace(/#/g, '##'));
+  const [window, pane] = (await host.exec.run(args)).trim().split(' ');
+  if (windowName) await host.exec.run(['set-option', '-w', '-t', window, '@name_pinned', '1']);
+  return { window, pane };
+}
+
+/** «Nueva ventana» in a folder: like openProject, in a new window of an open space. */
+async function openFolderWindow(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: { session: string; folder: string; sub?: string; create?: boolean; skipPermissions?: boolean },
+): Promise<{ window: string; pane: string }> {
+  const win = await folderWindow(host, machine, action);
+  if (machine.command) await host.exec.run(['send-keys', '-t', win.pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
+  return win;
 }
 
 /**
@@ -184,12 +235,16 @@ async function createFolder(
   host: HostMonitor,
   machine: MachineFolders,
   action: Extract<ActionOp, { op: 'createFolder' }>,
-): Promise<{ session: string; created: boolean } | { folder: string }> {
+): Promise<{ session: string; created: boolean } | { window: string; pane: string } | { folder: string }> {
   const name = projectName(String(action.name));
   const parent = String(action.parent).trim().replace(/(.)\/+$/, '$1');
   if (!folderPathOk(parent)) throw new Error('La ruta tiene que empezar por / o por ~');
-  const open = { op: 'openProject', skipPermissions: action.skipPermissions } as const;
-  if (machine.folders.some((f) => sameFolder(f, parent, true))) return openProject(host, machine, { ...open, folder: parent, sub: name, create: true });
+  // Opened as a space of its own, or, from «Nueva ventana», in a new window of that space.
+  const open = (m: MachineFolders, target: { folder: string; sub?: string; create?: boolean }) =>
+    action.session === undefined
+      ? openProject(host, m, { op: 'openProject', skipPermissions: action.skipPermissions, ...target })
+      : openFolderWindow(host, m, { session: action.session, skipPermissions: action.skipPermissions, ...target });
+  if (machine.folders.some((f) => sameFolder(f, parent, true))) return open(machine, { folder: parent, sub: name, create: true });
 
   const path = childPath(parent, name);
   if (machine.folders.some((f) => f.name === name)) throw new Error(`Ya hay una carpeta llamada «${name}» en ${host.name}`);
@@ -201,7 +256,7 @@ async function createFolder(
   const subfolders = action.subfolders === true;
   const folders = [...machine.folders, subfolders ? { name, path, subfolders } : { name, path }];
   machine.save?.(folders);
-  return subfolders ? { folder: path } : openProject(host, { ...machine, folders }, { ...open, folder: path });
+  return subfolders ? { folder: path } : open({ ...machine, folders }, { folder: path });
 }
 
 /** Reboots the machine. The SSH connection may drop (or hang) before shutdown answers: that is a success. */
@@ -256,6 +311,7 @@ export async function runAction(
       await run(['kill-session', '-t', check(action.session, SESSION_ID, 'sesión')]);
       return;
     case 'newWindow': {
+      if (action.folder !== undefined) return openFolderWindow(host, machine, { ...action, folder: action.folder });
       const session = check(action.session, SESSION_ID, 'sesión');
       const name = action.name?.trim();
       const args = ['new-window', '-P', '-F', '#{window_id} #{pane_id}', '-t', `${session}:`, '-c', '#{pane_current_path}'];

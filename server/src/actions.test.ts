@@ -146,3 +146,28 @@ test(
     assert.equal(saved, null);
   }),
 );
+
+test(
+  'newWindow with a folder: a window of the space in it, running the command; createFolder with a space opens one there too',
+  withHome(async (home) => {
+    mkdirSync(join(home, 'Proyectos/twb'), { recursive: true });
+    const tmux: string[][] = [];
+    const host = fakeHost(home, tmux);
+    const machine = { folders: [{ name: 'p', path: '~/Proyectos', subfolders: true }], command: 'claude', save: () => {} };
+
+    const res = await runAction(host, { op: 'newWindow', session: '$3', folder: '~/Proyectos', sub: 'twb', skipPermissions: true }, null, machine);
+    assert.deepEqual(res, { window: '$1', pane: '%1' });
+    assert.deepEqual(tmux[0], ['new-window', '-P', '-F', '#{window_id} #{pane_id}', '-t', '$3:', '-c', join(home, 'Proyectos/twb')]);
+    assert.deepEqual(tmux[1], ['send-keys', '-t', '%1', 'claude --dangerously-skip-permissions', 'Enter']);
+
+    tmux.length = 0;
+    await runAction(host, { op: 'createFolder', parent: '~/Proyectos', name: 'nuevo', session: '$3' }, null, machine);
+    assert.ok(existsSync(join(home, 'Proyectos/nuevo')));
+    assert.ok(!tmux.some((a) => a[0] === 'new-session'));
+    assert.deepEqual(tmux[0].slice(-3), ['$3:', '-c', join(home, 'Proyectos/nuevo')]);
+
+    await assert.rejects(runAction(host, { op: 'newWindow', session: '$3', folder: '/etc' }, null, machine), /no está entre las de Prueba/);
+    await assert.rejects(runAction(host, { op: 'newWindow', session: '$3', folder: '~/Proyectos', sub: 'falta' }, null, machine), /No existe la carpeta/);
+    await assert.rejects(runAction(host, { op: 'newWindow', session: 'x; kill-server', folder: '~/Proyectos', sub: 'twb' }, null, machine), /inválido/);
+  }),
+);

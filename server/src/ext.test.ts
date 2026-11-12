@@ -120,7 +120,7 @@ function fakeHost(home: string, tmux: string[][], sessions: { id: string; name: 
       case 'new-session':
         return '$9 %20\n';
       case 'new-window':
-        return '%21\n';
+        return args.includes('#{window_id} #{pane_id}') ? '@8 %21\n' : '%21\n';
       case 'display-message':
         return args.includes('%20') ? '@7\tla ##tarjeta\n' : '@8\tla tarjeta\n';
       default:
@@ -187,6 +187,23 @@ test(
     assert.equal(res.createdSpace, false);
     assert.equal(res.session, '$3');
     assert.equal(res.pane, '%21');
+  }),
+);
+
+test(
+  'an open space with a folder gets a new window in that folder',
+  withHome(async (home) => {
+    mkdirSync(join(home, 'Proyectos/blog'), { recursive: true });
+    const tmux: string[][] = [];
+    const folders: SavedFolder[] = [{ name: 'Proyectos', path: '~/Proyectos', subfolders: true }];
+    const host = fakeHost(home, tmux, [{ id: '$3', name: 'twb' }]);
+    const res = await launchTask(host, { folders, command: 'claude' }, { target: { session: '$3', folder: '~/Proyectos', sub: 'blog' }, prompt: 'hola', name: 'Tarjeta' });
+    assert.ok(!tmux.some((a) => a[0] === 'new-session'));
+    assert.deepEqual(tmux.find((a) => a[0] === 'new-window'), ['new-window', '-P', '-F', '#{window_id} #{pane_id}', '-t', '$3:', '-c', join(home, 'Proyectos/blog'), '-n', 'Tarjeta']);
+    assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto 'hola'"]);
+    assert.deepEqual([res.session, res.space, res.createdSpace], ['$3', 'twb', false]);
+    await assert.rejects(launchTask(host, { folders, command: 'claude' }, { target: { session: '$3', folder: '~/Proyectos', sub: 'nuevo' }, prompt: 'x' }), /No existe la carpeta/);
+    await assert.rejects(launchTask(host, { folders, command: 'claude' }, { target: { session: '$3', folder: '/etc' }, prompt: 'x' }), /no está entre las de Mac/);
   }),
 );
 

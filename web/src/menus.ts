@@ -74,7 +74,17 @@ export function newSession(host: HostInfo, plain = false): void {
   };
 }
 
-export function newWindow(host: HostInfo, session: SessionInfo, open = true): void {
+/** Opens a window just made from the panel, in place of the one open (if any). */
+export function openNewWindow(hostId: string, res: { window: string; pane: string }): void {
+  openWindow(hostId, res.window, res.pane, route.value.name === 'window');
+}
+
+export function newWindow(host: HostInfo, session: SessionInfo, open = true, plain = false): void {
+  // Hosts with folders: pick one, as «Nuevo space» does, and the window opens there.
+  if (hubSettings.value?.folders[host.id]?.length && !plain) {
+    dialog.value = { kind: 'project', host, session };
+    return;
+  }
   dialog.value = {
     kind: 'prompt',
     title: 'Nueva ventana',
@@ -84,7 +94,7 @@ export function newWindow(host: HostInfo, session: SessionInfo, open = true): vo
     confirm: 'Crear',
     onSubmit: async (name) => {
       const res = await hub.action<{ window: string; pane: string }>(host.id, { op: 'newWindow', session: session.id, name: name || undefined });
-      if (open && res?.window) openWindow(host.id, res.window, res.pane, route.value.name === 'window');
+      if (open && res?.window) openNewWindow(host.id, res);
     },
   };
 }

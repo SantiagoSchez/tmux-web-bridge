@@ -58,7 +58,7 @@ async function launch(req: Extract<Request, { type: 'launch' }>): Promise<ExtLau
   const s = await loadSettings();
   const result = await hub<ExtLaunchResult>(s, '/api/ext/launch', { ...req.req, card: req.card.id });
   const memory = await loadMemory();
-  memory.boards[req.card.board.id] = { host: req.req.host, destination: req.destination };
+  memory.boards[req.card.board.id] = { host: req.req.host, destination: req.destination, space: req.space };
   memory.skipPermissions = req.req.skipPermissions === true;
   memory.worktree = req.worktree;
   await saveMemory(memory);

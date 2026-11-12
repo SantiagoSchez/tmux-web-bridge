@@ -1,7 +1,7 @@
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult } from '../../shared/types.js';
 import { worktreeNameProblem } from '../../shared/worktree.js';
-import { listProjects, openSpace, projectCommand, type MachineFolders } from './actions.js';
+import { folderWindow, listProjects, openSpace, projectCommand, type MachineFolders } from './actions.js';
 import type { HostMonitor } from './host.js';
 
 // Tasks: a new window running claude with a prompt, in an open space or in the space of
@@ -88,7 +88,8 @@ export function tmuxLiteral(text: string): string {
 /**
  * Launches a task: a new window running claude with the prompt, in an open space or in
  * the space of an added folder. A folder without a space gets one, and the task goes in
- * its first window; with one open, in a new window there, in the folder. With `worktree`,
+ * its first window; with one open, in a new window there, in the folder. An open space
+ * with a folder gets a new window in that folder. With `worktree`,
  * claude starts in a new git worktree of that name, and the prompt may be left out.
  */
 export async function launchTask(host: HostMonitor, machine: MachineFolders, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult> {
@@ -116,6 +117,11 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
     if (!found) throw new Error(`Ese space ya no está abierto en ${host.name}`);
     session = found.id;
     space = found.name;
+    // With a folder too: a new window of that space, in the folder.
+    if (typeof target.folder === 'string') {
+      const sub = typeof target.sub === 'string' ? target.sub : undefined;
+      pane = (await folderWindow(host, machine, { session, folder: target.folder, sub }, name)).pane;
+    }
   } else if (typeof target.folder === 'string') {
     const sub = typeof target.sub === 'string' ? target.sub : undefined;
     const opened = await openSpace(host, machine, { folder: target.folder, sub }, name);

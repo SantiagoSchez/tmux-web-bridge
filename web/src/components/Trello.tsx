@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { DEFAULT_TEMPLATE, destinations, renderTemplate, type Destination } from '../../../shared/trello';
+import { DEFAULT_TEMPLATE, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices } from '../../../shared/trello';
 import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtTargets, TrelloBoard, TrelloInfo, TrelloList } from '../../../shared/types';
 import { cardWorktreeName, worktreeNameProblem } from '../../../shared/worktree';
 import { openWindowWhenReady } from '../menus';
@@ -276,6 +276,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const [targets, setTargets] = useState<ExtHostTargets[] | null>(null);
   const remembered = prefs.value.trelloLaunch[board.id];
   const [hostId, setHostId] = useState('');
+  const [spaceKey, setSpaceKey] = useState('');
   const [destKey, setDestKey] = useState('');
   const template = hubSettings.value?.trelloPromptTemplate ?? DEFAULT_TEMPLATE;
   const [prompt, setPrompt] = useState(renderTemplate(template, { url: card.url, name: card.name, shortLink: shortLink(card.url), board }));
@@ -291,7 +292,11 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
         const first = hosts.find((h) => h.id === remembered?.host && h.status === 'ok') ?? hosts.find((h) => h.status === 'ok');
         if (first) {
           setHostId(first.id);
-          if (first.id === remembered?.host) setDestKey(remembered.destination);
+          if (first.id === remembered?.host) {
+            const r = rememberedChoice(remembered);
+            setSpaceKey(r.space);
+            setDestKey(r.folder);
+          }
         }
       },
       (err: Error) => toast(err.message, 'error'),
@@ -299,8 +304,12 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   }, []);
 
   const host = targets?.find((h) => h.id === hostId);
-  const groups = useMemo(() => (host ? destinations(host) : []), [host]);
-  const dest: Destination | undefined = groups.flatMap((g) => g.items).find((d) => d.key === destKey);
+  const spaces = useMemo(() => (host ? spaceChoices(host) : []), [host]);
+  // A space picked that is gone (closed since it was remembered): back to the folder's.
+  const space = spaces.some((s) => s.key === spaceKey) ? spaceKey : '';
+  const groups = useMemo(() => (host ? folderGroups(host, !space) : []), [host, space]);
+  const folder = groups.some((g) => g.items.some((d) => d.key === destKey)) ? destKey : '';
+  const dest = host && launchTarget(host, space, folder);
   const problem = inWorktree ? worktreeNameProblem(wtName.trim()) : null;
   const ready = !!dest && (!!prompt.trim() || inWorktree) && !problem;
 
@@ -308,10 +317,10 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
     if (!ready || busy || !dest) return;
     setBusy(true);
     const worktree = inWorktree ? wtName.trim() : undefined;
-    const req: ExtLaunchRequest = { host: hostId, target: dest.target, prompt: prompt.trim(), name: worktree ?? card.name, skipPermissions: prefs.value.skipPermissions, worktree, card: card.id };
+    const req: ExtLaunchRequest = { host: hostId, target: dest, prompt: prompt.trim(), name: worktree ?? card.name, skipPermissions: prefs.value.skipPermissions, worktree, card: card.id };
     try {
       const r = await api<ExtLaunchResult>('/api/trello/launch', req);
-      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: dest.key } });
+      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space } });
       setPref('trelloWorktree', inWorktree);
       close();
       toast(`Lanzada en ${r.hostName} › ${r.space}${r.trello?.movedTo ? ` · movida a ${r.trello.movedTo}` : ''}`);
@@ -343,6 +352,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
                 value={hostId}
                 onChange={(e) => {
                   setHostId(e.currentTarget.value);
+                  setSpaceKey('');
                   setDestKey('');
                 }}
               >
@@ -354,10 +364,25 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
               </select>
             </label>
             <label class="folder-name">
-              <span class="dim small">Destino</span>
-              <select class="text-input" value={destKey} onChange={(e) => setDestKey(e.currentTarget.value)}>
-                <option value="" disabled>
-                  Elige dónde…
+              <span class="dim small">Space</span>
+              <select class="text-input" value={space} onChange={(e) => setSpaceKey(e.currentTarget.value)}>
+                <option value="">El de la carpeta (nuevo o abierto)</option>
+                {spaces.length > 0 && (
+                  <optgroup label="Spaces abiertos (ventana nueva)">
+                    {spaces.map((s) => (
+                      <option key={s.key} value={s.key}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </label>
+            <label class="folder-name">
+              <span class="dim small">Carpeta</span>
+              <select class="text-input" value={folder} onChange={(e) => setDestKey(e.currentTarget.value)}>
+                <option value="" disabled={!space}>
+                  {space ? 'La del space (donde esté)' : 'Elige una carpeta…'}
                 </option>
                 {groups.map((g) => (
                   <optgroup key={g.label} label={g.label}>
@@ -371,7 +396,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
               </select>
             </label>
             {host?.foldersError && <p class="settings-state small">No se han podido leer las carpetas: {host.foldersError}</p>}
-            {host && !groups.length && <p class="settings-state small">Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas.</p>}
+            {host && !spaces.length && !groups.length && <p class="settings-state small">Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas.</p>}
           </>
         )}
         <label class="folder-name">

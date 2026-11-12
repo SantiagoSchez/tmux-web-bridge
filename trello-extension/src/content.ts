@@ -1,4 +1,4 @@
-import { cardWorktreeName, destinations, renderTemplate, worktreeNameProblem, type Destination } from './logic';
+import { cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
 import type { ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
 import { DIALOG_CSS, PAGE_CSS } from './styles';
 
@@ -142,6 +142,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     const o = el('option', { value: h.id, disabled: h.status !== 'ok' }, h.status === 'ok' ? h.name : `${h.name} (sin conexión)`);
     hostSel.append(o);
   }
+  const spaceSel = el('select', { id: 'twb-space' });
   const destSel = el('select', { id: 'twb-dest' });
   const note = el('p', { class: 'muted small' });
   const prompt = el('textarea', { id: 'twb-prompt', rows: 3, value: renderTemplate(ctx.promptTemplate, ctx.card) });
@@ -152,39 +153,57 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');
 
-  let items = new Map<string, Destination>();
-  const fillDestinations = (host: ExtHostTargets | undefined, wanted?: string) => {
-    items = new Map();
-    destSel.replaceChildren(el('option', { value: '', disabled: true, selected: true }, 'Elige dónde…'));
-    note.textContent = '';
-    if (!host) return;
-    for (const g of destinations(host)) {
+  const current = () => hosts.find((h) => h.id === hostSel.value);
+  /** The folder list: with an open space picked, its own folder first; without one, a folder is a must. */
+  const fillFolders = (host: ExtHostTargets | undefined, wanted: string) => {
+    const inSpace = !!spaceSel.value;
+    destSel.replaceChildren(el('option', { value: '', disabled: !inSpace }, inSpace ? 'La del space (donde esté)' : 'Elige una carpeta…'));
+    for (const g of host ? folderGroups(host, !inSpace) : []) {
       const group = el('optgroup', { label: g.label });
-      for (const d of g.items) {
-        items.set(d.key, d);
-        group.append(el('option', { value: d.key }, d.label));
-      }
+      for (const d of g.items) group.append(el('option', { value: d.key }, d.label));
       destSel.append(group);
     }
-    if (host.foldersError) note.textContent = `No se han podido leer las carpetas: ${host.foldersError}`;
-    else if (!items.size) note.textContent = 'Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas de twb.';
-    if (wanted && items.has(wanted)) destSel.value = wanted;
+    destSel.value = wanted;
+    if (destSel.value !== wanted) destSel.value = '';
+  };
+  const fillDestinations = (host: ExtHostTargets | undefined, wanted = { space: '', folder: '' }) => {
+    spaceSel.replaceChildren(el('option', { value: '' }, 'El de la carpeta (nuevo o abierto)'));
+    note.textContent = '';
+    const spaces = host ? spaceChoices(host) : [];
+    if (spaces.length) {
+      const group = el('optgroup', { label: 'Spaces abiertos (ventana nueva)' });
+      for (const s of spaces) group.append(el('option', { value: s.key }, s.label));
+      spaceSel.append(group);
+    }
+    spaceSel.value = wanted.space;
+    if (spaceSel.value !== wanted.space) spaceSel.value = '';
+    fillFolders(host, wanted.folder);
+    if (host?.foldersError) note.textContent = `No se han podido leer las carpetas: ${host.foldersError}`;
+    else if (host && !spaces.length && !folderGroups(host).length) note.textContent = 'Esta máquina no tiene spaces abiertos ni carpetas en Ajustes › Carpetas de twb.';
     update();
+  };
+  const target = () => {
+    const host = current();
+    return host && launchTarget(host, spaceSel.value, destSel.value);
   };
   const update = () => {
     const problem = inWorktree.checked ? worktreeNameProblem(wtName.value.trim()) : null;
     wtField.hidden = !inWorktree.checked;
     wtNote.textContent = problem ?? '';
-    launchBtn.disabled = !destSel.value || (!prompt.value.trim() && !inWorktree.checked) || !!problem;
+    launchBtn.disabled = !target() || (!prompt.value.trim() && !inWorktree.checked) || !!problem;
   };
 
   const remembered = ctx.remembered && hosts.find((h) => h.id === ctx.remembered!.host && h.status === 'ok');
   const first = remembered ?? hosts.find((h) => h.status === 'ok');
   if (first) hostSel.value = first.id;
   else note.textContent = 'Ninguna máquina está conectada a twb ahora mismo.';
-  fillDestinations(first, remembered ? ctx.remembered!.destination : undefined);
+  fillDestinations(first, remembered ? rememberedChoice(ctx.remembered) : undefined);
 
-  hostSel.addEventListener('change', () => fillDestinations(hosts.find((h) => h.id === hostSel.value)));
+  hostSel.addEventListener('change', () => fillDestinations(current()));
+  spaceSel.addEventListener('change', () => {
+    fillFolders(current(), destSel.value);
+    update();
+  });
   destSel.addEventListener('change', update);
   prompt.addEventListener('input', update);
   inWorktree.addEventListener('change', update);
@@ -193,7 +212,8 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
 
   body.replaceChildren(
     el('label', { class: 'field' }, el('span', {}, 'Máquina'), hostSel),
-    el('label', { class: 'field' }, el('span', {}, 'Destino'), destSel),
+    el('label', { class: 'field' }, el('span', {}, 'Space'), spaceSel),
+    el('label', { class: 'field' }, el('span', {}, 'Carpeta'), destSel),
     note,
     el('label', { class: 'field' }, el('span', {}, 'Prompt'), prompt),
     el('label', { class: 'check' }, inWorktree, el('span', {}, 'En un worktree nuevo ', el('code', {}, 'claude --worktree'))),
@@ -201,10 +221,10 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     el('label', { class: 'check' }, skip, el('span', {}, 'Saltar permisos ', el('code', {}, '--dangerously-skip-permissions'))),
   );
   footer.append(launchBtn);
-  (destSel.value ? launchBtn : destSel).focus();
+  (target() ? launchBtn : destSel).focus();
 
   const run = async () => {
-    const dest = items.get(destSel.value);
+    const dest = target();
     if (!dest || launchBtn.disabled) return;
     launchBtn.disabled = true;
     launchBtn.textContent = 'Lanzando…';
@@ -213,9 +233,10 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
       const r = await ask<ExtLaunchResult>({
         type: 'launch',
         card: ctx.card,
-        destination: dest.key,
+        destination: destSel.value,
+        space: spaceSel.value,
         worktree: inWorktree.checked,
-        req: { host: hostSel.value, target: dest.target, prompt: prompt.value.trim(), name: worktree ?? ctx.card.name, skipPermissions: skip.checked, worktree },
+        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ?? ctx.card.name, skipPermissions: skip.checked, worktree },
       });
       close();
       const movedTo = r.trello?.movedTo;
