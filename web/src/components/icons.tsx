@@ -118,3 +118,10 @@ export const IconReload = () => (
     <path d="M20 20.5V16h-4.5" />
   </Svg>
 );
+export const IconFileDiff = () => (
+  <Svg>
+    <path d="M14.5 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7.5z" />
+    <path d="M14 2.5v5.5h5.5" />
+    <path d="M9.5 11.5h5M12 9v5M9.5 17.5h5" />
+  </Svg>
+);

@@ -6,7 +6,7 @@ import { Sheet } from './Dialogs';
 import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin } from '../fileViewer';
 
 export { fileViewer, type FileOrigin };
-import { IconReload } from './icons';
+import { IconFileDiff, IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
 // other text with its lines), the changed files of the window's repo, and their diff.
@@ -456,7 +456,7 @@ export function ChangesButton({ host, window, paneId }: { host: HostInfo; window
   return (
     <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin, stat.mode)}>
       {clean ? (
-        <span class="changes-none">±</span>
+        <IconFileDiff />
       ) : (
         <>
           <span class="changes-add">+{count(stat.added)}</span>

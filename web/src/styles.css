@@ -3104,7 +3104,6 @@ textarea.text-input {
 }
 .changes-btn.clean {
   color: var(--overlay1);
-  padding: 0 12px;
 }
 
 .changes-search {
