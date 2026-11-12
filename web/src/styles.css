@@ -2799,3 +2799,53 @@ textarea.text-input {
 .auto-small {
   width: 90px;
 }
+
+/* ------------------------------------------------------------ activity */
+
+.activity-filter {
+  margin-bottom: 8px;
+}
+.activity-day .section-title {
+  margin: 14px 0 4px;
+}
+.activity-row:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.activity-icon {
+  flex: none;
+  width: 24px;
+  text-align: center;
+}
+.activity-time {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--overlay1);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.act-error .project-hint {
+  color: var(--red);
+}
+.act-skipped .project-hint {
+  color: var(--yellow);
+}
+@media (min-width: 900px) {
+  .activity-sheet {
+    max-width: 640px;
+  }
+}
+
+/* A narrow phone: the header's buttons (grid, activity, Trello, connections, settings) take the room the words would. */
+@media (max-width: 420px) {
+  .pill-word {
+    display: none;
+  }
+  .topbar .icon-btn {
+    width: 38px;
+  }
+  .topbar .conn-btn {
+    padding: 0 8px;
+  }
+}

@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -21,6 +21,7 @@ import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
+import { ActivityLog } from './activity.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -57,6 +58,7 @@ const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
+const activity = new ActivityLog(config.dataDir);
 const trello = new TrelloService(config.dataDir);
 // The folders of «Nuevo space» live in the hub now: a `projects` block becomes one, once.
 const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
@@ -204,8 +206,12 @@ for (const host of hosts.values()) {
     for (const l of info.limits ?? []) added = usage.add(l) || added;
     if (added) broadcast({ t: 'usage', samples: usage.list });
   });
-  host.on('transition', (t) => notifier.onTransition(t));
+  host.on('transition', (t) => {
+    notifier.onTransition(t);
+    activity.onTransition(t);
+  });
 }
+activity.on('add', (event: ActivityEvent) => broadcast({ t: 'activityAdd', event }));
 accounts.on('change', (info: AccountsInfo) => {
   broadcast({ t: 'accounts', info });
   // The hub's readings feed the forecast too, keyed like the statusline's: by email,
@@ -291,6 +297,14 @@ const automations = new Automations(config.dataDir, {
 automations.start();
 // A run that did not launch says so on the phone: nobody is watching when it should have.
 automations.on('run', (a: Automation, run: AutomationRun) => {
+  const host = hosts.get(a.host);
+  const hostName = host?.name ?? a.host;
+  if (run.status === 'launched') {
+    const win = run.pane ? host?.findPane(run.pane) : null;
+    activity.add({ kind: 'launch', source: 'automation', host: a.host, hostName, space: win?.session.name, window: run.window, windowName: win?.window.name, pane: run.pane, text: a.name });
+  } else {
+    activity.add({ kind: run.status, source: 'automation', host: a.host, hostName, window: run.window, windowName: a.name, pane: run.pane, text: run.message });
+  }
   if (run.status !== 'error') return;
   void push.send({ title: `⚠️ ${a.name}`, body: `La automatización no se ha podido lanzar: ${run.message ?? 'error'}`, tag: `automation:${a.id}`, url: '/' });
 });
@@ -308,6 +322,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'settings', settings: settings.value });
   send(ws, { t: 'dictation', info: dictation.info });
   send(ws, { t: 'accounts', info: accounts.info });
+  send(ws, { t: 'activity', events: activity.list.slice(0, 400) });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -351,7 +366,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
           const { id, t: _t, host: _h, ...op } = msg;
           const data =
             op.op === 'launchTask'
-              ? await launchTask(host, machineFolders(host), { ...op, prompt: op.prompt ?? '' })
+              ? logLaunch(await launchTask(host, machineFolders(host), { ...op, prompt: op.prompt ?? '' }), 'panel', op.worktree)
               : await runAction(host, op, updates.info.latest?.version ?? null, machineFolders(host));
           if (!READ_ONLY_OPS.has(op.op)) await host.refresh();
           send(ws, { t: 'result', id, ok: true, data });
@@ -524,7 +539,14 @@ async function launchFromRequest(body: Partial<ExtLaunchRequest>, from: string):
   await host.refresh();
   console.log(`[${from}] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', space nuevo' : ''}${body.worktree ? `, worktree ${body.worktree}` : ''})`);
   if (card) result.trello = await trello.afterLaunch(card, result);
+  logLaunch(result, from === 'ext' ? 'extension' : 'trello', body.worktree);
   return result;
+}
+
+/** A task launched, in the activity. */
+function logLaunch(r: ExtLaunchResult, source: NonNullable<ActivityEvent['source']>, text?: string): ExtLaunchResult {
+  activity.add({ kind: 'launch', source, host: r.host, hostName: r.hostName, space: r.space, window: r.window, windowName: r.windowName, pane: r.pane, text: text || undefined });
+  return r;
 }
 
 /** An error of a Trello route: one fixed in Settings › Trello says so (setup), for the extension to offer it. */
@@ -861,6 +883,7 @@ if (process.env.WATCHDOG_TCP) {
 const shutdown = () => {
   for (const host of hosts.values()) host.stop();
   accounts.stop();
+  activity.save();
   void Promise.all([app.close(), notifyApp?.close()]).then(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();
 };

@@ -222,6 +222,8 @@ export class HostMonitor extends EventEmitter {
   private polling: Promise<void> | null = null;
   private prefixLoaded = false;
   private readonly git: GitScanner;
+  /** Each pane's state and since when (0: it had it when first seen), for PaneInfo.since. */
+  private stateSince = new Map<string, { state: PaneState | null; at: number }>();
   /** Web terminal sessions with a live pty on this hub (never reaped). */
   readonly liveWebSessions = new Set<string>();
   /**
@@ -312,6 +314,7 @@ export class HostMonitor extends EventEmitter {
     this.offlineSince = null;
     const prev = this.info;
     this.git.apply(sessions);
+    this.stamp(sessions, prev.status === 'ok');
     this.update({ id: this.id, name: this.name, status: 'ok', sessions, prefix: this.info.prefix, limits, kit, home: this.git.home });
     this.detectTransitions(prev, this.info);
     void this.reapWebSessions(webSessions);
@@ -324,6 +327,29 @@ export class HostMonitor extends EventEmitter {
     if (json === this.lastJson) return;
     this.lastJson = json;
     this.emit('change', next);
+  }
+
+  /**
+   * Sets each pane's `since`: when its state changed, as of this poll. Panes already
+   * there on the first poll (after starting, or back from offline) get no time: it is not known.
+   */
+  private stamp(sessions: SessionInfo[], known: boolean): void {
+    const now = Date.now();
+    const next = new Map<string, { state: PaneState | null; at: number }>();
+    for (const s of sessions) {
+      for (const w of s.windows) {
+        for (const p of w.panes) {
+          let entry = next.get(p.id);
+          if (!entry) {
+            const old = this.stateSince.get(p.id);
+            entry = old && old.state === p.state ? old : { state: p.state, at: known || old ? now : 0 };
+            next.set(p.id, entry);
+          }
+          if (entry.at) p.since = entry.at;
+        }
+      }
+    }
+    this.stateSince = next;
   }
 
   private detectTransitions(prev: HostInfo, next: HostInfo): void {

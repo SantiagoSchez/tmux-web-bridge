@@ -50,7 +50,8 @@
 
 ### 🙋 Claude te avisa y tú contestas desde donde estés
 
-- **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas.
+- **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas, con desde cuándo esperan y, si terminaron, cuánto trabajaron.
+- **Actividad** (el botón con el pulso de la cabecera): lo que ha pasado en los últimos 7 días en todas las máquinas, agrupado por días. Recoge qué Claude preguntó, cuál pidió permiso y cuál terminó, y tras cuánto tiempo; qué tareas se lanzaron y desde dónde (Trello, la extensión, el panel o una automatización); y qué automatizaciones se saltaron o fallaron. Tocar una fila abre su ventana, si sigue abierta.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
 - **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «space › ventana». Un toque abre la que quieras.
 

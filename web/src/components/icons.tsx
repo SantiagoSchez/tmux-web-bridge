@@ -103,3 +103,9 @@ export const IconBoard = () => (
     <path d="M8 7.5v8M12 7.5v4M16 7.5v6" />
   </Svg>
 );
+/** A pulse line: the activity. */
+export const IconActivity = () => (
+  <Svg>
+    <path d="M3 12h4l3-8 4 16 3-8h4" />
+  </Svg>
+);

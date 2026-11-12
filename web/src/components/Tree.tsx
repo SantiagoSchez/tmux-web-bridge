@@ -5,7 +5,8 @@ import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../share
 import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, sessionMenu, windowMenu } from '../menus';
 import { isTouch, prefs, setPref } from '../prefs';
 import { openWindow, route } from '../router';
-import { hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
+import { activity, hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
+import { ago, duration } from '../time';
 import { updateInfo } from '../updates';
 import { IconBranch, IconClose, IconMore, IconPlus, IconWorktree } from './icons';
 
@@ -93,6 +94,9 @@ function PendingCard({ item, fresh, cardRef }: { item: PaneRef; fresh: boolean; 
   const { host, session, window, pane } = item;
   const r = route.value;
   const current = r.name === 'window' && r.host === host.id && r.window === window.id;
+  // How long it worked before finishing: the activity's last «done» of this pane.
+  const worked =
+    pane.state === 'done' ? activity.value.find((e) => e.host === host.id && e.pane === pane.id && (e.kind === 'done' || e.kind === 'launch'))?.worked : undefined;
   return (
     <li ref={cardRef}>
       <button class={`card state-${pane.state} ${current ? 'current' : ''} ${fresh ? 'fresh' : ''}`} onClick={() => openWindow(host.id, window.id, pane.id)}>
@@ -100,7 +104,9 @@ function PendingCard({ item, fresh, cardRef }: { item: PaneRef; fresh: boolean; 
         <span class="card-body">
           <span class="card-title">{window.name}</span>
           <span class="card-meta">
-            {STATE_LABEL[pane.state!]} · {session.name}
+            {STATE_LABEL[pane.state!]}
+            {pane.since ? ` ${ago(pane.since)}` : ''}
+            {worked ? ` · trabajó ${duration(worked)}` : ''} · {session.name}
             {window.panes.length > 1 ? ` · panel ${pane.index}` : ''}
             {multiHost.value ? ` · ${host.name}` : ''}
           </span>

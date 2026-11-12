@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import type { AccountsInfo, ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -131,7 +131,10 @@ export interface MenuItem {
 }
 
 export const dialog = signal<Dialog | null>(null);
-export const sheet = signal<'connections' | 'settings' | 'trello' | null>(null);
+export const sheet = signal<'connections' | 'settings' | 'trello' | 'activity' | null>(null);
+
+/** The activity of the last days, newest first (see ActivityEvent). */
+export const activity = signal<ActivityEvent[]>([]);
 
 export type SettingsTab = 'device' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */

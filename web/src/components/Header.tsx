@@ -1,6 +1,6 @@
 import { route, toggleGrid } from '../router';
 import { connections, openSettings, pending, sheet, wsStatus } from '../state';
-import { IconBoard, IconGear, IconGrid, IconUsers } from './icons';
+import { IconActivity, IconBoard, IconGear, IconGrid, IconUsers } from './icons';
 import { trelloInfo } from './Trello';
 
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
@@ -15,7 +15,12 @@ export function Header() {
       <div class="brand">
         <span class={`dot dot-${status}`} title={STATUS_LABEL[status]} />
         <span class="brand-name">twb</span>
-        {waiting > 0 && <span class="pill pill-alert">{waiting} pendiente{waiting === 1 ? '' : 's'}</span>}
+        {waiting > 0 && (
+          <span class="pill pill-alert" title={`${waiting} pendiente${waiting === 1 ? '' : 's'}`}>
+            {waiting}
+            <span class="pill-word"> pendiente{waiting === 1 ? '' : 's'}</span>
+          </span>
+        )}
       </div>
       <div class="topbar-actions">
         <button
@@ -26,6 +31,9 @@ export function Header() {
           onClick={toggleGrid}
         >
           <IconGrid />
+        </button>
+        <button class="icon-btn" aria-label="Actividad" title="Lo que ha pasado en todas las máquinas" onClick={() => (sheet.value = 'activity')}>
+          <IconActivity />
         </button>
         {trelloInfo.value?.configured && (
           <button class="icon-btn" aria-label="Trello" title="Lanzar una tarea desde una tarjeta de Trello" onClick={() => (sheet.value = 'trello')}>

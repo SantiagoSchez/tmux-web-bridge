@@ -27,6 +27,8 @@ export interface PaneInfo {
   claudeSession?: string;
   /** The git worktree or branch of its folder, when it is in a repo (read by the hub every few seconds). */
   git?: PaneGit;
+  /** When it got its current state (epoch ms), as the hub saw it; missing when it had it before the hub started. */
+  since?: number;
 }
 
 /** A linked worktree (its folder's name) or, in the repo's own folder, the branch checked out. */
@@ -491,6 +493,9 @@ export type ServerMessage =
   | { t: 'settings'; settings: HubSettings }
   | { t: 'dictation'; info: DictationInfo }
   | { t: 'accounts'; info: AccountsInfo }
+  /** The activity of the last days, newest first (on connect), and each new event. */
+  | { t: 'activity'; events: ActivityEvent[] }
+  | { t: 'activityAdd'; event: ActivityEvent }
   /** code: what kind of failure, when the panel can do something about it ('needsLogin'). */
   | { t: 'result'; id: number; ok: boolean; error?: string; code?: string; data?: unknown };
 
@@ -558,4 +563,29 @@ export interface AutomationInfo extends Automation {
   /** Epoch milliseconds; null when disabled (or a cron that never matches). */
   nextRun: number | null;
   runs: AutomationRun[];
+}
+
+/**
+ * What happened, for the panel's «Actividad»: a Claude asked, wanted permission or
+ * finished (and how long it worked), a task was launched (from where), an automation
+ * was skipped or failed.
+ */
+export interface ActivityEvent {
+  id: number;
+  /** Epoch milliseconds. */
+  at: number;
+  kind: 'question' | 'attention' | 'done' | 'launch' | 'skipped' | 'error';
+  host: string;
+  hostName: string;
+  /** The space's name. */
+  space?: string;
+  window?: string;
+  windowName?: string;
+  pane?: string;
+  /** done: how long it had been working (ms), when the hub saw it start. */
+  worked?: number;
+  /** launch: where the task came from. */
+  source?: 'trello' | 'extension' | 'automation' | 'panel';
+  /** launch: the worktree (or, from an automation, its name); skipped and error: why (windowName is the automation's name). */
+  text?: string;
 }

@@ -3,6 +3,7 @@ import { auth } from '../auth';
 import { isDesktop } from '../prefs';
 import { route } from '../router';
 import { findWindow, hosts, wsStatus } from '../state';
+import { ActivitySheet } from './Activity';
 import { Connections } from './Connections';
 import { Dialogs, Toasts } from './Dialogs';
 import { Drawer } from './Drawer';
@@ -85,6 +86,7 @@ function Overlays() {
       <Connections />
       <Settings />
       <TrelloSheet />
+      <ActivitySheet />
       <Dialogs />
       <Palette />
       <Toasts />
