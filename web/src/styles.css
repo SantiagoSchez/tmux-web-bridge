@@ -2761,3 +2761,41 @@ textarea.text-input {
     max-width: 640px;
   }
 }
+
+/* ------------------------------------------------------------ automations */
+
+.automation .setting-text p {
+  margin: 2px 0 0;
+}
+.auto-run.auto-error {
+  color: var(--red);
+}
+.auto-run.auto-skipped {
+  color: var(--yellow);
+}
+.auto-days {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.day-chip {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  font-weight: 600;
+}
+.day-chip.on {
+  background: var(--mauve);
+  border-color: var(--mauve);
+  color: var(--crust);
+}
+.auto-time {
+  width: 120px;
+  margin-left: 6px;
+}
+.auto-small {
+  width: 90px;
+}

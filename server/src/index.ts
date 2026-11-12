@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ClientMessage, DictateResult, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
+import type { AccountsInfo, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -20,6 +20,7 @@ import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
+import { Automations } from './automations.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -270,6 +271,29 @@ function machineFolders(host: HostMonitor): MachineFolders {
     saveTrelloExtension: (dir: string | null) => settings.setTrelloExtension(host.id, dir),
   };
 }
+
+// ---------------------------------------------------------------- automations
+
+const automations = new Automations(config.dataDir, {
+  launch: async (a, worktree) => {
+    const host = hosts.get(a.host);
+    if (!host) throw new Error(`No existe la máquina «${a.host}»`);
+    if (host.snapshot.status !== 'ok') throw new Error(`${host.name} no está conectada`);
+    const result = await launchTask(host, machineFolders(host), { target: a.target, prompt: a.prompt, name: worktree ?? a.name, worktree, skipPermissions: a.skipPermissions });
+    await host.refresh();
+    return result;
+  },
+  paneState: (hostId, pane) => {
+    const ctx = hosts.get(hostId)?.findPane(pane);
+    return ctx ? ctx.pane.state : undefined;
+  },
+});
+automations.start();
+// A run that did not launch says so on the phone: nobody is watching when it should have.
+automations.on('run', (a: Automation, run: AutomationRun) => {
+  if (run.status !== 'error') return;
+  void push.send({ title: `⚠️ ${a.name}`, body: `La automatización no se ha podido lanzar: ${run.message ?? 'error'}`, tag: `automation:${a.id}`, url: '/' });
+});
 
 app.get('/ws', { websocket: true }, (ws, req) => {
   bindSession(req, ws);
@@ -565,6 +589,34 @@ app.post('/api/trello/launch', async (req, reply) => {
     return await launchFromRequest((req.body ?? {}) as Partial<ExtLaunchRequest>, 'trello');
   } catch (err) {
     return trelloError(reply, err);
+  }
+});
+
+app.get('/api/automations', async () => automations.info);
+
+/** A new automation (no id) or a change to one. */
+app.post('/api/automations', async (req, reply) => {
+  try {
+    return automations.upsert(req.body);
+  } catch (err) {
+    return reply.code(400).send({ error: (err as Error).message });
+  }
+});
+
+app.post('/api/automations/:id/delete', async (req, reply) => {
+  try {
+    automations.remove((req.params as { id: string }).id);
+    return { ok: true };
+  } catch (err) {
+    return reply.code(400).send({ error: (err as Error).message });
+  }
+});
+
+app.post('/api/automations/:id/run', async (req, reply) => {
+  try {
+    return await automations.runNow((req.params as { id: string }).id);
+  } catch (err) {
+    return reply.code(400).send({ error: (err as Error).message });
   }
 });
 

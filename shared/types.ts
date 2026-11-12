@@ -3,6 +3,7 @@
 
 import type { DictationButton } from './dictation.js';
 import type { KeybarButton } from './keybar.js';
+import type { Schedule } from './schedule.js';
 
 /** Claude/tmux pane states set by host-kit/tmux-window-title.sh (most urgent first). */
 export type PaneState = 'question' | 'attention' | 'done' | 'busy' | 'claude' | 'ssh';
@@ -520,4 +521,41 @@ export interface RespondRequest {
   pane: string;
   key: string;
   fingerprint: string;
+}
+
+/** A prompt the hub launches on its own on a schedule (Settings › Automatizaciones). */
+export interface Automation {
+  id: string;
+  name: string;
+  enabled: boolean;
+  host: string;
+  /** An added folder (or `sub`, one inside a folder with subfolders): a new window in its space. */
+  target: { folder: string; sub?: string };
+  prompt: string;
+  /** Each run in a new worktree, «<name>-<date>». */
+  worktree: boolean;
+  skipPermissions: boolean;
+  schedule: Schedule;
+}
+
+/** One run of an automation. */
+export interface AutomationRun {
+  /** Epoch milliseconds. */
+  at: number;
+  /** launched; skipped: the previous run was still at it; error: it could not launch. */
+  status: 'launched' | 'skipped' | 'error';
+  /** Ran from «Ejecutar ahora». */
+  manual?: boolean;
+  message?: string;
+  session?: string;
+  window?: string;
+  pane?: string;
+  worktree?: string;
+}
+
+/** GET /api/automations: each one, with its next run and its last ones (newest first). */
+export interface AutomationInfo extends Automation {
+  /** Epoch milliseconds; null when disabled (or a cron that never matches). */
+  nextRun: number | null;
+  runs: AutomationRun[];
 }

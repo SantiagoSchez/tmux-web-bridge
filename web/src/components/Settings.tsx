@@ -11,6 +11,7 @@ import { hub } from '../ws';
 import { Sheet } from './Dialogs';
 import { ExtTokenSettings, TrelloMachines } from './ExtToken';
 import { TrelloAccountSettings } from './Trello';
+import { AutomationSettings } from './Automations';
 import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
 import { TwoFactorSettings } from './TwoFactor';
@@ -100,6 +101,7 @@ const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
   { id: 'machines', label: 'Máquinas', hint: 'Lista de spaces, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo space» en cada máquina' },
+  { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
   { id: 'keys', label: 'Teclas', hint: 'La barra de teclas del móvil' },
   { id: 'trello', label: 'Trello', hint: 'Cuenta, prompt de las tareas y la extensión de Chrome' },
@@ -177,6 +179,8 @@ function SettingsSection({ id }: { id: SettingsTab }) {
       return <MachineSettings />;
     case 'folders':
       return <FolderSettings />;
+    case 'automations':
+      return <AutomationSettings />;
     case 'dictation':
       return <DictationSettings />;
     case 'keys':
