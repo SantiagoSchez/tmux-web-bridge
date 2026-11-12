@@ -113,9 +113,22 @@ export function findPathsInRows(rows: Row[], at: number): RowPathHit[] {
     .filter((h) => h.start.row !== h.last.row);
 
   const out = broken.filter((h) => h.start.row <= at && at <= h.last.row);
+  // Words broken across rows that are a path, even one that is not a link (a folder): their
+  // pieces are not paths either. One that goes on with a plain word (README.md, then
+  // «antes») is two words that happened to meet at the edge.
+  const pieces: { start: { row: number; i: number }; last: { row: number; i: number } }[] = [...out];
+  const word = /\S+/g;
+  for (let w = word.exec(joined); w; w = word.exec(joined)) {
+    const start = from[w.index];
+    const last = from[w.index + w[0].length - 1];
+    if (start.row > at || last.row < at || start.row === last.row) continue;
+    const head = w[0].slice(0, from.slice(w.index).findIndex((f) => f.row !== start.row));
+    const tail = w[0].slice(head.length);
+    if (tail.includes('/') || /^[-._/]/.test(tail) || /[-._/]$/.test(head)) pieces.push({ start, last });
+  }
   // The row's own paths, but not the pieces of a broken one.
   for (const h of findPaths(rows[at].text)) {
-    const overlaps = out.some((b) => {
+    const overlaps = pieces.some((b) => {
       const s = b.start.row === at ? b.start.i : 0;
       const e = b.last.row === at ? b.last.i : Infinity;
       return h.start <= e && s <= h.end - 1;

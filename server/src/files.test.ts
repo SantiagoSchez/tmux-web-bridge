@@ -101,6 +101,13 @@ test('a path that ends at the edge, before an unrelated word, stays as it is', (
   ];
   assert.deepEqual(findPathsInRows(rows, 0).map((h) => h.text), ['README.md']);
   assert.deepEqual(findPathsInRows(rows, 1), []);
+  // A folder broken across rows is not a link, nor are its pieces that look like a path.
+  const folder = [
+    { text: '  /tmp/claude-1000/-home-santiago-Dropbox-Documents', full: true },
+    { text: '  -Proyectos-agentic-ai-platform/9441b97c-6b99-48c6', full: true },
+    { text: '  -90bf-5a9d99b2397d/scratchpad/migration/.', full: false },
+  ];
+  for (const at of [0, 1, 2]) assert.deepEqual(findPathsInRows(folder, at), []);
   // A short row does not go on in the next one.
   assert.deepEqual(findPathsInRows([{ text: 'ver a.ts', full: false }, { text: 'b.md', full: false }], 1).map((h) => h.text), ['b.md']);
 });
