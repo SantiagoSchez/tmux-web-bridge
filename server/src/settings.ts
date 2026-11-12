@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
+import { DEFAULT_TEMPLATE } from '../../shared/trello.js';
 import type { HubSettings } from '../../shared/types.js';
 
 /** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
@@ -27,6 +28,7 @@ const DEFAULTS: HubSettings = {
   folders: {},
   commands: {},
   trelloExtension: {},
+  trelloPromptTemplate: DEFAULT_TEMPLATE,
 };
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
@@ -139,6 +141,7 @@ export class SettingsStore extends EventEmitter {
     if (keybarScale !== null) next.keybarScale = keybarScale;
     if (patch.folders !== undefined) next.folders = mergeFolders(next.folders, patch.folders);
     if (patch.commands !== undefined) next.commands = mergeCommands(next.commands, patch.commands);
+    if (typeof patch.trelloPromptTemplate === 'string') next.trelloPromptTemplate = patch.trelloPromptTemplate.trim().slice(0, 2000) || DEFAULT_TEMPLATE;
     this.state = next;
     this.save();
     this.emit('change', next);

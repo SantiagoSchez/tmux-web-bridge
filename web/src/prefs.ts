@@ -13,9 +13,16 @@ export interface Prefs {
   skipPermissions: boolean;
   /** The list of spaces: with each window's folder and git worktree or branch, or one short line per row. */
   listView: 'detailed' | 'compact';
+  /** The Trello drawer: the board shown, the list shown on each board, and where tasks of each board went last. */
+  trelloBoard: string;
+  trelloLists: Record<string, string>;
+  trelloLaunch: Record<string, { host: string; destination: string }>;
+  /** Tasks on Trello cards start in a new worktree. */
+  trelloWorktree: boolean;
 }
 
-const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed' };
+const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed',
+  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {

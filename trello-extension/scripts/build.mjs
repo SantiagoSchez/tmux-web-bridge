@@ -20,7 +20,7 @@ function copyStatic() {
   // For tests: hosts granted up front (TWB_EXTRA_HOSTS=http://127.0.0.1/*), since a headless
   // browser cannot answer the permission prompt of the options page.
   const extra = (process.env.TWB_EXTRA_HOSTS ?? '').split(',').filter(Boolean);
-  const host_permissions = [...manifest.host_permissions, ...extra];
+  const host_permissions = [...(manifest.host_permissions ?? []), ...extra];
   writeFileSync(`${dist}/manifest.json`, `${JSON.stringify({ ...manifest, version, host_permissions }, null, 2)}\n`);
 }
 copyStatic();

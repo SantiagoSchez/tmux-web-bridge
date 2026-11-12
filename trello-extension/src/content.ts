@@ -1,5 +1,5 @@
-import { destinations, renderTemplate, type Destination } from './logic';
-import type { ExtHostTargets, LaunchContext, LaunchOutcome, Reply, Request } from './types';
+import { cardWorktreeName, destinations, renderTemplate, worktreeNameProblem, type Destination } from './logic';
+import type { ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
 import { DIALOG_CSS, PAGE_CSS } from './styles';
 
 // On trello.com: a button on every card of the board (shown on hover) that opens the
@@ -146,6 +146,10 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const note = el('p', { class: 'muted small' });
   const prompt = el('textarea', { id: 'twb-prompt', rows: 3, value: renderTemplate(ctx.promptTemplate, ctx.card) });
   const skip = el('input', { type: 'checkbox', id: 'twb-skip', checked: ctx.skipPermissions });
+  const inWorktree = el('input', { type: 'checkbox', id: 'twb-wt', checked: ctx.worktree });
+  const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card.idShort, ctx.card.name), spellcheck: false, autocomplete: 'off' });
+  const wtNote = el('p', { class: 'error small' });
+  const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');
 
   let items = new Map<string, Destination>();
@@ -168,7 +172,10 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     update();
   };
   const update = () => {
-    launchBtn.disabled = !destSel.value || !prompt.value.trim();
+    const problem = inWorktree.checked ? worktreeNameProblem(wtName.value.trim()) : null;
+    wtField.hidden = !inWorktree.checked;
+    wtNote.textContent = problem ?? '';
+    launchBtn.disabled = !destSel.value || (!prompt.value.trim() && !inWorktree.checked) || !!problem;
   };
 
   const remembered = ctx.remembered && hosts.find((h) => h.id === ctx.remembered!.host && h.status === 'ok');
@@ -180,12 +187,17 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   hostSel.addEventListener('change', () => fillDestinations(hosts.find((h) => h.id === hostSel.value)));
   destSel.addEventListener('change', update);
   prompt.addEventListener('input', update);
+  inWorktree.addEventListener('change', update);
+  wtName.addEventListener('input', update);
+  update();
 
   body.replaceChildren(
     el('label', { class: 'field' }, el('span', {}, 'Máquina'), hostSel),
     el('label', { class: 'field' }, el('span', {}, 'Destino'), destSel),
     note,
     el('label', { class: 'field' }, el('span', {}, 'Prompt'), prompt),
+    el('label', { class: 'check' }, inWorktree, el('span', {}, 'En un worktree nuevo ', el('code', {}, 'claude --worktree'))),
+    wtField,
     el('label', { class: 'check' }, skip, el('span', {}, 'Saltar permisos ', el('code', {}, '--dangerously-skip-permissions'))),
   );
   footer.append(launchBtn);
@@ -197,16 +209,18 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     launchBtn.disabled = true;
     launchBtn.textContent = 'Lanzando…';
     try {
-      const out = await ask<LaunchOutcome>({
+      const worktree = inWorktree.checked ? wtName.value.trim() : undefined;
+      const r = await ask<ExtLaunchResult>({
         type: 'launch',
         card: ctx.card,
         destination: dest.key,
-        req: { host: hostSel.value, target: dest.target, prompt: prompt.value.trim(), name: ctx.card.name, skipPermissions: skip.checked },
+        worktree: inWorktree.checked,
+        req: { host: hostSel.value, target: dest.target, prompt: prompt.value.trim(), name: worktree ?? ctx.card.name, skipPermissions: skip.checked, worktree },
       });
       close();
-      const r = out.result;
-      toast(`Lanzada en ${r.hostName} › ${r.space} · ventana «${r.windowName}»${out.movedTo ? ` · movida a ${out.movedTo}` : ''}`);
-      for (const w of out.warnings) toast(w, 'warn');
+      const movedTo = r.trello?.movedTo;
+      toast(`Lanzada en ${r.hostName} › ${r.space} · ventana «${r.windowName}»${movedTo ? ` · movida a ${movedTo}` : ''}`);
+      for (const w of r.trello?.warnings ?? []) toast(w, 'warn');
     } catch (err) {
       launchBtn.textContent = 'Lanzar';
       launchBtn.disabled = false;

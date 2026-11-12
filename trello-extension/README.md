@@ -6,16 +6,17 @@ Al pasar el ratón por una tarjeta aparece un botón con el icono de una termina
 
 - **Máquina**: las de twb, con las que no están conectadas desactivadas.
 - **Destino**: un space abierto, donde se abre una ventana nueva, o una carpeta de «Nuevo space» (⚙️ Ajustes › Carpetas en twb). Si su space ya está abierto, la tarea va a una ventana nueva en él; si no, se crea el space.
-- **Prompt**: sale de la plantilla de las opciones (`Haz la tarjeta {url}` por defecto) y se puede retocar antes de lanzar.
+- **Prompt**: sale de la plantilla del panel, en ⚙️ Ajustes › Trello (`Haz la tarjeta {url}` por defecto), y se puede retocar antes de lanzar.
+- **En un worktree nuevo**: Claude arranca con `claude --worktree <nombre>`, que por defecto es el número y el título de la tarjeta (`142-arreglar-login-movil`) y se puede cambiar. Recuerda su último valor.
 - **Saltar permisos**: arranca con `--dangerously-skip-permissions` en lugar de `--permission-mode auto`. Recuerda su último valor.
 
 Con «Lanzar» (o Ctrl/Cmd+Enter):
 
-1. twb abre la ventana, llamada como la tarjeta, y escribe `claude … '<prompt>'`.
-2. La tarjeta se mueve al final de la lista «Doing» de su tablero (la que se llame así, con emoji o sin él).
-3. Se comenta en la tarjeta: «🤖 Lanzada en Mac › proyecto · ventana «…»».
+1. twb abre la ventana, llamada como la tarjeta (o como el worktree), y escribe `claude … '<prompt>'`.
+2. El panel mueve la tarjeta al final de la lista «Doing» de su tablero (la que se llame así, con emoji o sin él).
+3. Y comenta en ella: «🤖 Lanzada en Mac › proyecto · ventana «…»».
 
-Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se deshace nada. El diálogo recuerda la última máquina y el último destino de cada tablero.
+El panel lo hace con su propia cuenta de Trello (⚙️ Ajustes › Trello): la extensión no habla con Trello. Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se deshace nada. El diálogo recuerda la última máquina y el último destino de cada tablero.
 
 ## Instalación
 
@@ -23,8 +24,7 @@ Si falla el paso 2 o el 3, la tarea ya está en marcha: sale un aviso y no se de
 2. En `chrome://extensions`, activa el **Modo de desarrollador**, pulsa **Cargar descomprimida** y elige esa carpeta (la que tiene `manifest.json`). Chrome la carga desde ahí cada vez.
 3. Se abren las opciones (también con el icono de la extensión). Rellena:
    - **Dirección del panel de twb** y **token de la extensión**: el token se genera en el panel, en ⚙️ **Ajustes › Trello**, y solo se muestra una vez.
-   - **API key y token de Trello**: los de un Power-Up tuyo, en [trello.com/power-ups/admin](https://trello.com/power-ups/admin).
-4. **Guardar y probar** pide permiso para llegar al panel y comprueba las dos conexiones.
+4. **Guardar y probar** pide permiso para llegar al panel y comprueba que el panel tenga cuenta de Trello: la API key y el token de un Power-Up tuyo ([trello.com/power-ups/admin](https://trello.com/power-ups/admin)) se ponen en el panel, en ⚙️ **Ajustes › Trello**. Hasta la 1.17 iban en las opciones de la extensión, que ya no los usa.
 
 ### Actualizarla
 
@@ -37,9 +37,9 @@ A mano: descomprime el `.zip` de la release nueva encima de la misma carpeta (o 
 | Fichero | Qué hace |
 | --- | --- |
 | `src/content.ts` | En trello.com: el botón de cada tarjeta (`li[data-testid="list-card"]`, con el id en `data-card-id`) y el diálogo, en un shadow DOM que usa los tokens de color de Trello (tema claro y oscuro). |
-| `src/background.ts` | El service worker: habla con twb (`/api/ext/*`, con `Authorization: Bearer`) y con la API de Trello (cabecera `OAuth`). |
+| `src/background.ts` | El service worker: habla con twb (`/api/ext/*`, con `Authorization: Bearer`). Trello lo lleva el panel. |
 | `src/options.ts` | La página de opciones. Todo se guarda en `chrome.storage.local`. |
-| `src/logic.ts` | Lo que no depende del navegador: plantilla, lista Doing, destinos y comentario. Con tests. |
+| `src/logic.ts` | Lo que no depende del navegador; la plantilla, la lista Doing, los destinos y el comentario vienen de `shared/trello.ts`, que comparte con el panel. Con tests. |
 | `src/types.ts` | Los tipos propios de la extensión. Los de la API de twb (`Ext*`) vienen de `shared/types.ts`, los mismos que usa el servidor central (`server/src/ext.ts`). |
 
 La API está documentada en el [README de twb](../README.md#api-de-la-extensión-de-trello). El permiso para el panel se pide al guardar las opciones (`optional_host_permissions`), solo para su origen.

@@ -96,3 +96,10 @@ export const IconWorktree = () => (
     <path d="M14 15v6M18.2 18H17a3 3 0 0 1-3-3" />
   </Svg>
 );
+/** A kanban board: the Trello drawer. */
+export const IconBoard = () => (
+  <Svg>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="2" />
+    <path d="M8 7.5v8M12 7.5v4M16 7.5v6" />
+  </Svg>
+);

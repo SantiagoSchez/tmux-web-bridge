@@ -198,6 +198,8 @@ export interface HubSettings {
    * Only the hub changes it, after running install.sh on the machine (op trelloExtension).
    */
   trelloExtension: Record<string, string>;
+  /** The prompt of a task launched on a Trello card (panel and extension), with {url}, {name}, {shortLink} and {board}. */
+  trelloPromptTemplate: string;
 }
 
 /** A folder of a machine added in the panel: «Nuevo space» opens a space there. */
@@ -269,7 +271,11 @@ export interface ExtLaunchRequest {
   name?: string;
   skipPermissions?: boolean;
   /** Start claude in a new git worktree of this name (`claude --worktree`); the prompt may be left out then. */
-  worktree?: string;
+  worktree?: string;  /**
+   * The Trello card (its id) the task is about: once launched, the hub moves it to its
+   * board's Doing list and comments on it, with the Trello account of Settings › Trello.
+   */
+  card?: string;
 }
 
 export interface ExtLaunchResult {
@@ -284,6 +290,56 @@ export interface ExtLaunchResult {
   pane: string;
   /** The space was made for this task. */
   createdSpace: boolean;
+  /** What happened to the card of the request, if it had one. */
+  trello?: TrelloAfterLaunch;
+}
+
+/** A Trello card as a launch needs it. */
+export interface TrelloCard {
+  id: string;
+  name: string;
+  /** https://trello.com/c/<shortLink> */
+  url: string;
+  shortLink: string;
+  /** Its number on the board. */
+  idShort: number;
+  idList: string;
+  board: { id: string; name: string };
+}
+
+/** GET /api/ext/card/:id and /api/trello/card/:id: a card, and the prompt template of Settings › Trello. */
+export interface TrelloCardContext {
+  card: TrelloCard;
+  promptTemplate: string;
+}
+
+export interface TrelloBoard {
+  id: string;
+  name: string;
+}
+
+/** An open list of a board with its open cards (GET /api/trello/boards/:id). */
+export interface TrelloList {
+  id: string;
+  name: string;
+  cards: { id: string; name: string; idShort: number; url: string; labels: { name: string; color: string | null }[] }[];
+}
+
+/** Trello in Settings › Trello: whether the hub has an account, and whose. */
+export interface TrelloInfo {
+  configured: boolean;
+  /** «Full Name (@username)», when it answered. */
+  member?: string;
+  /** Why it did not answer. */
+  error?: string;
+}
+
+/** After a task on a card: where the card went, and what went wrong (the task was launched anyway). */
+export interface TrelloAfterLaunch {
+  /** The list it moved to, if it moved (or was there already). */
+  movedTo?: string;
+  commented: boolean;
+  warnings: string[];
 }
 
 /** The daily check for a new release of twb on GitHub, set for the whole hub. */

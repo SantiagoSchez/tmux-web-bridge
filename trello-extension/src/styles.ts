@@ -56,9 +56,11 @@ h2 { margin: 0; font-size: 16px; line-height: 20px; font-weight: 600; }
 .card-name { margin: 4px 0 0; color: var(--ds-text-subtle, #44546f); overflow-wrap: anywhere; }
 .body { display: flex; flex-direction: column; gap: 12px; padding: 8px 24px 4px; }
 .field { display: flex; flex-direction: column; gap: 4px; }
+.field[hidden] { display: none; }
 .field > span { font-size: 12px; font-weight: 600; color: var(--ds-text-subtle, #44546f); }
-select, textarea {
+select, textarea, input[type='text'] {
   width: 100%;
+  box-sizing: border-box;
   padding: 8px 10px;
   border: 1px solid var(--ds-border-input, #8590a2);
   border-radius: 4px;
@@ -67,7 +69,7 @@ select, textarea {
   font: inherit;
 }
 textarea { resize: vertical; min-height: 64px; }
-select:focus, textarea:focus, input:focus-visible, .btn:focus-visible { outline: 2px solid var(--ds-border-focused, #388bff); outline-offset: 0; }
+select:focus, textarea:focus, input[type='text']:focus, input:focus-visible, .btn:focus-visible { outline: 2px solid var(--ds-border-focused, #388bff); outline-offset: 0; }
 .check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .check input { width: 16px; height: 16px; margin: 0; }
 code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; padding: 1px 4px; border-radius: 3px; background: var(--ds-background-neutral, #091e420f); }

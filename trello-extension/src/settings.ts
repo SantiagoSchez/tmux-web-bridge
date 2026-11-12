@@ -1,11 +1,11 @@
-import { DEFAULT_TEMPLATE } from './logic';
 import type { Memory, Settings } from './types';
 
-const DEFAULTS: Settings = { hubUrl: '', hubToken: '', trelloKey: '', trelloToken: '', promptTemplate: DEFAULT_TEMPLATE };
+const DEFAULTS: Settings = { hubUrl: '', hubToken: '' };
 
 export async function loadSettings(): Promise<Settings> {
   const { settings } = await chrome.storage.local.get('settings');
-  return { ...DEFAULTS, ...(settings as Partial<Settings> | undefined) };
+  const saved = (settings ?? {}) as Partial<Settings>;
+  return { hubUrl: saved.hubUrl ?? DEFAULTS.hubUrl, hubToken: saved.hubToken ?? DEFAULTS.hubToken };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
@@ -15,7 +15,7 @@ export async function saveSettings(settings: Settings): Promise<void> {
 export async function loadMemory(): Promise<Memory> {
   const { memory } = await chrome.storage.local.get('memory');
   const m = (memory ?? {}) as Partial<Memory>;
-  return { boards: m.boards ?? {}, skipPermissions: m.skipPermissions === true };
+  return { boards: m.boards ?? {}, skipPermissions: m.skipPermissions === true, worktree: m.worktree === true };
 }
 
 export async function saveMemory(memory: Memory): Promise<void> {

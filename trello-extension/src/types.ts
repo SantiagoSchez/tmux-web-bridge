@@ -1,60 +1,41 @@
-// The extension's API in twb (GET /api/ext/targets, POST /api/ext/launch) is typed in shared/types.ts.
-import type { ExtLaunchRequest, ExtLaunchResult, ExtTargets } from '../../shared/types';
+// The extension's API in twb (/api/ext/*) is typed in shared/types.ts.
+import type { ExtLaunchRequest, ExtTargets, TrelloCard } from '../../shared/types';
 
-export type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtLaunchTarget, ExtTargets } from '../../shared/types';
+export type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtLaunchTarget, ExtTargets, TrelloCard as CardInfo } from '../../shared/types';
 
 // ---------------------------------------------------------------- the extension's own
 
-/** What the options page sets (chrome.storage.local). */
+/**
+ * What the options page sets (chrome.storage.local). Trello's key and token, and the
+ * prompt template, live in the panel (Settings › Trello) since 1.18.
+ */
 export interface Settings {
   /** The twb panel, e.g. https://twb.example.com (no trailing slash). */
   hubUrl: string;
   hubToken: string;
-  trelloKey: string;
-  trelloToken: string;
-  /** With {url}, {name}, {shortLink} and {board}. */
-  promptTemplate: string;
 }
 
-/** The last choice of the launch dialog: per board, and the permissions checkbox for all. */
+/** The last choice of the launch dialog: per board, and the checkboxes for all. */
 export interface Memory {
   boards: Record<string, { host: string; destination: string }>;
   skipPermissions: boolean;
-}
-
-/** A Trello card as the dialog needs it. */
-export interface CardInfo {
-  id: string;
-  name: string;
-  /** https://trello.com/c/<shortLink> */
-  url: string;
-  shortLink: string;
-  idList: string;
-  board: { id: string; name: string };
+  worktree: boolean;
 }
 
 /** Everything the dialog shows when it opens. */
 export interface LaunchContext {
-  card: CardInfo;
+  card: TrelloCard;
   targets: ExtTargets;
   promptTemplate: string;
   remembered?: { host: string; destination: string };
   skipPermissions: boolean;
-}
-
-export interface LaunchOutcome {
-  result: ExtLaunchResult;
-  /** The list the card went to, if it moved. */
-  movedTo?: string;
-  commented: boolean;
-  /** What went wrong after the launch, which did happen. */
-  warnings: string[];
+  worktree: boolean;
 }
 
 /** From the content script to the service worker. */
 export type Request =
   | { type: 'context'; cardId: string }
-  | { type: 'launch'; card: CardInfo; req: ExtLaunchRequest; destination: string }
+  | { type: 'launch'; card: TrelloCard; req: ExtLaunchRequest; destination: string; worktree: boolean }
   | { type: 'openOptions' }
   /** A newer version waiting on disk (the kit downloaded it), or null. */
   | { type: 'update' }

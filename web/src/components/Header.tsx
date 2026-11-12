@@ -1,6 +1,7 @@
 import { route, toggleGrid } from '../router';
 import { connections, openSettings, pending, sheet, wsStatus } from '../state';
-import { IconGear, IconGrid, IconUsers } from './icons';
+import { IconBoard, IconGear, IconGrid, IconUsers } from './icons';
+import { trelloInfo } from './Trello';
 
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
 
@@ -26,6 +27,11 @@ export function Header() {
         >
           <IconGrid />
         </button>
+        {trelloInfo.value?.configured && (
+          <button class="icon-btn" aria-label="Trello" title="Lanzar una tarea desde una tarjeta de Trello" onClick={() => (sheet.value = 'trello')}>
+            <IconBoard />
+          </button>
+        )}
         <ConnectionsButton count={count} />
         <button class="icon-btn" aria-label="Ajustes" onClick={openSettings}>
           <IconGear />

@@ -29,27 +29,7 @@
           </label>
         </fieldset>
 
-        <fieldset>
-          <legend>Trello</legend>
-          <label class="field">
-            <span>API key</span>
-            <input id="trelloKey" type="text" autocomplete="off" spellcheck="false" required />
-          </label>
-          <label class="field">
-            <span>Token</span>
-            <input id="trelloToken" type="password" autocomplete="off" spellcheck="false" required />
-            <small>La API key y el token de un Power-Up tuyo, en <a href="https://trello.com/power-ups/admin" target="_blank" rel="noreferrer">trello.com/power-ups/admin</a>. Con ellos se mueve la tarjeta a Doing y se comenta.</small>
-          </label>
-        </fieldset>
-
-        <fieldset>
-          <legend>Prompt</legend>
-          <label class="field">
-            <span>Plantilla</span>
-            <textarea id="promptTemplate" rows="3" spellcheck="false"></textarea>
-            <small>Con <code>{url}</code>, <code>{name}</code>, <code>{shortLink}</code> y <code>{board}</code> de la tarjeta. Se puede retocar en el diálogo antes de lanzar.</small>
-          </label>
-        </fieldset>
+        <p class="note">La cuenta de Trello (para mover la tarjeta a Doing y comentar) y la plantilla del prompt se configuran en el panel, en ⚙️ Ajustes › Trello.</p>
 
         <div class="actions">
           <button type="submit" class="primary">Guardar y probar</button>

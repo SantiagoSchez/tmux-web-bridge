@@ -8,6 +8,7 @@ const card: CardInfo = {
   name: 'Arreglar el login',
   url: 'https://trello.com/c/aB3xYz9q',
   shortLink: 'aB3xYz9q',
+  idShort: 142,
   idList: 'l1',
   board: { id: 'b1', name: 'LaborIA' },
 };
@@ -86,7 +87,7 @@ test('a machine without spaces or readable folders offers nothing', () => {
 
 test('the comment on the card', () => {
   assert.equal(
-    commentText({ host: 'mac', hostName: 'Mac', session: '$1', space: 'twb', window: '@3', windowName: 'Arreglar el login', pane: '%4', createdSpace: false }),
+    commentText({ hostName: 'Mac', space: 'twb', windowName: 'Arreglar el login' }),
     '🤖 Lanzada en Mac › twb · ventana «Arreglar el login»',
   );
 });

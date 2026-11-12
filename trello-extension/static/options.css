@@ -84,3 +84,4 @@ button:disabled { opacity: .6; cursor: progress; }
 /* A newer version on disk (downloaded by the twb kit), waiting for a reload. */
 .update:not([hidden]) { display: flex; align-items: center; gap: 12px; margin: 0 0 24px; padding: 12px 14px; border-radius: 8px; background: var(--info-bg); color: var(--info); }
 .update span { flex: 1; }
+.note { color: var(--muted); font-size: 13px; line-height: 18px; margin: 0 0 16px; }

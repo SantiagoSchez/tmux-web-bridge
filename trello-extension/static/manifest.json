@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "description": "Lanza un Claude en tmux-web-bridge con una tarjeta de Trello y la mueve a Doing.",
   "permissions": ["storage"],
-  "host_permissions": ["https://api.trello.com/*"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [{ "matches": ["https://trello.com/*"], "js": ["content.js"], "run_at": "document_idle" }],

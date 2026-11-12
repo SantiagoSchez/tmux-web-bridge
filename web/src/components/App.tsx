@@ -12,6 +12,7 @@ import { LimitsBar } from './LimitsBar';
 import { Login } from './Login';
 import { Palette } from './Palette';
 import { Settings } from './Settings';
+import { loadTrelloInfo, TrelloSheet } from './Trello';
 import { Tree } from './Tree';
 import { UpdateBanner } from './UpdateBanner';
 import { WindowView } from './WindowView';
@@ -28,6 +29,7 @@ export function App() {
   const r = route.value;
   const desktop = isDesktop.value;
   const target = r.name === 'window' ? findWindow(r.host, r.window) : null;
+  useEffect(() => void loadTrelloInfo(), []);
 
   // Close the notification of a window (one per window) once it is on screen.
   useEffect(() => {
@@ -82,6 +84,7 @@ function Overlays() {
     <>
       <Connections />
       <Settings />
+      <TrelloSheet />
       <Dialogs />
       <Palette />
       <Toasts />

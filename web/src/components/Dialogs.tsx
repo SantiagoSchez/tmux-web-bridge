@@ -251,7 +251,7 @@ function copyResume(commands: string[], closing: boolean): void {
 }
 
 /** How the Claude a dialog starts runs: auto mode, or skipping the permissions. Remembered. */
-function SkipPermissions() {
+export function SkipPermissions() {
   return (
     <label class="kb-check skip-permissions" title="Sin marcar, Claude arranca en auto mode">
       <input type="checkbox" checked={prefs.value.skipPermissions} onChange={(e) => setPref('skipPermissions', e.currentTarget.checked)} />

@@ -1,9 +1,9 @@
-import { DEFAULT_TEMPLATE, normalizeHubUrl } from './logic';
+import { normalizeHubUrl } from './logic';
 import { hubPattern, loadSettings, saveSettings } from './settings';
 import type { Settings } from './types';
 
-const FIELDS = ['hubUrl', 'hubToken', 'trelloKey', 'trelloToken', 'promptTemplate'] as const;
-const input = (id: (typeof FIELDS)[number]) => document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement;
+const FIELDS = ['hubUrl', 'hubToken'] as const;
+const input = (id: (typeof FIELDS)[number]) => document.getElementById(id) as HTMLInputElement;
 const form = document.getElementById('form') as HTMLFormElement;
 const status = document.getElementById('status') as HTMLUListElement;
 const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
@@ -30,16 +30,18 @@ async function checkHub(s: Settings): Promise<[boolean, string]> {
   }
 }
 
+/** Whether the panel has a Trello account: without it, the dialog cannot read the card. */
 async function checkTrello(s: Settings): Promise<[boolean, string]> {
   try {
-    const res = await fetch('https://api.trello.com/1/members/me?fields=username,fullName', {
-      headers: { Authorization: `OAuth oauth_consumer_key="${s.trelloKey}", oauth_token="${s.trelloToken}"` },
-    });
-    if (!res.ok) return [false, `Trello no acepta la API key o el token (${res.status}).`];
-    const me = (await res.json()) as { username: string; fullName: string };
-    return [true, `Trello: conectado como ${me.fullName} (@${me.username}).`];
+    const res = await fetch(`${s.hubUrl}/api/ext/trello`, { headers: { Authorization: `Bearer ${s.hubToken}` } });
+    if (res.status === 404) return [false, 'El panel de twb es anterior a la versión 1.18 de la extensión: actualízalo.'];
+    if (!res.ok) return [false, `twb contesta con un error ${res.status} sobre Trello.`];
+    const info = (await res.json()) as { configured: boolean; member?: string; error?: string };
+    if (!info.configured) return [false, 'El panel no tiene cuenta de Trello: añádela en ⚙️ Ajustes › Trello.'];
+    if (info.error) return [false, `Trello (en el panel): ${info.error}`];
+    return [true, `Trello (en el panel): ${info.member}.`];
   } catch {
-    return [false, 'No se pudo conectar con la API de Trello.'];
+    return [false, 'No se pudo preguntar al panel por Trello.'];
   }
 }
 
@@ -52,25 +54,24 @@ form.addEventListener('submit', async (e) => {
     report([[false, 'La dirección del panel no es válida (por ejemplo, https://twb.example.com).']]);
     return;
   }
-  if (!values.hubToken || !values.trelloKey || !values.trelloToken) {
-    report([[false, 'Faltan campos por rellenar.']]);
+  if (!values.hubToken) {
+    report([[false, 'Falta el token de la extensión.']]);
     return;
   }
-  values.promptTemplate ||= DEFAULT_TEMPLATE;
 
   // Asked here, on the click: Chrome only shows the permission prompt after a user gesture.
   const origins = [hubPattern(values.hubUrl)];
   const granted = (await chrome.permissions.contains({ origins })) || (await chrome.permissions.request({ origins }).catch(() => false));
   await saveSettings(values);
   input('hubUrl').value = values.hubUrl;
-  input('promptTemplate').value = values.promptTemplate;
   if (!granted) {
     report([[false, `Guardado, pero sin permiso para llegar a ${new URL(values.hubUrl).origin}: la extensión no podrá hablar con twb.`]]);
     return;
   }
   button.disabled = true;
   report([[true, 'Guardado. Probando…']]);
-  const results = await Promise.all([checkHub(values), checkTrello(values)]);
+  const hubOk = await checkHub(values);
+  const results = hubOk[0] ? [hubOk, await checkTrello(values)] : [hubOk];
   report([[true, 'Guardado.'], ...results]);
   button.disabled = false;
 });

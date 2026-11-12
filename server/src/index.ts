@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ClientMessage, DictateResult, ExtLaunchRequest, NotifyRequest, RespondRequest, SavedFolder, ServerMessage } from '../../shared/types.js';
+import type { AccountsInfo, ClientMessage, DictateResult, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -19,6 +19,7 @@ import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask } from './tasks.js';
+import { TrelloService, TrelloSetupError } from './trello.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -55,6 +56,7 @@ const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
+const trello = new TrelloService(config.dataDir);
 // The folders of «Nuevo space» live in the hub now: a `projects` block becomes one, once.
 const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
 for (const h of config.hosts.filter((x) => x.legacyProjects)) {
@@ -485,19 +487,91 @@ app.get('/api/ext/targets', async () => ({
   hosts: await Promise.all(hostOrder.list.map((id) => hosts.get(id)!).map((h) => hostTargets(h, machineFolders(h)))),
 }));
 
-app.post('/api/ext/launch', async (req, reply) => {
-  const body = (req.body ?? {}) as Partial<ExtLaunchRequest>;
+/**
+ * A task from the extension or the panel's Trello drawer: launched and then, if it is about
+ * a card, the card goes to Doing with a comment (warnings only: the task runs anyway).
+ */
+async function launchFromRequest(body: Partial<ExtLaunchRequest>, from: string): Promise<ExtLaunchResult> {
   const host = typeof body.host === 'string' ? hosts.get(body.host) : undefined;
-  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  if (!host) throw new Error('Máquina desconocida');
+  const card = typeof body.card === 'string' && body.card ? body.card : undefined;
+  if (card && !trello.configured) throw new TrelloSetupError('El panel no tiene cuenta de Trello: añade la API key y el token en Ajustes › Trello.');
+  const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest);
+  await host.refresh();
+  console.log(`[${from}] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', space nuevo' : ''}${body.worktree ? `, worktree ${body.worktree}` : ''})`);
+  if (card) result.trello = await trello.afterLaunch(card, result);
+  return result;
+}
+
+/** An error of a Trello route: one fixed in Settings › Trello says so (setup), for the extension to offer it. */
+function trelloError(reply: FastifyReply, err: unknown) {
+  const setup = err instanceof TrelloSetupError;
+  return reply.code(setup ? 409 : 400).send({ error: (err as Error).message, setup });
+}
+
+app.post('/api/ext/launch', async (req, reply) => {
   try {
-    const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest);
-    await host.refresh();
-    console.log(`[ext] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', space nuevo' : ''})`);
-    return result;
+    return await launchFromRequest((req.body ?? {}) as Partial<ExtLaunchRequest>, 'ext');
+  } catch (err) {
+    return trelloError(reply, err);
+  }
+});
+
+/** Whether the panel has a Trello account, for the extension's options. */
+app.get('/api/ext/trello', async () => trello.info());
+
+/** A card and the prompt template, for the extension's dialog. */
+app.get('/api/ext/card/:id', async (req, reply) => {
+  try {
+    return { card: await trello.card((req.params as { id: string }).id), promptTemplate: settings.value.trelloPromptTemplate } satisfies TrelloCardContext;
+  } catch (err) {
+    return trelloError(reply, err);
+  }
+});
+
+// ---------------------------------------------------------------- Trello in the panel
+
+app.get('/api/trello', async (req) => trello.info((req.query as { fresh?: string }).fresh === '1'));
+
+app.post('/api/trello', async (req, reply) => {
+  const body = (req.body ?? {}) as { key?: unknown; token?: unknown };
+  try {
+    return await trello.set(body.key, body.token);
   } catch (err) {
     return reply.code(400).send({ error: (err as Error).message });
   }
 });
+
+app.post('/api/trello/forget', async () => trello.forget());
+
+app.get('/api/trello/boards', async (_req, reply) => {
+  try {
+    return await trello.boards();
+  } catch (err) {
+    return trelloError(reply, err);
+  }
+});
+
+app.get('/api/trello/boards/:id', async (req, reply) => {
+  try {
+    return await trello.lists((req.params as { id: string }).id);
+  } catch (err) {
+    return trelloError(reply, err);
+  }
+});
+
+app.post('/api/trello/launch', async (req, reply) => {
+  try {
+    return await launchFromRequest((req.body ?? {}) as Partial<ExtLaunchRequest>, 'trello');
+  } catch (err) {
+    return trelloError(reply, err);
+  }
+});
+
+/** Where a task can go, for the panel (as /api/ext/targets for the extension). */
+app.get('/api/targets', async () => ({
+  hosts: await Promise.all(hostOrder.list.map((id) => hosts.get(id)!).map((h) => hostTargets(h, machineFolders(h)))),
+}));
 
 // ---------------------------------------------------------------- password login
 
