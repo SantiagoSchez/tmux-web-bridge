@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
 import { toast } from '../state';
 import { Sheet } from './Dialogs';
+import { IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
 // other text with its lines), the changed files of the window's repo, and their diff.
@@ -16,7 +17,8 @@ export interface FileOrigin {
 
 type Screen =
   | { kind: 'file'; path: string; line?: number }
-  | { kind: 'changes' }
+  /** mode: the one asked for; missing, the hub picks (the whole branch on any branch but the main one). */
+  | { kind: 'changes'; mode?: GitDiffMode }
   | { kind: 'diff'; changes: GitChanges; file: GitChange };
 
 /** What the viewer shows, and from where; null when closed. */
@@ -32,9 +34,9 @@ export function openFile(origin: FileOrigin, path: string, line?: number): void 
   fileViewer.value = { origin, stack: [{ kind: 'file', path, line }] };
 }
 
-export function openChanges(origin: FileOrigin): void {
+export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   leaveTerminal();
-  fileViewer.value = { origin, stack: [{ kind: 'changes' }] };
+  fileViewer.value = { origin, stack: [{ kind: 'changes', mode }] };
 }
 
 function push(screen: Screen): void {
@@ -94,7 +96,7 @@ export function FileViewerSheet() {
   const screen = v.stack[v.stack.length - 1];
   const close = () => (fileViewer.value = null);
   const back = v.stack.length > 1 ? { label: 'Atrás', onClick: pop } : undefined;
-  if (screen.kind === 'changes') return <ChangesView origin={v.origin} close={close} back={back} />;
+  if (screen.kind === 'changes') return <ChangesView origin={v.origin} initial={screen.mode} close={close} back={back} />;
   if (screen.kind === 'diff') return <DiffView origin={v.origin} changes={screen.changes} file={screen.file} close={close} back={back} />;
   return <FileView key={screen.path} origin={v.origin} path={screen.path} line={screen.line} close={close} back={back} />;
 }
@@ -228,22 +230,29 @@ function CodeLines({ text, line }: { text: string; line?: number }) {
 
 const STATUS: Record<GitChange['status'], string> = { M: 'Modificado', A: 'Nuevo', D: 'Borrado', R: 'Renombrado', '?': 'Sin seguimiento', U: 'En conflicto' };
 
-function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () => void; back: Back }) {
-  const [mode, setMode] = useState<GitDiffMode>('head');
+function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; initial?: GitDiffMode; close: () => void; back: Back }) {
+  /** The tab chosen; until then the hub picks one, and the answer says which. */
+  const [asked, setAsked] = useState<GitDiffMode | undefined>(initial);
   const [changes, setChanges] = useState<GitChanges | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const mode = asked ?? changes?.mode ?? 'head';
   const load = () => {
-    setChanges(null);
+    setLoading(true);
     setError(null);
-    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode })}`)
+    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode: asked })}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
         setChanges(data as GitChanges);
       })
-      .catch((err: Error) => setError(err.message));
+      .catch((err: Error) => {
+        setChanges(null);
+        setError(err.message);
+      })
+      .finally(() => setLoading(false));
   };
-  useEffect(load, [mode]);
+  useEffect(load, [asked]);
 
   const subtitle = changes ? `${changes.branch}${changes.base && mode === 'branch' ? ` · desde ${changes.base.ref}` : ''} · ${changes.root}` : undefined;
   return (
@@ -256,18 +265,18 @@ function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () =>
               ['branch', 'Toda la rama'],
             ] as const
           ).map(([k, label]) => (
-            <button key={k} role="radio" aria-checked={mode === k} class={mode === k ? 'on' : ''} onClick={() => setMode(k)}>
+            <button key={k} role="radio" aria-checked={mode === k} class={mode === k ? 'on' : ''} onClick={() => setAsked(k)}>
               {label}
             </button>
           ))}
         </div>
-        <button class="btn" title="Volver a mirar" onClick={load}>
-          ↻
+        <button class="icon-btn" aria-label="Volver a mirar" title="Volver a mirar" disabled={loading} onClick={load}>
+          <IconReload />
         </button>
       </div>
       {error ? (
         <p class="settings-state">{error}</p>
-      ) : !changes ? (
+      ) : !changes || (loading && changes.mode !== mode) ? (
         <p class="dim pad">Cargando…</p>
       ) : !changes.files.length ? (
         <p class="dim pad">{mode === 'head' ? 'Nada sin commit.' : 'Esta rama no tiene cambios respecto a la principal.'}</p>
@@ -426,9 +435,10 @@ export function ChangesButton({ host, window, paneId }: { host: HostInfo; window
   }, [host.id, window.id, paneId, window.state, host.status]);
   if (!stat) return null;
   const clean = !stat.added && !stat.removed && !stat.files;
-  const label = clean ? 'Ficheros cambiados: ninguno' : `Ficheros cambiados: ${stat.files}, +${stat.added} −${stat.removed} líneas`;
+  const since = stat.mode === 'branch' ? `desde ${stat.base ?? 'la rama principal'}` : 'sin commit';
+  const label = clean ? `Ficheros cambiados (${since}): ninguno` : `Ficheros cambiados (${since}): ${stat.files}, +${stat.added} −${stat.removed} líneas`;
   return (
-    <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin)}>
+    <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin, stat.mode)}>
       {clean ? (
         <span class="changes-none">±</span>
       ) : (

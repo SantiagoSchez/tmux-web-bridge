@@ -5,6 +5,7 @@ import { goHome, openWindow, route } from './router';
 import { applyHostOrder, dialog, hosts, hubSettings, isSolo, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
 import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
+import { openChanges } from './components/Files';
 
 // Tree actions shared by the list and the window view. Anything that destroys
 // something asks first.
@@ -224,17 +225,24 @@ export function reloadWindow(host: HostInfo, window: WindowInfo): void {
  * A window's actions, from the list or from the window itself. `pane` is the one
  * split/zoomed (default: the window's active pane); `extra` goes before closing it.
  * The only window of a space stands for the space: its menu also renames and closes it.
+ * `inView`: opened from the window's own header, whose buttons already reload it and show
+ * its changed files; from the list, the menu has them.
  */
 export function windowMenu(
   host: HostInfo,
   session: SessionInfo,
   window: WindowInfo,
-  { pane, extra = [], leave = false, top }: { pane?: PaneInfo; extra?: MenuItem[]; leave?: boolean; top?: ComponentChildren } = {},
+  { pane, extra = [], leave = false, top, inView = false }: { pane?: PaneInfo; extra?: MenuItem[]; leave?: boolean; top?: ComponentChildren; inView?: boolean } = {},
 ): void {
   const target = pane ?? window.panes.find((p) => p.active) ?? window.panes[0];
   const solo = isSolo(session);
   const items: MenuItem[] = [
-    { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
+    ...(inView
+      ? []
+      : [
+          { label: 'Ficheros cambiados', icon: '±', run: () => openChanges({ host: host.id, window: window.id, pane: target?.id }) },
+          { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
+        ]),
     ...(solo ? [{ label: 'Renombrar space', icon: '✎', run: () => renameSession(host, session) }] : []),
     { label: 'Renombrar ventana', icon: '✎', run: () => renameWindow(host, window) },
     { label: 'Nueva ventana en este space', icon: '＋', run: () => newWindow(host, session) },

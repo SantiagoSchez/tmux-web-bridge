@@ -578,6 +578,10 @@ export interface GitChange {
 
 /** GET /api/git/stat: how much a window's repo changed since HEAD (null: not in a repo). */
 export interface GitStat {
+  /** What it counts: the whole branch on any branch but the main one, else what has no commit yet. */
+  mode: GitDiffMode;
+  /** The main branch it is compared with (branch mode). */
+  base?: string;
   added: number;
   removed: number;
   files: number;

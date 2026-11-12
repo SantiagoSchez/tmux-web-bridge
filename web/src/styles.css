@@ -641,14 +641,19 @@ h3 {
 .conn-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 10px;
-  margin: 0 2px;
-  border-radius: 999px;
-  border: 1px solid var(--surface1);
+  min-width: var(--tap);
+  height: var(--tap);
+  padding: 0 8px;
+  border-radius: 10px;
   color: var(--subtext0);
   flex-shrink: 0;
+}
+.conn-btn:hover,
+.conn-btn:active {
+  background: var(--surface0);
+  color: var(--text);
 }
 .conn-btn svg {
   width: 18px;
@@ -658,7 +663,6 @@ h3 {
   font: 600 14px var(--mono);
 }
 .conn-btn.conn-many {
-  border-color: var(--peach);
   color: var(--peach);
   background: color-mix(in srgb, var(--peach) 12%, transparent);
 }
@@ -2712,15 +2716,25 @@ textarea.text-input {
   flex: 1;
   min-width: 0;
 }
+/* Every list in sight: they wrap onto more rows instead of scrolling out of view. */
 .trello-lists {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding-bottom: 10px;
 }
 .trello-lists .pchip {
-  flex: none;
+  max-width: 100%;
   padding: 0 12px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trello-search {
+  margin-bottom: 10px;
+}
+.trello-found {
+  padding: 4px 4px 8px;
 }
 .trello-lists .pchip.on {
   border-color: var(--mauve);
@@ -2986,9 +3000,14 @@ textarea.text-input {
   border-left: 3px solid var(--surface1);
   color: var(--subtext0);
 }
-/* Wider than the other sheets on a big screen: code and diffs need the room. */
+/* Wider than the other sheets on a big screen (code and diffs need the room), and always
+   the same size, so it does not jump between the list, a diff, a file or an empty tab. */
 .layout.desktop .sheet.file-sheet {
   max-width: min(960px, 92vw);
+  height: min(85vh, 820px);
+}
+.layout.mobile .sheet.file-sheet {
+  height: 88dvh;
 }
 .layout.desktop .sheet.trello-sheet,
 .layout.desktop .sheet.activity-sheet {
@@ -3059,20 +3078,22 @@ textarea.text-input {
   margin: 4px 0;
 }
 
-/* The window header's ± button: lines added and removed in its repo. */
+/* The window header's ± button: lines added and removed in its repo, shaped like the ··· one. */
 .changes-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  height: 36px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--surface1);
+  min-width: var(--tap);
+  height: var(--tap);
+  padding: 0 8px;
+  border-radius: 10px;
   font: 600 13px var(--mono);
   flex-shrink: 0;
   white-space: nowrap;
 }
-.changes-btn:hover {
+.changes-btn:hover,
+.changes-btn:active {
   background: var(--surface0);
 }
 .changes-add {

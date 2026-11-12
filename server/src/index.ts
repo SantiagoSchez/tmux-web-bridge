@@ -700,7 +700,7 @@ app.get('/api/git/changes', async (req, reply) => {
   const cwd = paneFolders(host, q.window, q.pane)[0];
   if (!cwd) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
   try {
-    return await gitChanges(host, cwd, q.mode === 'branch' ? 'branch' : 'head');
+    return await gitChanges(host, cwd, q.mode === 'branch' || q.mode === 'head' ? q.mode : 'auto');
   } catch (err) {
     return fileError(reply, err);
   }

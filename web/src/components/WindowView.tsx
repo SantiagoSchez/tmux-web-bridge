@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
-import { killPane, windowMenu } from '../menus';
+import { killPane, reloadWindow, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
@@ -9,7 +9,7 @@ import { uploadFiles } from '../upload';
 import { hub } from '../ws';
 import { ConnectionsButton } from './Header';
 import { PendingStrip } from './Assist';
-import { IconBack, IconMore } from './icons';
+import { IconBack, IconMore, IconReload } from './icons';
 import { MicButton } from './Mic';
 import { EDGE } from './Drawer';
 import { ChangesButton } from './Files';
@@ -97,7 +97,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
   const openMenu = () => {
     const extra: MenuItem[] = [];
     if (pane) extra.push({ label: `Cerrar panel ${pane.index}`, icon: '✕', danger: true, run: () => killPane(host, window, pane) });
-    windowMenu(host, session, window, { pane, extra, leave: !desktop, top: <FontSizeRow /> });
+    windowMenu(host, session, window, { pane, extra, leave: !desktop, top: <FontSizeRow />, inView: true });
   };
 
   // Above the keyboard bar: the other pending panes (on wide screens the sidebar already lists them).
@@ -138,6 +138,9 @@ export function WindowView({ host, session, window, paneId }: Props) {
         </div>
         {!desktop && <ConnectionsButton count={connections.value.length} />}
         <ChangesButton host={host} window={window} paneId={pane?.id} />
+        <button class="icon-btn" aria-label="Recargar ventana" title="Recargar ventana (.zshrc y Claude)" onClick={() => reloadWindow(host, window)}>
+          <IconReload />
+        </button>
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
           <IconMore />
         </button>

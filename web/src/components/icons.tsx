@@ -109,3 +109,12 @@ export const IconActivity = () => (
     <path d="M3 12h4l3-8 4 16 3-8h4" />
   </Svg>
 );
+/** Two arrows in a circle: read or load again. */
+export const IconReload = () => (
+  <Svg>
+    <path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" />
+    <path d="M4 3.5V8h4.5" />
+    <path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" />
+    <path d="M20 20.5V16h-4.5" />
+  </Svg>
+);

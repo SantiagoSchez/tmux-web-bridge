@@ -108,6 +108,15 @@ const BASE_SCRIPT =
   `base=''; for r in "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)" origin/main origin/master main master; do ` +
   `[ -n "$r" ] || continue; if git rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1; then base=$(git merge-base HEAD "$r" 2>/dev/null) && { printf 'M\\t%s\\t%s\\n' "$r" "$base"; break; }; fi; done`;
 
+/**
+ * After BASE_SCRIPT: what the mode «auto» means, printed as X<tab>mode. The whole branch
+ * on any branch but the main one (a worktree, a feature branch, a detached HEAD); what
+ * has no commit yet on the main one, or when there is no main one to compare with.
+ */
+const MODE_SCRIPT =
+  `b=$(git symbolic-ref --short -q HEAD); mode=head; ` +
+  `if [ -n "$base" ] && [ "$b" != "\${r#origin/}" ]; then mode=branch; fi; printf 'X\\t%s\\n' "$mode"`;
+
 /** NUL-separated porcelain v1: XY path (and, renamed, the old path next). */
 function parseStatus(z: string): GitChange[] {
   const parts = z.split('\0');
@@ -142,14 +151,15 @@ function parseNameStatus(z: string): GitChange[] {
 }
 
 /** The changed files of the repo a pane is in: since HEAD (with untracked ones), or since the branch left the main one. */
-export async function gitChanges(host: HostMonitor, cwd: string, mode: GitDiffMode): Promise<GitChanges> {
+export async function gitChanges(host: HostMonitor, cwd: string, asked: GitDiffMode | 'auto'): Promise<GitChanges> {
   const head =
     `cd ${shPath(cwd)} 2>/dev/null || { echo NODIR; exit 0; }; root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo NOREPO; exit 0; }; cd "$root"; ` +
-    `printf 'R\\t%s\\n' "$root"; printf 'B\\t%s\\n' "$(git symbolic-ref --short -q HEAD || git rev-parse --short HEAD)"; ${BASE_SCRIPT}; printf 'F\\n'; `;
+    `printf 'R\\t%s\\n' "$root"; printf 'B\\t%s\\n' "$(git symbolic-ref --short -q HEAD || git rev-parse --short HEAD)"; ${BASE_SCRIPT}; ` +
+    (asked === 'auto' ? `${MODE_SCRIPT}; ` : `mode=${asked}; `) +
+    `printf 'F\\n'; `;
   const files =
-    mode === 'head'
-      ? 'git status --porcelain=v1 -z --untracked-files=all'
-      : `[ -n "$base" ] && git diff --no-color --name-status -z "$base"; printf '\\036'; git ls-files --others --exclude-standard -z`;
+    `if [ "$mode" = head ]; then git status --porcelain=v1 -z --untracked-files=all; ` +
+    `else [ -n "$base" ] && git diff --no-color --name-status -z "$base"; printf '\\036'; git ls-files --others --exclude-standard -z; fi`;
   const { out } = await runBytes(host, head + files, MAX_DIFF, 20_000);
   const text = out.toString('utf8');
   if (text.startsWith('NODIR')) throw new FileError('Esa carpeta ya no está', 404);
@@ -157,14 +167,15 @@ export async function gitChanges(host: HostMonitor, cwd: string, mode: GitDiffMo
   const cut = text.indexOf('F\n');
   const header = text.slice(0, cut).split('\n');
   const body = text.slice(cut + 2);
-  const res: GitChanges = { root: '', branch: '', mode, files: [] };
+  const res: GitChanges = { root: '', branch: '', mode: asked === 'auto' ? 'head' : asked, files: [] };
   for (const line of header) {
     const [k, a, b] = line.split('\t');
-    if (k === 'R') res.root = a;
+    if (k === 'X') res.mode = a === 'branch' ? 'branch' : 'head';
+    else if (k === 'R') res.root = a;
     else if (k === 'B') res.branch = a;
     else if (k === 'M') res.base = { ref: a, commit: b };
   }
-  if (mode === 'head') res.files = parseStatus(body);
+  if (res.mode === 'head') res.files = parseStatus(body);
   else {
     if (!res.base) throw new FileError('No encuentro la rama principal (origin/HEAD, main o master) para comparar', 404);
     const [tracked, untracked = ''] = body.split('\x1e');
@@ -186,16 +197,18 @@ export async function gitStat(host: HostMonitor, cwd: string): Promise<GitStat |
   // Portable to macOS (no head -z, no xargs -r). Untracked text files count all their lines; binary ones (grep -I), none.
   const script =
     `cd ${shPath(cwd)} 2>/dev/null || exit 0; root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; cd "$root"; echo REPO; ` +
-    `git diff --numstat HEAD 2>/dev/null; ` +
+    `${BASE_SCRIPT}; ${MODE_SCRIPT}; if [ "$mode" = branch ]; then git diff --numstat "$base" 2>/dev/null; else git diff --numstat HEAD 2>/dev/null; fi; ` +
     `printf 'U\\t%s\\t' "$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')"; ` +
     `git ls-files --others --exclude-standard -z | xargs -0 grep -Ihc '' 2>/dev/null | awk '{ s += $1 } END { print s + 0 }'`;
   const out = await host.exec.shell(script, 15_000);
   const lines = out.split('\n');
   if (lines[0] !== 'REPO') return null;
-  const stat: GitStat = { added: 0, removed: 0, files: 0 };
+  const stat: GitStat = { mode: 'head', added: 0, removed: 0, files: 0 };
   for (const l of lines.slice(1)) {
     const [a, d, rest] = l.split('\t');
-    if (a === 'U') {
+    if (a === 'X') stat.mode = d === 'branch' ? 'branch' : 'head';
+    else if (a === 'M') stat.base = d;
+    else if (a === 'U') {
       stat.files += Number(d) || 0;
       stat.added += Number(rest) || 0;
     } else if (rest !== undefined) {

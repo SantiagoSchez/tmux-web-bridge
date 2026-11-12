@@ -8,6 +8,14 @@ import { prefs, setPref } from '../prefs';
 import { hubSettings, sheet, toast } from '../state';
 import { hub } from '../ws';
 import { Sheet, SkipPermissions } from './Dialogs';
+import { IconReload } from './icons';
+
+/** Lower case and without accents, to search. */
+const fold = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
 
 // Trello in the panel: the hub's account (Settings › Trello), and a drawer with a board's
 // lists and cards that launches a Claude on one, as the browser extension does.
@@ -148,6 +156,7 @@ function TrelloDrawer({ close }: { close: () => void }) {
   const [lists, setLists] = useState<TrelloList[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [card, setCard] = useState<Card | null>(null);
+  const [query, setQuery] = useState('');
   const boardId = prefs.value.trelloBoard;
   const board = boards?.find((b) => b.id === boardId) ?? null;
 
@@ -171,6 +180,14 @@ function TrelloDrawer({ close }: { close: () => void }) {
   const listId = (board && prefs.value.trelloLists[board.id]) || '';
   const list = lists?.find((l) => l.id === listId) ?? lists?.find((l) => l.cards.length) ?? lists?.[0] ?? null;
   const pickList = (id: string) => board && setPref('trelloLists', { ...prefs.value.trelloLists, [board.id]: id });
+  // A search looks through every list of the board: by title (accents aside) or number (#140, 140).
+  const q = fold(query.trim());
+  const found = useMemo(() => {
+    if (!q || !lists) return null;
+    const num = /^#?\d+$/.test(q) ? Number(q.replace('#', '')) : null;
+    return lists.flatMap((l) => l.cards.filter((c) => (num !== null && c.idShort === num) || fold(c.name).includes(q)).map((c) => ({ card: c, list: l.name })));
+  }, [q, lists]);
+  const shown = found ?? (list?.cards ?? []).map((c) => ({ card: c, list: '' }));
 
   if (card && board) return <LaunchCard board={board} card={card} close={close} back={() => setCard(null)} />;
 
@@ -190,12 +207,21 @@ function TrelloDrawer({ close }: { close: () => void }) {
                 </option>
               ))}
             </select>
-            <button class="btn" title="Volver a leer el tablero" onClick={loadLists}>
-              ↻
+            <button class="icon-btn" aria-label="Volver a leer el tablero" title="Volver a leer el tablero" onClick={loadLists}>
+              <IconReload />
             </button>
           </div>
-          {lists && (
-            <div class="trello-lists scroll-x" role="tablist" aria-label="Listas">
+          <input
+            class="text-input trello-search"
+            type="search"
+            value={query}
+            placeholder="Buscar una tarjeta (título o número)"
+            aria-label="Buscar una tarjeta"
+            autocomplete="off"
+            onInput={(e) => setQuery(e.currentTarget.value)}
+          />
+          {lists && !found && (
+            <div class="trello-lists" role="tablist" aria-label="Listas">
               {lists.map((l) => (
                 <button key={l.id} role="tab" aria-selected={l.id === list?.id} class={`pchip ${l.id === list?.id ? 'on' : ''}`} onClick={() => pickList(l.id)}>
                   {l.name} <span class="dim">{l.cards.length}</span>
@@ -205,16 +231,22 @@ function TrelloDrawer({ close }: { close: () => void }) {
           )}
           {!lists ? (
             <p class="dim pad">Cargando tarjetas…</p>
-          ) : !list?.cards.length ? (
-            <p class="dim pad">Esta lista no tiene tarjetas.</p>
+          ) : !shown.length ? (
+            <p class="dim pad">{found ? 'Ninguna tarjeta del tablero coincide.' : 'Esta lista no tiene tarjetas.'}</p>
           ) : (
             <ul class="menu trello-cards">
-              {list.cards.map((c) => (
+              {found && (
+                <li class="dim small trello-found">
+                  {found.length} tarjeta{found.length === 1 ? '' : 's'} en todo el tablero
+                </li>
+              )}
+              {shown.map(({ card: c, list: inList }) => (
                 <li key={c.id}>
                   <button class="menu-item" onClick={() => setCard(c)}>
                     <span class="trello-num">#{c.idShort}</span>
                     <span class="project-text">
                       <span class="project-name">{c.name}</span>
+                      {inList && <span class="project-hint">{inList}</span>}
                       {c.labels.length > 0 && (
                         <span class="trello-labels">
                           {c.labels.map((x, i) => (
