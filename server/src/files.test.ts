@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findPaths } from '../../shared/paths.js';
+import { findPaths, findPathsInRows } from '../../shared/paths.js';
 import { execFile, execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -74,4 +74,33 @@ test('a name the pane folders lack is found in their repo: the one changed last'
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('a path broken where its row ends is one link, on every row it takes', () => {
+  const cols = 30;
+  const rows = (...texts: string[]) => texts.map((text) => ({ text, full: text.trimEnd().length >= cols - 1 }));
+  // Claude Code breaks it a column before the edge and indents the rest.
+  const claude = rows('⏺ Lo dejé en web/src/componen', '  ts/TerminalView.tsx:42 ya.');
+  for (const at of [0, 1]) {
+    const [hit, ...more] = findPathsInRows(claude, at);
+    assert.deepEqual(more, []);
+    assert.equal(hit.path, 'web/src/components/TerminalView.tsx');
+    assert.equal(hit.line, 42);
+    assert.equal(hit.text, 'web/src/components/TerminalView.tsx:42');
+    assert.deepEqual([hit.start, hit.last], [{ row: 0, i: 13 }, { row: 1, i: 23 }]);
+  }
+  // The terminal wraps an absolute one across three rows, with no indent.
+  const shell = rows('cat /home/santiago/Dropbox/Doc', 'uments/Proyectos/tmux-web-brid', 'ge/README.md');
+  assert.deepEqual(findPathsInRows(shell, 1).map((h) => h.path), ['/home/santiago/Dropbox/Documents/Proyectos/tmux-web-bridge/README.md']);
+});
+
+test('a path that ends at the edge, before an unrelated word, stays as it is', () => {
+  const rows = [
+    { text: 'Revisa también el README.md', full: true },
+    { text: '  antes de seguir.', full: false },
+  ];
+  assert.deepEqual(findPathsInRows(rows, 0).map((h) => h.text), ['README.md']);
+  assert.deepEqual(findPathsInRows(rows, 1), []);
+  // A short row does not go on in the next one.
+  assert.deepEqual(findPathsInRows([{ text: 'ver a.ts', full: false }, { text: 'b.md', full: false }], 1).map((h) => h.text), ['b.md']);
 });

@@ -61,3 +61,66 @@ export function findPaths(text: string): PathHit[] {
   }
   return out;
 }
+
+/** A row of the terminal, for paths that go on in the next one. */
+export interface Row {
+  text: string;
+  /** Its text reaches the edge (Claude Code breaks a column before it), so a word may go on below. */
+  full: boolean;
+}
+
+export interface RowPathHit {
+  path: string;
+  line?: number;
+  /** The path as written, :line included (a broken one, joined). */
+  text: string;
+  /** Where it starts and where its last character is: a row, and an index in its text. */
+  start: { row: number; i: number };
+  last: { row: number; i: number };
+}
+
+const PATH_CHAR = /[\w.@+~/-]/;
+
+/** Whether a word at the end of `row` goes on at the start of `next` (indent aside). */
+function goesOn(row: Row, next: Row): boolean {
+  return row.full && PATH_CHAR.test(row.text.trimEnd().slice(-1)) && PATH_CHAR.test(next.text.trimStart().charAt(0));
+}
+
+/**
+ * The paths on rows[at], also those too long for one row: the terminal (or Claude Code,
+ * which indents what follows) breaks them where the row ends, with no space. A broken path
+ * wins over the pieces of it that look like one; a path that just ends at the edge, before
+ * an unrelated word, stays as it is.
+ */
+export function findPathsInRows(rows: Row[], at: number): RowPathHit[] {
+  let lo = at;
+  let hi = at;
+  while (lo > 0 && goesOn(rows[lo - 1], rows[lo])) lo--;
+  while (hi < rows.length - 1 && goesOn(rows[hi], rows[hi + 1])) hi++;
+
+  // The rows joined, and where each character of it comes from.
+  let joined = '';
+  const from: { row: number; i: number }[] = [];
+  for (let r = lo; r <= hi; r++) {
+    const text = rows[r].text;
+    const first = r === lo ? 0 : text.length - text.trimStart().length;
+    const end = r === hi ? text.length : text.trimEnd().length;
+    for (let i = first; i < end; i++) from.push({ row: r, i });
+    joined += text.slice(first, end);
+  }
+  const broken = findPaths(joined)
+    .map((h) => ({ path: h.path, line: h.line, text: joined.slice(h.start, h.end), start: from[h.start], last: from[h.end - 1] }))
+    .filter((h) => h.start.row !== h.last.row);
+
+  const out = broken.filter((h) => h.start.row <= at && at <= h.last.row);
+  // The row's own paths, but not the pieces of a broken one.
+  for (const h of findPaths(rows[at].text)) {
+    const overlaps = out.some((b) => {
+      const s = b.start.row === at ? b.start.i : 0;
+      const e = b.last.row === at ? b.last.i : Infinity;
+      return h.start <= e && s <= h.end - 1;
+    });
+    if (!overlaps) out.push({ path: h.path, line: h.line, text: rows[at].text.slice(h.start, h.end), start: { row: at, i: h.start }, last: { row: at, i: h.end - 1 } });
+  }
+  return out;
+}
