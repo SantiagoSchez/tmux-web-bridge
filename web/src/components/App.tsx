@@ -5,6 +5,7 @@ import { route } from '../router';
 import { findWindow, hosts, wsStatus } from '../state';
 import { ActivitySheet } from './Activity';
 import { Connections } from './Connections';
+import { FilePeek } from './FilePeek';
 import { FileViewerSheet } from './Files';
 import { Dialogs, Toasts } from './Dialogs';
 import { Drawer } from './Drawer';
@@ -89,6 +90,7 @@ function Overlays() {
       <TrelloSheet />
       <ActivitySheet />
       <FileViewerSheet />
+      <FilePeek />
       <Dialogs />
       <Palette />
       <Toasts />

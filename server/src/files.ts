@@ -1,3 +1,4 @@
+import type { ChildProcess } from 'node:child_process';
 import { posix } from 'node:path';
 import type { GitChange, GitChanges, GitDiffMode } from '../../shared/types.js';
 import type { HostMonitor } from './host.js';
@@ -6,8 +7,6 @@ import type { HostMonitor } from './host.js';
 // folder), read over the same connection as tmux; and the repo of a pane, its changed
 // files and their diff, since HEAD or since the branch left the main one.
 
-/** Images and PDFs are shown as they are; bigger files are not read. */
-export const MAX_FILE = 20 * 1024 * 1024;
 const MAX_DIFF = 4 * 1024 * 1024;
 
 const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
@@ -77,23 +76,29 @@ function runBytes(host: HostMonitor, script: string, max: number, timeoutMs = 30
 }
 
 /**
- * A file of the host: the first of `paths` that is there (a relative path may be seen
- * in any pane of the window). 404 when none is, 413 when it is too big.
+ * Which of `paths` is a file there (a relative path may be seen in any pane of the
+ * window): the first one, as an absolute path, and its size. 404 when none is.
  */
-export async function readHostFile(host: HostMonitor, paths: string[], probe = false): Promise<{ path: string; data: Buffer }> {
+export async function statHostFile(host: HostMonitor, paths: string[]): Promise<{ path: string; size: number }> {
   const each = paths.map(shPath).join(' ');
   const script =
-    `for f in ${each}; do if [ -f "$f" ]; then s=$(wc -c < "$f" | tr -d ' '); ` +
-    `if [ "$s" -gt ${MAX_FILE} ]; then echo "BIG $s" >&2; exit 4; fi; ` +
-    `printf '%s\\n' "$f" >&2; ${probe ? 'exit 0' : 'exec cat -- "$f"'}; ` +
-    `elif [ -e "$f" ]; then echo "NOTFILE" >&2; exit 5; fi; done; echo MISSING >&2; exit 3`;
-  const { code, out, err } = await runBytes(host, script, MAX_FILE);
-  if (code === 3) throw new FileError(`No existe en ${host.name}`, 404);
-  if (code === 4) throw new FileError(`Es demasiado grande (más de ${MAX_FILE / 1024 / 1024} MB)`, 413);
-  if (code === 5) throw new FileError('No es un fichero (¿una carpeta?)', 400);
-  if (code !== 0) throw new FileError(err || `No se pudo leer (código ${code})`, 500);
-  const path = err.split('\n').pop() ?? paths[0];
-  return { path, data: out };
+    `for f in ${each}; do if [ -f "$f" ]; then printf '%s\t%s\n' "$(wc -c < "$f" | tr -d ' ')" "$f"; exit 0; ` +
+    `elif [ -e "$f" ]; then echo NOTFILE; exit 0; fi; done; echo MISSING`;
+  const out = (await host.exec.shell(script, 15_000)).replace(/\n$/, '');
+  if (out === 'MISSING') throw new FileError(`No existe en ${host.name}`, 404);
+  if (out === 'NOTFILE') throw new FileError('No es un fichero (¿una carpeta?)', 400);
+  const tab = out.indexOf('\t');
+  const size = Number(out.slice(0, tab));
+  if (tab < 0 || !Number.isFinite(size)) throw new FileError(out || 'No se pudo leer', 500);
+  return { size, path: out.slice(tab + 1) };
+}
+
+/**
+ * The bytes of a file of the host (an absolute path, as statHostFile gives it), as they
+ * come: any size, never whole in memory. `max`: only its first bytes.
+ */
+export function streamHostFile(host: HostMonitor, path: string, max?: number): ChildProcess {
+  return host.exec.spawnShell(max ? `exec head -c ${Math.floor(max)} -- ${quote(path)}` : `exec cat -- ${quote(path)}`);
 }
 
 // ---------------------------------------------------------------- git

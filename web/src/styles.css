@@ -2997,3 +2997,64 @@ textarea.text-input {
 .sheet-head p {
   overflow-wrap: anywhere;
 }
+
+/* The preview of a path under the mouse in the terminal. */
+.file-peek {
+  position: fixed;
+  z-index: 60;
+  width: min(460px, calc(100vw - 16px));
+  max-height: min(340px, calc(100vh - 16px));
+  overflow: hidden;
+  padding: 8px 10px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--surface1);
+  background: var(--mantle);
+  box-shadow: 0 10px 30px var(--shadow-strong);
+  pointer-events: none;
+  animation: fade 0.12s ease-out;
+}
+.peek-head {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.peek-name {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.peek-size {
+  margin-left: auto;
+  flex: none;
+  color: var(--overlay1);
+}
+.peek-note {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--subtext0);
+}
+.peek-image {
+  display: block;
+  max-width: 100%;
+  max-height: 280px;
+  margin: 0 auto;
+  border-radius: 6px;
+}
+.peek-code {
+  font-size: 11px;
+  overflow: hidden;
+}
+.peek-md {
+  font-size: 12px;
+  max-height: 290px;
+  overflow: hidden;
+}
+.peek-md h1,
+.peek-md h2,
+.peek-md h3 {
+  font-size: 14px;
+  margin: 4px 0;
+}

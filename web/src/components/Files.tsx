@@ -59,12 +59,34 @@ const qs = (o: Record<string, string | undefined>) =>
 
 const fileUrl = (o: FileOrigin, path: string) => `/api/files?${qs({ host: o.host, window: o.window, pane: o.pane, path })}`;
 
-async function fetchText(url: string): Promise<{ text: string; path?: string }> {
-  const res = await fetch(url);
+async function fetchText(url: string, signal?: AbortSignal): Promise<{ text: string; path?: string; size?: number }> {
+  const res = await fetch(url, { signal });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `Error ${res.status}`);
   const path = res.headers.get('X-File-Path');
-  return { text: await res.text(), path: path ? decodeURIComponent(path) : undefined };
+  const size = Number(res.headers.get('X-File-Size'));
+  return { text: await res.text(), path: path ? decodeURIComponent(path) : undefined, size: Number.isFinite(size) ? size : undefined };
 }
+
+/** Whether it is there, and its whole path and size (without reading it). */
+export async function probeFile(o: FileOrigin, path: string, signal?: AbortSignal): Promise<{ path: string; size: number }> {
+  const res = await fetch(`${fileUrl(o, path)}&probe=1`, { signal });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+  return data as { path: string; size: number };
+}
+
+/** The viewer reads this much of a text file; «Abrir aparte» gets all of it. */
+const TEXT_MAX = 2 * 1024 * 1024;
+
+/** «840 KB», «23,4 MB». */
+export function fileSize(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: n < 100 * 1024 * 1024 ? 1 : 0 })} MB`;
+}
+
+export const fileKind = (path: string) => (IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : MARKDOWN.test(path) ? 'markdown' : 'text');
+export { fileUrl };
 
 export function FileViewerSheet() {
   const v = fileViewer.value;
@@ -84,8 +106,9 @@ type Back = { label: string; onClick: () => void } | undefined;
 function FileView({ origin, path, line, close, back }: { origin: FileOrigin; path: string; line?: number; close: () => void; back: Back }) {
   const url = fileUrl(origin, path);
   const name = path.split('/').pop() ?? path;
-  const kind = IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : MARKDOWN.test(path) ? 'markdown' : 'text';
+  const kind = fileKind(path);
   const [text, setText] = useState<string | null>(null);
+  const [size, setSize] = useState<number | null>(null);
   const [abs, setAbs] = useState<string>(path);
   const [error, setError] = useState<string | null>(null);
   const [raw, setRaw] = useState(false);
@@ -94,27 +117,29 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
   useEffect(() => {
     // Images and PDFs load from the URL itself; asking first only says whether it is there.
     if (kind === 'image' || kind === 'pdf') {
-      fetch(`${url}&probe=1`)
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-          if (data.path) setAbs(data.path);
+      probeFile(origin, path).then(
+        (r) => {
+          setAbs(r.path);
+          setSize(r.size);
           setFound(true);
-        })
-        .catch((err: Error) => setError(err.message));
+        },
+        (err: Error) => setError(err.message),
+      );
       return;
     }
-    fetchText(url).then(
+    // A big text file: its beginning (a cut line or character at the end does not matter).
+    fetchText(`${url}&max=${TEXT_MAX}`).then(
       (r) => {
         setText(r.text);
         if (r.path) setAbs(r.path);
+        if (r.size !== undefined) setSize(r.size);
       },
       (err: Error) => setError(err.message),
     );
   }, [url]);
 
   return (
-    <Sheet title={name} subtitle={abs} back={back} class="file-sheet" onClose={close}>
+    <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} back={back} class="file-sheet" onClose={close}>
       <div class="file-actions">
         {kind === 'markdown' && text !== null && (
           <button class="btn" onClick={() => setRaw(!raw)}>
@@ -125,6 +150,11 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
           Abrir aparte
         </a>
       </div>
+      {text !== null && size !== null && size > TEXT_MAX && (
+        <p class="settings-state small">
+          Solo los primeros {fileSize(TEXT_MAX)} de {fileSize(size)}: «Abrir aparte» lo trae entero.
+        </p>
+      )}
       {error ? (
         <p class="settings-state">{error}</p>
       ) : (kind === 'image' || kind === 'pdf') && !found ? (
@@ -147,7 +177,7 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
 }
 
 /** Rendered with marked and cleaned up with DOMPurify, both loaded the first time (they are not needed until then). */
-async function renderMarkdown(text: string): Promise<string> {
+export async function renderMarkdown(text: string): Promise<string> {
   const [{ marked }, { default: DOMPurify }] = await Promise.all([import('marked'), import('dompurify')]);
   return DOMPurify.sanitize(marked.parse(text, { async: false, gfm: true }) as string);
 }

@@ -3,6 +3,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { fileLinkProvider } from '../fileLinks';
+import { hidePeek, peekFile } from './FilePeek';
 import { openFile } from './Files';
 import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -776,10 +777,17 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon(activate));
     // File paths (Update(src/x.ts), /tmp/shot.png…) open in the panel's viewer.
+    // With a mouse, resting on one shows a preview first.
+    const origin = () => ({ host: hostId.current, window: target.current.window, pane: target.current.pane });
     term.registerLinkProvider(
-      fileLinkProvider(term, (e, path, line) => {
-        if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
-        openFile({ host: hostId.current, window: target.current.window, pane: target.current.pane }, path, line);
+      fileLinkProvider(term, {
+        open: (e, path, line) => {
+          hidePeek();
+          if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
+          openFile(origin(), path, line);
+        },
+        hover: (e, path, line) => peekFile(origin(), path, line, e),
+        leave: hidePeek,
       }),
     );
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider(term)));

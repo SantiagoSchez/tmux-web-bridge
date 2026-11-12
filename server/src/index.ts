@@ -22,7 +22,7 @@ import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
-import { FileError, gitChanges, gitDiff, paneFolders, readHostFile, resolvePath } from './files.js';
+import { FileError, gitChanges, gitDiff, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -656,11 +656,12 @@ function fileError(reply: FastifyReply, err: unknown) {
 
 /**
  * A file of a machine, for the viewer: a path seen in a window (relative to its panes'
- * folders). Images and PDFs with their type, anything else as text; never run by the
- * browser (sandboxed), even opened on its own.
+ * folders), streamed whatever its size. Images and PDFs with their type, anything else
+ * as text; never run by the browser (sandboxed), even opened on its own. probe=1: only
+ * its whole path and size; max=N: only its first N bytes (X-File-Size says how many it has).
  */
 app.get('/api/files', async (req, reply) => {
-  const q = req.query as { host?: string; window?: string; pane?: string; path?: string; probe?: string };
+  const q = req.query as { host?: string; window?: string; pane?: string; path?: string; probe?: string; max?: string };
   const host = q.host ? hosts.get(q.host) : undefined;
   if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
   try {
@@ -668,13 +669,15 @@ app.get('/api/files', async (req, reply) => {
     const isRel = !raw.startsWith('/') && !raw.startsWith('~');
     const folders = isRel ? paneFolders(host, q.window, q.pane) : [''];
     if (!folders.length) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
-    // probe: only whether it is there, and its whole path (an image or a PDF loads from the URL after).
-    const { path, data } = await readHostFile(
+    const { path, size } = await statHostFile(
       host,
       folders.map((f) => resolvePath(raw, f)),
-      q.probe === '1',
     );
-    if (q.probe === '1') return { path };
+    if (q.probe === '1') return { path, size };
+    const max = Number(q.max) > 0 ? Math.min(Number(q.max), size) : undefined;
+    const child = streamHostFile(host, path, max);
+    // The browser gave up (closed the viewer, moved off a preview): stop reading.
+    req.raw.on('close', () => child.exitCode === null && child.kill());
     const ext = path.split('.').pop()?.toLowerCase() ?? '';
     // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
     if (ext !== 'pdf') reply.header('Content-Security-Policy', 'sandbox');
@@ -683,7 +686,8 @@ app.get('/api/files', async (req, reply) => {
       .header('X-Content-Type-Options', 'nosniff')
       .header('Cache-Control', 'no-store')
       .header('X-File-Path', encodeURIComponent(path))
-      .send(data);
+      .header('X-File-Size', String(size))
+      .send(child.stdout);
   } catch (err) {
     return fileError(reply, err);
   }
