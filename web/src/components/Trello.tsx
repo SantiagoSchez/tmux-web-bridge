@@ -14,7 +14,7 @@ import { IconReload } from './icons';
 const fold = (s: string) =>
   s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
 // Trello in the panel: the hub's account (Settings › Trello), and a drawer with a board's

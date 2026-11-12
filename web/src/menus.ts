@@ -225,8 +225,8 @@ export function reloadWindow(host: HostInfo, window: WindowInfo): void {
  * A window's actions, from the list or from the window itself. `pane` is the one
  * split/zoomed (default: the window's active pane); `extra` goes before closing it.
  * The only window of a space stands for the space: its menu also renames and closes it.
- * `inView`: opened from the window's own header, whose buttons already reload it and show
- * its changed files; from the list, the menu has them.
+ * `inView`: opened from the window's own header, whose ± button already shows its changed
+ * files; from the list, the menu has that too.
  */
 export function windowMenu(
   host: HostInfo,
@@ -237,12 +237,8 @@ export function windowMenu(
   const target = pane ?? window.panes.find((p) => p.active) ?? window.panes[0];
   const solo = isSolo(session);
   const items: MenuItem[] = [
-    ...(inView
-      ? []
-      : [
-          { label: 'Ficheros cambiados', icon: '±', run: () => openChanges({ host: host.id, window: window.id, pane: target?.id }) },
-          { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
-        ]),
+    ...(inView ? [] : [{ label: 'Ficheros cambiados', icon: '±', run: () => openChanges({ host: host.id, window: window.id, pane: target?.id }) }]),
+    { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
     ...(solo ? [{ label: 'Renombrar space', icon: '✎', run: () => renameSession(host, session) }] : []),
     { label: 'Renombrar ventana', icon: '✎', run: () => renameWindow(host, window) },
     { label: 'Nueva ventana en este space', icon: '＋', run: () => newWindow(host, session) },

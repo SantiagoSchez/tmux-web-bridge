@@ -3,26 +3,13 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
 import { toast } from '../state';
 import { Sheet } from './Dialogs';
+import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin } from '../fileViewer';
+
+export { fileViewer, type FileOrigin };
 import { IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
 // other text with its lines), the changed files of the window's repo, and their diff.
-
-/** Where it was opened from: the window whose panes' folders relative paths start at. */
-export interface FileOrigin {
-  host: string;
-  window?: string;
-  pane?: string;
-}
-
-type Screen =
-  | { kind: 'file'; path: string; line?: number }
-  /** mode: the one asked for; missing, the hub picks (the whole branch on any branch but the main one). */
-  | { kind: 'changes'; mode?: GitDiffMode }
-  | { kind: 'diff'; changes: GitChanges; file: GitChange };
-
-/** What the viewer shows, and from where; null when closed. */
-export const fileViewer = signal<{ origin: FileOrigin; stack: Screen[] } | null>(null);
 
 /** Opened from the terminal, which keeps the focus: Escape would reach Claude (and stop it) instead of closing the viewer. */
 function leaveTerminal(): void {
@@ -41,7 +28,7 @@ const changesQuery = signal('');
 const fold = (s: string) =>
   s
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
 export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
@@ -50,15 +37,8 @@ export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   fileViewer.value = { origin, stack: [{ kind: 'changes', mode }] };
 }
 
-function push(screen: Screen): void {
-  const v = fileViewer.value;
-  if (v) fileViewer.value = { ...v, stack: [...v.stack, screen] };
-}
-
-function pop(): void {
-  const v = fileViewer.value;
-  if (v) fileViewer.value = v.stack.length > 1 ? { ...v, stack: v.stack.slice(0, -1) } : null;
-}
+const push = pushFileScreen;
+const pop = fileViewerBack;
 
 const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
 const MARKDOWN = /\.(md|markdown|mdx)$/i;

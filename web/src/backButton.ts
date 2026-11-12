@@ -1,5 +1,6 @@
 import { effect } from '@preact/signals';
 import { isDesktop } from './prefs';
+import { fileViewer, fileViewerBack } from './fileViewer';
 import { dialog, drawerOpen, paletteOpen, settingsTab, sheet } from './state';
 
 // The phone's back button closes what is open on top (a dialog, a menu, a sheet, a
@@ -17,10 +18,14 @@ import { dialog, drawerOpen, paletteOpen, settingsTab, sheet } from './state';
 // navigation of the app replaces the current one, and going back from one goes back
 // once more, so that press still does what it would have done.
 
-/** Open layers, each with its own entry: the settings on the phone count a section apart. */
+/**
+ * Open layers, each with its own entry: the settings on the phone count a section apart,
+ * and the file viewer each of its screens (changed files › a diff › the file).
+ */
 function layers(): number {
   const settingsSection = sheet.value === 'settings' && !!settingsTab.value && !isDesktop.value;
-  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value);
+  const files = fileViewer.value?.stack.length ?? 0;
+  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value) + files;
 }
 
 /** The depth of an entry of ours, 0 for a page (true: one from before depths were kept). */
@@ -38,6 +43,7 @@ let afterLeaving: (() => void) | null = null;
 function closeTop(): void {
   if (dialog.value) dialog.value = null;
   else if (paletteOpen.value) paletteOpen.value = false;
+  else if (fileViewer.value) fileViewerBack();
   else if (sheet.value === 'settings' && settingsTab.value && !isDesktop.value) settingsTab.value = null;
   else if (sheet.value) sheet.value = null;
   else drawerOpen.value = false;
