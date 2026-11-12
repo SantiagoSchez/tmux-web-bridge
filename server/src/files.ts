@@ -76,14 +76,35 @@ function runBytes(host: HostMonitor, script: string, max: number, timeoutMs = 30
 }
 
 /**
- * Which of `paths` is a file there (a relative path may be seen in any pane of the
- * window): the first one, as an absolute path, and its size. 404 when none is.
+ * A relative path the folders of the panes do not have, looked for in their repos:
+ * Claude often names a file alone («Contestado: plan.md») that is deeper in the repo.
+ * The tracked and untracked (not ignored) files whose path ends with it; when there
+ * are several, the one changed last. Null when it is not a relative path to look for.
  */
-export async function statHostFile(host: HostMonitor, paths: string[]): Promise<{ path: string; size: number }> {
+export function findInReposScript(raw: string, folders: string[]): string | null {
+  const p = raw.trim().replace(/:\d+(:\d+)?$/, '');
+  if (!p || p.startsWith('/') || p.startsWith('~') || /[\0\n*?[\]\\]/.test(p)) return null;
+  const parts = p.split('/');
+  if (parts.some((s) => s === '..' || s === '.' || s === '') || !folders.length) return null;
+  const spec = quote(`:(top,glob)**/${p}`);
+  return (
+    `{ for d in ${folders.map(shPath).join(' ')}; do r=$(cd "$d" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || continue; ` +
+    `git -C "$r" ls-files -co --exclude-standard -z -- ${spec} 2>/dev/null | tr '\\0' '\\n' | while IFS= read -r f; do printf '%s/%s\\n' "$r" "$f"; done; done; } | head -n 200 | ` +
+    `{ best=''; while IFS= read -r f; do [ -f "$f" ] || continue; if [ -z "$best" ] || [ "$f" -nt "$best" ]; then best=$f; fi; done; ` +
+    `if [ -n "$best" ]; then printf '%s\\t%s\\n' "$(wc -c < "$best" | tr -d ' ')" "$best"; else echo MISSING; fi; }`
+  );
+}
+
+/**
+ * Which of `paths` is a file there (a relative path may be seen in any pane of the
+ * window): the first one, as an absolute path, and its size. `orElse`: a script to
+ * find it when none is (findInReposScript), printing the same. 404 when none is.
+ */
+export async function statHostFile(host: HostMonitor, paths: string[], orElse?: string | null): Promise<{ path: string; size: number }> {
   const each = paths.map(shPath).join(' ');
   const script =
     `for f in ${each}; do if [ -f "$f" ]; then printf '%s\t%s\n' "$(wc -c < "$f" | tr -d ' ')" "$f"; exit 0; ` +
-    `elif [ -e "$f" ]; then echo NOTFILE; exit 0; fi; done; echo MISSING`;
+    `elif [ -e "$f" ]; then echo NOTFILE; exit 0; fi; done; ${orElse ?? 'echo MISSING'}`;
   const out = (await host.exec.shell(script, 15_000)).replace(/\n$/, '');
   if (out === 'MISSING') throw new FileError(`No existe en ${host.name}`, 404);
   if (out === 'NOTFILE') throw new FileError('No es un fichero (¿una carpeta?)', 400);

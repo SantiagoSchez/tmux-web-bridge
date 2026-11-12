@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { findPaths } from '../../shared/paths.js';
-import { resolvePath } from './files.js';
+import { execFile, execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { findInReposScript, resolvePath, statHostFile } from './files.js';
+import type { HostMonitor } from './host.js';
 
 const paths = (line: string) => findPaths(line).map((h) => (h.line ? `${h.path}:${h.line}` : h.path));
 
@@ -32,4 +37,41 @@ test('relative paths go from the pane folder; absolute and ~/ ones stay', () => 
   assert.equal(resolvePath('/etc/hosts', '/x'), '/etc/hosts');
   assert.equal(resolvePath('~/n.md', '/x'), '~/n.md');
   assert.throws(() => resolvePath('a.ts', ''), /carpeta/);
+});
+
+test('a name the pane folders lack is found in their repo: the one changed last', async () => {
+  if (process.platform !== 'linux') return;
+  const dir = mkdtempSync(join(tmpdir(), 'twb-files-'));
+  try {
+    const git = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' });
+    git('init', '-q');
+    mkdirSync(join(dir, 'a', 'docs'), { recursive: true });
+    mkdirSync(join(dir, 'b'), { recursive: true });
+    mkdirSync(join(dir, 'node_modules', 'x'), { recursive: true });
+    writeFileSync(join(dir, '.gitignore'), 'node_modules\n');
+    writeFileSync(join(dir, 'a', 'docs', 'plan.md'), 'old');
+    writeFileSync(join(dir, 'b', 'plan.md'), 'newer');
+    writeFileSync(join(dir, 'node_modules', 'x', 'plan.md'), 'ignored, and newest');
+    utimesSync(join(dir, 'a', 'docs', 'plan.md'), new Date(1e12), new Date(1e12));
+    git('add', 'a');
+    const host = {
+      name: 'test',
+      exec: {
+        shell: (script: string) =>
+          new Promise<string>((ok, ko) => execFile('/bin/sh', ['-c', script], { encoding: 'utf8' }, (e, out, err) => (e ? ko(new Error(err)) : ok(out)))),
+      },
+    } as unknown as HostMonitor;
+    const stat = (raw: string, folder = join(dir, 'b')) => statHostFile(host, [resolvePath(raw, folder)], findInReposScript(raw, [folder]));
+
+    // In the pane's folder: that one, without looking further.
+    assert.deepEqual(await stat('plan.md', join(dir, 'a', 'docs')), { path: join(dir, 'a', 'docs', 'plan.md'), size: 3 });
+    // Elsewhere in the repo: the one changed last (untracked too), never an ignored one.
+    assert.deepEqual(await stat('plan.md', dir), { path: join(dir, 'b', 'plan.md'), size: 5 });
+    assert.deepEqual(await stat('docs/plan.md:4', join(dir, 'b')), { path: join(dir, 'a', 'docs', 'plan.md'), size: 3 });
+    await assert.rejects(stat('nada.md'), /No existe/);
+    assert.equal(findInReposScript('../plan.md', [dir]), null);
+    assert.equal(findInReposScript('/etc/hosts', [dir]), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

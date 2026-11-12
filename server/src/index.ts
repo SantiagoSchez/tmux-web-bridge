@@ -22,7 +22,7 @@ import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
-import { FileError, gitChanges, gitDiff, gitStat, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
+import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -672,6 +672,7 @@ app.get('/api/files', async (req, reply) => {
     const { path, size } = await statHostFile(
       host,
       folders.map((f) => resolvePath(raw, f)),
+      isRel ? findInReposScript(raw, folders) : null,
     );
     if (q.probe === '1') return { path, size };
     const max = Number(q.max) > 0 ? Math.min(Number(q.max), size) : undefined;
