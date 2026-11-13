@@ -1,0 +1,6 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "Una ruta de fichero partida entre dos filas del terminal es un solo enlace que abre la ruta entera; los trozos de una carpeta partida ya no son enlaces sueltos",
+  "breaking": false
+}

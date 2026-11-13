@@ -2,6 +2,7 @@ node_modules/
 dist/
 data/
 config.yaml
+!openspec/config.yaml
 *.log
 .DS_Store
 trello-extension/*.zip

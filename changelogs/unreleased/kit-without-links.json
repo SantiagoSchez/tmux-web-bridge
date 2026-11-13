@@ -1,0 +1,6 @@
+{
+  "type": "changed",
+  "scope": "host-kit",
+  "description": "El kit ya no enlaza scripts en ~/.scripts: se llaman desde su clon, y ~/.tmux.conf lleva un bloque marcado que el kit pone y quita. Al actualizar, migra solo desde la instalación anterior",
+  "breaking": false
+}

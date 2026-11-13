@@ -1,0 +1,78 @@
+schema: spec-driven
+
+# Project context, injected into every artifact's prompt. Generated once by the
+# koalarnes plugin; the project owns this file. Describe the stack, the
+# architecture and the domain below.
+context: |
+  Tech stack: TypeScript on Node 22 (pnpm workspace: server, web,
+  trello-extension); the hub server runs tsx in development and an esbuild
+  bundle in production (Docker); the web panel is built with Vite; tests
+  use node:test through tsx. The host kit is bash plus a tmux.conf. State
+  lives in JSON/YAML files (config.yaml, data/*.json), no database.
+  Architecture: the hub (server/) reaches each machine's tmux over SSH
+  (ControlMaster, through the Tailscale SOCKS proxy or the LAN; the hub's
+  own machine locally), serves the panel (web/) over REST and a websocket,
+  and sends push notifications. Types shared by server, web and the
+  extension live in shared/. The host kit (host-kit/), installed on each
+  machine from a release tag, publishes Claude Code's state to tmux and
+  notifies the hub. The Trello extension (trello-extension/) calls the
+  hub's /api/ext/*.
+  Domain: a phone-first web panel to watch and drive tmux and Claude Code
+  sessions on the owner's own machines, with push notifications. The UI is
+  in Spanish (Spain); code and comments are in English.
+
+  Language: OpenSpec artifacts (proposal, design, specs, tasks) MUST be
+  written in en; code and code comments in English;
+  commit messages in en, following Conventional Commits.
+
+  Canonical standards (the single source of truth for agents and humans):
+  - docs/dev-standards/base-standards.md           principles, index, workflow.
+  - docs/dev-standards/testing-standards.md        test levels, mocks, refused patterns.
+  - docs/dev-standards/documentation-standards.md  comments, ADRs, changelog, catalogue.
+  - .claude/rules/koalarnes-mandatory-steps.md        mandatory tasks.md steps (always applied).
+  - server (server/**, shared/**): docs/dev-standards/server-standards.md
+  - web (web/**): docs/dev-standards/web-standards.md
+  - trello-extension (trello-extension/**): docs/dev-standards/trello-extension-standards.md
+  - host-kit (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh): docs/dev-standards/host-kit-standards.md
+
+  Workflow: Route A (refine, opsx:propose) or Route B (refine, opsx:explore,
+  opsx:new, opsx:continue per artifact), then opsx:apply, opsx:verify,
+  adversarial-review, commit, pull request, review-pr (findings: the agent
+  edits the artifacts directly, never with opsx:continue, then re-applies),
+  update-features if user-visible, human review,
+  opsx:archive, commit, the reviewer merges into master. The full
+  pipeline is in docs/dev-standards/base-standards.md.
+
+  Global rules for every artifact:
+  - Before creating an artifact, read docs/dev-standards/base-standards.md and
+    the standards of every layer the change touches.
+  - Every tasks.md includes the mandatory steps of
+    .claude/rules/koalarnes-mandatory-steps.md (branch from master,
+    review and run the tests, update the docs and the changelog, the feature
+    catalogue, the human review, features-check before the archive).
+
+# Per-artifact rules. The OpenSpec CLI only injects rules whose key is an
+# artifact id of the schema (proposal, design, specs, tasks); any other key is
+# ignored, so global rules live in the context block above.
+rules:
+  proposal:
+    - Name the layers the change affects (the layers of .claude/koalarnes.json) and the external services it touches.
+    - Call out contract changes explicitly (API payloads, message or job payloads, schema migrations, new environment variables).
+    - Include a Non-goals section.
+    - Link the GitHub issue.
+
+  design:
+    - For a change that crosses layers, show the full flow of requests and messages between them.
+    - Record decisions with long-term consequences as Context, Decision, Consequences.
+    - Flag dependency-wiring or bootstrap changes and require a boot smoke test.
+
+  specs:
+    - Use Given / When / Then for every scenario of a capability delta.
+    - Reference shared types by name; do not redefine them inline.
+
+  tasks:
+    - Order the tasks test-first (failing test, minimal implementation, refactor).
+    - Test, typecheck and lint with the commands configured for each layer (step 4 of the mandatory steps), never with the raw tools.
+    - For schema work, include the exact command that generates the migration.
+    - For a message or job payload change, add an audit task over every producer and consumer of it.
+    - Unit and integration tests follow docs/dev-standards/testing-standards.md.
