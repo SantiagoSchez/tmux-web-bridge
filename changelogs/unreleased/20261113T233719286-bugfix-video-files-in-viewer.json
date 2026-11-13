@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "Corregido el visor de ficheros, que se quedaba bloqueado al abrir un vídeo porque lo leía como texto: los vídeos y los audios se reproducen ahora en el propio visor, y cualquier otro fichero que no sea de texto muestra un aviso con un botón para descargarlo",
+  "pr": "8",
+  "breaking": false
+}
