@@ -2,5 +2,6 @@
   "type": "changed",
   "scope": "server",
   "description": "En Docker con deploy/docker/deploy.sh, el despliegue quita de config.yaml el bloque hosts antiguo (con una copia) en cuanto todas sus máquinas están en el panel, y desaparece el aviso de Ajustes › Máquinas",
+  "pr": "3",
   "breaking": false
 }
