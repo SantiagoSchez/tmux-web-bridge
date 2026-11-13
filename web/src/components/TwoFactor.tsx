@@ -1,14 +1,8 @@
 import { useEffect, useState } from 'preact/hooks';
+import { api } from '../api';
 import { dialog, toast } from '../state';
 
 type Status = { enabled: boolean; recoveryLeft: number };
-
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-  return data as T;
-}
 
 /** "ABCD EFGH ...": easier to type into an authenticator by hand. */
 const grouped = (secret: string) => secret.match(/.{1,4}/g)!.join(' ');

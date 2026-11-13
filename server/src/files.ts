@@ -1,6 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 import { posix } from 'node:path';
 import type { GitChange, GitChanges, GitDiffMode, GitStat } from '../../shared/types.js';
+import { shPath, shQuote as quote } from './exec.js';
 import type { HostMonitor } from './host.js';
 
 // Files of a machine for the panel's viewer: a path seen in a pane (relative to its
@@ -8,14 +9,6 @@ import type { HostMonitor } from './host.js';
 // files and their diff, since HEAD or since the branch left the main one.
 
 const MAX_DIFF = 4 * 1024 * 1024;
-
-const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
-
-/** A path for the shell: ~/ becomes "$HOME"/, the rest is quoted. */
-function shPath(p: string): string {
-  if (p === '~') return '"$HOME"';
-  return p.startsWith('~/') ? `"$HOME"/${quote(p.slice(2))}` : quote(p);
-}
 
 /**
  * Where a path seen in a pane points: absolute and ~/ ones as they are, relative ones

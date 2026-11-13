@@ -1,5 +1,6 @@
 import { randomInt } from 'node:crypto';
 import type { HostInfo } from '../../shared/types.js';
+import { shQuote as quote } from './exec.js';
 import type { HostMonitor } from './host.js';
 
 // Throwaway windows: a new folder in the machine's temp dir, a space or a window there
@@ -10,8 +11,6 @@ export const TEMP_OPTION = '@twb_temp';
 
 /** Only folders made here are ever removed: …/twb-tmp-xxxx. */
 const TEMP_DIR = /^\/.+\/twb-tmp-[a-z0-9]{4,}$/;
-
-const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 /** A short random name: tmp-k3f9 for the space or window, twb-tmp-k3f9 for its folder. */
 export function tempSuffix(): string {

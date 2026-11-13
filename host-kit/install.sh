@@ -68,7 +68,7 @@ while [ $# -gt 0 ]; do
         --no-trello-extension) TRELLO=off; shift ;;
         --check) CHECK_ONLY=1; shift ;;
         --quiet) QUIET=1; shift ;;
-        -h|--help) sed -n '2,35p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,/^$/p' "$0"; exit 0 ;;
         *) die "Opción desconocida: $1" ;;
     esac
 done

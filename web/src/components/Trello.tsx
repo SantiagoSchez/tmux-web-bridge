@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_TEMPLATE, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices } from '../../../shared/trello';
 import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtTargets, TrelloBoard, TrelloInfo, TrelloList } from '../../../shared/types';
 import { cardWorktreeName, worktreeNameProblem } from '../../../shared/worktree';
+import { api } from '../api';
 import { openWindowWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
 import { hubSettings, sheet, toast } from '../state';
@@ -19,13 +20,6 @@ const fold = (s: string) =>
 
 // Trello in the panel: the hub's account (Settings › Trello), and a drawer with a board's
 // lists and cards that launches a Claude on one, as the browser extension does.
-
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-  return data as T;
-}
 
 /** The hub's Trello account, as last read: the drawer's button shows with one. */
 export const trelloInfo = signal<TrelloInfo | null>(null);

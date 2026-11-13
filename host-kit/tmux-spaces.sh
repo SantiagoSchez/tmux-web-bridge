@@ -12,10 +12,11 @@
 #   tmux-spaces.sh resurrect-save              hook post-save de tmux-resurrect
 #   tmux-spaces.sh resurrect-restore           hook post-restore de tmux-resurrect
 #
-# Lo invocan los atajos y hooks del tmux.conf del kit de tmux-web-bridge
-# (~/.config/tmux-web-bridge/tmux.conf); cheatsheet y resurrect-*, los de tu
-# propio ~/.tmux.conf si usas esa barra de estado o tmux-resurrect.
-# host-kit/install.sh enlaza ~/.scripts/tmux-spaces.sh aquí; git pull lo pone al día.
+# Lo invocan los atajos y hooks del tmux.conf del kit (host-kit/tmux.conf, que
+# lo llama en el clon por #{@twb_kit_dir}); cheatsheet y resurrect-*, los de tu
+# propio ~/.tmux.conf si usas esa barra de estado o tmux-resurrect, con la ruta
+# del clon (~/tmux-web-bridge/host-kit/tmux-spaces.sh). No se enlaza fuera del
+# clon: al actualizar el kit a una release, se pone al día solo.
 
 set -u
 

@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ExtTokenInfo, HostInfo } from '../../../shared/types';
+import { api } from '../api';
 import { dialog, hosts, hubSettings, toast } from '../state';
 import { newer } from '../updates';
 import { hub } from '../ws';
-
-async function api<T>(path: string, post = false): Promise<T> {
-  const res = await fetch(path, post ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' } : undefined);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-  return data as T;
-}
 
 const since = (t?: number) => (t ? new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 
@@ -29,7 +23,7 @@ export function ExtTokenSettings() {
   const generate = async () => {
     setBusy(true);
     try {
-      const res = await api<{ token: string; info: ExtTokenInfo }>('/api/ext-token', true);
+      const res = await api<{ token: string; info: ExtTokenInfo }>('/api/ext-token', {});
       setToken(res.token);
       setInfo(res.info);
     } catch (err) {
@@ -58,7 +52,7 @@ export function ExtTokenSettings() {
       confirm: 'Revocar',
       danger: true,
       onSubmit: () => {
-        api<ExtTokenInfo>('/api/ext-token/revoke', true).then(
+        api<ExtTokenInfo>('/api/ext-token/revoke', {}).then(
           (i) => {
             setInfo(i);
             setToken(null);

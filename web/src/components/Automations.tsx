@@ -2,18 +2,12 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { DAY_LETTERS, describeSchedule, EVERY_HOURS, nextRun, scheduleProblem, type Schedule } from '../../../shared/schedule';
 import type { Automation, AutomationInfo, AutomationRun, ExtHostTargets, ExtTargets } from '../../../shared/types';
 import { runWorktreeName } from '../../../shared/worktree';
+import { api } from '../api';
 import { openWindow } from '../router';
 import { dialog, findWindow, hosts, sheet, toast } from '../state';
 
 // Settings › Automatizaciones: prompts the hub launches on its own on a schedule, each as
 // a task in a new window of a folder's space, optionally in a new worktree per run.
-
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-  return data as T;
-}
 
 const when = (t: number) =>
   new Date(t).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });

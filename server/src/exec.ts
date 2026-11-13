@@ -11,7 +11,18 @@ export const EXTRA_PATH = '/opt/homebrew/bin:/usr/local/bin:/home/linuxbrew/.lin
  * which broke tmux's exact-match targets (=_tw-xxxx) over SSH.
  */
 export function shq(arg: string): string {
-  return /^[A-Za-z0-9_@%+:,./-][A-Za-z0-9_@%+=:,./-]*$/.test(arg) ? arg : `'${arg.replace(/'/g, `'\\''`)}'`;
+  return /^[A-Za-z0-9_@%+:,./-][A-Za-z0-9_@%+=:,./-]*$/.test(arg) ? arg : shQuote(arg);
+}
+
+/** Quotes a string for the shell, always (a single-quoted word). */
+export function shQuote(s: string): string {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+/** A path on the host for the shell: ~ and ~/ become "$HOME", the rest is quoted. */
+export function shPath(p: string): string {
+  if (p === '~') return '"$HOME"';
+  return p.startsWith('~/') ? `"$HOME"/${shQuote(p.slice(2))}` : shQuote(p);
 }
 
 /**

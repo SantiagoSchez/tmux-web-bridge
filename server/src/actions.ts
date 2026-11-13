@@ -1,6 +1,6 @@
 import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, MAX_FOLDERS, sameFolder } from '../../shared/folders.js';
 import type { ActionOp, DirListing, ProjectList, SavedFolder, WorktreeList } from '../../shared/types.js';
-import { TmuxError } from './exec.js';
+import { shPath, TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { setTrelloExtension, updateKit } from './kit.js';
 import { makeTempDir, TEMP_OPTION, tempSuffix } from './temp.js';
@@ -37,13 +37,6 @@ export function runTitleScript(host: HostMonitor, ...args: string[]): Promise<st
   return host.exec.run(['if-shell', TITLE_SCRIPT.has, `run-shell -b '${TITLE_SCRIPT.run(args.join(' '))}'`]);
 }
 
-/** A path on the host for the shell: ~/ becomes "$HOME"/, the rest is quoted. */
-function hostPath(p: string): string {
-  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
-  if (p === '~') return '"$HOME"';
-  return p.startsWith('~/') ? `"$HOME"/${q(p.slice(2))}` : q(p);
-}
-
 /** A project name, as `c --new-project` accepts it: no '/' and no leading '.'. */
 function projectName(name: string): string {
   if (folderNameProblem(name)) throw new Error(`Nombre de proyecto inválido: ${name}`);
@@ -57,7 +50,7 @@ function projectName(name: string): string {
 export async function listProjects(host: HostMonitor, saved: SavedFolder[]): Promise<ProjectList> {
   const script = [`printf 'H\t%s\n' "$HOME"`]
     .concat(saved.map((f, i) => {
-      const dir = hostPath(f.path);
+      const dir = shPath(f.path);
       const children = f.subfolders ? `; (cd ${dir} && for d in */; do [ -d "$d" ] && printf 'C\t${i}\t%s\n' "\${d%/}"; done)` : '';
       return `if [ -d ${dir} ]; then echo 'F\t${i}'${children}; fi`;
     }))
@@ -82,7 +75,7 @@ async function listDirs(host: HostMonitor, path: string): Promise<DirListing> {
   const p = path.trim().replace(/(.)\/+$/, '$1');
   if (!folderPathOk(p)) throw new Error('La ruta tiene que empezar por / o por ~');
   const out = await host.exec.shell(
-    `cd ${hostPath(p)} 2>/dev/null || { echo NONE; exit 0; }; pwd; printf '%s\n' "$HOME"; ` +
+    `cd ${shPath(p)} 2>/dev/null || { echo NONE; exit 0; }; pwd; printf '%s\n' "$HOME"; ` +
       `for d in * .*; do [ "$d" != . ] && [ "$d" != .. ] && [ -d "$d" ] && printf 'D\t%s\n' "$d"; done; true`,
   );
   const lines = out.split('\n');
@@ -166,13 +159,13 @@ function pickFolder(host: HostMonitor, machine: MachineFolders, action: { folder
  * folder with subfolders.
  */
 async function folderOnHost(host: HostMonitor, f: PickedFolder, create: boolean): Promise<string> {
-  const state = (await host.exec.shell(`if [ -d ${hostPath(f.dir)} ]; then echo ok; elif [ -d ${hostPath(f.root)} ]; then echo new; else echo gone; fi`)).trim();
+  const state = (await host.exec.shell(`if [ -d ${shPath(f.dir)} ]; then echo ok; elif [ -d ${shPath(f.root)} ]; then echo new; else echo gone; fi`)).trim();
   if (state === 'gone') throw new Error(`La carpeta ${f.root} no está en ${host.name}`);
   if (state === 'new') {
     if (!f.sub || !create) throw new Error(`No existe la carpeta ${f.dir}`);
-    await host.exec.shell(`mkdir ${hostPath(f.dir)}`);
+    await host.exec.shell(`mkdir ${shPath(f.dir)}`);
   }
-  return (await host.exec.shell(`cd ${hostPath(f.dir)} && pwd`)).trim();
+  return (await host.exec.shell(`cd ${shPath(f.dir)} && pwd`)).trim();
 }
 
 /**
@@ -193,7 +186,7 @@ export async function openSpace(
   const existing = await host.exec.runFormat(['list-sessions', '-F', '#{session_id}\t#{session_name}']).catch(() => '');
   const open = existing.split('\n').find((l) => l.split('\t')[1] === space);
   if (open) {
-    const abs = windowName === undefined ? '' : (await host.exec.shell(`cd ${hostPath(f.dir)} 2>/dev/null && pwd || true`)).trim();
+    const abs = windowName === undefined ? '' : (await host.exec.shell(`cd ${shPath(f.dir)} 2>/dev/null && pwd || true`)).trim();
     return { session: open.split('\t')[0], name: space, dir: abs };
   }
 
@@ -256,7 +249,7 @@ async function listWorktrees(host: HostMonitor, machine: MachineFolders, action:
   const f = pickFolder(host, machine, action);
   // I: the worktrees that have the folder's place inside them too (a subfolder of the repo).
   const out = await host.exec.shell(
-    `cd ${hostPath(f.dir)} 2>/dev/null || exit 0; top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; ` +
+    `cd ${shPath(f.dir)} 2>/dev/null || exit 0; top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; ` +
       `prefix=$(git rev-parse --show-prefix); printf 'T\t%s\nP\t%s\n' "$top" "$prefix"; ` +
       `git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r w; do [ -n "$prefix" ] && [ -d "$w/$prefix" ] && printf 'I\t%s\n' "$w"; done; ` +
       `git worktree list --porcelain`,
@@ -329,10 +322,10 @@ async function createFolder(
   const path = childPath(parent, name);
   if (machine.folders.some((f) => f.name === name)) throw new Error(`Ya hay una carpeta llamada «${name}» en ${host.name}`);
   if (machine.folders.length >= MAX_FOLDERS) throw new Error(`${host.name} ya tiene ${MAX_FOLDERS} carpetas`);
-  const state = (await host.exec.shell(`if [ -e ${hostPath(path)} ]; then echo there; elif [ -d ${hostPath(parent)} ]; then echo ok; else echo gone; fi`)).trim();
+  const state = (await host.exec.shell(`if [ -e ${shPath(path)} ]; then echo there; elif [ -d ${shPath(parent)} ]; then echo ok; else echo gone; fi`)).trim();
   if (state === 'gone') throw new Error(`No existe la carpeta ${parent} en ${host.name}`);
   if (state === 'there') throw new Error(`Ya existe ${path} en ${host.name}`);
-  await host.exec.shell(`mkdir ${hostPath(path)}`);
+  await host.exec.shell(`mkdir ${shPath(path)}`);
   const subfolders = action.subfolders === true;
   const folders = [...machine.folders, subfolders ? { name, path, subfolders } : { name, path }];
   machine.save?.(folders);
