@@ -1,0 +1,50 @@
+{
+  "git": {
+    "baseBranch": "master",
+    "worktrees": { "setup": "pnpm install --frozen-lockfile" }
+  },
+  "platform": { "host": "github", "repository": "SantiagoSchez/tmux-web-bridge" },
+  "tracker": { "kind": "github-issues" },
+  "layers": [
+    {
+      "name": "server",
+      "paths": ["server/**", "shared/**"],
+      "standards": "docs/dev-standards/server-standards.md",
+      "commands": {
+        "test": "pnpm --filter server test",
+        "typecheck": "pnpm --filter server typecheck"
+      }
+    },
+    {
+      "name": "web",
+      "paths": ["web/**"],
+      "standards": "docs/dev-standards/web-standards.md",
+      "commands": { "typecheck": "pnpm --filter web typecheck" }
+    },
+    {
+      "name": "trello-extension",
+      "paths": ["trello-extension/**"],
+      "standards": "docs/dev-standards/trello-extension-standards.md",
+      "commands": {
+        "test": "pnpm --filter trello-extension test",
+        "typecheck": "pnpm --filter trello-extension typecheck"
+      }
+    },
+    {
+      "name": "host-kit",
+      "paths": ["host-kit/**", "server/src/kit.ts", "scripts/test-kit-update.sh"],
+      "standards": "docs/dev-standards/host-kit-standards.md",
+      "commands": { "test": "scripts/test-kit-update.sh" }
+    }
+  ],
+  "changelog": {
+    "scopes": ["server", "web", "trello-extension", "host-kit"],
+    "refs": { "pr": "PR", "issue": "Issue" },
+    "versionFile": "VERSION"
+  },
+  "release": { "versionFiles": ["VERSION"] },
+  "checks": [
+    { "name": "feature catalogue", "command": "ka features-check", "gate": true }
+  ],
+  "hooks": { "onStop": "pnpm typecheck" }
+}

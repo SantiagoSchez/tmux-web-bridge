@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "koalarnes": {
+      "source": {
+        "source": "git",
+        "url": "git@ssh.bitbucket.org:furious_koalas/koalarnes.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "koalarnes@koalarnes": true
+  }
+}

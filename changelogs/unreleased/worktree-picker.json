@@ -1,0 +1,6 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Al abrir un espacio o una ventana en un repo de git, el panel pregunta dónde arranca Claude: en la carpeta del proyecto, en uno de sus worktrees o en uno nuevo. Sustituye a la casilla «En un worktree nuevo»",
+  "breaking": false
+}
