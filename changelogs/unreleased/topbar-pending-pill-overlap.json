@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "En la lista de escritorio, el número de pendientes junto a «twb» ya no se queda debajo del botón de la cuadrícula",
+  "pr": "7",
+  "breaking": false
+}
