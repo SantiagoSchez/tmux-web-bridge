@@ -43,6 +43,8 @@ const pop = fileViewerBack;
 const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
 const MARKDOWN = /\.(md|markdown|mdx)$/i;
 const PDF = /\.pdf$/i;
+const VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
+const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
 
 const qs = (o: Record<string, string | undefined>) =>
   Object.entries(o)
@@ -78,7 +80,12 @@ export function fileSize(n: number): string {
   return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: n < 100 * 1024 * 1024 ? 1 : 0 })} MB`;
 }
 
-export const fileKind = (path: string) => (IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : MARKDOWN.test(path) ? 'markdown' : 'text');
+export const fileKind = (path: string) =>
+  IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : VIDEO.test(path) ? 'video' : AUDIO.test(path) ? 'audio' : MARKDOWN.test(path) ? 'markdown' : 'text';
+/** Whether the browser shows it from its URL (an image, a PDF, a video, sound), instead of the viewer reading its text. */
+export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown' && kind !== 'text';
+/** Whether what was read as text is not: a NUL byte gives away a binary file (an archive, a program, a video named otherwise). */
+export const isBinary = (text: string) => text.includes('\0');
 export { fileUrl };
 
 export function FileViewerSheet() {
@@ -106,10 +113,11 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
   const [error, setError] = useState<string | null>(null);
   const [raw, setRaw] = useState(false);
   const [found, setFound] = useState(false);
+  const binary = text !== null && isBinary(text);
 
   useEffect(() => {
-    // Images and PDFs load from the URL itself; asking first only says whether it is there.
-    if (kind === 'image' || kind === 'pdf') {
+    // Images, PDFs, videos and sound load from the URL itself; asking first only says whether it is there.
+    if (isMedia(kind)) {
       probeFile(origin, path).then(
         (r) => {
           setAbs(r.path);
@@ -134,23 +142,29 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
   return (
     <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} back={back} class="file-sheet" onClose={close}>
       <div class="file-actions">
-        {kind === 'markdown' && text !== null && (
+        {kind === 'markdown' && text !== null && !binary && (
           <button class="btn" onClick={() => setRaw(!raw)}>
             {raw ? 'Ver renderizado' : 'Ver el texto'}
           </button>
         )}
-        <a class="btn" href={url} target="_blank" rel="noreferrer">
-          Abrir aparte
-        </a>
+        {binary ? (
+          <a class="btn" href={url} download={name}>
+            Descargar
+          </a>
+        ) : (
+          <a class="btn" href={url} target="_blank" rel="noreferrer">
+            Abrir aparte
+          </a>
+        )}
       </div>
-      {text !== null && size !== null && size > TEXT_MAX && (
+      {text !== null && !binary && size !== null && size > TEXT_MAX && (
         <p class="settings-state small">
           Solo los primeros {fileSize(TEXT_MAX)} de {fileSize(size)}: «Abrir aparte» lo trae entero.
         </p>
       )}
       {error ? (
         <p class="settings-state">{error}</p>
-      ) : (kind === 'image' || kind === 'pdf') && !found ? (
+      ) : isMedia(kind) && !found ? (
         <p class="dim pad">Cargando…</p>
       ) : kind === 'image' ? (
         <div class="file-image">
@@ -158,8 +172,14 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
         </div>
       ) : kind === 'pdf' ? (
         <iframe class="file-pdf" src={url} title={name} />
+      ) : kind === 'video' ? (
+        <video class="file-video" src={url} controls playsInline preload="metadata" />
+      ) : kind === 'audio' ? (
+        <audio class="file-audio" src={url} controls preload="metadata" />
       ) : text === null ? (
         <p class="dim pad">Cargando…</p>
+      ) : binary ? (
+        <p class="settings-state">No es un fichero de texto{size !== null ? ` (${fileSize(size)})` : ''}: aquí no se puede ver.</p>
       ) : kind === 'markdown' && !raw ? (
         <Markdown text={text} />
       ) : (

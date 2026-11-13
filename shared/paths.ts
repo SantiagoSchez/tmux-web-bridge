@@ -9,7 +9,7 @@ const EXT = new Set(
     'md markdown mdx txt log csv tsv json jsonc yaml yml toml ini conf cfg env xml html htm css scss sass less ' +
     'ts tsx mts cts js jsx mjs cjs vue svelte astro py rb go rs java kt kts swift c h cc cpp hpp cs php sh bash zsh fish ' +
     'sql graphql gql proto lua dart ex exs erl hs ml scala clj r jl tf hcl nix dockerfile lock gradle properties ' +
-    'png jpg jpeg gif webp avif bmp ico svg pdf'
+    'png jpg jpeg gif webp avif bmp ico svg pdf mp4 m4v mov webm mkv ogv mp3 m4a aac wav ogg oga opus flac'
   ).split(' '),
 );
 

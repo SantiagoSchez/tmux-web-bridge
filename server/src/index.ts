@@ -24,7 +24,7 @@ import { hostTargets, launchTask } from './tasks.js';
 import { TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
-import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, resolvePath, statHostFile, streamHostFile } from './files.js';
+import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
@@ -817,6 +817,8 @@ app.post('/api/machines/:id/delete', async (req, reply) => {
 const MIME: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp',
   ico: 'image/x-icon', svg: 'image/svg+xml', pdf: 'application/pdf',
+  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', ogv: 'video/ogg',
+  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac',
 };
 
 function fileError(reply: FastifyReply, err: unknown) {
@@ -825,9 +827,10 @@ function fileError(reply: FastifyReply, err: unknown) {
 
 /**
  * A file of a machine, for the viewer: a path seen in a window (relative to its panes'
- * folders), streamed whatever its size. Images and PDFs with their type, anything else
- * as text; never run by the browser (sandboxed), even opened on its own. probe=1: only
- * its whole path and size; max=N: only its first N bytes (X-File-Size says how many it has).
+ * folders), streamed whatever its size. Images, PDFs, videos and sound with their type,
+ * anything else as text; never run by the browser (sandboxed), even opened on its own.
+ * probe=1: only its whole path and size; max=N: only its first N bytes (X-File-Size says
+ * how many it has). A Range header gets that piece of it (a player seeking in a video).
  */
 app.get('/api/files', async (req, reply) => {
   const q = req.query as { host?: string; window?: string; pane?: string; path?: string; probe?: string; max?: string };
@@ -845,15 +848,24 @@ app.get('/api/files', async (req, reply) => {
     );
     if (q.probe === '1') return { path, size };
     const max = Number(q.max) > 0 ? Math.min(Number(q.max), size) : undefined;
-    const child = streamHostFile(host, path, max);
+    const range = max === undefined ? parseRange(req.headers.range, size) : null;
+    if (range === 'unsatisfiable') return reply.code(416).header('Content-Range', `bytes */${size}`).send();
+    const child = streamHostFile(host, path, range ?? (max ? { start: 0, length: max } : undefined));
     // The browser gave up (closed the viewer, moved off a preview): stop reading.
     req.raw.on('close', () => child.exitCode === null && child.kill());
+    if (range) {
+      reply
+        .code(206)
+        .header('Content-Range', `bytes ${range.start}-${range.start + range.length - 1}/${size}`)
+        .header('Content-Length', String(range.length));
+    }
     const ext = path.split('.').pop()?.toLowerCase() ?? '';
     // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
     if (ext !== 'pdf') reply.header('Content-Security-Policy', 'sandbox');
     return reply
       .header('Content-Type', MIME[ext] ?? 'text/plain; charset=utf-8')
       .header('X-Content-Type-Options', 'nosniff')
+      .header('Accept-Ranges', 'bytes')
       .header('Cache-Control', 'no-store')
       .header('X-File-Path', encodeURIComponent(path))
       .header('X-File-Size', String(size))

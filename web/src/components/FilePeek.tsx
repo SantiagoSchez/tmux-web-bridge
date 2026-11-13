@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
-import { fileKind, fileSize, fileUrl, probeFile, renderMarkdown, type FileOrigin } from './Files';
+import { fileKind, fileSize, fileUrl, isBinary, isMedia, probeFile, renderMarkdown, type FileOrigin } from './Files';
 
 // A preview of a file path under the mouse in the terminal, as a floating thumbnail next
 // to it: the image, the first lines (or those around the line given), or the Markdown
@@ -52,7 +52,7 @@ function load(o: FileOrigin, path: string, line?: number): Promise<PeekData> {
   const data = (async () => {
     const info = await probeFile(o, path);
     const kind = fileKind(path);
-    if (kind === 'image' || kind === 'pdf') return info;
+    if (isMedia(kind)) return info;
     // Enough of it to reach the line asked for (at most 512 KB in).
     const want = line ? Math.min(512 * 1024, 200 * (line + LINES)) : 16 * 1024;
     const res = await fetch(`${fileUrl(o, path)}&max=${Math.max(want, 16 * 1024)}`);
@@ -120,6 +120,9 @@ function PeekCard({ p }: { p: Peek }) {
   else if (kind === 'image')
     body = data.size > IMAGE_MAX ? <p class="peek-note">Imagen de {fileSize(data.size)}: clic para verla.</p> : <img class="peek-image" src={fileUrl(p.origin, p.path)} alt={name} />;
   else if (kind === 'pdf') body = <p class="peek-note">PDF de {fileSize(data.size)}: clic para abrirlo.</p>;
+  else if (kind === 'video') body = <p class="peek-note">Vídeo de {fileSize(data.size)}: clic para verlo.</p>;
+  else if (kind === 'audio') body = <p class="peek-note">Audio de {fileSize(data.size)}: clic para oírlo.</p>;
+  else if (isBinary(data.text ?? '')) body = <p class="peek-note">No es un fichero de texto ({fileSize(data.size)}).</p>;
   else if (html !== null) body = <div class="markdown peek-md" dangerouslySetInnerHTML={{ __html: html }} />;
   else {
     const lines = (data.text ?? '').split('\n');
