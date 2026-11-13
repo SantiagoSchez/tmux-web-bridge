@@ -131,7 +131,7 @@ function HubUrlPicker({ value, onChange }: { value: string; onChange: (v: string
     <label class="folder-name">
       <span class="dim small">Dirección del servidor central para los avisos del kit</span>
       {urls.length > 0 && (
-        <select value={known ? value : ''} onChange={(e) => onChange(e.currentTarget.value)}>
+        <select class="text-input mono" value={known ? value : ''} onChange={(e) => onChange(e.currentTarget.value)}>
           {urls.map((u) => (
             <option key={u} value={u}>
               {u}
