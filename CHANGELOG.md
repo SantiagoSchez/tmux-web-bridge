@@ -4,6 +4,22 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.22.0 - 2026-11-13
+
+### Añadido
+
+- **Máquinas desde el panel**: en Ajustes › Máquinas se añaden, editan y quitan las máquinas. El panel da el comando que autoriza la clave del servidor central, prueba la conexión e instala el kit él solo; al quitar una, le desinstala antes el kit. Las máquinas que tenías en la config del servidor central pasan solas al panel.
+- **Worktrees al abrir un espacio o una ventana**: en un repo de git, el panel pregunta dónde arranca Claude: en la carpeta del proyecto, en uno de sus worktrees o en uno nuevo. Sustituye a la casilla «En un worktree nuevo».
+
+### Cambiado
+
+- **El kit ya no deja enlaces en `~/.scripts`**: sus scripts se llaman desde su clon, y `~/.tmux.conf` lleva un bloque marcado que el kit pone y quita. Al actualizar el kit, se migra solo desde la instalación anterior.
+
+### Corregido
+
+- **Rutas partidas en el terminal**: una ruta de fichero partida entre dos filas es un solo enlace que abre la ruta entera, y los trozos de una carpeta partida ya no son enlaces sueltos.
+- **Ayuda de `install.sh`**: `-h` muestra todas sus opciones.
+
 ## 1.21.0 - 2026-11-12
 
 ### Espacios y ventanas temporales

@@ -1,6 +1,0 @@
-{
-  "type": "added",
-  "scope": "server",
-  "description": "Las máquinas se añaden, editan y quitan en Ajustes › Máquinas: el panel da el comando con la clave del servidor central, prueba la conexión e instala el kit por SSH; al quitar una máquina le desinstala el kit. Las del bloque hosts de la config pasan solas al panel",
-  "breaking": false
-}
