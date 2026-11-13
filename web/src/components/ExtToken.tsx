@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { ExtTokenInfo, HostInfo } from '../../../shared/types';
+import { api } from '../api';
 import { dialog, hosts, hubSettings, toast } from '../state';
 import { newer } from '../updates';
 import { hub } from '../ws';
-import { api } from '../api';
 
 const since = (t?: number) => (t ? new Date(t).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
 

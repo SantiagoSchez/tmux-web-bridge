@@ -2,9 +2,9 @@ import { signal } from '@preact/signals';
 import { useEffect, useState } from 'preact/hooks';
 import type { HubAddresses, KitReport, MachineCheck, MachineVia, SavedHost } from '../../../shared/types';
 import { slugify } from '../../../shared/worktree';
+import { api } from '../api';
 import { dialog, hosts, hubSettings, machinesInfo, toast } from '../state';
 import { hub } from '../ws';
-import { api } from '../api';
 
 // Ajustes › Máquinas: the machines of the hub (dataDir/hosts.json), added, edited and removed
 // here. Adding one: the hub's key goes into its authorized_keys (by hand: a line to paste),

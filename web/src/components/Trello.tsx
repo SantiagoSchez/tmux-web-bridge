@@ -3,13 +3,13 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_TEMPLATE, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices } from '../../../shared/trello';
 import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtTargets, TrelloBoard, TrelloInfo, TrelloList } from '../../../shared/types';
 import { cardWorktreeName, worktreeNameProblem } from '../../../shared/worktree';
+import { api } from '../api';
 import { openWindowWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
 import { hubSettings, sheet, toast } from '../state';
 import { hub } from '../ws';
 import { Sheet, SkipPermissions } from './Dialogs';
 import { IconReload } from './icons';
-import { api } from '../api';
 
 /** Lower case and without accents, to search. */
 const fold = (s: string) =>

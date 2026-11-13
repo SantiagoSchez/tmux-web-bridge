@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
-import { dialog, toast } from '../state';
 import { api } from '../api';
+import { dialog, toast } from '../state';
 
 type Status = { enabled: boolean; recoveryLeft: number };
 
