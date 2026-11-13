@@ -3,6 +3,7 @@ import type { HostInfo, PaneInfo, PaneState, RateLimits, SessionInfo, WindowInfo
 import type { Config, HostConfig } from './config.js';
 import { TmuxError, TmuxExec } from './exec.js';
 import { GitScanner } from './git.js';
+import { kitVersionScript } from './kit.js';
 
 /** Prefix of the grouped sessions opened by web terminals (hidden from the tree). */
 export const WEB_SESSION_PREFIX = '_tw-';
@@ -13,6 +14,8 @@ export const WEB_SESSION_PREFIX = '_tw-';
  * opened or closed.
  */
 const OFFLINE_GRACE_MS = 60_000;
+/** How long the kit's version read from its clone holds, for a machine without tmux running. */
+const CLONE_KIT_MS = 5 * 60_000;
 
 const SEP = '\x1f';
 const FIELDS = [
@@ -222,6 +225,8 @@ export class HostMonitor extends EventEmitter {
   private offlineSince: number | null = null;
   private polling: Promise<void> | null = null;
   private prefixLoaded = false;
+  /** The kit's version as its clone has it, for while tmux has no panes to publish it (see poll). */
+  private cloneKit: { at: number; version?: string } | null = null;
   private readonly git: GitScanner;
   /** Each pane's state and since when (0: it had it when first seen), for PaneInfo.since. */
   private stateSince = new Map<string, { state: PaneState | null; at: number }>();
@@ -263,6 +268,19 @@ export class HostMonitor extends EventEmitter {
   stop(): void {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
+  }
+
+  /** The kit was installed, updated or removed: its clone is read again at the next poll. */
+  forgetKit(): void {
+    this.cloneKit = null;
+  }
+
+  /** The version of the kit's clone, read at most every CLONE_KIT_MS (one SSH call). */
+  private async kitFromClone(): Promise<string | undefined> {
+    if (this.cloneKit && Date.now() - this.cloneKit.at < CLONE_KIT_MS) return this.cloneKit.version;
+    const version = (await this.exec.shell(kitVersionScript(this.hostConfig.tmux), 10_000).catch(() => '')).trim() || undefined;
+    this.cloneKit = { at: Date.now(), version };
+    return version;
   }
 
   /** Polls right away (after an action) instead of waiting for the next tick. */
@@ -313,6 +331,8 @@ export class HostMonitor extends EventEmitter {
     }
     this.failures = 0;
     this.offlineSince = null;
+    // The kit's version comes with the panes: with none (tmux not started there), from its clone.
+    if (!kit && !sessions.length && !webSessions.length) kit = await this.kitFromClone();
     const prev = this.info;
     this.git.apply(sessions);
     this.stamp(sessions, prev.status === 'ok');

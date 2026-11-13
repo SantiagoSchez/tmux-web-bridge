@@ -71,6 +71,19 @@ export function trelloScript(dir: string, on: boolean): string {
   ].join('\n');
 }
 
+/**
+ * Loads the kit's tmux.conf in a host's running tmux (install.sh reloads it on the default
+ * socket only). False when no tmux runs there: it loads when tmux starts, from ~/.tmux.conf.
+ */
+async function reloadKit(host: HostMonitor, dir: string): Promise<boolean> {
+  try {
+    await host.exec.run(['source-file', `${dir}/host-kit/tmux.conf`]);
+    return true;
+  } catch (err) {
+    return !(err instanceof TmuxError && err.noServer);
+  }
+}
+
 /** The kit's clone of a host, as its tmux publishes it. */
 async function hostKitDir(host: HostMonitor): Promise<string> {
   return kitDir(await host.exec.run(['show-options', '-gqv', '@twb_kit_dir']).catch(() => ''));
@@ -105,8 +118,8 @@ export async function updateKit(host: HostMonitor, latest: string | null, trello
   const tag = kitTag(latest);
   const lines = await runKit(host, kitScript(await hostKitDir(host), tag, trelloExtension));
   const dir = lines.find((l) => l.startsWith('TWB_KIT_DIR='))?.slice('TWB_KIT_DIR='.length);
-  // install.sh reloads it on the default socket only; with no tmux running there is nothing to reload.
-  if (dir) await host.exec.run(['source-file', `${dir}/host-kit/tmux.conf`]).catch(() => {});
+  if (dir) await reloadKit(host, dir);
+  host.forgetKit();
   const changes = lines.filter((l) => l.trim() && !l.startsWith('TWB_KIT_DIR=')).join('\n');
   return { version: tag.slice(1), changes };
 }
@@ -123,21 +136,39 @@ export function sshProblem(stderr: string): string {
   return stderr.trim().split('\n').slice(-2).join(' ') || 'No se pudo entrar por SSH';
 }
 
+/**
+ * Shell lines that leave tmux's path in $t (empty without it) and the kit's clone in $d: where
+ * its tmux says (@twb_kit_dir), else ~/tmux-web-bridge, where the hub installs it.
+ */
+function kitDirLines(tmux: string): string[] {
+  return [
+    `PATH="$PATH:${EXTRA_PATH}"; export PATH`,
+    `t=$(command -v ${shq(tmux)} 2>/dev/null || true)`,
+    `d="$HOME/tmux-web-bridge"`,
+    `[ -n "$t" ] && k=$("$t" show-options -gqv @twb_kit_dir 2>/dev/null) && [ -n "$k" ] && d="$k"`,
+  ];
+}
+
 /** Script that tells what a machine has for the kit (see parseCheck). */
 export function checkScript(tmux: string): string {
   return [
-    `PATH="$PATH:${EXTRA_PATH}"; export PATH`,
+    ...kitDirLines(tmux),
     `echo "SYS=$(uname -s) $(uname -r)"`,
     `echo "USER=$(id -un)"`,
     `echo "HOME=$HOME"`,
-    `t=$(command -v ${shq(tmux)} 2>/dev/null || true)`,
     `[ -n "$t" ] && echo "TMUX=$t" && echo "TMUXV=$("$t" -V 2>/dev/null)"`,
     `for c in git jq curl; do command -v "$c" >/dev/null 2>&1 || echo "MISSING=$c"; done`,
-    `d="$HOME/tmux-web-bridge"`,
-    `[ -n "$t" ] && k=$("$t" show-options -gqv @twb_kit_dir 2>/dev/null) && [ -n "$k" ] && d="$k"`,
     `[ -d "$d/.git" ] && echo "KIT=$d" && echo "KITV=$(cat "$d/VERSION" 2>/dev/null)"`,
     'true',
   ].join('\n');
+}
+
+/**
+ * Script that prints the version of the kit's clone (nothing without one). For a machine whose
+ * tmux has no panes, so no @twb_kit_version to read: the kit loads when tmux starts there.
+ */
+export function kitVersionScript(tmux: string): string {
+  return [...kitDirLines(tmux), `[ -d "$d/.git" ] && cat "$d/VERSION" 2>/dev/null`, 'true'].join('\n');
 }
 
 /** What checkScript printed. */
@@ -203,8 +234,11 @@ export async function installKit(host: HostMonitor, latest: string | null, hubUr
     const published = await host.exec.run(['show-options', '-gqv', '@twb_kit_dir']).catch(() => '');
     const lines = await runKit(host, installScript(kitDir(published), tag, hubUrl, host.id), 180_000, `${token}\n`);
     const dir = lines.find((l) => l.startsWith('TWB_KIT_DIR='))?.slice('TWB_KIT_DIR='.length);
-    if (dir) await host.exec.run(['source-file', `${dir}/host-kit/tmux.conf`]).catch(() => {});
-    return { ok: true, log: lines.filter((l) => l.trim() && !l.startsWith('TWB_KIT_DIR=')).join('\n'), left: [] };
+    const loaded = dir ? await reloadKit(host, dir) : true;
+    host.forgetKit();
+    const log = lines.filter((l) => l.trim() && !l.startsWith('TWB_KIT_DIR='));
+    if (!loaded) log.push('tmux no está abierto en la máquina: el kit se cargará al abrirlo');
+    return { ok: true, log: log.join('\n'), left: [] };
   } catch (err) {
     return { ok: false, log: (err as Error).message, left: [] };
   }
@@ -369,6 +403,7 @@ export async function uninstallKit(host: HostMonitor, publicKey: string | null):
     // After the files (it loads the user's tmux.conf again, which must not load the kit any more)
     // and before the key: without it, a new SSH connection would not get in.
     await unloadKit(host);
+    host.forgetKit();
     if (/^[A-Za-z0-9+/=]+$/.test(blob)) lines.push(...(await runKit(host, removeKeyScript(blob))));
     const left = lines.filter((l) => l.startsWith('LEFT=')).map((l) => l.slice(5));
     return { ok: true, log: lines.filter((l) => l.trim() && !l.startsWith('LEFT=')).join('\n'), left };
