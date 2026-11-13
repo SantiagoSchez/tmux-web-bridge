@@ -1,11 +1,11 @@
 {
   "plugin": {
     "name": "koalarnes",
-    "version": "0.3.1"
+    "version": "0.3.2"
   },
   "managed": {
-    ".claude/rules/koalarnes-mandatory-steps.md": "d9fc84ba9afb7c6a17e29b092067e0fe4c991a36ea98769c844fa3b41518d1d8",
-    "docs/dev-standards/koalarnes.md": "1f011f2e863530f294dfb937ab6126a6047745310e681e7cea37a0f6051cbe4c"
+    ".claude/rules/koalarnes-mandatory-steps.md": "ac6d30533f9279966247d3526f0f1b84438add88726a8584fb6fe620281317eb",
+    "docs/dev-standards/koalarnes.md": "9a6a33d14ad0c90c6a0808fb4b29b151bf878a8acd58bb9542f1ab5dbff6f1cd"
   },
   "scaffold": {
     "AGENTS.md": "4dd3d1c121eef329a781fb23b2336f431cab72d4fedae2429ee4fbf1fc4866c8",
