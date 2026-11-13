@@ -643,8 +643,8 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
 
 /**
  * A folder that is a git repo, picked in «Nuevo espacio» or «Nueva ventana»: claude starts
- * in the folder, in one of the repo's worktrees (in its folder, in a window named after it)
- * or in a new one.
+ * in the folder, in a new worktree, or in one of the repo's worktrees (in its folder, in a
+ * window named after it).
  */
 function RepoStep(props: {
   d: Extract<Dialog, { kind: 'project' }>;
@@ -674,10 +674,10 @@ function RepoStep(props: {
     <Sheet title="¿Dónde arranca Claude?" subtitle={`${item.name}${d.session ? ` · en ${d.session.name}` : ''} · ${d.host.name}`} onClose={props.close}>
       <ul class="menu project-list">
         {row('\there', <IconBranch />, 'Sin worktree', `En la carpeta del proyecto${repo.branch ? ` · ${repo.branch}` : ''}`, props.here)}
+        {row('\tnew', '＋', 'Nuevo worktree…', 'Con una rama nueva (claude --worktree)', props.fresh)}
         {repo.worktrees.map((w) =>
           row(w.path, <IconWorktree />, w.name, `${w.branch ?? 'HEAD separado'} · ${homePath(w.path, props.home)}`, () => props.worktree(w.path)),
         )}
-        {row('\tnew', '＋', 'Nuevo worktree…', 'Con una rama nueva (claude --worktree)', props.fresh)}
       </ul>
       <div class="sheet-actions">
         <SkipPermissions />
