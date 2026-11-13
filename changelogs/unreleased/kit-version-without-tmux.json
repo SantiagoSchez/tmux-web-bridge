@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "server",
+  "description": "Una máquina sin tmux abierto ya no sale «sin kit» en Ajustes › Máquinas: el panel lee la versión de su clon. Al reinstalar el kit en ella, avisa de que se cargará al abrir tmux",
+  "pr": "4",
+  "breaking": false
+}
