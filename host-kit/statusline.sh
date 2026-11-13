@@ -1,6 +1,7 @@
 #!/bin/bash
-# Claude Code statusline script (tmux-web-bridge host kit: host-kit/install.sh links
-# ~/.claude/scripts/statusline.sh here, and git pull keeps it up to date).
+# Claude Code statusline script (tmux-web-bridge host kit: host-kit/install.sh points the
+# statusLine of Claude Code's settings.json here, in the clone, and updating the clone keeps it up to date).
+
 # Adaptive layout: packs all segments on one line if they fit,
 # otherwise wraps to multiple lines based on terminal width.
 

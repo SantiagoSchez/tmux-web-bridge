@@ -6,20 +6,23 @@
 #   git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
 #   ~/tmux-web-bridge/host-kit/install.sh --hub https://servidor --host wsl --token SECRETO
 #
-# Enlaza al clon (así actualizar el clon los pone al día):
-#   ~/.scripts/tmux-window-title.sh     estados de Claude en tmux + aviso al servidor central
-#   ~/.scripts/tmux-spaces.sh           espacios numerados (@space_num) y sus atajos
-#   ~/.claude/scripts/statusline.sh     status line de Claude Code (publica los límites de uso)
-# y además:
-#   ~/.tmux.conf                        source-file del tmux.conf del kit (hooks, atajos, ratón)
-#   ~/.claude/settings.json             hooks y status line de Claude Code (se fusionan, con copia)
+# Los scripts se quedan en el clon (así actualizar el clon los pone al día) y se llaman allí:
+# fuera de él no se enlaza nada. Lo que toca fuera:
+#   ~/.tmux.conf                        un bloque marcado con el source-file -q del tmux.conf del
+#                                       kit (hooks, atajos, ratón); el panel lo quita al desinstalar
+#   ~/.claude/settings.json             hooks y status line de Claude Code, que apuntan al clon
+#                                       (se fusionan, con copia)
 #   ~/.config/tmux-web-bridge/notify.env  URL, id y token de esta máquina (no va al repo)
 #   hooks de git post-merge, post-rewrite y post-checkout del clon: tras cada pull o checkout
 #   vuelven a ejecutar este script (recarga el tmux.conf y fusiona los hooks de Claude si han cambiado)
 #
-# Los enlaces son relativos y el source-file usa ~: si ~/.scripts o ~/.tmux.conf viven en unos
-# dotfiles compartidos entre máquinas (Dropbox), valen en todas las que tengan el clon en el
-# mismo sitio de su $HOME.
+# El source-file usa ~ y -q: si ~/.tmux.conf vive en unos dotfiles compartidos entre máquinas
+# (Dropbox), vale en todas las que tengan el clon en el mismo sitio de su $HOME, y no da error
+# en las que no lo tengan.
+#
+# Los kits anteriores enlazaban los scripts en ~/.scripts y ~/.claude/scripts: esos enlaces se
+# quitan (y vuelve lo que hubiera antes, si quedó su copia .bak), salvo en una carpeta
+# compartida (enlazada a otro sitio), donde otra máquina con el kit viejo aún los usa.
 #
 # Opciones:
 #   --hub URL --host ID --token TOKEN   escribe notify.env (van juntas; sin ellas se conserva)
@@ -113,30 +116,39 @@ relpath() {
 # ~/algo en vez de /home/usuario/algo, para lo que se escribe en ficheros compartidos.
 tilde() { case "$1" in "$HOME"/*) printf '~/%s\n' "${1#"$HOME"/}" ;; *) printf '%s\n' "$1" ;; esac; }
 
-# Enlaza dst al fichero del kit. Lo que hubiera antes (un fichero, u otro enlace) se
-# guarda en .bak.<fecha>. Si dst vive en una carpeta enlazada (dotfiles), el enlace
-# queda allí, y por eso es relativo: se calcula desde la carpeta real, así que vale en
-# cualquier máquina que comparta esos dotfiles y tenga el clon en el mismo sitio.
-link() {
-    local src="$1" dst="$2" rel
-    mkdir -p "$(dirname "$dst")"
-    rel="$(relpath "$(cd -P "$(dirname "$dst")" && pwd)" "$(cd -P "$(dirname "$src")" && pwd)/$(basename "$src")")"
-    if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$rel" ]; then
-        same "Al día: $dst"
-        return
+# Si una ruta pasa por una carpeta enlazada a otro sitio (unos dotfiles compartidos).
+shared_dir() { [ "$(cd -P "$(dirname "$1")" 2>/dev/null && pwd)" != "$(cd "$(dirname "$1")" 2>/dev/null && pwd -L)" ]; }
+
+# Quita un enlace de un kit anterior (uno que apunte a un tmux-web-bridge/host-kit/<nombre>) y
+# devuelve a su sitio la copia .bak más reciente de lo que había antes. En una carpeta compartida
+# no lo toca: otra máquina con el kit viejo lo usa.
+unlink_old() {
+    local dst="$1" bak
+    [ -L "$dst" ] || return 0
+    case "$(readlink "$dst")" in *tmux-web-bridge/host-kit/*) ;; *) return 0 ;; esac
+    if shared_dir "$dst"; then
+        same "Enlace de un kit anterior en una carpeta compartida, se deja: $dst"
+        return 0
     fi
-    if [ -e "$dst" ] || [ -L "$dst" ]; then
-        mv "$dst" "$dst.bak.$STAMP"
-        say "Copia de seguridad: $dst.bak.$STAMP"
+    rm -f "$dst"
+    bak="$(ls -1d "$dst".bak.* 2>/dev/null | sort | tail -n 1 || true)"
+    if [ -n "$bak" ]; then
+        mv "$bak" "$dst"
+        say "Quitado el enlace del kit anterior, y vuelve lo que había: $dst"
+    else
+        say "Quitado el enlace del kit anterior: $dst"
     fi
-    ln -s "$rel" "$dst"
-    say "Enlazado: $dst → $rel"
 }
+
+# Las rutas a los scripts del kit, para lo que se escribe en ficheros que lee una shell (hooks y
+# status line de Claude Code): "$HOME/…" bajo el HOME, para que valga en unos dotfiles compartidos.
+case "$KIT" in *[\"\$\`\\]*) die "La ruta del kit tiene caracteres que no admite: $KIT" ;; esac
+case "$KIT" in "$HOME"/*) KIT_REF="\$HOME/${KIT#"$HOME"/}" ;; *) KIT_REF="$KIT" ;; esac
 
 # ------------------------------------------------------------ scripts
 chmod +x "$KIT/tmux-window-title.sh" "$KIT/tmux-spaces.sh" "$KIT/statusline.sh"
-link "$KIT/tmux-window-title.sh" "$HOME/.scripts/tmux-window-title.sh"
-link "$KIT/tmux-spaces.sh" "$HOME/.scripts/tmux-spaces.sh"
+unlink_old "$HOME/.scripts/tmux-window-title.sh"
+unlink_old "$HOME/.scripts/tmux-spaces.sh"
 
 # ------------------------------------------------------------ notify.env
 mkdir -p "$CONF_DIR"
@@ -165,22 +177,37 @@ chmod 600 "$ENV_FILE"
 if [ "$SKIP_TMUX" = 0 ]; then
     TMUX_CONF="$HOME/.tmux.conf"
     [ -f "$TMUX_CONF" ] || [ ! -f "$HOME/.config/tmux/tmux.conf" ] || TMUX_CONF="$HOME/.config/tmux/tmux.conf"
-    LINE="source-file $(tilde "$KIT")/tmux.conf"
-    if [ -f "$TMUX_CONF" ] && grep -qxF "$LINE" "$TMUX_CONF"; then
-        same "$TMUX_CONF ya carga el kit"
-    elif [ -f "$TMUX_CONF" ] && grep -q 'source-file .*tmux-web-bridge.*tmux\.conf' "$TMUX_CONF"; then
-        # Una instalación anterior (otra ruta del kit): se apunta a este clon.
-        cp "$TMUX_CONF" "$TMUX_CONF.bak.$STAMP"
-        tmp="$(mktemp)"
-        awk -v line="$LINE" '/^source-file .*tmux-web-bridge.*tmux\.conf/ { print line; next } { print }' "$TMUX_CONF" > "$tmp"
-        cat "$tmp" > "$TMUX_CONF"
-        rm -f "$tmp"
-        say "$TMUX_CONF carga ahora $KIT/tmux.conf (copia: $TMUX_CONF.bak.$STAMP)"
-    else
-        [ -f "$TMUX_CONF" ] && cp "$TMUX_CONF" "$TMUX_CONF.bak.$STAMP"
-        printf '\n# tmux-web-bridge: estados de Claude, espacios y lo que necesita el panel web\n%s\n' "$LINE" >> "$TMUX_CONF"
-        say "Añadido a $TMUX_CONF: $LINE"
+    # Un bloque marcado, para que el panel lo encuentre y lo quite al desinstalar. Lo de
+    # instalaciones anteriores (la línea suelta, con su comentario, u otra ruta del kit) se cambia por él.
+    BEGIN_MARK="# >>> tmux-web-bridge: lo pone y lo quita el kit (host-kit/install.sh)"
+    END_MARK="# <<< tmux-web-bridge"
+    LINE="source-file -q $(tilde "$KIT")/tmux.conf"
+    tmp="$(mktemp)"
+    if [ -f "$TMUX_CONF" ]; then
+        awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
+            $0 == b { skip = 1; next }
+            skip { if ($0 == e) skip = 0; next }
+            /^# tmux-web-bridge: estados de Claude/ { next }
+            /^source-file (-q )?.*tmux-web-bridge.*tmux\.conf$/ { next }
+            { print }
+        ' "$TMUX_CONF" > "$tmp"
     fi
+    # Sin líneas vacías al final, y el bloque después de una.
+    while [ -s "$tmp" ] && [ -z "$(tail -n 1 "$tmp")" ]; do sed -i.x '$d' "$tmp" && rm -f "$tmp.x"; done
+    { [ -s "$tmp" ] && echo; printf '%s\n%s\n%s\n' "$BEGIN_MARK" "$LINE" "$END_MARK"; } >> "$tmp"
+    if [ -f "$TMUX_CONF" ] && cmp -s "$tmp" "$TMUX_CONF"; then
+        same "$TMUX_CONF ya carga el kit"
+    else
+        copy=""
+        if [ -f "$TMUX_CONF" ]; then
+            cp "$TMUX_CONF" "$TMUX_CONF.bak.$STAMP"
+            copy=" (copia: $TMUX_CONF.bak.$STAMP)"
+        fi
+        # cat y no mv: si es un enlace (dotfiles), sigue siéndolo.
+        cat "$tmp" > "$TMUX_CONF"
+        say "$TMUX_CONF carga el kit: $LINE$copy"
+    fi
+    rm -f "$tmp"
     if [ "${TWB_NO_TMUX_RELOAD:-0}" != 1 ] && tmux info >/dev/null 2>&1; then
         tmux source-file "$KIT/tmux.conf" && same "Cargado en el tmux en marcha"
     fi
@@ -200,17 +227,17 @@ if [ "$SKIP_CLAUDE" = 0 ]; then
         printf '%s\n' "$CLAUDE_DIR" > "$CLAUDE_DIR_FILE"
         say "Configuración de Claude Code en $CLAUDE_DIR (recordado en $CLAUDE_DIR_FILE)"
     fi
-    link "$KIT/statusline.sh" "$CLAUDE_DIR/scripts/statusline.sh"
+    unlink_old "$CLAUDE_DIR/scripts/statusline.sh"
     SETTINGS="$CLAUDE_DIR/settings.json"
-    STATUSLINE="$(tilde "$CLAUDE_DIR")/scripts/statusline.sh"
+    STATUSLINE="\"$KIT_REF/statusline.sh\""
     mkdir -p "$CLAUDE_DIR"
     [ -f "$SETTINGS" ] || echo '{}' > "$SETTINGS"
     # Quita los hooks anteriores de tmux-window-title.sh y añade los del kit (idempotente),
-    # y apunta la status line al script del kit.
+    # con la ruta del clon, y apunta la status line al script del kit.
     tmp="$(mktemp)"
-    jq --slurpfile kit "$KIT/claude-hooks.json" --arg statusline "$STATUSLINE" '
+    jq --slurpfile kit "$KIT/claude-hooks.json" --arg statusline "$STATUSLINE" --arg kitref "$KIT_REF" '
         .hooks = (.hooks // {})
-        | reduce ($kit[0].hooks | to_entries[]) as $e (.;
+        | reduce ($kit[0].hooks | walk(if type == "string" then gsub("@KIT@"; $kitref) else . end) | to_entries[]) as $e (.;
             .hooks[$e.key] = (
                 ((.hooks[$e.key] // [])
                   | map(select(((.hooks // []) | map(.command // "") | any(test("tmux-window-title\\.sh"))) | not)))

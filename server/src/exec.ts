@@ -140,6 +140,14 @@ export class TmuxExec {
     return child;
   }
 
+  /** Closes the shared SSH connection (ControlMaster) of a machine the hub lets go. */
+  closeMaster(): void {
+    if (this.host.local) return;
+    const args = this.sshArgs(false);
+    args.splice(args.length - 1, 0, '-O', 'exit');
+    execFile('ssh', args, { timeout: 5000 }, () => {});
+  }
+
   /** Runs a tmux command whose -F format splits fields with control characters (see unescapeControls). */
   async runFormat(tmuxArgs: string[], timeoutMs = 10_000): Promise<string> {
     return unescapeControls(await this.run(tmuxArgs, timeoutMs));

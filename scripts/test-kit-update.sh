@@ -68,23 +68,30 @@ cat > "$T/config.yaml" <<EOF
 dataDir: $T/data
 auth:
   allowWithoutTailscale: true
-hosts:
-  - id: maquina
-    name: maquina
-    local: true
-    socketName: twbkit
 EOF
+# La clave del hub en el authorized_keys de la máquina: la desinstalación la quita.
+KEY_BLOB=AAAAC3NzaC1lZDI1NTE5AAAAIPruebaDelHub
+mkdir -p "$HOME/.ssh"
+printf 'ssh-ed25519 AAAAotra yo\nfrom="10.0.0.1" ssh-ed25519 %s tmux-web-bridge\n' "$KEY_BLOB" > "$HOME/.ssh/authorized_keys"
+# git clone de la URL de GitHub (la de installKit) va al origen falso.
+git config --global "url.$ORIGIN.insteadOf" https://github.com/SantiagoSchez/tmux-web-bridge.git
 cat > "$T/driver.mts" <<EOF
 import { loadConfig } from '$REPO/server/src/config.ts';
 import { HostMonitor } from '$REPO/server/src/host.ts';
-import { setTrelloExtension, updateKit } from '$REPO/server/src/kit.ts';
+import { installKit, setTrelloExtension, uninstallKit, updateKit } from '$REPO/server/src/kit.ts';
+import { hostConfig } from '$REPO/server/src/machines.ts';
 const config = loadConfig();
-const host = new HostMonitor(config.hosts[0], config);
+const host = new HostMonitor(hostConfig({ id: 'maquina', name: 'maquina', local: true, socketName: 'twbkit' }), config);
 const [what, arg] = process.argv.slice(2);
 try {
   if (what === 'trello') {
     const r = await setTrelloExtension(host, arg === 'on');
     console.log('OK ' + (r.dir ?? '-'));
+  } else if (what === 'uninstall' || what === 'install') {
+    const r = what === 'install' ? await installKit(host, arg, 'https://twb.example.invalid', 'TOKEN-PRUEBA') : await uninstallKit(host, 'ssh-ed25519 $KEY_BLOB');
+    if (r.log) console.log(r.log);
+    for (const l of r.left) console.log('LEFT ' + l);
+    console.log(r.ok ? 'OK' : 'ERR ' + r.log);
   } else {
     const r = await updateKit(host, arg, what === 'update-trello');
     if (r.changes) console.log(r.changes);
@@ -140,6 +147,22 @@ expect "El tmux por defecto no se ha tocado" "[$(tmux show -gqv @twb_kit_version
 expect "Hook post-checkout instalado" "$(ls "$KIT/.git/hooks")" "post-checkout"
 expect "Hooks de Claude en el settings.json del HOME falso" "$(grep -c tmux-window-title "$HOME/.claude/settings.json")" "^[1-9]"
 
+# ------------------------------------------------------------ del kit con enlaces al de ahora
+expect "Ya no hay enlaces del kit en ~/.scripts" "[$(find "$HOME/.scripts" -type l 2>/dev/null)]" '^\[\]$'
+expect "…ni el de la status line en ~/.claude/scripts" "[$(find "$HOME/.claude/scripts" -type l 2>/dev/null)]" '^\[\]$'
+expect "~/.tmux.conf carga el kit en un bloque marcado, con -q" "$(grep -A1 '^# >>> tmux-web-bridge' "$HOME/.tmux.conf")" "source-file -q ~/tmux-web-bridge/host-kit/tmux.conf"
+expect "…y sin la línea suelta de antes" "$(grep -c '^source-file' "$HOME/.tmux.conf")" "^1\$"
+expect "Los hooks de Claude llaman al script del clon" "$(jq -r '.hooks.Stop[0].hooks[0].command' "$HOME/.claude/settings.json")" '^"\$HOME/tmux-web-bridge/host-kit/tmux-window-title\.sh" state done'
+expect "…sin duplicarse" "$(jq '[.hooks.Stop[].hooks[].command | select(test("tmux-window-title"))] | length' "$HOME/.claude/settings.json")" "^1\$"
+expect "La status line, la del clon" "$(jq -r .statusLine.command "$HOME/.claude/settings.json")" '^"\$HOME/tmux-web-bridge/host-kit/statusline\.sh"$'
+expect "tmux llama a los scripts en el clon" "$(tmux -L twbkit display -p '#{q:@twb_kit_dir}/host-kit/tmux-window-title.sh')" "^$KIT/host-kit/tmux-window-title.sh\$"
+expect "…y funcionan" "$(tmux -L twbkit run-shell '#{q:@twb_kit_dir}/host-kit/tmux-spaces.sh renumber' && echo bien)" "^bien\$"
+expect "prefix x pasa por el script del clon" "$(tmux -L twbkit list-keys -T prefix x)" "run-shell \"#\{q:@twb_kit_dir\}/host-kit/tmux-window-title.sh close pane"
+expect "…y los atajos que el kit anterior reescribió, también" "$(tmux -L twbkit list-keys | grep -c '\.scripts/' || true)" "^0\$"
+before="$(cat "$HOME/.tmux.conf")"
+TWB_NO_TMUX_RELOAD=1 "$KIT/host-kit/install.sh" >/dev/null 2>&1
+expect "Reinstalar no cambia ~/.tmux.conf" "$([ "$before" = "$(cat "$HOME/.tmux.conf")" ] && echo igual)" "^igual\$"
+
 # ------------------------------------------------------------ extensión de Trello
 expect "Sin activarla, no se descarga" "[$(ls "$EXT" 2>/dev/null)]" '^\[\]$'
 expect "Activarla devuelve su carpeta" "$(run trello on)" "^OK $EXT\$"
@@ -158,6 +181,23 @@ expect "…y avisa de que no pudo descargarla" "$(grep -c 'Aviso: no se pudo des
 mv "$T/releases/aparte" "$T/releases/v$NEW"
 expect "Desactivarla" "$(run trello off)" "^OK -\$"
 expect "…deja de recordarse" "[$(cat "$HOME/.config/tmux-web-bridge/trello-extension" 2>/dev/null)]" '^\[\]$'
+
+# ------------------------------------------------------------ quitar la máquina del panel
+expect "Desinstalar" "$(run uninstall)" "^OK\$"
+expect "…sin dejar nada" "$(grep -c '^LEFT' "$T/driver.log" || true)" "^0\$"
+expect "…ni el clon" "[$(ls -d "$KIT" 2>/dev/null)]" '^\[\]$'
+expect "…ni el bloque de ~/.tmux.conf" "$(grep -c 'tmux-web-bridge' "$HOME/.tmux.conf" || true)" "^0\$"
+expect "…ni los hooks de Claude" "$(grep -c 'tmux-web-bridge' "$HOME/.claude/settings.json" || true)" "^0\$"
+expect "…ni la configuración" "[$(ls -d "$HOME/.config/tmux-web-bridge" 2>/dev/null)]" '^\[\]$'
+expect "…ni la clave del hub, y las demás se quedan" "$(cat "$HOME/.ssh/authorized_keys")" '^ssh-ed25519 AAAAotra yo$'
+expect "El tmux en marcha deja el kit: prefix x vuelve a ser el de tmux" "$(tmux -L twbkit list-keys -T prefix x)" 'confirm-before -p "kill-pane #P\? \(y/n\)" kill-pane'
+expect "…y sus hooks y opciones" "[$(tmux -L twbkit show-hooks -g pane-focus-in 2>/dev/null)$(tmux -L twbkit show -gqv @twb_kit_dir)]" '^\[(pane-focus-in)?\]$'
+
+# ------------------------------------------------------------ añadir la máquina desde el panel
+expect "Instalar el kit desde cero (clon nuevo)" "$(run install "$NEW")" "^OK\$"
+expect "…en la release" "$(git -C "$KIT" describe --tags)" "^v$NEW\$"
+expect "…con la URL, el id y el token" "$(grep -E '^(HUB_URL|HOST_ID|NOTIFY_TOKEN)=' "$HOME/.config/tmux-web-bridge/notify.env" | tr '\n' ' ')" "^HUB_URL=https://twb.example.invalid HOST_ID=maquina NOTIFY_TOKEN=TOKEN-PRUEBA \$"
+expect "…y cargado en su tmux" "$(tmux -L twbkit show -gqv @twb_kit_version)" "^$NEW\$"
 
 echo
 if [ "$FAILS" = 0 ]; then echo "Todo bien."; else echo "$FAILS comprobaciones fallidas (KEEP=1 para conservar $T)."; exit 1; fi

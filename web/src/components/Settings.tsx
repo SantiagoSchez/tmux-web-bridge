@@ -14,6 +14,7 @@ import { TrelloAccountSettings } from './Trello';
 import { AutomationSettings } from './Automations';
 import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
+import { HubConnection, machineEditing, MachinesList } from './Machines';
 import { TwoFactorSettings } from './TwoFactor';
 
 type PushState = 'unsupported' | 'insecure' | 'denied' | 'off' | 'on' | 'busy';
@@ -99,7 +100,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
-  { id: 'machines', label: 'Máquinas', hint: 'Lista de espacios, status line y actualizaciones' },
+  { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; lista de espacios, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
@@ -310,8 +311,20 @@ function DeviceSettings() {
   );
 }
 
-/** The hub's settings: the same for every machine and every device. */
+/** Ajustes › Máquinas: the hub's machines and, under them, what is the same for all of them. */
 function MachineSettings() {
+  // While a machine is added or edited, only its form (the same MachinesList: it stays mounted).
+  const editing = !!machineEditing.value;
+  return (
+    <>
+      <MachinesList />
+      {!editing && <MachineWideSettings />}
+    </>
+  );
+}
+
+/** What is the same for every machine and every device. */
+function MachineWideSettings() {
   const s = hubSettings.value;
   const info = updateInfo.value;
   const latest = info?.latest?.version;
@@ -322,7 +335,7 @@ function MachineSettings() {
       : `Al día: versión ${info.current}.`;
   return (
     <>
-      <p class="settings-scope dim small">Valen para todas las máquinas y todos los dispositivos.</p>
+      <p class="settings-scope dim small">Lo de abajo vale para todas las máquinas y todos los dispositivos.</p>
       {s && (
         <Toggle
           title="Espacios de una ventana en una fila"
@@ -349,6 +362,7 @@ function MachineSettings() {
           {updateState && <p class="settings-state small">{updateState}</p>}
         </Toggle>
       )}
+      <HubConnection />
     </>
   );
 }

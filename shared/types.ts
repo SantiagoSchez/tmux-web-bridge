@@ -159,6 +159,74 @@ export interface HostInfo {
   home?: string;
 }
 
+/** How the hub reaches a machine over SSH: straight, through the Tailscale SOCKS proxy, or its LAN address first and else the tailnet. */
+export type MachineVia = 'direct' | 'tailnet' | 'lan';
+
+/** A machine of the hub, as kept in dataDir/hosts.json and edited in Ajustes › Máquinas. */
+export interface SavedHost {
+  /** Fixed once added: the kit and the hub's settings know the machine by it. */
+  id: string;
+  name: string;
+  /** tmux on the hub itself, without SSH (only those that came from the config). */
+  local?: boolean;
+  /** user@host (or an alias of the hub's ~/.ssh/config). */
+  ssh?: string;
+  port?: number;
+  via?: MachineVia;
+  /** With via 'lan': the address tried first. */
+  lanAddress?: string;
+  /** More ssh -o options, after the via's (Key=value). */
+  sshOptions?: string[];
+  identityFile?: string;
+  /** tmux there, when not in the PATH (Homebrew: /opt/homebrew/bin/tmux). */
+  tmux?: string;
+  socketName?: string;
+  socketPath?: string;
+}
+
+/** The machines for Ajustes › Máquinas, and what adding one needs. */
+export interface MachinesInfo {
+  list: SavedHost[];
+  /** The hub's SSH public key (the line of its .pub), or null if it has none. */
+  publicKey: string | null;
+  /** config.yaml still lists hosts the hub could not take out of it (read-only): they are ignored. */
+  configHostsLeft: boolean;
+  /** The hub has a notifyToken: without it, the kit cannot be installed. */
+  canInstallKit: boolean;
+}
+
+/** What «Probar» found on a machine. */
+export interface MachineCheck {
+  /** Reached over SSH, with tmux 3.2 or later. */
+  ok: boolean;
+  error?: string;
+  system?: string;
+  user?: string;
+  home?: string;
+  /** The tmux found (a path when it is not in the PATH of an SSH command). */
+  tmux?: string;
+  tmuxVersion?: string;
+  /** What the kit needs and is not there (git, jq, curl). */
+  missing: string[];
+  /** A kit there already: its clone and version. */
+  kit?: { dir: string; version?: string };
+}
+
+/** What installing or removing the kit did on a machine, as its script told it. */
+export interface KitReport {
+  ok: boolean;
+  log: string;
+  /** Left on the machine, to clean by hand (shared dotfiles, a clone with changes…). */
+  left: string[];
+}
+
+/** The addresses the hub's SSH arrives from at the machines, for the from= of its key. */
+export interface HubAddresses {
+  tailnet: string;
+  lan: string;
+  internal: string;
+}
+
 /** Settings of the whole hub (every device sees and changes the same ones). */
 export interface HubSettings {
   /**
@@ -192,6 +260,10 @@ export interface HubSettings {
    * host it names (an empty list removes it) and keeps the others.
    */
   folders: Record<string, SavedFolder[]>;
+  /** Where the hub's SSH comes from (see HubAddresses): the from= of the key shown to add a machine. */
+  hubAddresses: HubAddresses;
+  /** The hub's URLs a machine's kit can send its notices to (install.sh --hub): the public one, the internal notifyListen… */
+  hubUrls: string[];
   /**
    * What is typed into a space opened from a folder, by host id (missing: claude,
    * which gets the permission mode chosen; empty: only the shell). Patched like folders.
@@ -526,6 +598,8 @@ export type ServerMessage =
   | { t: 'connections'; list: ConnectionInfo[] }
   | { t: 'updates'; info: UpdateInfo }
   | { t: 'settings'; settings: HubSettings }
+  /** The machines changed (one added, edited or removed): Ajustes › Máquinas. The tree comes apart. */
+  | { t: 'machines'; info: MachinesInfo }
   | { t: 'dictation'; info: DictationInfo }
   | { t: 'accounts'; info: AccountsInfo }
   /** The activity of the last days, newest first (on connect), and each new event. */

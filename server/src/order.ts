@@ -3,8 +3,8 @@ import { join } from 'node:path';
 
 /**
  * Order of the machines in the list, chosen in the web app and kept in dataDir
- * so every device sees the same one. Machines it does not name (added to the
- * config later) go last, in config order.
+ * so every device sees the same one. Machines it does not name (added later)
+ * go last, in the order they were added.
  */
 export class HostOrder {
   private readonly path: string;
@@ -12,7 +12,8 @@ export class HostOrder {
 
   constructor(
     dataDir: string,
-    private readonly known: string[],
+    /** The machines there are now. */
+    private readonly current: () => string[],
   ) {
     this.path = join(dataDir, 'host-order.json');
     try {
@@ -23,14 +24,16 @@ export class HostOrder {
     }
   }
 
-  /** Every configured host id, in the chosen order. */
+  /** Every machine's id, in the chosen order. */
   get list(): string[] {
-    const saved = this.ids.filter((id) => this.known.includes(id));
-    return [...saved, ...this.known.filter((id) => !saved.includes(id))];
+    const known = this.current();
+    const saved = this.ids.filter((id) => known.includes(id));
+    return [...saved, ...known.filter((id) => !saved.includes(id))];
   }
 
   set(ids: string[]): void {
-    this.ids = ids.filter((id, i) => this.known.includes(id) && ids.indexOf(id) === i);
+    const known = this.current();
+    this.ids = ids.filter((id, i) => known.includes(id) && ids.indexOf(id) === i);
     writeFileSync(this.path, JSON.stringify(this.ids, null, 2));
   }
 }

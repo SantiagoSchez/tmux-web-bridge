@@ -5,7 +5,7 @@ import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializ
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
 import { DEFAULT_TEMPLATE } from '../../shared/trello.js';
-import type { HubSettings } from '../../shared/types.js';
+import type { HubAddresses, HubSettings } from '../../shared/types.js';
 
 /** What a glossary starts with: the terms of working with Claude Code, git and this homelab. */
 export const DEFAULT_GLOSSARY = [
@@ -26,10 +26,35 @@ const DEFAULTS: HubSettings = {
   keybar: DEFAULT_KEYBAR,
   keybarScale: KEYBAR_SCALE_DEFAULT,
   folders: {},
+  hubAddresses: { tailnet: '', lan: '', internal: '' },
+  hubUrls: [],
   commands: {},
   trelloExtension: {},
   trelloPromptTemplate: DEFAULT_TEMPLATE,
 };
+
+/** IP addresses (or ssh's from= patterns: CIDR, *), comma-separated; anything else is dropped. */
+function sanitizeAddresses(raw: unknown): HubAddresses | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const one = (v: unknown) => {
+    const s = typeof v === 'string' ? v.replace(/\s+/g, '') : '';
+    return /^[0-9a-fA-F.:/*?,]{0,100}$/.test(s) ? s.replace(/^,+|,+$/g, '') : '';
+  };
+  return { tailnet: one(r.tailnet), lan: one(r.lan), internal: one(r.internal) };
+}
+
+/** http(s) URLs, without a trailing slash, each once (up to 10). */
+function sanitizeUrls(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return null;
+  const out: string[] = [];
+  for (const v of raw) {
+    const s = typeof v === 'string' ? v.trim().replace(/\/+$/, '') : '';
+    if (!/^https?:\/\/[^\s'"`$\\]{1,200}$/.test(s) || out.includes(s)) continue;
+    out.push(s);
+  }
+  return out.slice(0, 10);
+}
 /**
  * Kept in the file, not in the settings: the default glossary went into an empty one
  * once. Emptied on purpose afterwards, it stays empty.
@@ -98,6 +123,8 @@ export class SettingsStore extends EventEmitter {
         folders: mergeFolders({}, saved.folders),
         commands: mergeCommands({}, saved.commands),
         trelloExtension: sanitizeTrelloExtension(saved.trelloExtension),
+        hubAddresses: sanitizeAddresses(saved.hubAddresses) ?? DEFAULTS.hubAddresses,
+        hubUrls: sanitizeUrls(saved.hubUrls) ?? DEFAULTS.hubUrls,
       };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
@@ -142,9 +169,21 @@ export class SettingsStore extends EventEmitter {
     if (patch.folders !== undefined) next.folders = mergeFolders(next.folders, patch.folders);
     if (patch.commands !== undefined) next.commands = mergeCommands(next.commands, patch.commands);
     if (typeof patch.trelloPromptTemplate === 'string') next.trelloPromptTemplate = patch.trelloPromptTemplate.trim().slice(0, 2000) || DEFAULT_TEMPLATE;
+    const addresses = sanitizeAddresses(patch.hubAddresses);
+    if (addresses) next.hubAddresses = addresses;
+    const urls = sanitizeUrls(patch.hubUrls);
+    if (urls) next.hubUrls = urls;
     this.state = next;
     this.save();
     this.emit('change', next);
+  }
+
+  /** A machine left the hub: its folders, command and Trello extension go with it. */
+  forgetHost(hostId: string): void {
+    const drop = <T>(rec: Record<string, T>) => Object.fromEntries(Object.entries(rec).filter(([id]) => id !== hostId));
+    this.state = { ...this.state, folders: drop(this.state.folders), commands: drop(this.state.commands), trelloExtension: drop(this.state.trelloExtension) };
+    this.save();
+    this.emit('change', this.state);
   }
 
   /**

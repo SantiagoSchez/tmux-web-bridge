@@ -41,6 +41,9 @@
 # Lo invocan: los hooks de ~/.tmux.conf, los hooks de Claude Code
 # (~/.claude/settings.json) y el wrapper ssh de ~/.zshrc.
 
+# Este script, donde esté (en el clon del kit; los kits anteriores lo enlazaban en ~/.scripts).
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+
 set -u
 
 # Clic en una notificación (lo ejecuta terminal-notifier, fuera de tmux): tmux
@@ -341,7 +344,7 @@ notify() {
 
     if [ -n "$NOTIFIER" ]; then
         "$NOTIFIER" -title "$title" -message "$message" -sound "$sound" \
-            -group "claude-tmux-$pane" -execute "'$HOME/.scripts/tmux-window-title.sh' jump '${TMUX%%,*}' '$pane'" >/dev/null 2>&1 &
+            -group "claude-tmux-$pane" -execute "'$SELF' jump '${TMUX%%,*}' '$pane'" >/dev/null 2>&1 &
     else
         osascript - "$title" "$message" "$sound" >/dev/null 2>&1 <<'EOF' &
 on run argv
@@ -549,7 +552,6 @@ cmd_reload() {
 # ventanas y espacios pasan por `close`, que cierra sin más si no hay ningún Claude y,
 # si lo hay, lo cuenta en un popup con el comando para reanudar cada conversación.
 
-SELF="$HOME/.scripts/tmux-window-title.sh"
 
 # ~ en vez de $HOME y el resto escapado, para pegarlo en una shell.
 shell_path() {
@@ -701,9 +703,11 @@ cmd_close_popup() {
 cmd_wrap_kill_keys() {
     local tmp
     tmp="$(mktemp)" || return 0
+    # También los que reescribió un kit anterior, que lo llamaba en ~/.scripts: pasan a este.
     { tmux list-keys -T root; tmux list-keys -T prefix; } 2>/dev/null |
-        grep -E 'kill-(pane|window)' | grep -v 'confirm-before' |
+        grep -E 'kill-(pane|window)|/\.scripts/tmux-window-title\.sh close ' | grep -v 'confirm-before' |
         sed -E \
+            -e "s#[^\"' ]*/\.scripts/tmux-window-title\.sh close #$SELF close #g" \
             -e "s#kill-pane( -t =)?( [}]|$)#run-shell \"$SELF close pane '\#{pane_id}' '\#{client_name}'\"\\2#g" \
             -e "s#kill-window( -t =)?( [}]|$)#run-shell \"$SELF close window '\#{window_id}' '\#{client_name}'\"\\2#g" |
         grep -vE 'kill-(pane|window)' > "$tmp"

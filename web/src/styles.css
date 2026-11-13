@@ -2124,6 +2124,80 @@ body.dragging-host * {
 .folder-list .project-text {
   flex: 1;
 }
+
+/* Ajustes › Máquinas */
+.machine-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.machine-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--surface0);
+}
+.machine-list .project-text {
+  flex: 1;
+  min-width: 0;
+}
+.machine-list .project-hint {
+  overflow-wrap: anywhere;
+}
+.machine-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yellow);
+}
+.machine-dot.ok {
+  background: var(--green);
+}
+.machine-dot.off {
+  background: var(--overlay0);
+}
+.machine-form .folder-name {
+  margin-bottom: 14px;
+}
+.machine-form .seg {
+  flex-wrap: wrap;
+}
+.machine-form .ext-token {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.machine-form .row-btns .spacer {
+  flex: 1;
+}
+.machine-advanced {
+  margin: 0 0 14px;
+}
+.machine-advanced summary {
+  cursor: pointer;
+  margin-bottom: 10px;
+  color: var(--subtext0);
+}
+.kit-report {
+  margin: 6px 0 0;
+}
+.kit-log {
+  max-height: 40vh;
+  overflow: auto;
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: var(--radius);
+  background: var(--mantle);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.kit-left {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+}
 .folder-sub {
   flex-shrink: 0;
   min-height: 36px;

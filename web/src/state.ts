@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, MachinesInfo, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -13,6 +13,8 @@ export const connections = signal<ConnectionInfo[]>([]);
 export const usageSamples = signal<UsageSample[]>([]);
 /** The hub's settings, the same for every device. */
 export const hubSettings = signal<HubSettings | null>(null);
+/** The hub's machines as Ajustes › Máquinas edits them, and what adding one needs. */
+export const machinesInfo = signal<MachinesInfo | null>(null);
 /** What the hub's dictation can do right now. */
 export const dictationInfo = signal<DictationInfo | null>(null);
 /** The Claude accounts the hub keeps logins of, and which one each machine uses. */

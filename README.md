@@ -64,7 +64,7 @@
 
 ### 🖥️ Todas tus máquinas en un solo panel
 
-- **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH.
+- **Varias máquinas** (macOS, Linux, WSL) desde un único servidor central, por SSH. Se añaden, se editan y se quitan en ⚙️ **Ajustes › Máquinas**: el panel te da la línea de su clave para la máquina, comprueba que entra y le instala el kit él solo; al quitarla, se lo desinstala.
 - **Control completo** de espacios (cada uno es una sesión de tmux), ventanas y paneles. «Nuevo espacio» abre un proyecto y arranca `claude` en él; «Nueva ventana» ofrece las mismas carpetas y abre la ventana en ese espacio. Si la carpeta es un repo de git, antes pregunta dónde arranca Claude: **sin worktree**, en la carpeta del proyecto; en uno de los **worktrees que ya tiene** el repo, en su carpeta y en una ventana con su nombre; o en un **worktree nuevo** (`claude --worktree <nombre>`, que pasa por tu hook `WorktreeCreate` si lo tienes), también en una ventana con ese nombre y con un prompt opcional.
 - **Carpetas por máquina** en ⚙️ **Ajustes › Carpetas**, con un navegador de carpetas o escribiendo la ruta: una sola, o todas las que tenga dentro (siempre al día, y ahí se pueden crear proyectos nuevos). Ahí se elige también el comando que se escribe al abrir. Todo se guarda en el servidor central; si una config antigua tiene un bloque `projects`, el hub lo pasa a Ajustes la primera vez que arranca.
 - **Automatizaciones** en ⚙️ **Ajustes › Automatizaciones**: prompts que el servidor central lanza solo, a su hora (la del servidor central; Europe/Madrid en Docker), en una ventana nueva del espacio de una carpeta y, si quieres, cada vez en un worktree nuevo (`deps-nocturnas-20261112-1800`). El horario se elige por días y hora, cada N horas o con una expresión cron. Si la ejecución anterior sigue trabajando o esperándote, esa vez se salta y queda apuntado; si una no se puede lanzar (la máquina sin conexión, por ejemplo), llega una notificación. También se ejecutan a mano con «Ejecutar ahora».
@@ -132,7 +132,7 @@ sudo loginctl enable-linger $USER   # que siga en marcha sin tener la sesión ab
 sudo tailscale serve --bg 7681      # el panel, con HTTPS, solo en tu tailnet
 ```
 
-El instalador compila, crea `config.yaml`, genera la clave SSH del servidor e instala el servicio. **Al terminar imprime lo que necesitas para los pasos siguientes**: la URL del panel, la clave pública y el comando del kit con tu token. Se entra con tu identidad de Tailscale, sin contraseña.
+El instalador compila, crea `config.yaml`, genera la clave SSH del servidor e instala el servicio. **Al terminar imprime los pasos siguientes**, con la URL del panel. Se entra con tu identidad de Tailscale, sin contraseña.
 
 <details>
 <summary>Alternativa: con Docker, detrás de tu proxy y con contraseña</summary>
@@ -150,39 +150,31 @@ printf 'TS_HOSTNAME=mi-twb\nTS_AUTHKEY=tskey-auth-...\nTWB_BIND=10.0.0.5\n' > .e
 docker compose up -d --build
 ```
 
-Tailscale va como contenedor auxiliar (modo userspace) y el servidor central entra a las máquinas por su proxy SOCKS5. Los detalles están comentados en `compose.yaml` y `config.example.yaml`. En el proxy, admite WebSocket y sube `proxy_read_timeout`, porque las terminales pasan horas abiertas.
+Tailscale va como contenedor auxiliar (modo userspace) y el servidor central entra a las máquinas por su proxy SOCKS5: es la vía «por la tailnet» al añadirlas en el panel. Los detalles están comentados en `compose.yaml` y `config.example.yaml`. En el proxy, admite WebSocket y sube `proxy_read_timeout`, porque las terminales pasan horas abiertas.
 </details>
 
 ### 2. Añade tus máquinas
 
-En `~/tmux-web-bridge/config.yaml`, una entrada por máquina en `hosts` (el ejemplo comentado trae más opciones):
+Abre el panel y ve a ⚙️ **Ajustes › Máquinas › Añadir máquina**. Por cada máquina:
 
-```yaml
-hosts:
-  - id: mac                    # el que usarás al instalar el kit
-    name: MacBook              # el que verás en el panel
-    ssh: usuario@macbook       # su nombre en la tailnet
-    identityFile: ~/.ssh/tmux-web-bridge_ed25519
-```
+1. **Sus datos**: un nombre, su destino SSH (`usuario@máquina`, con su nombre en la tailnet o su IP) y cómo llega a ella el servidor central: **directa** (misma red, o Tailscale en el propio servidor), **por la tailnet** (el proxy de Tailscale del contenedor, en Docker) o **por su IP de LAN y, si no responde, por la tailnet** (un portátil que a veces está en casa).
+2. **La clave del servidor central**: copia el comando que da el panel y pégalo en una terminal de la máquina. Añade a su `~/.ssh/authorized_keys` la clave del servidor, aceptada solo desde las direcciones que pongas en **Conexión con las máquinas**, en esa misma pantalla.
+3. **«Probar» y «Añadir»**: el panel comprueba que entra y que tiene tmux 3.2+, y le instala el kit (paso 3).
 
-Reinicia el servidor con `systemctl --user restart tmux-web-bridge`. Después, en **cada máquina**, pega en `~/.ssh/authorized_keys` la línea con la clave que imprimió el instalador:
-
-```
-from="100.x.y.z" ssh-ed25519 AAAA... tmux-web-bridge
-```
+Las máquinas se guardan en el servidor central (`data/hosts.json`) y desde ahí se editan o se quitan. Al quitar una, el servidor le desinstala antes el kit y su propia clave. Si una config antigua tiene un bloque `hosts`, el servidor central lo pasa al panel la primera vez que arranca y lo quita de la config; si no puede escribirla (en Docker se monta de solo lectura), la ignora y avisa en Ajustes para que lo quites tú.
 
 <details>
 <summary>Linux, WSL, tmux en otra ruta y el propio servidor como máquina</summary>
 
 - **Linux**: activa también `sudo loginctl enable-linger $USER` en la máquina; sin él, systemd mata tus sesiones de tmux al cerrarse la última conexión SSH.
 - **WSL**: instala Tailscale dentro de la distro o usa `networkingMode=mirrored`.
-- **tmux fuera del `PATH`** (por ejemplo, Homebrew en macOS): `tmux: /opt/homebrew/bin/tmux`. Para un servidor de tmux no estándar, `socketName` o `socketPath`.
-- **El propio servidor central** también puede ser una máquina, sin SSH: `local: true`.
+- **tmux fuera del `PATH`**: Homebrew y `/usr/local` ya se buscan solos; si está en otro sitio, ponlo en **Opciones avanzadas**, junto al puerto SSH, un servidor de tmux aparte (`tmux -L nombre`) y más opciones de SSH.
+- **El propio servidor central** también puede ser una máquina, sin SSH: marca «Es el propio servidor central» al añadirla.
 </details>
 
-### 3. Instala el kit en cada máquina
+### 3. El kit de cada máquina
 
-En cada máquina con Claude Code, el comando que imprimió el instalador (con la URL del panel, el `id` de la máquina y tu token):
+El panel lo instala al añadir la máquina: clona el repo en `~/tmux-web-bridge`, lo deja en la última release y ejecuta `host-kit/install.sh` con la dirección del panel que elijas (la que alcance esa máquina), su `id` y tu token. También se puede reinstalar desde **Editar**. A mano, sería:
 
 ```sh
 git clone https://github.com/SantiagoSchez/tmux-web-bridge.git ~/tmux-web-bridge
@@ -194,9 +186,11 @@ Con eso, el panel ya ve los estados de Claude y te avisa en el móvil. Para comp
 <details>
 <summary>Qué toca el kit en la máquina</summary>
 
-Enlaza los scripts de estados de Claude, de espacios y la status line; añade un `source-file` a tu `~/.tmux.conf`, fusiona los hooks en `~/.claude/settings.json` y guarda lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`.
+Sus scripts (los estados de Claude, los espacios y la status line) se quedan en el clon y se llaman allí: fuera de él no enlaza nada. Lo que toca fuera es poco y está marcado: un bloque en tu `~/.tmux.conf` con el `source-file -q` de su `tmux.conf`, sus hooks y su status line en `~/.claude/settings.json` (que apuntan al clon) y lo propio de la máquina en `~/.config/tmux-web-bridge/notify.env`. Lo que hubiera antes se guarda en `.bak.<fecha>`. Los kits anteriores a la 1.22 enlazaban sus scripts en `~/.scripts` y `~/.claude/scripts`: al actualizar, esos enlaces se quitan y vuelve lo que había antes.
 
-Los enlaces son relativos y el `source-file` usa `~`, así que valen aunque `~/.scripts` o `~/.tmux.conf` vivan en unos dotfiles compartidos entre máquinas, siempre que todas tengan el clon en `~/tmux-web-bridge`. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones.
+El `source-file` usa `~` y `-q`, así que vale aunque `~/.tmux.conf` viva en unos dotfiles compartidos entre máquinas: en las que tengan el clon en `~/tmux-web-bridge` carga el kit, y en las que no, no hace nada. Si Claude Code usa otra carpeta de configuración, `--claude-dir` (o `CLAUDE_CONFIG_DIR` al instalar); se recuerda para las siguientes actualizaciones.
+
+Al quitar la máquina del panel, el servidor central deshace todo eso (el bloque, los hooks, la configuración y el clon, si no tiene cambios), devuelve el tmux en marcha a sus atajos de siempre y, por último, quita su propia clave del `authorized_keys`. Lo que esté en unos dotfiles compartidos con otras máquinas (un enlace, o una carpeta enlazada) se deja como está, y con ello el clon si aún lo usa: el panel lo lista para que lo limpies tú si hace falta.
 
 La status line del kit muestra los límites 5h/7d al final, salvo en un panel estrecho (el móvil, donde ya están en la franja de la app). Si la barra de tmux ya los muestra (por ejemplo, con un módulo de catppuccin), quítalos de la status line de todas las máquinas en ⚙️ **Ajustes › Máquinas › Límites en la status line**: el servidor central pone `@claude_limits_in_status` en el tmux de cada una y la vuelve a poner si tmux se reinicia, por encima de lo que diga su `~/.tmux.conf`.
 </details>

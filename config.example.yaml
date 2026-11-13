@@ -49,34 +49,10 @@ dataDir: ./data
 pollIntervalMs: 1000     # cada cuánto se lee el árbol de tmux de cada máquina
 fallbackDelayMs: 4000    # espera al script del host antes de avisar solo por el cambio de emoji
 
-hosts:
-  # tmux en la propia máquina del servidor central, sin SSH.
-  - id: hub
-    name: Servidor
-    local: true
-
-  # Máquinas remotas por SSH. "ssh" puede ser un alias de ~/.ssh/config o usuario@host.
-  - id: mac
-    name: MacBook
-    ssh: usuario@macbook         # nombre MagicDNS de la tailnet
-    identityFile: ~/.ssh/tmux-web-bridge_ed25519
-    tmux: /opt/homebrew/bin/tmux # opcional: ruta de tmux si no está en el PATH
-    # socketName: trabajo        # opcional: servidor tmux no estándar (tmux -L trabajo)
-    # socketPath: /tmp/mi.sock   # opcional: o por ruta (tmux -S /tmp/mi.sock)
-
-  - id: wsl
-    name: PC (WSL)
-    ssh: usuario@pc-windows
-    port: 2222                   # sshd dentro de WSL
-    identityFile: ~/.ssh/tmux-web-bridge_ed25519
-    sshOptions: []               # opciones extra de ssh -o
-
-  # «Nuevo space» abre un space en una carpeta de la máquina (como la función `c`), con claude.
-  # Las carpetas, con o sin sus subcarpetas, y el comando se eligen en el panel: Ajustes › Carpetas.
-  - id: dev
-    name: Servidor
-    ssh: usuario@192.168.1.10
-    identityFile: ~/.ssh/tmux-web-bridge_ed25519
+# Las máquinas se añaden, se editan y se quitan en el panel (Ajustes › Máquinas) y se guardan en
+# dataDir/hosts.json. Un bloque `hosts` de una config anterior pasa allí al arrancar, una vez.
+# El servidor central entra en ellas con su clave SSH: ~/.ssh/tmux-web-bridge_ed25519 (la que
+# crea deploy/install-hub.sh) o ~/.ssh/id_ed25519 (en Docker, la de ./ssh).
 
 # Dictado (se activa en la app: Ajustes → Dictado). El modelo de voz, Parakeet v3, corre en
 # el propio servidor central y se descarga en dataDir/models la primera vez (unos 670 MB;

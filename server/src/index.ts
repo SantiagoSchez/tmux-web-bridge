@@ -8,13 +8,15 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, NotifyRequest, RespondRequest, SavedFolder, ServerMessage, TrelloCardContext } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
 import { shq } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
-import { loadConfig } from './config.js';
+import { loadConfig, removeConfigHosts } from './config.js';
+import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
+import { checkMachine, installKit, uninstallKit } from './kit.js';
 import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
@@ -50,9 +52,22 @@ const sessions = new SessionStore(config.dataDir, config.auth.sessionDays);
 const limiter = new LoginLimiter();
 const twoFactor = new TwoFactor(config.dataDir);
 const usage = new UsageHistory(config.dataDir);
-const hosts = new Map(config.hosts.map((h) => [h.id, new HostMonitor(h, config)]));
+// The machines live in dataDir/hosts.json and are added and removed in the panel (see
+// attachHost). A `hosts` block of the config moves there once, and out of the config if it can.
+const machines = new MachineStore(config.dataDir);
+let configHostsLeft = false;
+if (config.configHosts.length) {
+  if (machines.migrate(config.configHosts.map((c) => c.host))) {
+    console.warn(`[config] las máquinas de «hosts» (${config.configHosts.length}) pasan al panel (${config.dataDir}/hosts.json)`);
+  }
+  const removed = removeConfigHosts(config.configPath);
+  if (removed === 'removed') console.warn(`[config] quitado «hosts» de ${config.configPath}: las máquinas se editan en Ajustes › Máquinas`);
+  configHostsLeft = removed === 'readonly';
+  if (configHostsLeft) console.warn(`[config] ${config.configPath} es de solo lectura: quita «hosts» a mano (se ignora; las máquinas están en el panel)`);
+}
+const hosts = new Map<string, HostMonitor>();
 const accounts = new AccountManager(new AccountStore(config.dataDir), hosts);
-const hostOrder = new HostOrder(config.dataDir, config.hosts.map((h) => h.id));
+const hostOrder = new HostOrder(config.dataDir, () => [...hosts.keys()]);
 const conns = new ConnectionRegistry();
 const push = new PushService(config);
 const notifier = new Notifier(config, hosts, push, conns);
@@ -63,12 +78,10 @@ const extTokens = new ExtTokenStore(config.dataDir);
 const activity = new ActivityLog(config.dataDir);
 const trello = new TrelloService(config.dataDir);
 // The folders of «Nuevo espacio» live in the hub now: a `projects` block becomes one, once.
-const migrated = settings.migrateProjects(config.hosts.map((h) => ({ id: h.id, projects: h.legacyProjects })));
-for (const h of config.hosts.filter((x) => x.legacyProjects)) {
-  const what = migrated.includes(h.id) ? 'la carpeta de «projects» pasa a Ajustes › Carpetas, con sus subcarpetas' : '«projects» ya no se usa (las carpetas están en Ajustes › Carpetas)';
-  console.warn(`[config] ${h.id}: ${what}; quita «projects» de la config`);
+const migrated = settings.migrateProjects(config.configHosts.map((c) => ({ id: c.host.id, projects: c.projects })));
+for (const c of config.configHosts.filter((x) => x.projects)) {
+  if (migrated.includes(c.host.id)) console.warn(`[config] ${c.host.id}: la carpeta de «projects» pasa a Ajustes › Carpetas, con sus subcarpetas`);
 }
-for (const host of hosts.values()) host.limitsInStatusLine = settings.value.limitsInStatusLine;
 const dictation = new Dictation(config.dictation, config.dataDir);
 dictation.setGlossary(settings.value.dictationGlossary);
 dictation.setEnabled(settings.value.dictation);
@@ -201,7 +214,10 @@ function broadcast(msg: ServerMessage): void {
   for (const ws of clients.values()) if (ws.readyState === ws.OPEN) ws.send(json);
 }
 
-for (const host of hosts.values()) {
+/** A machine joins the hub: watched from now on (started once the hub listens, or at once after). */
+function attachHost(saved: SavedHost): HostMonitor {
+  const host = new HostMonitor(hostConfig(saved), config);
+  host.limitsInStatusLine = settings.value.limitsInStatusLine;
   new TempFolders(host);
   host.on('change', (info) => {
     broadcast({ t: 'host', host: info });
@@ -213,7 +229,21 @@ for (const host of hosts.values()) {
     notifier.onTransition(t);
     activity.onTransition(t);
   });
+  hosts.set(host.id, host);
+  return host;
 }
+
+/** A machine leaves the hub (removed, or about to be replaced by its edited self). */
+function detachHost(id: string): void {
+  const host = hosts.get(id);
+  if (!host) return;
+  host.stop();
+  host.removeAllListeners();
+  host.exec.closeMaster();
+  hosts.delete(id);
+}
+
+for (const saved of machines.list) attachHost(saved);
 activity.on('add', (event: ActivityEvent) => broadcast({ t: 'activityAdd', event }));
 accounts.on('change', (info: AccountsInfo) => {
   broadcast({ t: 'accounts', info });
@@ -323,6 +353,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'usage', samples: usage.list });
   send(ws, { t: 'updates', info: updates.info });
   send(ws, { t: 'settings', settings: settings.value });
+  send(ws, { t: 'machines', info: machinesInfo() });
   send(ws, { t: 'dictation', info: dictation.info });
   send(ws, { t: 'accounts', info: accounts.info });
   send(ws, { t: 'activity', events: activity.list.slice(0, 400) });
@@ -643,6 +674,142 @@ app.post('/api/automations/:id/run', async (req, reply) => {
   } catch (err) {
     return reply.code(400).send({ error: (err as Error).message });
   }
+});
+
+// ---------------------------------------------------------------- machines (Ajustes › Máquinas)
+
+function machinesInfo(): MachinesInfo {
+  return { list: machines.list, publicKey: publicKey(hubKeyPath(machines.list)), configHostsLeft, canInstallKit: !!config.notifyToken };
+}
+
+/** Every device sees the change: Ajustes › Máquinas and the tree. */
+function machinesChanged(): void {
+  broadcast({ t: 'machines', info: machinesInfo() });
+  broadcast({ t: 'tree', hosts: hostOrder.list.map((id) => hosts.get(id)!.snapshot) });
+}
+
+/** A machine as the panel sent it, checked; a new one gets the hub's key. */
+function machineFrom(raw: unknown, existing?: SavedHost): SavedHost {
+  const m = checkMachineData(raw, machines.list.map((h) => h.id), existing);
+  if (!existing && !m.local) {
+    const key = hubKeyPath(machines.list);
+    if (!key) throw new Error('El hub no tiene clave SSH (~/.ssh/id_ed25519): créala con ssh-keygen');
+    m.identityFile = key;
+  }
+  return m;
+}
+
+/** The URL a kit sends its notices to: one of the hub's (a new one is kept with them). */
+function hubUrlFor(raw: unknown): string {
+  const url = typeof raw === 'string' ? raw.trim().replace(/\/+$/, '') : '';
+  if (!/^https?:\/\/[^\s'"`$\\]{1,200}$/.test(url)) throw new Error('Falta la URL del hub para los avisos del kit');
+  if (!settings.value.hubUrls.includes(url)) settings.update({ hubUrls: [...settings.value.hubUrls, url] });
+  return url;
+}
+
+function installOn(host: HostMonitor, url: string): Promise<KitReport> {
+  if (!config.notifyToken) return Promise.resolve({ ok: false, log: 'El hub no tiene notifyToken en su config: el kit no podría avisar', left: [] });
+  return installKit(host, updates.info.latest?.version ?? null, url, config.notifyToken);
+}
+
+const badRequest = (reply: FastifyReply, err: unknown) => reply.code(400).send({ error: (err as Error).message });
+
+app.get('/api/machines', async () => machinesInfo());
+
+/** The line of the hub's key for a machine's authorized_keys, for the way it is reached. */
+app.post('/api/machines/key', async (req, reply) => {
+  const key = machinesInfo().publicKey;
+  if (!key) return reply.code(404).send({ error: 'El hub no tiene clave SSH' });
+  const via = (req.body as { via?: SavedHost['via'] } | null)?.via;
+  return { line: authorizedKeyLine(key, via, settings.value.hubAddresses) };
+});
+
+/** «Probar»: whether the hub gets into the machine (a new one, or one being edited). */
+app.post('/api/machines/check', async (req, reply) => {
+  const body = (req.body ?? {}) as { machine?: unknown; id?: string };
+  try {
+    const existing = body.id ? machines.get(body.id) : undefined;
+    const m = machineFrom(body.machine, existing);
+    return await checkMachine(new HostMonitor(hostConfig(m), config));
+  } catch (err) {
+    return badRequest(reply, err);
+  }
+});
+
+/** Adds a machine and, with `hubUrl`, installs the kit there. */
+app.post('/api/machines', async (req, reply) => {
+  const body = (req.body ?? {}) as { machine?: unknown; hubUrl?: unknown; install?: boolean };
+  let m: SavedHost;
+  let url = '';
+  try {
+    m = machineFrom(body.machine);
+    if (body.install) url = hubUrlFor(body.hubUrl);
+  } catch (err) {
+    return badRequest(reply, err);
+  }
+  machines.put(m);
+  const host = attachHost(m);
+  host.start();
+  machinesChanged();
+  console.log(`[máquinas] añadida ${m.id} (${m.ssh ?? 'local'})`);
+  const kit = body.install ? await installOn(host, url) : undefined;
+  if (kit?.ok) void host.refresh();
+  return { machine: m, kit };
+});
+
+/** Changes a machine (its id stays): it is watched again with what changed. */
+app.post('/api/machines/:id', async (req, reply) => {
+  const existing = machines.get((req.params as { id: string }).id);
+  if (!existing) return reply.code(404).send({ error: 'Esa máquina ya no está' });
+  let m: SavedHost;
+  try {
+    m = machineFrom(req.body, existing);
+  } catch (err) {
+    return badRequest(reply, err);
+  }
+  machines.put(m);
+  detachHost(m.id);
+  attachHost(m).start();
+  machinesChanged();
+  return { machine: m };
+});
+
+/** Installs the kit again (or for the first time) on a machine. */
+app.post('/api/machines/:id/kit', async (req, reply) => {
+  const host = hosts.get((req.params as { id: string }).id);
+  if (!host) return reply.code(404).send({ error: 'Esa máquina ya no está' });
+  try {
+    const kit = await installOn(host, hubUrlFor((req.body as { hubUrl?: unknown } | null)?.hubUrl));
+    if (kit.ok) void host.refresh();
+    return kit;
+  } catch (err) {
+    return badRequest(reply, err);
+  }
+});
+
+/**
+ * Removes a machine: first the kit and the hub's key go from it (see uninstallKit); if that
+ * fails (it does not answer), it stays, unless `force` (only from the panel, then).
+ */
+app.post('/api/machines/:id/delete', async (req, reply) => {
+  const id = (req.params as { id: string }).id;
+  const saved = machines.get(id);
+  const host = hosts.get(id);
+  if (!saved || !host) return reply.code(404).send({ error: 'Esa máquina ya no está' });
+  const force = (req.body as { force?: boolean } | null)?.force === true;
+  let kit: KitReport | undefined;
+  if (!force) {
+    // On the hub itself there is no key of its own to take out.
+    kit = await uninstallKit(host, saved.local ? null : machinesInfo().publicKey);
+    if (!kit.ok) return reply.code(409).send({ error: kit.log, kit });
+  }
+  detachHost(id);
+  machines.remove(id);
+  settings.forgetHost(id);
+  for (const a of automations.info.filter((x) => x.host === id && x.enabled)) automations.upsert({ ...a, enabled: false });
+  machinesChanged();
+  console.log(`[máquinas] quitada ${id}${force ? ' (solo del panel)' : ''}`);
+  return { kit };
 });
 
 // ---------------------------------------------------------------- files and git of a pane

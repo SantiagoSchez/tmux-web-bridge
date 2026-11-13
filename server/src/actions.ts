@@ -21,13 +21,20 @@ function sessionName(name: string): string {
 
 // Same contract as `prefix + r` in ~/.tmux.conf: a name typed by hand is pinned
 // (@name_pinned) so the Claude hooks never overwrite it; an empty name unpins it.
+/**
+ * host-kit's tmux-window-title.sh, for tmux's if-shell and run-shell (both expand formats): in
+ * the kit's clone, which its tmux.conf publishes in @twb_kit_dir, or, from kits before 1.22, its
+ * link in ~/.scripts. `has` tells whether there is one; `run(args)` runs it.
+ */
+export const TITLE_SCRIPT = {
+  has: 'test -x #{q:@twb_kit_dir}/host-kit/tmux-window-title.sh -o -x "$HOME/.scripts/tmux-window-title.sh"',
+  run: (args: string) =>
+    `s=#{q:@twb_kit_dir}/host-kit/tmux-window-title.sh; [ -x "$s" ] || s="$HOME/.scripts/tmux-window-title.sh"; exec "$s" ${args}`,
+};
+
 /** Runs host-kit's tmux-window-title.sh inside the host's tmux server, if installed there. */
 export function runTitleScript(host: HostMonitor, ...args: string[]): Promise<string> {
-  return host.exec.run([
-    'if-shell',
-    'test -x "$HOME/.scripts/tmux-window-title.sh"',
-    `run-shell -b '"$HOME/.scripts/tmux-window-title.sh" ${args.join(' ')}'`,
-  ]);
+  return host.exec.run(['if-shell', TITLE_SCRIPT.has, `run-shell -b '${TITLE_SCRIPT.run(args.join(' '))}'`]);
 }
 
 /** A path on the host for the shell: ~/ becomes "$HOME"/, the rest is quoted. */
@@ -462,8 +469,8 @@ export async function runAction(
         const quoted = `"${(path || '~').replace(/["\\$]/g, '\\$&')}"`;
         await run([
           'if-shell',
-          'test -x "$HOME/.scripts/tmux-window-title.sh"',
-          `run-shell -b '"$HOME/.scripts/tmux-window-title.sh" reload ${pane} ${mode}'`,
+          TITLE_SCRIPT.has,
+          `run-shell -b '${TITLE_SCRIPT.run(`reload ${pane} ${mode}`)}'`,
           `respawn-pane -k -t ${pane} -c ${quoted}`,
         ]);
       }

@@ -2,7 +2,8 @@
 #
 # Tailscale (modo userspace, sin /dev/net/tun) une el stack a la tailnet como un
 # dispositivo propio, para llegar por SSH a las máquinas de la tailnet a través de su
-# proxy SOCKS5 (ProxyCommand con nc, ver config.yaml). El servidor central comparte su red.
+# proxy SOCKS5 (ProxyCommand con nc: la vía «por la tailnet» de Ajustes › Máquinas). El
+# servidor central comparte su red.
 #
 # El panel se publica en TWB_BIND:7681 para tu proxy inverso (nginx con tu certificado),
 # con contraseña (auth.method: password en config.yaml). Así se entra igual desde la

@@ -4,7 +4,7 @@
 #   2. crea config.yaml (con un notifyToken aleatorio) si no existe,
 #   3. crea la clave SSH con la que el servidor central entra en las máquinas,
 #   4. instala y arranca el servicio de usuario de systemd.
-# Después: `tailscale serve` y añadir la clave pública a cada máquina (lo imprime al final).
+# Después: `tailscale serve` y añadir las máquinas en el panel (lo imprime al final).
 #
 # Uso: deploy/install-hub.sh [--no-service]
 
@@ -49,7 +49,7 @@ if [ ! -f config.yaml ]; then
     TOKEN="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
     sed -e "s/^notifyToken: .*/notifyToken: $TOKEN/" config.example.yaml > config.yaml
     chmod 600 config.yaml
-    say "Creado config.yaml (edita las máquinas y allowedLogins antes de usarlo)"
+    say "Creado config.yaml (revisa allowedLogins; las máquinas se añaden en el panel)"
 else
     say "config.yaml ya existe: no se toca"
 fi
@@ -84,11 +84,8 @@ $(say "Siguientes pasos")
        sudo tailscale serve --bg ${PORT:-7681}
      y ábrelo en https://$(hostname).<tu-tailnet>.ts.net
 
-  2. Autoriza esta clave en cada máquina (~/.ssh/authorized_keys):
-       $(cat "$KEY.pub")
-     Recomendado, limitada a la IP de Tailscale de este servidor:
-       from="$(tailscale ip -4 2>/dev/null || echo 100.x.y.z)" $(cut -d' ' -f1,2 "$KEY.pub") tmux-web-bridge
-
-  3. En cada máquina, para los estados de Claude y los avisos al móvil:
-       host-kit/install.sh --hub https://$(hostname).<tu-tailnet>.ts.net --host <id> --token $(awk '/^notifyToken:/ {print $2}' config.yaml)
+  2. Añade tus máquinas en el panel: Ajustes › Máquinas › Añadir máquina. Te da la línea de
+     la clave de este servidor para pegarla en cada una, comprueba que entra y le instala el kit.
+     En «Conexión con las máquinas», pon la IP de Tailscale de este servidor
+     ($(tailscale ip -4 2>/dev/null || echo 100.x.y.z)) para que la clave solo valga desde ella.
 EOF

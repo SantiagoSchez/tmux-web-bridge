@@ -1,9 +1,11 @@
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { dirname, isAbsolute, resolve } from 'node:path';
-import { parse } from 'yaml';
+import { parse, parseDocument } from 'yaml';
+import type { SavedHost } from '../../shared/types.js';
 import { isPasswordHash } from './auth.js';
 
+/** How the hub runs tmux on a machine (built from its SavedHost: see machines.ts). */
 export interface HostConfig {
   id: string;
   name: string;
@@ -18,11 +20,16 @@ export interface HostConfig {
   tmux: string;
   /** Socket options for a non-default tmux server: -L name or -S path. */
   socketArgs: string[];
+}
+
+/** A machine of the `hosts` block of configs from before the machines moved into the panel. */
+export interface ConfigHost {
+  host: SavedHost;
   /**
-   * The `projects` block of configs from before the folders moved into the panel: the
-   * hub turns it into one of the host's folders once (SettingsStore.migrateProjects).
+   * Its `projects` block, from before the folders moved into the panel: the hub turns it
+   * into one of the host's folders once (SettingsStore.migrateProjects).
    */
-  legacyProjects: { dir: string; command: string } | null;
+  projects: { dir: string; command: string } | null;
 }
 
 export interface Config {
@@ -56,7 +63,8 @@ export interface Config {
   pollIntervalMs: number;
   /** Seconds to wait for a host script notification before pushing from the emoji change alone. */
   fallbackDelayMs: number;
-  hosts: HostConfig[];
+  /** The machines of the config's `hosts` block, if it still has one: the hub moves them to dataDir once. */
+  configHosts: ConfigHost[];
   /** Dictation (switched on in the app's settings): where the models are and how they run. */
   dictation: {
     /** OpenAI-style endpoint of the cleanup model (llama-server), e.g. http://llm:8080. Null: no cleanup. */
@@ -85,29 +93,28 @@ export function loadConfig(): Config {
     return isAbsolute(e) ? e : resolve(base, e);
   };
 
+  // The machines live in dataDir/hosts.json, edited in the panel: a `hosts` block goes there once.
   const hostsRaw: Raw[] = Array.isArray(raw.hosts) ? raw.hosts : [];
-  if (hostsRaw.length === 0) throw new Error('config: "hosts" está vacío');
   const seen = new Set<string>();
-  const hosts: HostConfig[] = hostsRaw.map((h, i) => {
+  const configHosts: ConfigHost[] = hostsRaw.map((h, i) => {
     const id = String(h.id ?? '').trim();
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) throw new Error(`config: hosts[${i}].id inválido (solo letras, números, - y _)`);
     if (seen.has(id)) throw new Error(`config: id de host duplicado: ${id}`);
     seen.add(id);
     const local = h.local === true;
     if (!local && !h.ssh) throw new Error(`config: el host ${id} necesita "ssh" o "local: true"`);
+    const host: SavedHost = { id, name: String(h.name ?? id) };
+    if (local) host.local = true;
+    if (h.ssh) host.ssh = String(h.ssh);
+    if (h.port) host.port = Number(h.port);
+    if (Array.isArray(h.sshOptions) && h.sshOptions.length) host.sshOptions = h.sshOptions.map(String);
+    if (h.identityFile) host.identityFile = rel(String(h.identityFile));
+    if (h.tmux) host.tmux = String(h.tmux);
+    if (h.socketName) host.socketName = String(h.socketName);
+    if (h.socketPath) host.socketPath = String(h.socketPath);
     return {
-      id,
-      name: String(h.name ?? id),
-      local,
-      ssh: h.ssh ? String(h.ssh) : undefined,
-      port: h.port ? Number(h.port) : undefined,
-      identityFile: h.identityFile ? rel(String(h.identityFile)) : undefined,
-      sshOptions: Array.isArray(h.sshOptions) ? h.sshOptions.map(String) : [],
-      tmux: h.tmux ? String(h.tmux) : 'tmux',
-      socketArgs: h.socketPath ? ['-S', String(h.socketPath)] : h.socketName ? ['-L', String(h.socketName)] : [],
-      legacyProjects: h.projects?.dir
-        ? { dir: String(h.projects.dir), command: String(h.projects.command ?? 'claude') }
-        : null,
+      host,
+      projects: h.projects?.dir ? { dir: String(h.projects.dir), command: String(h.projects.command ?? 'claude') } : null,
     };
   });
 
@@ -143,11 +150,33 @@ export function loadConfig(): Config {
     vapidSubject: String(raw.vapidSubject ?? 'mailto:admin@localhost'),
     pollIntervalMs: Number(raw.pollIntervalMs ?? 1000),
     fallbackDelayMs: Number(raw.fallbackDelayMs ?? 4000),
-    hosts,
+    configHosts,
     dictation: {
       llmUrl: (process.env.TWB_DICTATION_LLM_URL || raw.dictation?.llmUrl || '').replace(/\/+$/, '') || null,
       threads: Number(raw.dictation?.threads ?? 4),
     },
     configPath,
   };
+}
+
+/**
+ * Takes the `hosts` block out of config.yaml, keeping the rest as it is (comments too),
+ * once the machines are in dataDir. "readonly": the hub cannot write it (a read-only
+ * mount in Docker), so it stays there, ignored.
+ */
+export function removeConfigHosts(configPath: string): 'removed' | 'readonly' | 'none' {
+  const doc = parseDocument(readFileSync(configPath, 'utf8'));
+  if (!doc.has('hosts')) return 'none';
+  try {
+    accessSync(configPath, constants.W_OK);
+  } catch {
+    return 'readonly';
+  }
+  doc.delete('hosts');
+  try {
+    writeFileSync(configPath, doc.toString());
+  } catch {
+    return 'readonly';
+  }
+  return 'removed';
 }
