@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -169,5 +169,57 @@ test(
     await assert.rejects(runAction(host, { op: 'newWindow', session: '$3', folder: '/etc' }, null, machine), /no está entre las de Prueba/);
     await assert.rejects(runAction(host, { op: 'newWindow', session: '$3', folder: '~/Proyectos', sub: 'falta' }, null, machine), /No existe la carpeta/);
     await assert.rejects(runAction(host, { op: 'newWindow', session: 'x; kill-server', folder: '~/Proyectos', sub: 'twb' }, null, machine), /inválido/);
+  }),
+);
+
+test(
+  'listWorktrees and openWorktree: the other worktrees of the folder\'s repo, opened in a window named after them',
+  withHome(async (home) => {
+    const git = (cwd: string, ...args: string[]) =>
+      new Promise<void>((resolve, reject) =>
+        execFile('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'init.defaultBranch=main', ...args], { cwd, env: { PATH: process.env.PATH, HOME: home } }, (err) => (err ? reject(err) : resolve())),
+      );
+    const repo = join(home, 'Proyectos/app');
+    mkdirSync(join(repo, 'pkg/web'), { recursive: true });
+    mkdirSync(join(home, 'Proyectos/suelta'));
+    await git(repo, 'init', '-q');
+    writeFileSync(join(repo, 'pkg/web/a.txt'), 'a');
+    await git(repo, 'add', '.');
+    await git(repo, 'commit', '-qm', 'init');
+    await git(repo, 'worktree', 'add', '-q', '-b', 'feat/login', join(home, 'wt/app/feat-login'));
+    await git(repo, 'worktree', 'add', '-q', '--detach', join(home, 'wt/app/suelto'));
+    await git(repo, 'worktree', 'add', '-q', '-b', 'gone', join(home, 'wt/app/gone'));
+    rmSync(join(home, 'wt/app/gone'), { recursive: true });
+
+    const tmux: string[][] = [];
+    const host = fakeHost(home, tmux);
+    const machine = { folders: [{ name: 'p', path: '~/Proyectos', subfolders: true }, { name: 'web', path: '~/Proyectos/app/pkg/web' }], command: 'claude' };
+    const list = await runAction(host, { op: 'listWorktrees', folder: '~/Proyectos', sub: 'app' }, null, machine);
+    assert.deepEqual(list, {
+      repo: true,
+      branch: 'main',
+      worktrees: [
+        { name: 'feat-login', path: join(home, 'wt/app/feat-login'), branch: 'feat/login' },
+        { name: 'suelto', path: join(home, 'wt/app/suelto'), branch: undefined },
+      ],
+    });
+    assert.deepEqual(await runAction(host, { op: 'listWorktrees', folder: '~/Proyectos', sub: 'suelta' }, null, machine), { repo: false });
+    // A folder inside the repo opens at its place in the worktree.
+    const web = (await runAction(host, { op: 'listWorktrees', folder: '~/Proyectos/app/pkg/web' }, null, machine)) as { worktrees: { path: string }[] };
+    assert.deepEqual(web.worktrees.map((w) => w.path), [join(home, 'wt/app/feat-login/pkg/web'), join(home, 'wt/app/suelto/pkg/web')]);
+
+    // No space open: the folder's, made in the worktree, with the window named after it.
+    const path = join(home, 'wt/app/feat-login');
+    await runAction(host, { op: 'openWorktree', folder: '~/Proyectos', sub: 'app', path }, null, machine);
+    assert.deepEqual(tmux[0], ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', 'app', '-c', path, '-n', 'feat-login']);
+    assert.deepEqual(tmux.at(-1), ['send-keys', '-t', '%1', 'claude --permission-mode auto', 'Enter']);
+    // In an open space: a new window there.
+    tmux.length = 0;
+    await runAction(host, { op: 'openWorktree', folder: '~/Proyectos', sub: 'app', path, session: '$3', skipPermissions: true }, null, machine);
+    assert.deepEqual(tmux[0], ['new-window', '-P', '-F', '#{pane_id}', '-t', '$3:', '-c', path, '-n', 'feat-login']);
+    assert.deepEqual(tmux.at(-1), ['send-keys', '-t', '$1 %1', 'claude --dangerously-skip-permissions', 'Enter']);
+    // Only the repo's worktrees.
+    await assert.rejects(runAction(host, { op: 'openWorktree', folder: '~/Proyectos', sub: 'app', path: '/etc' }, null, machine), /ya no está/);
+    await assert.rejects(runAction(host, { op: 'openWorktree', folder: '/etc', path }, null, machine), /no está entre las de Prueba/);
   }),
 );

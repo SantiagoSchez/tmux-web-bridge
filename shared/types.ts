@@ -374,6 +374,17 @@ export interface ProjectList {
   home: string;
 }
 
+/** The repo of a folder of «Nuevo espacio», to pick where claude starts. */
+export type WorktreeList =
+  | { repo: false }
+  | {
+      repo: true;
+      /** The branch checked out in the folder itself, if any (detached otherwise). */
+      branch?: string;
+      /** The repo's other worktrees (the main one, if the folder is a linked one): their folder's name, where it opens (the folder's place inside it, if there) and its branch. */
+      worktrees: { name: string; path: string; branch?: string }[];
+    };
+
 /** A folder of a host, for the folder picker: where it is and the folders inside. */
 export interface DirListing {
   /** Absolute, or ~/… under the home folder. */
@@ -452,6 +463,14 @@ export type ActionOp =
   | { op: 'trelloExtension'; on: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
+  /** The git worktrees of an added folder's repo (or of `sub`, inside one): answers a WorktreeList. */
+  | { op: 'listWorktrees'; folder: string; sub?: string }
+  /**
+   * Opens one of those worktrees (its `path`, as listWorktrees gave it): a new window named
+   * after it, in it, running the host's command, in the folder's space (opened first if it
+   * is not) or, with `session`, in that space. Answers { session, window, pane }.
+   */
+  | { op: 'openWorktree'; folder: string; sub?: string; path: string; session?: string; skipPermissions?: boolean }
   | { op: 'renameSession'; session: string; name: string }
   | { op: 'killSession'; session: string }
   /**

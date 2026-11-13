@@ -1,13 +1,13 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { folderNameProblem, homePath } from '../../../shared/folders';
-import type { ActionOp, ExtLaunchResult, ProjectList } from '../../../shared/types';
+import type { ActionOp, ExtLaunchResult, ProjectList, WorktreeList } from '../../../shared/types';
 import { worktreeNameProblem } from '../../../shared/worktree';
 import { newSession, newWindow, openNewWindow, openSessionWhenReady, openWindowWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
-import { IconClose } from './icons';
+import { IconBranch, IconClose, IconWorktree } from './icons';
 import { hub } from '../ws';
 
 /** How far down (px), or how fast (px/ms), a sheet has to be dragged for it to close. */
@@ -376,8 +376,16 @@ interface FolderGroup {
   children: FolderItem[];
 }
 
-/** What «Nuevo espacio» shows: the folders, where a new one goes, or its name. */
-type ProjectStep = { kind: 'list' } | { kind: 'where' } | { kind: 'name'; parent: string } | { kind: 'worktree'; item: FolderItem };
+/** A folder's repo, with its worktrees. */
+type Repo = Extract<WorktreeList, { repo: true }>;
+
+/** What «Nuevo espacio» shows: the folders, where a new one goes, its name, or where claude starts in a repo. */
+type ProjectStep =
+  | { kind: 'list' }
+  | { kind: 'where' }
+  | { kind: 'name'; parent: string }
+  | { kind: 'repo'; item: FolderItem; repo: Repo }
+  | { kind: 'worktree'; item: FolderItem; repo: Repo };
 
 /**
  * "Nuevo espacio" on a host with folders, like the `c` shell function: pick a folder and
@@ -391,7 +399,6 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<ProjectStep>({ kind: 'list' });
-  const [inWorktree, setInWorktree] = useState(false);
   const load = () => hub.action<ProjectList>(d.host.id, { op: 'listProjects' }).then(setList, close);
   // No focus on the search: on a phone the keyboard would cover the list, which is what
   // you pick from most of the time.
@@ -434,12 +441,25 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
       setBusy(false); // the error is already a toast
     }
   };
-  const open = (i: FolderItem) =>
-    inWorktree
-      ? setStep({ kind: 'worktree', item: i })
-      : win
-        ? run({ op: 'newWindow', session: win.id, folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions })
-        : run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+  /** In the folder itself. */
+  const openHere = (i: FolderItem) =>
+    win
+      ? run({ op: 'newWindow', session: win.id, folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions })
+      : run({ op: 'openProject', folder: i.folder, sub: i.sub, skipPermissions: prefs.value.skipPermissions });
+  /** A repo asks first where claude starts: in it, in one of its worktrees or in a new one. */
+  const open = async (i: FolderItem) => {
+    setBusy(true);
+    let repo: WorktreeList;
+    try {
+      repo = await hub.action<WorktreeList>(d.host.id, { op: 'listWorktrees', folder: i.folder, sub: i.sub });
+    } catch {
+      setBusy(false); // the error is already a toast
+      return;
+    }
+    if (!repo.repo) return openHere(i);
+    setBusy(false);
+    setStep({ kind: 'repo', item: i, repo });
+  };
   /** A new folder with subfolders opens no space: back to the list, where it is a group now, empty. */
   const addGroup = async (parent: string, name: string) => {
     setBusy(true);
@@ -458,7 +478,44 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
   const make = (parent: string, name: string, subfolders: boolean) =>
     subfolders ? addGroup(parent, name) : run({ op: 'createFolder', parent, name, skipPermissions: prefs.value.skipPermissions, session: win?.id });
   const back = () => setStep({ kind: 'list' });
-  if (step.kind === 'worktree') return <WorktreeStep d={d} item={step.item} close={close} back={back} />;
+  const openWorktree = async (i: FolderItem, path: string) => {
+    setBusy(true);
+    try {
+      const res = await hub.action<{ session: string; window: string }>(d.host.id, {
+        op: 'openWorktree',
+        folder: i.folder,
+        sub: i.sub,
+        path,
+        session: win?.id,
+        skipPermissions: prefs.value.skipPermissions,
+      });
+      close();
+      openWindowWhenReady(d.host.id, res.session, res.window);
+    } catch {
+      setBusy(false); // the error is already a toast
+    }
+  };
+  if (step.kind === 'repo') {
+    const { item, repo } = step;
+    return (
+      <RepoStep
+        d={d}
+        item={item}
+        repo={repo}
+        home={list?.home ?? ''}
+        busy={busy}
+        close={close}
+        back={back}
+        here={() => void openHere(item)}
+        worktree={(path) => void openWorktree(item, path)}
+        fresh={() => setStep({ kind: 'worktree', item, repo })}
+      />
+    );
+  }
+  if (step.kind === 'worktree') {
+    const { item, repo } = step;
+    return <WorktreeStep d={d} item={item} close={close} back={() => setStep({ kind: 'repo', item, repo })} />;
+  }
   if (step.kind === 'where') return <NewFolderWhere d={d} value={q} busy={busy} close={close} back={back} create={make} />;
   if (step.kind === 'name') {
     const parent = step.parent;
@@ -514,8 +571,7 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
         <li>
           <button
             class="menu-item"
-            disabled={busy || inWorktree}
-            title={inWorktree ? 'Una carpeta temporal no es un repo de git: no admite worktrees' : undefined}
+            disabled={busy}
             onClick={() => void run({ op: 'tempSpace', session: win?.id, skipPermissions: prefs.value.skipPermissions })}
           >
             <span class="menu-icon">⌛</span>
@@ -560,10 +616,6 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
       </ul>
       <div class="sheet-actions">
         <SkipPermissions />
-        <label class="kb-check" title="Claude arranca en un git worktree nuevo (claude --worktree), en una ventana con su nombre">
-          <input type="checkbox" checked={inWorktree} onChange={(e) => setInWorktree(e.currentTarget.checked)} />
-          En un worktree nuevo
-        </label>
         <button
           class="btn"
           title="Añadir o quitar carpetas de esta máquina"
@@ -590,7 +642,55 @@ function ProjectDialog({ d, close }: { d: Extract<Dialog, { kind: 'project' }>; 
 }
 
 /**
- * «Nuevo espacio» with «En un worktree nuevo»: the worktree's name and, if wanted, a prompt.
+ * A folder that is a git repo, picked in «Nuevo espacio» or «Nueva ventana»: claude starts
+ * in the folder, in one of the repo's worktrees (in its folder, in a window named after it)
+ * or in a new one.
+ */
+function RepoStep(props: {
+  d: Extract<Dialog, { kind: 'project' }>;
+  item: FolderItem;
+  repo: Repo;
+  home: string;
+  busy: boolean;
+  close: () => void;
+  back: () => void;
+  here: () => void;
+  worktree: (path: string) => void;
+  fresh: () => void;
+}) {
+  const { d, item, repo, busy } = props;
+  const row = (key: string, icon: ComponentChildren, name: string, hint: string, onClick: () => void) => (
+    <li key={key}>
+      <button class="menu-item" disabled={busy} onClick={onClick}>
+        <span class="menu-icon">{icon}</span>
+        <span class="project-text">
+          <span class="project-name">{name}</span>
+          <span class="project-hint">{hint}</span>
+        </span>
+      </button>
+    </li>
+  );
+  return (
+    <Sheet title="¿Dónde arranca Claude?" subtitle={`${item.name}${d.session ? ` · en ${d.session.name}` : ''} · ${d.host.name}`} onClose={props.close}>
+      <ul class="menu project-list">
+        {row('\there', <IconBranch />, 'Sin worktree', `En la carpeta del proyecto${repo.branch ? ` · ${repo.branch}` : ''}`, props.here)}
+        {repo.worktrees.map((w) =>
+          row(w.path, <IconWorktree />, w.name, `${w.branch ?? 'HEAD separado'} · ${homePath(w.path, props.home)}`, () => props.worktree(w.path)),
+        )}
+        {row('\tnew', '＋', 'Nuevo worktree…', 'Con una rama nueva (claude --worktree)', props.fresh)}
+      </ul>
+      <div class="sheet-actions">
+        <SkipPermissions />
+        <button class="btn" disabled={busy} onClick={props.back}>
+          Atrás
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * «Nuevo worktree» of a repo picked in «Nuevo espacio»: the worktree's name and, if wanted, a prompt.
  * Claude starts there with `--worktree`, in a new window named after it, in the folder's
  * space (opened first if it is not), or, from «Nueva ventana», in that space.
  */

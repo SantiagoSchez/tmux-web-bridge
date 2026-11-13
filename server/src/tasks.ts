@@ -6,7 +6,7 @@ import type { HostMonitor } from './host.js';
 
 // Tasks: a new window running claude with a prompt, in an open space or in the space of
 // an added folder, optionally in a new git worktree. Launched from the Trello extension,
-// the panel's Trello drawer, «Nuevo espacio» with a worktree, and the automations.
+// the panel's Trello drawer, «Nuevo worktree» of «Nuevo espacio», and the automations.
 
 const MAX_PROMPT = 10_000;
 const MAX_WINDOW_NAME = 30;

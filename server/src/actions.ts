@@ -1,5 +1,5 @@
 import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, MAX_FOLDERS, sameFolder } from '../../shared/folders.js';
-import type { ActionOp, DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
+import type { ActionOp, DirListing, ProjectList, SavedFolder, WorktreeList } from '../../shared/types.js';
 import { TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { setTrelloExtension, updateKit } from './kit.js';
@@ -178,6 +178,8 @@ export async function openSpace(
   machine: MachineFolders,
   action: { folder: string; sub?: string; create?: boolean },
   windowName?: string,
+  /** Where a new space starts, if not in the folder (a worktree of it). */
+  cwd?: string,
 ): Promise<OpenedSpace> {
   const f = pickFolder(host, machine, action);
   const space = sessionName(f.name);
@@ -189,7 +191,7 @@ export async function openSpace(
   }
 
   const abs = await folderOnHost(host, f, action.create === true);
-  const args = ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', abs];
+  const args = ['new-session', '-d', '-E', '-P', '-F', '#{session_id} #{pane_id}', '-s', space, '-c', (cwd ?? abs).replace(/#/g, '##')];
   if (windowName) args.push('-n', windowName.replace(/#/g, '##'));
   const [session, pane] = (await host.exec.run(args)).trim().split(' ');
   if (windowName) await host.exec.run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
@@ -213,6 +215,76 @@ export async function folderWindow(
   const [window, pane] = (await host.exec.run(args)).trim().split(' ');
   if (windowName) await host.exec.run(['set-option', '-w', '-t', window, '@name_pinned', '1']);
   return { window, pane };
+}
+
+/**
+ * What `git worktree list --porcelain` printed, after the folder's own top and its place
+ * in it (show-prefix): the other worktrees, but bare ones and those whose folder is gone.
+ */
+export function parseWorktrees(out: string): WorktreeList {
+  if (!out.startsWith('T\t')) return { repo: false };
+  const [head, ...blocks] = out.split(/\n(?=worktree )/);
+  const lines = head.split('\n');
+  const top = lines[0].slice(2);
+  const prefix = (lines.find((l) => l.startsWith('P\t')) ?? 'P\t').slice(2).replace(/\/+$/, '');
+  const inside = new Set(lines.filter((l) => l.startsWith('I\t')).map((l) => l.slice(2)));
+  const list: WorktreeList = { repo: true, worktrees: [] };
+  for (const block of blocks) {
+    const fields = new Map(block.split('\n').filter(Boolean).map((l) => [l.split(' ', 1)[0], l.slice(l.indexOf(' ') + 1)] as const));
+    const path = fields.get('worktree');
+    if (!path || fields.has('bare') || fields.has('prunable')) continue;
+    const branch = fields.get('branch')?.replace(/^refs\/heads\//, '');
+    if (path === top) {
+      list.branch = branch;
+      continue;
+    }
+    const at = prefix && inside.has(path) ? `${path}/${prefix}` : path;
+    list.worktrees.push({ name: path.split('/').pop() || path, path: at, branch });
+  }
+  return list;
+}
+
+/** The git worktrees of an added folder's repo, for «Nuevo espacio» (see WorktreeList). */
+async function listWorktrees(host: HostMonitor, machine: MachineFolders, action: { folder: string; sub?: string }): Promise<WorktreeList> {
+  const f = pickFolder(host, machine, action);
+  // I: the worktrees that have the folder's place inside them too (a subfolder of the repo).
+  const out = await host.exec.shell(
+    `cd ${hostPath(f.dir)} 2>/dev/null || exit 0; top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; ` +
+      `prefix=$(git rev-parse --show-prefix); printf 'T\t%s\nP\t%s\n' "$top" "$prefix"; ` +
+      `git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r w; do [ -n "$prefix" ] && [ -d "$w/$prefix" ] && printf 'I\t%s\n' "$w"; done; ` +
+      `git worktree list --porcelain`,
+  );
+  return parseWorktrees(out);
+}
+
+/**
+ * Opens a worktree of a folder's repo (one listWorktrees gives, nothing else) running the
+ * host's command: a new window named after it, in the folder's space or in `session`'s.
+ */
+async function openWorktree(
+  host: HostMonitor,
+  machine: MachineFolders,
+  action: Extract<ActionOp, { op: 'openWorktree' }>,
+): Promise<{ session: string; window: string; pane: string }> {
+  const list = await listWorktrees(host, machine, action);
+  const wt = list.repo ? list.worktrees.find((w) => w.path === action.path) : undefined;
+  if (!wt) throw new Error(`Ese worktree ya no está en ${host.name}`);
+  const name = wt.name.replace(/#/g, '##');
+  let session: string;
+  let pane: string | undefined;
+  if (action.session !== undefined) session = check(String(action.session), SESSION_ID, 'Espacio');
+  else {
+    const space = await openSpace(host, machine, action, wt.name, wt.path);
+    session = space.session;
+    pane = space.pane;
+  }
+  if (!pane) {
+    pane = (await host.exec.run(['new-window', '-P', '-F', '#{pane_id}', '-t', `${session}:`, '-c', wt.path.replace(/#/g, '##'), '-n', name])).trim();
+    await host.exec.run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
+  }
+  if (machine.command) await host.exec.run(['send-keys', '-t', pane, projectCommand(machine.command, action.skipPermissions === true), 'Enter']);
+  const window = (await host.exec.runFormat(['display-message', '-p', '-t', pane, '#{window_id}'])).trim();
+  return { session, window, pane };
 }
 
 /** «Nueva ventana» in a folder: like openProject, in a new window of an open space. */
@@ -301,7 +373,7 @@ async function reboot(host: HostMonitor): Promise<void> {
 }
 
 /** Actions that only read: the tree needs no refresh after them. */
-export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'trelloExtension']);
+export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'listWorktrees', 'trelloExtension']);
 
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
@@ -328,6 +400,11 @@ export async function runAction(
       return openProject(host, machine, action);
     case 'createFolder':
       return createFolder(host, machine, action);
+    case 'listWorktrees':
+      return listWorktrees(host, machine, action);
+    case 'openWorktree':
+      if (typeof action.path !== 'string') throw new Error('Falta el worktree');
+      return openWorktree(host, machine, action);
     case 'listDirs':
       if (typeof action.path !== 'string') throw new Error('Falta la ruta');
       return listDirs(host, action.path);
