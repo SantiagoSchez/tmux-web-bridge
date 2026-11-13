@@ -11,6 +11,13 @@ The steps are numbered in the order they sit in a `tasks.md`: step 1 is the firs
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/koalarnes:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
 
+**Never write a bare `#<number>` to the user.** Every number you mention in chat, summaries, status updates and questions says what it refers to:
+
+- Pull requests: `PR #<number>`.
+- GitHub issues: `Issue #<number>`. Issues and pull requests share one numbering, so `#42` alone is ambiguous.
+
+Branch names, commit messages and the text written into the tracker keep their own conventions.
+
 ## Step 1 — Create the branch (always first)
 
 Branch from `master`. Prefixes: `feature/` (features), `bugfix/` (bug fixes), `hotfix/` (production hot-fixes), `chore/` (internal chores with no work item).
