@@ -1,11 +1,9 @@
 import type { PaneGit, SessionInfo } from '../../shared/types.js';
-import type { TmuxExec } from './exec.js';
+import { shQuote as quote, type TmuxExec } from './exec.js';
 
 /** How often the folders already known are read again (a branch changed, a repo made). */
 const RESCAN_MS = 15_000;
 const MAX_PATHS = 100;
-
-const quote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
 /** One shell script for every folder: $HOME, then each one's top folder, git dir and branch (or N: not in a repo). */
 export function gitScript(paths: string[]): string {

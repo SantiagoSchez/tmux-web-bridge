@@ -4,18 +4,12 @@ import type { HubAddresses, KitReport, MachineCheck, MachineVia, SavedHost } fro
 import { slugify } from '../../../shared/worktree';
 import { dialog, hosts, hubSettings, machinesInfo, toast } from '../state';
 import { hub } from '../ws';
+import { api } from '../api';
 
 // Ajustes › Máquinas: the machines of the hub (dataDir/hosts.json), added, edited and removed
 // here. Adding one: the hub's key goes into its authorized_keys (by hand: a line to paste),
 // «Probar» checks the hub gets in, and the hub installs the kit there over SSH. Removing one
 // takes the kit and the key off it first.
-
-async function api<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, body === undefined ? undefined : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error ?? `Error ${res.status}`), { data });
-  return data as T;
-}
 
 const copy = (text: string, what: string) =>
   navigator.clipboard.writeText(text).then(

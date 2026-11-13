@@ -1,5 +1,5 @@
 import type { KitReport, MachineCheck } from '../../shared/types.js';
-import { EXTRA_PATH, shq, TmuxError } from './exec.js';
+import { EXTRA_PATH, shq, shQuote, TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { REPO } from './updates.js';
 
@@ -19,16 +19,9 @@ export function kitTag(version: string | null | undefined): string {
 export function kitDir(published: string | null | undefined): string {
   const dir = published?.trim();
   if (!dir || !dir.startsWith('/')) return '"$HOME"/tmux-web-bridge';
-  return `'${dir.replace(/'/g, `'\\''`)}'`;
+  return shQuote(dir);
 }
 
-/**
- * Script that moves the clone to a release tag and applies the kit, stopping at the
- * first problem. Never forces anything: local changes leave the clone alone, and a
- * clone of anything but twb is not touched. Every error names the clone. The checkout
- * runs without hooks because install.sh is run right after it anyway, without its own
- * tmux reload: it would reach the default tmux socket, not necessarily the host's.
- */
 /** The first lines of the scripts run in a kit's clone: into it, or a clear error. */
 function inClone(dir: string): string[] {
   return [
@@ -41,6 +34,13 @@ function inClone(dir: string): string[] {
 /** Kits from before --trello-extension refuse unknown options: it is passed only to those that know it. */
 const TRELLO_FLAG = `trello=; grep -q -- '--trello-extension)' host-kit/install.sh && trello=--trello-extension`;
 
+/**
+ * Script that moves the clone to a release tag and applies the kit, stopping at the
+ * first problem. Never forces anything: local changes leave the clone alone, and a
+ * clone of anything but twb is not touched. Every error names the clone. The checkout
+ * runs without hooks because install.sh is run right after it anyway, without its own
+ * tmux reload: it would reach the default tmux socket, not necessarily the host's.
+ */
 export function kitScript(dir: string, tag: string, trelloExtension = false, installArgs = ''): string {
   const repo = REPO.toLowerCase();
   return [
