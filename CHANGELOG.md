@@ -4,6 +4,17 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.22.1 - 2026-11-13
+
+### Cambiado
+
+- **Config antigua en Docker**: si el servidor central se despliega con `deploy/docker/deploy.sh`, el despliegue quita de `config.yaml` el bloque `hosts` antiguo en cuanto todas sus máquinas están en el panel, con una copia del fichero. Desaparece así el aviso de Ajustes › Máquinas.
+
+### Corregido
+
+- **Máquinas sin tmux abierto**: ya no salen «sin kit» en Ajustes › Máquinas, porque el panel lee la versión de su kit. Al reinstalar el kit en una, avisa de que se cargará al abrir tmux.
+- **Bloque del kit en `~/.tmux.conf`**: el kit lo deja donde esté al actualizarse; si lo pones antes de la línea de tpm, ahí se queda. Al migrar desde un kit anterior, sustituye a la línea vieja en su sitio.
+
 ## 1.22.0 - 2026-11-13
 
 ### Añadido

@@ -1,7 +1,0 @@
-{
-  "type": "fixed",
-  "scope": "host-kit",
-  "description": "El kit deja su bloque de ~/.tmux.conf donde esté al actualizarse: si lo pones antes de la línea de tpm, ahí se queda. Al migrar desde un kit anterior, el bloque sustituye a la línea vieja en su sitio",
-  "pr": "5",
-  "breaking": false
-}
