@@ -177,24 +177,28 @@ chmod 600 "$ENV_FILE"
 if [ "$SKIP_TMUX" = 0 ]; then
     TMUX_CONF="$HOME/.tmux.conf"
     [ -f "$TMUX_CONF" ] || [ ! -f "$HOME/.config/tmux/tmux.conf" ] || TMUX_CONF="$HOME/.config/tmux/tmux.conf"
-    # Un bloque marcado, para que el panel lo encuentre y lo quite al desinstalar. Lo de
-    # instalaciones anteriores (la línea suelta, con su comentario, u otra ruta del kit) se cambia por él.
+    # Un bloque marcado, para que el panel lo encuentre y lo quite al desinstalar. Va donde ya
+    # estuviera (el bloque, o la línea suelta de instalaciones anteriores, que se cambia por él):
+    # si lo has movido (antes de tpm, por ejemplo), ahí se queda. Si no hay ninguno, al final.
     BEGIN_MARK="# >>> tmux-web-bridge: lo pone y lo quita el kit (host-kit/install.sh)"
     END_MARK="# <<< tmux-web-bridge"
     LINE="source-file -q $(tilde "$KIT")/tmux.conf"
     tmp="$(mktemp)"
     if [ -f "$TMUX_CONF" ]; then
-        awk -v b="$BEGIN_MARK" -v e="$END_MARK" '
-            $0 == b { skip = 1; next }
+        awk -v b="$BEGIN_MARK" -v e="$END_MARK" -v l="$LINE" '
+            function put() { if (!done) { print b; print l; print e; done = 1 } }
+            $0 == b { put(); skip = 1; next }
             skip { if ($0 == e) skip = 0; next }
             /^# tmux-web-bridge: estados de Claude/ { next }
-            /^source-file (-q )?.*tmux-web-bridge.*tmux\.conf$/ { next }
+            /^source-file (-q )?.*tmux-web-bridge.*tmux\.conf$/ { put(); next }
             { print }
         ' "$TMUX_CONF" > "$tmp"
     fi
-    # Sin líneas vacías al final, y el bloque después de una.
-    while [ -s "$tmp" ] && [ -z "$(tail -n 1 "$tmp")" ]; do sed -i.x '$d' "$tmp" && rm -f "$tmp.x"; done
-    { [ -s "$tmp" ] && echo; printf '%s\n%s\n%s\n' "$BEGIN_MARK" "$LINE" "$END_MARK"; } >> "$tmp"
+    if ! grep -qxF "$BEGIN_MARK" "$tmp"; then
+        # Sin líneas vacías al final, y el bloque después de una.
+        while [ -s "$tmp" ] && [ -z "$(tail -n 1 "$tmp")" ]; do sed -i.x '$d' "$tmp" && rm -f "$tmp.x"; done
+        { [ -s "$tmp" ] && echo; printf '%s\n%s\n%s\n' "$BEGIN_MARK" "$LINE" "$END_MARK"; } >> "$tmp"
+    fi
     if [ -f "$TMUX_CONF" ] && cmp -s "$tmp" "$TMUX_CONF"; then
         same "$TMUX_CONF ya carga el kit"
     else
