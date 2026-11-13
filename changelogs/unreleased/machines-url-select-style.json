@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "En Ajustes › Máquinas, el desplegable de la dirección del servidor central para los avisos del kit tiene el mismo estilo que el resto de campos",
+  "pr": "6",
+  "breaking": false
+}
