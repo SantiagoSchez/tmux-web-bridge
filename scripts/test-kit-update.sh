@@ -59,6 +59,8 @@ KIT="$HOME/tmux-web-bridge"
 git clone -q "$ORIGIN" "$KIT"
 git -C "$KIT" checkout -q "$OLD"
 "$KIT/host-kit/install.sh" > "$T/install-inicial.log" 2>&1
+# Una línea tuya detrás del bloque del kit (como la de tpm, que pide ser la última).
+printf '\n# Keep this line at the end of the config\nset -g @twb_test_last 1\n' >> "$HOME/.tmux.conf"
 tmux -L twbkit -f "$KIT/host-kit/tmux.conf" new-session -d -s demo -c "$HOME"
 # Un tmux en el socket por defecto: la actualización no debe recargar el kit en él.
 tmux -f /dev/null new-session -d -s centinela
@@ -151,6 +153,7 @@ expect "Hooks de Claude en el settings.json del HOME falso" "$(grep -c tmux-wind
 expect "Ya no hay enlaces del kit en ~/.scripts" "[$(find "$HOME/.scripts" -type l 2>/dev/null)]" '^\[\]$'
 expect "…ni el de la status line en ~/.claude/scripts" "[$(find "$HOME/.claude/scripts" -type l 2>/dev/null)]" '^\[\]$'
 expect "~/.tmux.conf carga el kit en un bloque marcado, con -q" "$(grep -A1 '^# >>> tmux-web-bridge' "$HOME/.tmux.conf")" "source-file -q ~/tmux-web-bridge/host-kit/tmux.conf"
+expect "El bloque se queda donde estaba, antes de tus líneas" "$(tail -n 1 "$HOME/.tmux.conf")" "^set -g @twb_test_last 1\$"
 expect "…y sin la línea suelta de antes" "$(grep -c '^source-file' "$HOME/.tmux.conf")" "^1\$"
 expect "Los hooks de Claude llaman al script del clon" "$(jq -r '.hooks.Stop[0].hooks[0].command' "$HOME/.claude/settings.json")" '^"\$HOME/tmux-web-bridge/host-kit/tmux-window-title\.sh" state done'
 expect "…sin duplicarse" "$(jq '[.hooks.Stop[].hooks[].command | select(test("tmux-window-title"))] | length' "$HOME/.claude/settings.json")" "^1\$"
@@ -194,9 +197,11 @@ expect "El tmux en marcha deja el kit: prefix x vuelve a ser el de tmux" "$(tmux
 expect "…y sus hooks y opciones" "[$(tmux -L twbkit show-hooks -g pane-focus-in 2>/dev/null)$(tmux -L twbkit show -gqv @twb_kit_dir)]" '^\[(pane-focus-in)?\]$'
 
 # ------------------------------------------------------------ añadir la máquina desde el panel
+printf 'set -g mouse on\nsource-file ~/tmux-web-bridge/host-kit/tmux.conf\nset -g @twb_test_last 1\n' > "$HOME/.tmux.conf"
 expect "Instalar el kit desde cero (clon nuevo)" "$(run install "$NEW")" "^OK\$"
 expect "…en la release" "$(git -C "$KIT" describe --tags)" "^v$NEW\$"
 expect "…con la URL, el id y el token" "$(grep -E '^(HUB_URL|HOST_ID|NOTIFY_TOKEN)=' "$HOME/.config/tmux-web-bridge/notify.env" | tr '\n' ' ')" "^HUB_URL=https://twb.example.invalid HOST_ID=maquina NOTIFY_TOKEN=TOKEN-PRUEBA \$"
+expect "La línea suelta de un kit anterior se cambia por el bloque en su sitio" "$(sed -n 2p "$HOME/.tmux.conf")|$(tail -n 1 "$HOME/.tmux.conf")|$(grep -c '^source-file' "$HOME/.tmux.conf")" "^# >>> tmux-web-bridge.*[|]set -g @twb_test_last 1[|]1\$"
 expect "…y cargado en su tmux" "$(tmux -L twbkit show -gqv @twb_kit_version)" "^$NEW\$"
 
 echo
