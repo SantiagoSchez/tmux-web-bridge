@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { findPaths, findPathsInRows } from '../../shared/paths.js';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findInReposScript, resolvePath, statHostFile } from './files.js';
+import { findInReposScript, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import type { HostMonitor } from './host.js';
 
 const paths = (line: string) => findPaths(line).map((h) => (h.line ? `${h.path}:${h.line}` : h.path));
@@ -17,6 +17,7 @@ test('paths Claude Code prints become links, with their line', () => {
   assert.deepEqual(paths('Guardé /tmp/captura.png y ~/notas/plan.md'), ['/tmp/captura.png', '~/notas/plan.md']);
   assert.deepEqual(paths('en ./scripts/test-kit-update.sh:10:3'), ['./scripts/test-kit-update.sh:10']);
   assert.deepEqual(paths('el binario /usr/local/bin/claude'), ['/usr/local/bin/claude']);
+  assert.deepEqual(paths('Grabado en docs/videos/demo.mp4 y voz.m4a'), ['docs/videos/demo.mp4', 'voz.m4a']);
 });
 
 test('URLs, versions, numbers and loose words are not paths', () => {
@@ -71,6 +72,43 @@ test('a name the pane folders lack is found in their repo: the one changed last'
     await assert.rejects(stat('nada.md'), /No existe/);
     assert.equal(findInReposScript('../plan.md', [dir]), null);
     assert.equal(findInReposScript('/etc/hosts', [dir]), null);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a Range header asks for a piece of a file: from a byte, between two, or its last ones', () => {
+  assert.deepEqual(parseRange('bytes=0-', 1000), { start: 0, length: 1000 });
+  assert.deepEqual(parseRange('bytes=100-199', 1000), { start: 100, length: 100 });
+  assert.deepEqual(parseRange('bytes=900-5000', 1000), { start: 900, length: 100 });
+  assert.deepEqual(parseRange('bytes=-300', 1000), { start: 700, length: 300 });
+  assert.deepEqual(parseRange('bytes=-5000', 1000), { start: 0, length: 1000 });
+  // Past the end (or backwards): nothing to send.
+  assert.equal(parseRange('bytes=1000-', 1000), 'unsatisfiable');
+  assert.equal(parseRange('bytes=5-2', 1000), 'unsatisfiable');
+  assert.equal(parseRange('bytes=-0', 1000), 'unsatisfiable');
+  // None, several pieces or another unit: the whole file.
+  assert.equal(parseRange(undefined, 1000), null);
+  assert.equal(parseRange('bytes=0-1,5-9', 1000), null);
+  assert.equal(parseRange('lines=0-1', 1000), null);
+  assert.equal(parseRange('bytes=a-b', 1000), null);
+});
+
+test('a file is read whole, only its beginning, or only a piece of it', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'twb-files-'));
+  try {
+    const path = join(dir, "it's a clip.mp4");
+    writeFileSync(path, '0123456789');
+    const host = { exec: { spawnShell: (script: string) => spawn('/bin/sh', ['-c', script]) } } as unknown as HostMonitor;
+    const read = async (piece?: Parameters<typeof streamHostFile>[2]) => {
+      const chunks: Buffer[] = [];
+      for await (const c of streamHostFile(host, path, piece).stdout!) chunks.push(c as Buffer);
+      return Buffer.concat(chunks).toString();
+    };
+    assert.equal(await read(), '0123456789');
+    assert.equal(await read({ start: 0, length: 4 }), '0123');
+    assert.equal(await read({ start: 3, length: 4 }), '3456');
+    assert.equal(await read({ start: 7, length: 3 }), '789');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

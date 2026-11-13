@@ -109,10 +109,38 @@ export async function statHostFile(host: HostMonitor, paths: string[], orElse?: 
 
 /**
  * The bytes of a file of the host (an absolute path, as statHostFile gives it), as they
- * come: any size, never whole in memory. `max`: only its first bytes.
+ * come: any size, never whole in memory. `piece`: only those bytes of it.
  */
-export function streamHostFile(host: HostMonitor, path: string, max?: number): ChildProcess {
-  return host.exec.spawnShell(max ? `exec head -c ${Math.floor(max)} -- ${quote(path)}` : `exec cat -- ${quote(path)}`);
+export function streamHostFile(host: HostMonitor, path: string, piece?: FilePiece): ChildProcess {
+  if (!piece) return host.exec.spawnShell(`exec cat -- ${quote(path)}`);
+  const head = `head -c ${Math.floor(piece.length)}`;
+  if (piece.start <= 0) return host.exec.spawnShell(`exec ${head} -- ${quote(path)}`);
+  return host.exec.spawnShell(`tail -c +${Math.floor(piece.start) + 1} -- ${quote(path)} | ${head}`);
+}
+
+/** A piece of a file: `length` bytes from the byte `start`. */
+export interface FilePiece {
+  start: number;
+  length: number;
+}
+
+/**
+ * The piece of a file of `size` bytes an HTTP Range header asks for (players ask for
+ * a video in pieces, and to seek in it). Null with no header or one this does not
+ * serve (several pieces, another unit): the whole file then.
+ */
+export function parseRange(header: string | undefined, size: number): FilePiece | 'unsatisfiable' | null {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? '');
+  if (!m || (!m[1] && !m[2])) return null;
+  // «-N»: its last N bytes.
+  if (!m[1]) {
+    const n = Math.min(Number(m[2]), size);
+    return n > 0 ? { start: size - n, length: n } : 'unsatisfiable';
+  }
+  const start = Number(m[1]);
+  const end = m[2] ? Math.min(Number(m[2]), size - 1) : size - 1;
+  if (start >= size || end < start) return 'unsatisfiable';
+  return { start, length: end - start + 1 };
 }
 
 // ---------------------------------------------------------------- git
