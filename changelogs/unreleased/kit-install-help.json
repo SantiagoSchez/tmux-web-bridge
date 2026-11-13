@@ -1,0 +1,6 @@
+{
+  "type": "fixed",
+  "scope": "host-kit",
+  "description": "La ayuda de host-kit/install.sh (-h) muestra ya todas sus opciones, también --check, --quiet y --no-trello-extension",
+  "breaking": false
+}
