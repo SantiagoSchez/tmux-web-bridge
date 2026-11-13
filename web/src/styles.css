@@ -3019,6 +3019,28 @@ textarea.text-input {
     padding: 0 8px;
   }
 }
+/* Narrower still (the desktop sidebar, 340px, with the button that folds it and Trello's): tighter
+   buttons, so the pending count beside «twb» fits instead of sliding under the grid button. */
+@container (max-width: 380px) {
+  .topbar .brand {
+    gap: 7px;
+  }
+  .topbar .topbar-actions {
+    gap: 0;
+  }
+  .topbar .icon-btn {
+    width: 34px;
+  }
+  .topbar .conn-btn {
+    gap: 4px;
+    min-width: 34px;
+    padding: 0 6px;
+  }
+}
+/* What does not fit is cut from the name, never the count. */
+.brand .pill {
+  flex-shrink: 0;
+}
 
 /* ------------------------------------------------------------ file viewer and diffs */
 
