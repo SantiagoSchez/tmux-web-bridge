@@ -161,7 +161,7 @@ Abre el panel y ve a ⚙️ **Ajustes › Máquinas › Añadir máquina**. Por 
 2. **La clave del servidor central**: copia el comando que da el panel y pégalo en una terminal de la máquina. Añade a su `~/.ssh/authorized_keys` la clave del servidor, aceptada solo desde las direcciones que pongas en **Conexión con las máquinas**, en esa misma pantalla.
 3. **«Probar» y «Añadir»**: el panel comprueba que entra y que tiene tmux 3.2+, y le instala el kit (paso 3).
 
-Las máquinas se guardan en el servidor central (`data/hosts.json`) y desde ahí se editan o se quitan. Al quitar una, el servidor le desinstala antes el kit y su propia clave. Si una config antigua tiene un bloque `hosts`, el servidor central lo pasa al panel la primera vez que arranca y lo quita de la config; si no puede escribirla (en Docker se monta de solo lectura), la ignora y avisa en Ajustes para que lo quites tú.
+Las máquinas se guardan en el servidor central (`data/hosts.json`) y desde ahí se editan o se quitan. Al quitar una, el servidor le desinstala antes el kit y su propia clave. Si una config antigua tiene un bloque `hosts`, el servidor central lo pasa al panel la primera vez que arranca y lo quita de la config; si no puede escribirla (en Docker se monta de solo lectura), la ignora y avisa en Ajustes para que lo quites tú. Con `deploy/docker/deploy.sh` no hace falta: en el siguiente despliegue lo quita él (con una copia, `config.yaml.bak-pre-maquinas-panel`) en cuanto todas sus máquinas están en el panel.
 
 <details>
 <summary>Linux, WSL, tmux en otra ruta y el propio servidor como máquina</summary>

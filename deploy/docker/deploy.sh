@@ -55,6 +55,19 @@ if ! docker compose build -q twb; then
   exit 1
 fi
 
+# Las máquinas pasaron al panel (1.22.0), pero el config está montado de solo lectura y el panel
+# no puede quitar su bloque `hosts`: se quita aquí, con copia la primera vez, solo cuando todas
+# sus máquinas están ya en data/hosts.json. Si algo falla, se deja y el despliegue sigue.
+if grep -q '^hosts:' config.yaml; then
+  [ -e config.yaml.bak-pre-maquinas-panel ] || cp -p config.yaml config.yaml.bak-pre-maquinas-panel
+  # Dentro de la imagen, junto a server/node_modules (de ahí sale `yaml`).
+  docker run --rm --user "$(id -u):$(id -g)" --entrypoint node -w /app/server \
+    -v "$PWD/config.yaml:/work/config.yaml" -v "$PWD/data:/work/data:ro" \
+    -v "$SRC/deploy/docker/strip-config-hosts.mjs:/app/server/strip-config-hosts.mjs:ro" \
+    twb:local strip-config-hosts.mjs /work/config.yaml /work/data/hosts.json \
+    || echo "No se pudo quitar «hosts» de config.yaml: se deja" >&2
+fi
+
 docker compose up -d twb
 if health; then
   docker image prune -f >/dev/null
