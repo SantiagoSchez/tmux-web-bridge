@@ -1,22 +1,20 @@
 # web standards
 
-The conventions of the `web` layer (web/**). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check.
+The conventions of the `web` layer (web/**). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check, and something the code does not already show. What the manifests, the directory tree or the linter say is left out, where it cannot go stale.
 
 ## Stack
 
-- TypeScript (`typescript ^7.0.2`), strict, ESM, `moduleResolution: Bundler`, `jsx: react-jsx` with `jsxImportSource: preact`, `verbatimModuleSyntax`. `web/tsconfig.json` also typechecks `../shared` and `vite.config.ts`.
-- UI: `preact ^11.0.1` with `@preact/signals ^2.11.3` for shared state and `preact/hooks` for local state. No router, store or component library.
-- Terminal: `@xterm/xterm ^6.0.0` with `@xterm/addon-fit ^0.11.0`, `@xterm/addon-unicode11 ^0.9.0`, `@xterm/addon-web-links ^0.12.0`, `@xterm/addon-clipboard ^0.2.0`.
-- Markdown in the file viewer: `marked ^16.4.2` + `dompurify ^3.4.17`, loaded with a dynamic `import()` the first time a Markdown file is shown.
-- Build: `vite ^8.3.4` with `@preact/preset-vite ^2.10.6`, target `es2022`, sourcemaps on. In dev, Vite proxies `/api` and `/ws` to `HUB_URL` (default `http://127.0.0.1:7681`). The hub serves the built `web/dist`.
+- UI: `preact` with `@preact/signals` for shared state and `preact/hooks` for local state. No router, store or component library.
+- Terminal: `@xterm/xterm` and its `@xterm/addon-*` packages.
+- Markdown in the file viewer: `marked` + `dompurify`, loaded with a dynamic `import()` the first time a Markdown file is shown.
+- Build: `vite` with `@preact/preset-vite`. In dev, Vite proxies `/api` and `/ws` to the hub at `HUB_URL`. The hub serves the built panel.
 - PWA: `web/public/manifest.webmanifest` and a hand-written service worker `web/public/sw.js` (plain JS, not bundled): Web Push, notification actions, no offline cache.
 - Styling: one hand-written stylesheet, `web/src/styles.css`, with Catppuccin Frappé (dark) and Latte (light) as CSS custom properties. No CSS framework, preprocessor or CSS-in-JS.
 
 ## Structure
 
-- `web/index.html` → `web/src/main.tsx` (boot: auth, shortcuts, presence, service worker, `render(<Root />)`).
 - `web/src/components/`: one PascalCase `.tsx` file per screen or feature (`Settings.tsx`, `Machines.tsx`, `TerminalView.tsx`, `Trello.tsx`…), which may hold several related components. `icons.tsx` holds the inline SVG icons; `Dialogs.tsx` holds `Sheet`, the dialog renderer and the toasts.
-- `web/src/*.ts`: camelCase modules with the non-visual logic and global signals: `state.ts` (hub state, dialogs, toasts, open sheet, settings tab), `ws.ts` (the app websocket, `hub`), `prefs.ts` (per-device preferences), `router.ts` (hash routes), `auth.ts`, `theme.ts`, `menus.ts` (tree menus and their actions), `dictation.ts`, `upload.ts`, `updates.ts`…
+- `web/src/*.ts`: camelCase modules with the non-visual logic and global signals (`state.ts`, `ws.ts`, `prefs.ts`…).
 - `web/public/`: files served as is (fonts with their licences, icons, manifest, `sw.js`).
 - Types and pure logic shared with the hub come from `shared/` (`../../shared/types`, `../../../shared/keybar`…), imported without a file extension.
 - Named exports only; no default exports.

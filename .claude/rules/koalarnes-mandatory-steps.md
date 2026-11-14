@@ -7,7 +7,7 @@ alwaysApply: true
 
 Every `tasks.md` under `openspec/changes/<change>/` MUST include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
-The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review`, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
+The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/koalarnes:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
 
@@ -17,6 +17,12 @@ The steps are numbered in the order they sit in a `tasks.md`: step 1 is the firs
 - GitHub issues: `Issue #<number>`. Issues and pull requests share one numbering, so `#42` alone is ambiguous.
 
 Branch names, commit messages and the text written into the tracker keep their own conventions.
+
+**The code says what exists.** When a document describes the code (a path, a command, a name, a structure) and the code says otherwise, follow the existing code and report the mismatch so the document gets fixed. A rule or a prohibition is different: code that breaks one is a finding to raise, not a precedent to copy.
+
+**The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. Open an archived `design.md` only to learn why a decision was made. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
+
+**Size is not a reason to hold back.** Do not turn down, shrink or postpone a change because it is large, and never estimate work in human time (days, weeks, months): with agents, writing and rewriting code is cheap. Weigh a change by what stays costly: the risk of breaking behaviour, the data to migrate, what cannot be undone, what has to be verified. When the right design replaces an existing flow, convention or internal interface, replace it in the same change and update everything that used it. Do not keep the old one alive beside the new one (a compatibility layer, an alias, a deprecated path, a flag) for backward compatibility. The exception is what others already depend on outside the repository: a public API or a payload they consume, stored data, a format in production. Breaking one of those is still an option, with its migration, and only after telling the user what breaks and getting their go-ahead. Nothing else needs permission on account of its size.
 
 ## Step 1 — Create the branch (always first)
 
@@ -57,7 +63,7 @@ Also run the project checks:
 
 - feature catalogue: `ka features-check` (must pass)
 
-When a type or lint error surfaces, fix the root cause; do not silence the rule. The plugin's hooks format and lint each edited file and typecheck when the agent stops, best effort; they do not replace this step.
+When a type or lint error surfaces, fix the root cause; do not silence the rule. Nothing else runs these commands for you.
 
 ## Step 5 — Update the documentation and the changelog (mandatory)
 
