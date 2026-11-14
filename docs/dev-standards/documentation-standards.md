@@ -42,7 +42,8 @@ Skip it where the name and the signature already say everything (private helpers
 | Changelog | `CHANGELOG.md`, compiled from `changelogs/unreleased/`; each release's section is also its GitHub release notes |
 | User guide (install, setup, what the kit touches), in Spanish | `README.md` |
 | README demo videos | `docs/videos/` |
-| Agent and deployment instructions | `CLAUDE.md` |
+| Instructions every agent has in view in every turn | `AGENTS.md` (`CLAUDE.md` only imports it) |
+| Deployment and releases | `docs/dev-standards/release-standards.md` |
 
 Add a row when the project grows a new kind of document (an API reference, a data model overview, deployment notes).
 

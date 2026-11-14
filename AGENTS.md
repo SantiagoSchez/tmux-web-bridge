@@ -15,6 +15,7 @@ Every technical standard, convention and workflow rule lives under [`docs/dev-st
 | [host-kit standards](./docs/dev-standards/host-kit-standards.md) | Before reading or changing the `host-kit` layer (`host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh`). |
 | [Testing standards](./docs/dev-standards/testing-standards.md) | Before writing or changing a test, or deciding which level one belongs at. |
 | [Documentation standards](./docs/dev-standards/documentation-standards.md) | Before writing a comment, a docstring, an ADR, a standards document, a changelog entry or the feature catalogue. |
+| [Release standards](./docs/dev-standards/release-standards.md) | Before cutting a release, and to know what a merge into `master` deploys. |
 | [The koalarnes harness](./docs/dev-standards/koalarnes.md) | To pick the skill, the agent or the MCP server for a task, or to see the OpenSpec pipeline. |
 
 A new standards document gets its row here, with the paths or the kind of task that call for it: a document the index does not announce is never opened.
@@ -26,3 +27,8 @@ The project works with the koalarnes plugin. [`.claude/rules/koalarnes-mandatory
 ## Always in view
 
 Beyond the index, this file takes only the instructions an agent would not go and look for when they apply: what to do at a moment no task announces, and the prohibitions any task can break at a high cost. Each takes one or two lines and links the standard that holds the detail.
+
+- Never merge a pull request without the owner's yes in the chat. See [the workflow](./docs/dev-standards/base-standards.md#workflow).
+- After merging into `master`, follow the `deploy` run with `gh run watch` and report how it went; say so when the merge deploys nothing. See [the release standards](./docs/dev-standards/release-standards.md).
+- When a feature is merged, deployed and checked, propose a release: the version (`ka changelog release --dry-run`) and what it would hold. Cut it only on the owner's yes.
+- Never run a bare `tmux`, or `host-kit/install.sh` by hand, in a test or a manual check: they reach the user's real tmux server. See [the host-kit standards](./docs/dev-standards/host-kit-standards.md#testing).
