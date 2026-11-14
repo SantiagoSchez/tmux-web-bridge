@@ -7,7 +7,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - UI: `preact` with `@preact/signals` for shared state and `preact/hooks` for local state. No router, store or component library.
 - Terminal: `@xterm/xterm` and its `@xterm/addon-*` packages.
 - Markdown in the file viewer: `marked` + `dompurify`, loaded with a dynamic `import()` the first time a Markdown file is shown.
-- Build: `vite` with `@preact/preset-vite`, target `es2022`, sourcemaps on. In dev, Vite proxies `/api` and `/ws` to `HUB_URL` (default `http://127.0.0.1:7681`). The hub serves the built panel.
+- Build: `vite` with `@preact/preset-vite`. In dev, Vite proxies `/api` and `/ws` to the hub at `HUB_URL`. The hub serves the built panel.
 - PWA: `web/public/manifest.webmanifest` and a hand-written service worker `web/public/sw.js` (plain JS, not bundled): Web Push, notification actions, no offline cache.
 - Styling: one hand-written stylesheet, `web/src/styles.css`, with Catppuccin Frappé (dark) and Latte (light) as CSS custom properties. No CSS framework, preprocessor or CSS-in-JS.
 

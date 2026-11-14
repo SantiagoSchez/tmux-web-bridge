@@ -7,7 +7,7 @@ The conventions of the `server` layer (server/**, shared/**). The principles in 
 - HTTP and WebSocket: `fastify`, `@fastify/websocket`, `@fastify/static` (serves the built panel).
 - Terminals: `node-pty` running a tmux client, locally or through `ssh` (OpenSSH with ControlMaster, no SSH library).
 - Others: `web-push` (Web Push), `yaml` (`config.yaml`), `qrcode` (2FA), `sherpa-onnx-node`, pinned to an exact version (dictation; its types live in `server/src/sherpa-onnx-node.d.ts`).
-- Dev and build: `tsx` (`tsx watch` in dev, `tsx --test` for tests), `esbuild` bundles `src/index.ts` to `dist/index.js` with `--packages=external`.
+- Dev and build: `tsx` runs the server in dev and the tests; `esbuild` bundles it for production.
 - No HTTP client library: outbound calls use the global `fetch`.
 
 ## Structure

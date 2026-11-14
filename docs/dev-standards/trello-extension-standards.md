@@ -11,7 +11,6 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 
 ## Structure
 
-- `src/styles.ts`: the CSS as strings (`PAGE_CSS` for the card button, `DIALOG_CSS` for the shadow root), built on Trello's `--ds-*` tokens with light-theme fallbacks.
 - The hub side lives in the server layer: the routes and their auth hook in `server/src/index.ts`, the token store in `server/src/ext.ts`, the launch in `server/src/tasks.ts`, Trello in `server/src/trello.ts`. The API is documented in the root `README.md` («API de la extensión de Trello») and the extension in `trello-extension/README.md`.
 
 ## Conventions
@@ -26,6 +25,7 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 - **DOM built with `el()`.** Elements are created with the `el()` helper in `content.ts` and filled with `textContent`; `innerHTML` is used only for the static `ICON` constant. The dialog's markup and CSS stay inside the shadow root; the page gets only the card button's CSS.
 - **Card scanning is idempotent.** A `MutationObserver` schedules `scan()` with a timer (not `requestAnimationFrame`, which stalls in background tabs), and `decorate()` skips cards that already have the button.
 - **Updates are announced, not applied.** When the kit has put a newer `manifest.json` on disk, the service worker shows a `↑` badge and the dialog and options point to `chrome://extensions`. The extension never reloads itself.
+- **CSS as strings on Trello's tokens.** The styles live in `src/styles.ts` as strings (`PAGE_CSS` for the card button, `DIALOG_CSS` for the shadow root), built on Trello's `--ds-*` tokens with light-theme fallbacks.
 - **Languages.** Code, identifiers and comments in English; UI strings, error messages and the extension's README in Spanish (Spain, «tú»).
 
 ## Forbidden patterns
