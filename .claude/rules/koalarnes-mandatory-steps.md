@@ -5,7 +5,7 @@ alwaysApply: true
 
 # OpenSpec — mandatory task steps
 
-Every `tasks.md` under `openspec/changes/<change>/` MUST include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
+Every `tasks.md` under `openspec/changes/<change>/` must include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
 The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
 
@@ -46,7 +46,7 @@ The change's own task groups, written by `/opsx:propose` (or the last `/opsx:con
 
 ## Step 4 — Run tests, typecheck and lint (mandatory)
 
-The agent MUST run these for every layer the change touches and verify they pass. Never delegate to the human.
+The agent must run these for every layer the change touches and verify they pass. Never delegate to the human.
 
 - **server**:
   - test: `pnpm --filter server test`
@@ -82,8 +82,8 @@ When the change introduces a pattern future contributors should follow, add it t
 If the change adds, modifies or removes a feature visible to end users or to the product team:
 
 1. Run `/koalarnes:update-features <change-name>` to draft the update of `docs/FEATURES.md` from the capability spec, review it and apply it.
-2. Run `ka features-check`. Exit code MUST be 0.
-3. Commit it immediately with `/koalarnes:commit`. The catalogue sync MUST land in the pull request before the human review (step 8).
+2. Run `ka features-check`. The exit code must be 0.
+3. Commit it immediately with `/koalarnes:commit`. The catalogue sync must land in the pull request before the human review (step 8).
 
 Each section of the catalogue carries the anchor of the requirement it describes, right after its heading:
 
@@ -100,22 +100,22 @@ The project has no E2E suite; this step does not apply. Record that in the task.
 
 ## Step 8 — Human peer review (mandatory before archive)
 
-After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is committed and step 7 is green, **another developer MUST review the pull request** before the author archives.
+After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is committed and step 7 is green, **another developer must review the pull request** before the author archives.
 
-- The author does NOT run `/opsx:archive` until the reviewer approves.
+- The author does not run `/opsx:archive` until the reviewer approves.
 - Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
 - When the reviewer approves, the author runs `/opsx:archive`, then `/koalarnes:commit` to push the archive moves into the same pull request.
 - The reviewer who approved merges the pull request.
 
 ## Step 9 — features-check before the archive (mandatory)
 
-`/opsx:archive` does not run the catalogue linter. The agent MUST run it as the last task before archiving:
+`/opsx:archive` does not run the catalogue linter. The agent must run it as the last task before archiving:
 
 ```bash
 ka features-check
 ```
 
-Exit code MUST be 0; fix any drift before archiving.
+The exit code must be 0; fix any drift before archiving.
 
 ## Opt-in steps
 
