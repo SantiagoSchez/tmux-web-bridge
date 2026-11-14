@@ -19,5 +19,18 @@
     "commit": "",
     "pr": ""
   },
-  "language": "es-ES"
+  "language": "es-ES",
+  "permissions": {
+    "allow": [
+      "Bash(ka config *)",
+      "Bash(ka features-check *)",
+      "Bash(ka user-manual-check *)",
+      "Bash(ka docs-check *)",
+      "Bash(ka e2e-failed-specs *)",
+      "Bash(ka render *)",
+      "Bash(ka sync --dry-run *)",
+      "Bash(ka sync --scaffold --dry-run *)",
+      "Bash(ka archive-prune --dry-run *)"
+    ]
+  }
 }

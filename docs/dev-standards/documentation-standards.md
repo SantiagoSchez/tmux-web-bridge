@@ -79,8 +79,6 @@ An agent reads these documents in full before it works, and follows a line that 
 
 Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/koalarnes.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/koalarnes:audit-docs` reads every document against the code and proposes what to remove.
 
-The plugin's hook (`hooks.onEdit` in `.claude/koalarnes.json`) formats and lints each edited file. It is a convenience, not a replacement for running each layer's test, typecheck and lint before a task is marked done.
-
 ## Feature catalogue
 
 `docs/FEATURES.md` is the product-facing inventory of features, in `es-ES`. It is **derived from** the capability specs under `openspec/specs/`: the requirements and their scenarios are the source of truth, the catalogue's prose is generated from them.

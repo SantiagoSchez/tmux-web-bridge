@@ -5,21 +5,13 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 ## Stack
 
 - A Chrome extension, Manifest V3 (`static/manifest.json`): a content script on `https://trello.com/*`, a service worker and an options page. No runtime dependencies.
-- TypeScript (`typescript` ^7.0.2) in strict mode with `isolatedModules`, `verbatimModuleSyntax` and `moduleResolution: Bundler`; `tsconfig.json` includes `src` and `../shared`, with the `chrome` (`@types/chrome` ^0.3.7) and `node` types.
-- Vite (^8.3.4) through `scripts/build.mjs`: one self-contained IIFE per entry (`content`, `background`, `options`), target `chrome120`, not minified, into `dist/`. Content scripts cannot load modules, so the entries must not share chunks.
-- Tests with `node:test` and `node:assert/strict`, run by `tsx` (^4.23.15).
+- Vite through `scripts/build.mjs`: one self-contained IIFE per entry (`content`, `background`, `options`), target `chrome120`, not minified, into `dist/`. Content scripts cannot load modules, so the entries must not share chunks.
+- Tests with `node:test` and `node:assert/strict`, run by `tsx`.
 - A pnpm workspace package (`trello-extension`). It is not deployed: it is built by hand or by `.github/workflows/trello-extension.yml` on each release tag, and loaded unpacked in `chrome://extensions`.
 
 ## Structure
 
-- `src/content.ts`: on trello.com, the button on each card (`li[data-testid="list-card"]`, id from `data-card-id`), the launch dialog and the toasts, inside a shadow root (`#twb-launcher-root`). It talks only to the service worker.
-- `src/background.ts`: the service worker. The only place that calls the hub's `/api/ext/*` for the dialog (`hub<T>()`, `Authorization: Bearer`), answers the content script's messages and sets the update badge.
-- `src/options.ts` with `static/options.html` and `static/options.css`: the options page (hub URL and token, the permission request, the connection checks).
-- `src/settings.ts`: every read and write of `chrome.storage.local` (`settings`, `memory`) and `hubPattern()`.
-- `src/logic.ts`: browser-free logic. It re-exports the dialog's shared logic from `shared/trello.ts` and `shared/worktree.ts` and adds the extension's own helpers (`normalizeHubUrl`). Tested in `src/logic.test.ts`.
-- `src/types.ts`: the extension's own types (`Settings`, `Memory`, `LaunchContext`, the `Request` message union, `Reply<T>`); the hub API types (`Ext*`, `TrelloCard` as `CardInfo`) are re-exported from `shared/types.ts`.
 - `src/styles.ts`: the CSS as strings (`PAGE_CSS` for the card button, `DIALOG_CSS` for the shadow root), built on Trello's `--ds-*` tokens with light-theme fallbacks.
-- `scripts/build.mjs` (build, `--watch`) and `scripts/package.mjs` (the `twb-trello-extension-vX.Y.Z.zip` of a release). `dist/` and the zip are git-ignored.
 - The hub side lives in the server layer: the routes and their auth hook in `server/src/index.ts`, the token store in `server/src/ext.ts`, the launch in `server/src/tasks.ts`, Trello in `server/src/trello.ts`. The API is documented in the root `README.md` («API de la extensión de Trello») and the extension in `trello-extension/README.md`.
 
 ## Conventions

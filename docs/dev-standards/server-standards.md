@@ -4,19 +4,16 @@ The conventions of the `server` layer (server/**, shared/**). The principles in 
 
 ## Stack
 
-- TypeScript (`typescript ^7.0.2`), strict, ESM (`"type": "module"`, `module`/`moduleResolution` `NodeNext`, `verbatimModuleSyntax`, `isolatedModules`). `server/tsconfig.json` also typechecks `../shared`.
-- Node.js 22 (`esbuild --target=node22`, `node:22-bookworm-slim` in the `Dockerfile`), pnpm 10 workspace (`packageManager: pnpm@10.19.0`).
-- HTTP and WebSocket: `fastify ^5.12.7`, `@fastify/websocket ^11.3.4`, `@fastify/static ^10.1.6` (serves `web/dist`).
-- Terminals: `node-pty ^1.1.0` running a tmux client, locally or through `ssh` (OpenSSH with ControlMaster, no SSH library).
-- Others: `web-push ^3.6.7` (Web Push), `yaml ^2.9.1` (`config.yaml`), `qrcode ^1.5.4` (2FA), `sherpa-onnx-node 2.0.1` pinned exactly (dictation; its types live in `server/src/sherpa-onnx-node.d.ts`).
-- Dev and build: `tsx ^4.23.15` (`tsx watch` in dev, `tsx --test` for tests), `esbuild ^0.28.2` bundles `src/index.ts` to `dist/index.js` with `--packages=external`.
+- HTTP and WebSocket: `fastify`, `@fastify/websocket`, `@fastify/static` (serves the built panel).
+- Terminals: `node-pty` running a tmux client, locally or through `ssh` (OpenSSH with ControlMaster, no SSH library).
+- Others: `web-push` (Web Push), `yaml` (`config.yaml`), `qrcode` (2FA), `sherpa-onnx-node`, pinned to an exact version (dictation; its types live in `server/src/sherpa-onnx-node.d.ts`).
+- Dev and build: `tsx` (`tsx watch` in dev, `tsx --test` for tests), `esbuild` bundles `src/index.ts` to `dist/index.js` with `--packages=external`.
 - No HTTP client library: outbound calls use the global `fetch`.
 
 ## Structure
 
 - `server/src/` is flat: one module per feature, lower-case, kebab-case for two words (`account-store.ts`, `host-creds.ts`, `claude-oauth.ts`). No subfolders.
 - `server/src/index.ts` is the composition root: it loads the config, instantiates every store and service, wires their events to websocket broadcasts, and declares every Fastify route and both websocket endpoints (`/ws`, `/ws/term`), grouped under `// ----… section` banner comments. Feature logic lives in the modules, not in the route handlers.
-- Core modules: `config.ts` (`config.yaml` → `Config`), `exec.ts` (`TmuxExec`: every tmux, SSH and remote-shell call), `host.ts` (`HostMonitor`: polls one machine's tmux tree), `actions.ts` (`runAction`: the tree actions of `ActionOp`), `terminal.ts` (pty per browser terminal), `machines.ts` (`MachineStore`, `dataDir/hosts.json`), `settings.ts` (`SettingsStore`, `dataDir/settings.json`).
 - `server/src/kit.ts` (installing and updating the host kit over SSH) also belongs to the host-kit layer: see [host-kit-standards.md](host-kit-standards.md).
 - `shared/` is plain TypeScript with no dependencies and no Node or DOM APIs, imported by `server`, `web` and `trello-extension`. `shared/types.ts` is type-only (imported with `import type`); the other files (`folders.ts`, `keybar.ts`, `copy.ts`, `paths.ts`, `worktree.ts`…) hold pure logic both sides run: validation, sanitising, parsing.
 - Persistent state is one JSON file per store in `config.dataDir` (`hosts.json`, `settings.json`, `automations.json`, `activity.json`, `sessions.json`, `ext-token.json`…). `config.yaml` (path from `TMUX_WEB_CONFIG`, documented in `config.example.yaml`) holds only deployment settings; what the panel edits lives in `dataDir`.
