@@ -4,10 +4,33 @@
       "source": {
         "source": "git",
         "url": "git@ssh.bitbucket.org:furious_koalas/koalarnes.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {
     "koalarnes@koalarnes": true
+  },
+  "model": "opus",
+  "effortLevel": "high",
+  "autoCompactWindow": 400000,
+  "outputStyle": "koalarnes:Readable ISO",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "language": "es-ES",
+  "permissions": {
+    "allow": [
+      "Bash(ka config *)",
+      "Bash(ka features-check *)",
+      "Bash(ka user-manual-check *)",
+      "Bash(ka docs-check *)",
+      "Bash(ka e2e-failed-specs *)",
+      "Bash(ka render *)",
+      "Bash(ka sync --dry-run *)",
+      "Bash(ka sync --scaffold --dry-run *)",
+      "Bash(ka archive-prune --dry-run *)"
+    ]
   }
 }

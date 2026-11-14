@@ -45,6 +45,5 @@
   "release": { "versionFiles": ["VERSION"] },
   "checks": [
     { "name": "feature catalogue", "command": "ka features-check", "gate": true }
-  ],
-  "hooks": { "onStop": "pnpm typecheck" }
+  ]
 }

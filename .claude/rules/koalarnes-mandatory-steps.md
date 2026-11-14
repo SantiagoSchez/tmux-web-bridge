@@ -7,7 +7,7 @@ alwaysApply: true
 
 Every `tasks.md` under `openspec/changes/<change>/` MUST include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
-The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review`, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
+The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/koalarnes:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
 
@@ -17,6 +17,10 @@ The steps are numbered in the order they sit in a `tasks.md`: step 1 is the firs
 - GitHub issues: `Issue #<number>`. Issues and pull requests share one numbering, so `#42` alone is ambiguous.
 
 Branch names, commit messages and the text written into the tracker keep their own conventions.
+
+**The code says what exists.** When a document describes the code (a path, a command, a name, a structure) and the code says otherwise, follow the existing code and report the mismatch so the document gets fixed. A rule or a prohibition is different: code that breaks one is a finding to raise, not a precedent to copy.
+
+**The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. Open an archived `design.md` only to learn why a decision was made. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
 
 ## Step 1 — Create the branch (always first)
 
@@ -57,7 +61,7 @@ Also run the project checks:
 
 - feature catalogue: `ka features-check` (must pass)
 
-When a type or lint error surfaces, fix the root cause; do not silence the rule. The plugin's hooks format and lint each edited file and typecheck when the agent stops, best effort; they do not replace this step.
+When a type or lint error surfaces, fix the root cause; do not silence the rule. The plugin's hook formats and lints each edited file, best effort; it does not replace this step, and nothing else runs the typecheck for you.
 
 ## Step 5 — Update the documentation and the changelog (mandatory)
 

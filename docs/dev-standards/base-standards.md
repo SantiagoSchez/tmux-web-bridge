@@ -60,9 +60,9 @@ From there the path is shared:
 ```
 /opsx:apply                          implement the tasks in order, marking [x] as you go
 /opsx:verify                         completeness, correctness, coherence
-/koalarnes:adversarial-review   red-team the change before pushing
+/koalarnes:adversarial-review   opt-in, when the scope is broad: red-team the change before pushing
 /koalarnes:commit               commit, push, open the pull request
-/koalarnes:review-pr            automated review of the pull request
+/koalarnes:review-pr            automated review of the pull request, in a fresh context
   findings?                          the agent edits the artifacts, then apply → verify → commit → review-pr again
 /koalarnes:update-features      if user-visible, then commit
 human review                         the repository's owner reviews; findings reopen the loop above

@@ -48,7 +48,7 @@ Add a row when the project grows a new kind of document (an API reference, a dat
 
 ## Architecture decisions
 
-A decision with long-term consequences (a library, a pattern, a deployment model) is recorded in the `design.md` of the change that makes it, and stays in the archived record once the change ships. Write each one as:
+A decision with long-term consequences (a library, a pattern, a deployment model) is recorded in the `design.md` of the change that makes it, and stays in the archived record once the change ships. That record keeps `proposal.md`, `design.md` and `tasks.md`; its spec deltas, which `openspec/specs/` and the git history already hold, are deleted by `ka archive-prune` once the change is on `master`. Write each one as:
 
 - **Context**: the problem that forced a decision.
 - **Decision**: the choice made, and the alternatives turned down.
@@ -70,7 +70,14 @@ A decision with long-term consequences (a library, a pattern, a deployment model
 
 These documents describe how the team works. A change that breaks an existing standard or establishes a new one updates the standard in the same change; `/koalarnes:update-docs` reads the branch diff and drafts the patch.
 
-The plugin's hooks (`hooks.onEdit`, `hooks.onStop` in `.claude/koalarnes.json`) format and lint each edited file and typecheck when the agent stops. They are a convenience, not a replacement for running each layer's test, typecheck and lint before a task is marked done.
+An agent reads these documents in full before it works, and follows a line that went stale as readily as a current one. So a standards document holds only what the code cannot show:
+
+- conventions a reader would not infer from the code around them, with the reason when it is not obvious;
+- prohibitions, each with what to use instead;
+- the recipe of a recurring change;
+- the reason behind a decision.
+
+Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/koalarnes.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/koalarnes:audit-docs` reads every document against the code and proposes what to remove.
 
 ## Feature catalogue
 
