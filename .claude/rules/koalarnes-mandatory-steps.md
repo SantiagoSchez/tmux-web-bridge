@@ -18,6 +18,10 @@ The steps are numbered in the order they sit in a `tasks.md`: step 1 is the firs
 
 Branch names, commit messages and the text written into the tracker keep their own conventions.
 
+**Every question to the user goes through `AskUserQuestion`.** Whenever you need the user to choose, confirm or supply something (a proposal to accept, a go-ahead, an ambiguity to settle), ask with the `AskUserQuestion` tool, never with a question written in plain text. Put the option you recommend first and say in each option's description what it does. Questions that belong to the same moment go in one call. This rule is about how to ask, not a reason to ask more often. An agent that does not have the tool hands its question back to whoever called it.
+
+**Every new GitHub issue carries one label.** Before you create an issue, or propose one to the user, list the repository's labels with `gh label list` and pick exactly one: the closest to what the issue is about, even when none fits well. Do not ask the user which one; pass it with `gh issue create --label` and say which label you set. Never create a label. On a repository with no labels, create the issue without one and say so.
+
 **The code says what exists.** When a document describes the code (a path, a command, a name, a structure) and the code says otherwise, follow the existing code and report the mismatch so the document gets fixed. A rule or a prohibition is different: code that breaks one is a finding to raise, not a precedent to copy.
 
 **The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. Open an archived `design.md` only to learn why a decision was made. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
@@ -106,6 +110,8 @@ After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is c
 - Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
 - When the reviewer approves, the author runs `/opsx:archive`, then `/koalarnes:commit` to push the archive moves into the same pull request.
 - The reviewer who approved merges the pull request.
+- After the archive, once the pull request is merged (check its state on the platform; never assume it), look at the issue: when the merge left it open, propose closing the GitHub issue. Close it only on the user's go-ahead, asked with `AskUserQuestion`.
+- After the archive, once the pull request is merged (check its state on the platform; never assume it), propose removing the branch's worktree with `/koalarnes:git-worktree remove`, as a second question in the same call as the proposal above: both go in one `AskUserQuestion` call. Remove it only on the user's go-ahead, asked with `AskUserQuestion`.
 
 ## Step 9 — features-check before the archive (mandatory)
 
