@@ -4,6 +4,17 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.22.2 - 2026-11-14
+
+### Cambiado
+
+- **Worktree de una tarjeta de Trello con su rama**: el cajón de Trello del panel y la extensión de Chrome proponen el nombre del worktree con el prefijo de la rama: `bugfix/` si la tarjeta tiene una etiqueta «bug», «fix» o «issue», y `feature/` en cualquier otro caso (por ejemplo, `feature/142-arreglar-login-movil`). El nombre entero cabe en 64 caracteres, y la ventana lo abrevia a `feat/` o `bug/`.
+
+### Corregido
+
+- **Vídeos y audios en el visor de ficheros**: se reproducen en el propio visor en lugar de dejarlo bloqueado, y cualquier otro fichero que no sea de texto ofrece descargarlo.
+- **Ajustes y lista de escritorio**: el desplegable de la dirección del servidor central en Ajustes › Máquinas tiene el mismo estilo que el resto de campos, y el número de pendientes junto a «twb» ya no queda debajo del botón de la cuadrícula.
+
 ## 1.22.1 - 2026-11-13
 
 ### Cambiado
