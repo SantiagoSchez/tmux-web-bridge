@@ -385,7 +385,7 @@ export interface TrelloCard {
   idShort: number;
   idList: string;
   board: { id: string; name: string };
-  /** Its labels; one called «bug» or «issue» makes its worktree a bugfix/ branch. */
+  /** Its labels, which pick its worktree's branch prefix (see cardWorktreeName). */
   labels: TrelloLabel[];
 }
 

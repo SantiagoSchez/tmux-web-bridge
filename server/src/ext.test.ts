@@ -90,7 +90,7 @@ test('a task in a worktree starts claude with --worktree, with or without a prom
   assert.equal(taskCommand('claude', true, '', 'feat/x'), "claude --dangerously-skip-permissions --worktree 'feat/x'");
 });
 
-test('a card worktree: bugfix/ with a «bug» or «issue» label, feature/ otherwise, then its number and title', () => {
+test('a card worktree: bugfix/ with a bug, fix or issue label, feature/ otherwise, then its number and title', () => {
   const card = (name: string, ...labels: string[]) => ({ idShort: 142, name, labels: labels.map((l) => ({ name: l })) });
   assert.equal(cardWorktreeName(card('Arreglar el login del móvil')), 'feature/142-arreglar-el-login-del-movil');
   assert.equal(cardWorktreeName(card('Login', 'Frontend', '')), 'feature/142-login');
