@@ -1,25 +1,25 @@
 {
   "plugin": {
     "name": "koalarnes",
-    "version": "0.3.2"
+    "version": "0.5.0"
   },
   "managed": {
-    ".claude/rules/koalarnes-mandatory-steps.md": "ac6d30533f9279966247d3526f0f1b84438add88726a8584fb6fe620281317eb",
-    "docs/dev-standards/koalarnes.md": "9a6a33d14ad0c90c6a0808fb4b29b151bf878a8acd58bb9542f1ab5dbff6f1cd"
+    ".claude/rules/koalarnes-mandatory-steps.md": "bb77b85e426b93849111dd7690f27e95cd7e7774807613fb957cf89521c5e059",
+    "docs/dev-standards/koalarnes.md": "66b6475f61183d4ded179bb26f5739137e4be736eb42771398912dda01775586"
   },
   "scaffold": {
     "AGENTS.md": "4dd3d1c121eef329a781fb23b2336f431cab72d4fedae2429ee4fbf1fc4866c8",
-    "docs/dev-standards/base-standards.md": "7e5eee0f60da1ea1ed1e402d86445816a5a7c4321110ad17ef80100563186b60",
-    "docs/dev-standards/documentation-standards.md": "069fe562bf81796c23222c5854bf0040c2ad91e8874088015ca2164c070328f2",
+    "docs/dev-standards/base-standards.md": "9b1e3b3fecbbb8a35f8adaad8c1a6a9a27227b536fbe4bca9931d8a7ec91840a",
+    "docs/dev-standards/documentation-standards.md": "28117a5fc6ace03ad563bc906c4b4e3f70b9adcbf218f8db33c4b35ddeb252c4",
     "docs/dev-standards/testing-standards.md": "381a508bf2b32db03a56624fa83408777276b2ae393fb177e7db1147057e8420",
-    "openspec/config.yaml": "8cec96ef1952ced48abf0334b9e230c5c363e75d5db1ab5f731b1e1db3ac55bb",
+    "openspec/config.yaml": "941314b961f5cb2de8fa2314bc77ccc83f00316ad6a0d0625f01527c0e340afc",
     "docs/FEATURES.md": "a4e1530a813b0a7c9bf2b4a02b8e4191d4c1eeb6d97211627b6d4710af4b2d8f",
     "CHANGELOG.md": "d2930a62e2c16d8fdfd0534152ac2e522f8271d52d6454bc88e42d8321eb4415",
     "changelogs/unreleased/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "docs/dev-standards/server-standards.md": "c7a81e7187f359efdf94dc2e24d6bad99efc36bfa3f2260c5d53b7e073f6047b",
-    "docs/dev-standards/web-standards.md": "e170d54c8f790291aaddc3032990f15f03431d93d7677d15cbb72e94abd84148",
-    "docs/dev-standards/trello-extension-standards.md": "ac5279de14000920027117881dc539774af50635903df7713de674e1b87e7d8e",
-    "docs/dev-standards/host-kit-standards.md": "316910cf48825f5c1a58f56f400b70c395b8344662a9f0d5ab1d3f9631ed4396",
+    "docs/dev-standards/server-standards.md": "aef069007f9a65e55b9a03c0040d10b39ca32702f6998096a2ea9ee10597d9c3",
+    "docs/dev-standards/web-standards.md": "4813d7abb5bad00f58180ea4c8d74911f17f0efe0d7bc1857e4908e9ec200625",
+    "docs/dev-standards/trello-extension-standards.md": "9cd45fe14d44432d4ab3a36e5d4d72e5a53bf6d035a936526ccd21fe98b2cb78",
+    "docs/dev-standards/host-kit-standards.md": "ea0e85d644a511ed33400920127c727f34227bca8ce4bf2f05228907a5f9b45b",
     ".claude/agents/server-developer.md": "e10407b5291ee3525a0f95560b823d58335bc47469d8cdd5ea44a367466b711b",
     ".claude/agents/web-developer.md": "4d79366d5691303aa300dee2aada3db6ac4ac3d593f1d62f327d5bc74fb90214",
     ".claude/agents/trello-extension-developer.md": "c6549610e042092a9234ecca249e341bc0793498283471ae3fe22592e043a7ff",

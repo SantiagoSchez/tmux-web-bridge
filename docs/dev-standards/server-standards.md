@@ -1,6 +1,6 @@
 # server standards
 
-The conventions of the `server` layer (server/**, shared/**). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check.
+The conventions of the `server` layer (server/**, shared/**). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check, and something the code does not already show. What the manifests, the directory tree or the linter say is left out, where it cannot go stale.
 
 ## Stack
 

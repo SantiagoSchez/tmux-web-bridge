@@ -37,7 +37,8 @@ context: |
 
   Workflow: Route A (refine, opsx:propose) or Route B (refine, opsx:explore,
   opsx:new, opsx:continue per artifact), then opsx:apply, opsx:verify,
-  adversarial-review, commit, pull request, review-pr (findings: the agent
+  adversarial-review if the scope is broad, commit, pull request, review-pr
+  in a fresh context (findings: the agent
   edits the artifacts directly, never with opsx:continue, then re-applies),
   update-features if user-visible, human review,
   opsx:archive, commit, the reviewer merges into master. The full

@@ -4,10 +4,20 @@
       "source": {
         "source": "git",
         "url": "git@ssh.bitbucket.org:furious_koalas/koalarnes.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {
     "koalarnes@koalarnes": true
-  }
+  },
+  "model": "opus",
+  "effortLevel": "high",
+  "autoCompactWindow": 400000,
+  "outputStyle": "koalarnes:Readable ISO",
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "language": "es-ES"
 }
