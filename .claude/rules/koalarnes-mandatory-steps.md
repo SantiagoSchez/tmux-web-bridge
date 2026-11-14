@@ -22,6 +22,8 @@ Branch names, commit messages and the text written into the tracker keep their o
 
 **The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. Open an archived `design.md` only to learn why a decision was made. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
 
+**Size is not a reason to hold back.** Do not turn down, shrink or postpone a change because it is large, and never estimate work in human time (days, weeks, months): with agents, writing and rewriting code is cheap. Weigh a change by what stays costly: the risk of breaking behaviour, the data to migrate, what cannot be undone, what has to be verified. When the right design replaces an existing flow, convention or internal interface, replace it in the same change and update everything that used it. Do not keep the old one alive beside the new one (a compatibility layer, an alias, a deprecated path, a flag) for backward compatibility. The exception is what others already depend on outside the repository: a public API or a payload they consume, stored data, a format in production. Breaking one of those is still an option, with its migration, and only after telling the user what breaks and getting their go-ahead. Nothing else needs permission on account of its size.
+
 ## Step 1 — Create the branch (always first)
 
 Branch from `master`. Prefixes: `feature/` (features), `bugfix/` (bug fixes), `hotfix/` (production hot-fixes), `chore/` (internal chores with no work item).
@@ -61,7 +63,7 @@ Also run the project checks:
 
 - feature catalogue: `ka features-check` (must pass)
 
-When a type or lint error surfaces, fix the root cause; do not silence the rule. The plugin's hook formats and lints each edited file, best effort; it does not replace this step, and nothing else runs the typecheck for you.
+When a type or lint error surfaces, fix the root cause; do not silence the rule. Nothing else runs these commands for you.
 
 ## Step 5 — Update the documentation and the changelog (mandatory)
 

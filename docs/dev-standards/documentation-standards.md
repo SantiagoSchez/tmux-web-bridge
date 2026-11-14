@@ -56,7 +56,7 @@ A decision with long-term consequences (a library, a pattern, a deployment model
 
 ## Changelog
 
-`CHANGELOG.md` is generated: **never edit it by hand**. Each change adds one JSON entry under `changelogs/unreleased/`, so two branches never conflict on it, and a release compiles the pending entries into a new version section.
+`CHANGELOG.md` is generated: **never edit it by hand**. Each change adds one JSON entry under `changelogs/unreleased/`, so two branches never conflict on it, and a release compiles the pending entries into a new version section. A purely internal change adds none: a refactor with no visible effect, tests, tooling, the development harness (`.claude/`, the standards documents, OpenSpec artifacts). Whatever the branch prefix, what decides is whether anything changes for whoever uses, deploys or operates the product.
 
 - Add an entry with `/koalarnes:changelog`, which reads the branch diff and picks the type, scope and description. Without the skill, run `ka changelog add -t <type> -s <scope> -d "<description>" --pr <id>` (`-n` for a dry run).
 - Types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
@@ -77,7 +77,7 @@ An agent reads these documents in full before it works, and follows a line that 
 - the recipe of a recurring change;
 - the reason behind a decision.
 
-Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/koalarnes.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/koalarnes:audit-docs` reads every document against the code and proposes what to remove.
+Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/koalarnes.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. `AGENTS.md` is loaded into every turn (`CLAUDE.md` imports it), so it holds the index of these documents, each with the paths or the kind of task that call for opening it, and the few instructions that must always be in view: what to do at a moment no task announces, and the prohibitions any task can break at a high cost, in one or two lines that link the standard with the detail. A procedure followed only when its task comes up (a release, a deployment, how a layer is tested) goes in a standard. `CLAUDE.md` adds only what is specific to Claude Code. Each thing is said once, in the most specific document it fits. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/koalarnes:audit-docs` reads every document against the code and proposes what to remove.
 
 ## Feature catalogue
 
