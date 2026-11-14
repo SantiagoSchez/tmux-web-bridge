@@ -11,6 +11,7 @@ const card: CardInfo = {
   idShort: 142,
   idList: 'l1',
   board: { id: 'b1', name: 'LaborIA' },
+  labels: [],
 };
 
 test('the template gets the card variables and keeps anything else', () => {

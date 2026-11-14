@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { commentText, findDoingList } from '../../shared/trello.js';
-import type { ExtLaunchResult, TrelloAfterLaunch, TrelloBoard, TrelloCard, TrelloInfo, TrelloList } from '../../shared/types.js';
+import type { ExtLaunchResult, TrelloAfterLaunch, TrelloBoard, TrelloCard, TrelloInfo, TrelloLabel, TrelloList } from '../../shared/types.js';
 
 // The hub's Trello account (Settings › Trello): an API key and a token, kept in
 // dataDir/trello.json (0600). With it the panel lists boards and cards, and a task
@@ -13,6 +13,9 @@ export class TrelloSetupError extends Error {}
 const API = 'https://api.trello.com/1';
 const CARD_ID = /^[0-9a-f]{24}$/i;
 const BOARD_ID = /^[0-9a-f]{24}$/i;
+
+/** A card's labels as Trello sends them (missing when it has none): only their name and colour. */
+const labelsOf = (labels: TrelloLabel[] = []): TrelloLabel[] => labels.map((x) => ({ name: x.name, color: x.color }));
 
 interface Creds {
   key: string;
@@ -110,23 +113,37 @@ export class TrelloService {
   async lists(boardId: string): Promise<TrelloList[]> {
     if (!BOARD_ID.test(boardId)) throw new Error('No se reconoce el tablero');
     const lists = await this.call<
-      { id: string; name: string; cards?: { id: string; name: string; idShort: number; shortUrl: string; labels?: { name: string; color: string | null }[] }[] }[]
+      { id: string; name: string; cards?: { id: string; name: string; idShort: number; shortUrl: string; labels?: TrelloLabel[] }[] }[]
     >('GET', `/boards/${boardId}/lists`, { filter: 'open', fields: 'name', cards: 'open', card_fields: 'name,idShort,shortUrl,labels' });
     return lists.map((l) => ({
       id: l.id,
       name: l.name,
-      cards: (l.cards ?? []).map((c) => ({ id: c.id, name: c.name, idShort: c.idShort, url: c.shortUrl, labels: (c.labels ?? []).map((x) => ({ name: x.name, color: x.color })) })),
+      cards: (l.cards ?? []).map((c) => ({ id: c.id, name: c.name, idShort: c.idShort, url: c.shortUrl, labels: labelsOf(c.labels) })),
     }));
   }
 
   async card(cardId: string): Promise<TrelloCard> {
     if (!CARD_ID.test(cardId)) throw new Error('No se reconoce la tarjeta');
-    const c = await this.call<{ id: string; name: string; shortUrl: string; shortLink: string; idShort: number; idList: string; board: { id: string; name: string } }>(
-      'GET',
-      `/cards/${cardId}`,
-      { fields: 'name,shortUrl,shortLink,idShort,idList', board: 'true', board_fields: 'name' },
-    );
-    return { id: c.id, name: c.name, url: c.shortUrl, shortLink: c.shortLink, idShort: c.idShort, idList: c.idList, board: { id: c.board.id, name: c.board.name } };
+    const c = await this.call<{
+      id: string;
+      name: string;
+      shortUrl: string;
+      shortLink: string;
+      idShort: number;
+      idList: string;
+      board: { id: string; name: string };
+      labels?: TrelloLabel[];
+    }>('GET', `/cards/${cardId}`, { fields: 'name,shortUrl,shortLink,idShort,idList,labels', board: 'true', board_fields: 'name' });
+    return {
+      id: c.id,
+      name: c.name,
+      url: c.shortUrl,
+      shortLink: c.shortLink,
+      idShort: c.idShort,
+      idList: c.idList,
+      board: { id: c.board.id, name: c.board.name },
+      labels: labelsOf(c.labels),
+    };
   }
 
   /**

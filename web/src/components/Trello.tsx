@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_TEMPLATE, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices } from '../../../shared/trello';
 import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, ExtTargets, TrelloBoard, TrelloInfo, TrelloList } from '../../../shared/types';
-import { cardWorktreeName, worktreeNameProblem } from '../../../shared/worktree';
+import { cardWindowName, cardWorktreeName, worktreeNameProblem } from '../../../shared/worktree';
 import { api } from '../api';
 import { openWindowWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
@@ -275,7 +275,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const template = hubSettings.value?.trelloPromptTemplate ?? DEFAULT_TEMPLATE;
   const [prompt, setPrompt] = useState(renderTemplate(template, { url: card.url, name: card.name, shortLink: shortLink(card.url), board }));
   const [inWorktree, setInWorktree] = useState(prefs.value.trelloWorktree);
-  const [wtName, setWtName] = useState(cardWorktreeName(card.idShort, card.name));
+  const [wtName, setWtName] = useState(cardWorktreeName(card));
   const [busy, setBusy] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -311,7 +311,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
     if (!ready || busy || !dest) return;
     setBusy(true);
     const worktree = inWorktree ? wtName.trim() : undefined;
-    const req: ExtLaunchRequest = { host: hostId, target: dest, prompt: prompt.trim(), name: worktree ?? card.name, skipPermissions: prefs.value.skipPermissions, worktree, card: card.id };
+    const req: ExtLaunchRequest = { host: hostId, target: dest, prompt: prompt.trim(), name: worktree ? cardWindowName(worktree) : card.name, skipPermissions: prefs.value.skipPermissions, worktree, card: card.id };
     try {
       const r = await api<ExtLaunchResult>('/api/trello/launch', req);
       setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space } });

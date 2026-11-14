@@ -1,4 +1,4 @@
-import { cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
+import { cardWindowName, cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
 import type { ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
 import { DIALOG_CSS, PAGE_CSS } from './styles';
 
@@ -148,7 +148,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const prompt = el('textarea', { id: 'twb-prompt', rows: 3, value: renderTemplate(ctx.promptTemplate, ctx.card) });
   const skip = el('input', { type: 'checkbox', id: 'twb-skip', checked: ctx.skipPermissions });
   const inWorktree = el('input', { type: 'checkbox', id: 'twb-wt', checked: ctx.worktree });
-  const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card.idShort, ctx.card.name), spellcheck: false, autocomplete: 'off' });
+  const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card), spellcheck: false, autocomplete: 'off' });
   const wtNote = el('p', { class: 'error small' });
   const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');
@@ -236,7 +236,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
         destination: destSel.value,
         space: spaceSel.value,
         worktree: inWorktree.checked,
-        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ?? ctx.card.name, skipPermissions: skip.checked, worktree },
+        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ? cardWindowName(worktree) : ctx.card.name, skipPermissions: skip.checked, worktree },
       });
       close();
       const movedTo = r.trello?.movedTo;

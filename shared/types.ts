@@ -385,6 +385,14 @@ export interface TrelloCard {
   idShort: number;
   idList: string;
   board: { id: string; name: string };
+  /** Its labels, which pick its worktree's branch prefix (see cardWorktreeName). */
+  labels: TrelloLabel[];
+}
+
+/** A card's label: its name may be empty (a colour only), its colour null (no colour). */
+export interface TrelloLabel {
+  name: string;
+  color: string | null;
 }
 
 /** GET /api/ext/card/:id and /api/trello/card/:id: a card, and the prompt template of Settings › Trello. */
@@ -402,7 +410,7 @@ export interface TrelloBoard {
 export interface TrelloList {
   id: string;
   name: string;
-  cards: { id: string; name: string; idShort: number; url: string; labels: { name: string; color: string | null }[] }[];
+  cards: { id: string; name: string; idShort: number; url: string; labels: TrelloLabel[] }[];
 }
 
 /** Trello in Settings › Trello: whether the hub has an account, and whose. */

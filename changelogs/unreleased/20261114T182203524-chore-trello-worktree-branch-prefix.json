@@ -1,0 +1,7 @@
+{
+  "type": "changed",
+  "scope": "trello-extension",
+  "description": "El nombre que se propone para el worktree de una tarjeta de Trello (en el cajón de Trello del panel y en la extensión de Chrome) empieza por la rama: bugfix/ si la tarjeta tiene una etiqueta «bug», «bugfix», «fix» o «issue» (o sus plurales), y feature/ en cualquier otro caso, también sin etiquetas (por ejemplo, feature/142-arreglar-login-movil). El título se recorta para que el nombre entero quepa en 64 caracteres, y la ventana de tmux lo abrevia a feat/ o bug/",
+  "pr": "11",
+  "breaking": false
+}
