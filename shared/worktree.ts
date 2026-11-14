@@ -49,7 +49,7 @@ export function cardWorktreeName(card: { idShort?: number; name: string; labels?
   const bugfix = (card.labels ?? []).some((l) => slugify(l.name).split('-').some((w) => BUGFIX_WORDS.has(w)));
   const branch = bugfix ? 'bugfix/' : 'feature/';
   const id = card.idShort ? `${card.idShort}-` : '';
-  return branch + (withSlug(id, card.name, '', WORKTREE_MAX - branch.length) || (card.idShort ? String(card.idShort) : 'tarea'));
+  return branch + (withSlug(id, card.name, '', WORKTREE_MAX - branch.length) || 'tarea');
 }
 
 /** One run of an automation: its name and when, «deps-nocturnas-20261112-1800». */
