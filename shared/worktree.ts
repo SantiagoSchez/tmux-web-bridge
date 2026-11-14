@@ -37,11 +37,11 @@ function withSlug(prefix: string, text: string, suffix = '', max = WORKTREE_MAX)
   return [prefix.replace(/-$/, ''), slug, suffix.replace(/^-/, '')].filter(Boolean).join('-');
 }
 
-/** Labels that make a card a bug fix: one of these words in their name, in any case and with or without accents. */
-const BUGFIX_WORDS = new Set(['bug', 'bugs', 'issue', 'issues']);
+/** Labels that make a card a bug fix: one of these words in their name (not «hotfix»), in any case and with or without accents. */
+const BUGFIX_WORDS = new Set(['bug', 'bugs', 'bugfix', 'bugfixes', 'fix', 'fixes', 'issue', 'issues']);
 
 /**
- * A Trello card's worktree, also its branch: bugfix/ if a label says «bug» or «issue»
+ * A Trello card's worktree, also its branch: bugfix/ if a label says «bug», «fix» or «issue»
  * (feature/ otherwise, with no labels too), then its number and its title, all within
  * the limit: «feature/142-arreglar-login-movil».
  */
@@ -50,6 +50,11 @@ export function cardWorktreeName(card: { idShort?: number; name: string; labels?
   const branch = bugfix ? 'bugfix/' : 'feature/';
   const id = card.idShort ? `${card.idShort}-` : '';
   return branch + (withSlug(id, card.name, '', WORKTREE_MAX - branch.length) || 'tarea');
+}
+
+/** The window a card's task opens in: its worktree, with feat/ or bug/ for the branch prefix so more of the title fits. */
+export function cardWindowName(worktree: string): string {
+  return worktree.replace(/^feature\//, 'feat/').replace(/^bugfix\//, 'bug/');
 }
 
 /** One run of an automation: its name and when, «deps-nocturnas-20261112-1800». */

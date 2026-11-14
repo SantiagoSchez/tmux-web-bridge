@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import type { HostInfo, SavedFolder } from '../../shared/types.js';
 import { ExtTokenStore } from './ext.js';
-import { cardWorktreeName, runWorktreeName, WORKTREE_MAX, worktreeNameProblem } from '../../shared/worktree.js';
+import { cardWindowName, cardWorktreeName, runWorktreeName, WORKTREE_MAX, worktreeNameProblem } from '../../shared/worktree.js';
 import { hostTargets, launchTask, shellWord, taskCommand, taskWindowName } from './tasks.js';
 import type { HostMonitor } from './host.js';
 
@@ -95,7 +95,8 @@ test('a card worktree: bugfix/ with a «bug» or «issue» label, feature/ other
   assert.equal(cardWorktreeName(card('Arreglar el login del móvil')), 'feature/142-arreglar-el-login-del-movil');
   assert.equal(cardWorktreeName(card('Login', 'Frontend', '')), 'feature/142-login');
   assert.equal(cardWorktreeName(card('Login', 'Debugging')), 'feature/142-login');
-  for (const label of ['bug', 'Bug', 'BUGS', 'Bug crítico', 'issue', 'Issues', 'Íssue']) {
+  assert.equal(cardWorktreeName(card('Login', 'Hotfix')), 'feature/142-login');
+  for (const label of ['bug', 'Bug', 'BUGS', 'Bug crítico', 'issue', 'Issues', 'Íssue', 'Bugfix', 'bugfixes', 'Fix', 'fixes']) {
     assert.equal(cardWorktreeName(card('Login', 'Frontend', label)), 'bugfix/142-login', label);
   }
   assert.equal(cardWorktreeName({ name: '¡Hola!' }), 'feature/hola');
@@ -104,6 +105,13 @@ test('a card worktree: bugfix/ with a «bug» or «issue» label, feature/ other
   const long = cardWorktreeName({ idShort: 7, name: 'una tarjeta con un título larguísimo que no cabe entero en el nombre de un worktree', labels: [{ name: 'bug' }] });
   assert.ok(long.length <= WORKTREE_MAX && long.startsWith('bugfix/7-una-tarjeta') && !long.endsWith('-'), long);
   assert.equal(worktreeNameProblem(long), null);
+});
+
+test('a card window: its worktree with feat/ or bug/ for short, any other name as it is', () => {
+  assert.equal(cardWindowName('feature/142-login'), 'feat/142-login');
+  assert.equal(cardWindowName('bugfix/142-login'), 'bug/142-login');
+  assert.equal(cardWindowName('hotfix/142-login'), 'hotfix/142-login');
+  assert.equal(cardWindowName('142-feature/login'), '142-feature/login');
 });
 
 test('worktree names: a run and its date, and what is not valid', () => {

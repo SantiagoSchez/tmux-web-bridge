@@ -1,4 +1,4 @@
-import { cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
+import { cardWindowName, cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
 import type { ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
 import { DIALOG_CSS, PAGE_CSS } from './styles';
 
@@ -236,7 +236,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
         destination: destSel.value,
         space: spaceSel.value,
         worktree: inWorktree.checked,
-        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ?? ctx.card.name, skipPermissions: skip.checked, worktree },
+        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ? cardWindowName(worktree) : ctx.card.name, skipPermissions: skip.checked, worktree },
       });
       close();
       const movedTo = r.trello?.movedTo;
