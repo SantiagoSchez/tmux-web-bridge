@@ -20,7 +20,9 @@ function fakeTrello(calls: string[], opts: { doing?: boolean; failComment?: bool
     if (!auth.includes(`oauth_consumer_key="${KEY}"`)) return json('invalid key', 401);
     if (url.pathname === '/1/members/me') return json({ username: 'santi', fullName: 'Santi' });
     if (url.pathname === `/1/cards/${CARD}` && method === 'GET') {
-      return json({ id: CARD, name: 'Login', shortUrl: 'https://trello.com/c/abc', shortLink: 'abc', idShort: 3, idList: 'backlog', board: { id: 'b1', name: 'Tablero' } });
+      const fields = url.searchParams.get('fields')?.split(',') ?? [];
+      const labels = [{ id: 'l1', name: 'Bug', color: 'red' }, { id: 'l2', name: '', color: null }];
+      return json({ id: CARD, name: 'Login', shortUrl: 'https://trello.com/c/abc', shortLink: 'abc', idShort: 3, idList: 'backlog', board: { id: 'b1', name: 'Tablero' }, ...(fields.includes('labels') ? { labels } : {}) });
     }
     if (url.pathname === '/1/boards/b1/lists') {
       return json([{ id: 'backlog', name: '🗄 Backlog', closed: false }, ...(opts.doing === false ? [] : [{ id: 'doing', name: '⚙ Doing', closed: false }])]);
@@ -56,6 +58,15 @@ test(
     assert.equal(again.configured, true);
     assert.deepEqual(again.forget(), { configured: false });
     assert.equal(new TrelloService(dir, fakeTrello(calls)).configured, false);
+  }),
+);
+
+test(
+  'a card comes with its labels, to name its worktree',
+  withDir(async (dir) => {
+    const t = new TrelloService(dir, fakeTrello([]));
+    await t.set(KEY, TOKEN);
+    assert.deepEqual((await t.card(CARD)).labels, [{ name: 'Bug', color: 'red' }, { name: '', color: null }]);
   }),
 );
 

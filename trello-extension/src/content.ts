@@ -148,7 +148,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const prompt = el('textarea', { id: 'twb-prompt', rows: 3, value: renderTemplate(ctx.promptTemplate, ctx.card) });
   const skip = el('input', { type: 'checkbox', id: 'twb-skip', checked: ctx.skipPermissions });
   const inWorktree = el('input', { type: 'checkbox', id: 'twb-wt', checked: ctx.worktree });
-  const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card.idShort, ctx.card.name), spellcheck: false, autocomplete: 'off' });
+  const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card), spellcheck: false, autocomplete: 'off' });
   const wtNote = el('p', { class: 'error small' });
   const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');

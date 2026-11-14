@@ -24,9 +24,9 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/** `prefix-slug` cut to fit, at a '-' when it can, never losing the prefix. */
-function withSlug(prefix: string, text: string, suffix = ''): string {
-  const room = WORKTREE_MAX - prefix.length - suffix.length;
+/** `prefix-slug` cut to fit in `max`, at a '-' when it can, never losing the prefix. */
+function withSlug(prefix: string, text: string, suffix = '', max = WORKTREE_MAX): string {
+  const room = max - prefix.length - suffix.length;
   let slug = slugify(text);
   if (slug.length > room) {
     slug = slug.slice(0, room);
@@ -37,9 +37,19 @@ function withSlug(prefix: string, text: string, suffix = ''): string {
   return [prefix.replace(/-$/, ''), slug, suffix.replace(/^-/, '')].filter(Boolean).join('-');
 }
 
-/** A Trello card's worktree: its number and its title, «142-arreglar-login-movil». */
-export function cardWorktreeName(idShort: number | undefined, name: string): string {
-  return withSlug(idShort ? `${idShort}-` : '', name) || (idShort ? String(idShort) : 'tarea');
+/** Labels that make a card a bug fix: one of these words in their name, in any case and with or without accents. */
+const BUGFIX_WORDS = new Set(['bug', 'bugs', 'issue', 'issues']);
+
+/**
+ * A Trello card's worktree, also its branch: bugfix/ if a label says «bug» or «issue»
+ * (feature/ otherwise, with no labels too), then its number and its title, all within
+ * the limit: «feature/142-arreglar-login-movil».
+ */
+export function cardWorktreeName(card: { idShort?: number; name: string; labels?: readonly { name: string }[] }): string {
+  const bugfix = (card.labels ?? []).some((l) => slugify(l.name).split('-').some((w) => BUGFIX_WORDS.has(w)));
+  const branch = bugfix ? 'bugfix/' : 'feature/';
+  const id = card.idShort ? `${card.idShort}-` : '';
+  return branch + (withSlug(id, card.name, '', WORKTREE_MAX - branch.length) || (card.idShort ? String(card.idShort) : 'tarea'));
 }
 
 /** One run of an automation: its name and when, «deps-nocturnas-20261112-1800». */

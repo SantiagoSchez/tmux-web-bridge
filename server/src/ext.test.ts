@@ -90,11 +90,23 @@ test('a task in a worktree starts claude with --worktree, with or without a prom
   assert.equal(taskCommand('claude', true, '', 'feat/x'), "claude --dangerously-skip-permissions --worktree 'feat/x'");
 });
 
-test('worktree names: a card number and its title, a run and its date, and what is not valid', () => {
-  assert.equal(cardWorktreeName(142, 'Arreglar el login del móvil'), '142-arreglar-el-login-del-movil');
-  assert.equal(cardWorktreeName(undefined, '¡Hola!'), 'hola');
-  const long = cardWorktreeName(7, 'una tarjeta con un título larguísimo que no cabe entero en el nombre de un worktree');
-  assert.ok(long.length <= WORKTREE_MAX && long.startsWith('7-') && !long.endsWith('-'), long);
+test('a card worktree: bugfix/ with a «bug» or «issue» label, feature/ otherwise, then its number and title', () => {
+  const card = (name: string, ...labels: string[]) => ({ idShort: 142, name, labels: labels.map((l) => ({ name: l })) });
+  assert.equal(cardWorktreeName(card('Arreglar el login del móvil')), 'feature/142-arreglar-el-login-del-movil');
+  assert.equal(cardWorktreeName(card('Login', 'Frontend', '')), 'feature/142-login');
+  assert.equal(cardWorktreeName(card('Login', 'Debugging')), 'feature/142-login');
+  for (const label of ['bug', 'Bug', 'BUGS', 'Bug crítico', 'issue', 'Issues', 'Íssue']) {
+    assert.equal(cardWorktreeName(card('Login', 'Frontend', label)), 'bugfix/142-login', label);
+  }
+  assert.equal(cardWorktreeName({ name: '¡Hola!' }), 'feature/hola');
+  assert.equal(cardWorktreeName({ name: '¡!' }), 'feature/tarea');
+  assert.equal(cardWorktreeName({ idShort: 9, name: '¡!' }), 'feature/9');
+  const long = cardWorktreeName({ idShort: 7, name: 'una tarjeta con un título larguísimo que no cabe entero en el nombre de un worktree', labels: [{ name: 'bug' }] });
+  assert.ok(long.length <= WORKTREE_MAX && long.startsWith('bugfix/7-una-tarjeta') && !long.endsWith('-'), long);
+  assert.equal(worktreeNameProblem(long), null);
+});
+
+test('worktree names: a run and its date, and what is not valid', () => {
   assert.equal(runWorktreeName('Deps nocturnas', new Date(2026, 10, 12, 18, 0)), 'deps-nocturnas-20261112-1800');
   assert.equal(worktreeNameProblem('142-login'), null);
   assert.equal(worktreeNameProblem('feat/login'), null);

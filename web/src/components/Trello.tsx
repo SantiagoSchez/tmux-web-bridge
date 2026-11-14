@@ -275,7 +275,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const template = hubSettings.value?.trelloPromptTemplate ?? DEFAULT_TEMPLATE;
   const [prompt, setPrompt] = useState(renderTemplate(template, { url: card.url, name: card.name, shortLink: shortLink(card.url), board }));
   const [inWorktree, setInWorktree] = useState(prefs.value.trelloWorktree);
-  const [wtName, setWtName] = useState(cardWorktreeName(card.idShort, card.name));
+  const [wtName, setWtName] = useState(cardWorktreeName(card));
   const [busy, setBusy] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
