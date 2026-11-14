@@ -1,6 +1,6 @@
 # Base standards
 
-The single source of truth for how AI agents and humans work on this codebase. `AGENTS.md`, `CLAUDE.md` and `openspec/config.yaml` point back here. This file was generated once by the koalarnes plugin; the project owns it now, so edit it freely.
+The single source of truth for how AI agents and humans work on this codebase. `AGENTS.md` and `openspec/config.yaml` point back here. This file was generated once by the koalarnes plugin; the project owns it now, so edit it freely.
 
 ## The principles
 
@@ -11,18 +11,6 @@ The single source of truth for how AI agents and humans work on this codebase. `
 5. **Reuse before invention.** Before adding a helper, look for one in the shared packages, then in the layer's own utilities. A second copy of a helper is a future divergence.
 6. **Cross-layer awareness.** A contract shared by several layers (an HTTP payload, a message or job payload, a shared type) has producers and consumers that drift apart. A change to one audits every call site. A change to dependency wiring or bootstrap needs a boot smoke test: typecheck and unit tests miss it.
 7. **Docs co-evolve with code.** A behaviour change updates its capability spec under `openspec/specs/` (through a change under `openspec/changes/`). A change to an API contract, the data model, a payload, an environment variable or a user-visible flow updates the standards documents here and adds a changelog entry. See the [documentation standards](./documentation-standards.md).
-
-## Standards index
-
-The index of every standards document, with when to open each, is in [`AGENTS.md`](../../AGENTS.md), which every agent has in view in every turn. A new standards document gets its row there.
-
-## Where to find what
-
-- OpenSpec changes, capability specs and archived changes: `openspec/`.
-- Standards documents (this file and its siblings): `docs/dev-standards/`.
-- The product feature catalogue: `docs/FEATURES.md`, derived from the capability specs with `/koalarnes:update-features`, never edited first.
-- The changelog: `CHANGELOG.md`, compiled from the entries under `changelogs/unreleased/`.
-- The harness configuration: `.claude/koalarnes.json` (`ka config` prints it merged with the defaults).
 
 ## Languages
 

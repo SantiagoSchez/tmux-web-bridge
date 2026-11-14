@@ -26,8 +26,6 @@ The project works with the koalarnes plugin. [`.claude/rules/koalarnes-mandatory
 
 ## Always in view
 
-Beyond the index, this file takes only the instructions an agent would not go and look for when they apply: what to do at a moment no task announces, and the prohibitions any task can break at a high cost. Each takes one or two lines and links the standard that holds the detail.
-
 - Never merge a pull request without the owner's yes in the chat. See [the workflow](./docs/dev-standards/base-standards.md#workflow).
 - After merging into `master`, follow the `deploy` run with `gh run watch` and report how it went; say so when the merge deploys nothing. See [the release standards](./docs/dev-standards/release-standards.md).
 - When a feature is merged, deployed and checked, propose a release: the version (`ka changelog release --dry-run`) and what it would hold. Cut it only on the owner's yes.

@@ -16,7 +16,7 @@ Loose bug fixes and touch-ups do not call for a release of their own; they go in
 
 ## Cutting a release
 
-A release is cut with `/koalarnes:release` from the main checkout, on `master`. It compiles the entries of `changelogs/unreleased/` into `CHANGELOG.md`, rewrites the section for whoever uses the panel, writes `VERSION`, and makes the commit `chore(release): X.Y.Z` and its tag `vX.Y.Z`. The version comes from the entries: `added` raises the minor, a breaking change the major, anything else the patch.
+A release is cut with `/koalarnes:release` from the main checkout, on `master`. It makes the commit `chore(release): X.Y.Z` and its tag `vX.Y.Z`.
 
 Its step 7 (publishing) changes here, because the Trello extension has to be in the release before the hub announces it:
 
