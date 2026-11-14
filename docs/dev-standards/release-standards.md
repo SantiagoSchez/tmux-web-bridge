@@ -18,7 +18,7 @@ Loose bug fixes and touch-ups do not call for a release of their own; they go in
 
 A release is cut with `/koalarnes:release` from the main checkout, on `master`. It makes the commit `chore(release): X.Y.Z` and its tag `vX.Y.Z`.
 
-Its step 7 (publishing) changes here, because the Trello extension has to be in the release before the hub announces it:
+Its publishing step changes here, because the Trello extension has to be in the release before the hub announces it:
 
 1. Push only the tag: `git push origin vX.Y.Z`, not `master` yet.
 2. `gh release create vX.Y.Z --draft --title vX.Y.Z --notes-file <file>` with the new section of `CHANGELOG.md`, without its `## X.Y.Z - date` heading. As a draft: the panel does not announce it yet.
