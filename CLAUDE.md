@@ -9,7 +9,7 @@ The project's standards live under `docs/dev-standards/`; start at `docs/dev-sta
 Se trabaja con el harness koalarnes (`.claude/koalarnes.json`): cada rama en su worktree (`/koalarnes:git-worktree`), commits en Conventional Commits con `/koalarnes:commit` y una entrada de changelog por cambio con `/koalarnes:changelog`. Las ramas salen de `master` y se nombran por su issue de GitHub (`feature/<n>-<slug>`); sin issue, con un slug libre.
 
 - **Features**: siempre por OpenSpec (`/koalarnes:refine` → `/opsx:propose` → `/opsx:apply` → …), con los pasos obligatorios de `.claude/rules/koalarnes-mandatory-steps.md`, y acaban en una PR a `master`.
-- **Bugfixes y retoques** (un texto, un estilo, un fallo pequeño): rama `bugfix/…` o `chore/…` en su worktree, con su entrada de changelog y una PR, sin artefactos de OpenSpec.
+- **Bugfixes y retoques** (un texto, un estilo, un fallo pequeño): rama `bugfix/…` o `chore/…` en su worktree, con su entrada de changelog (salvo cambios puramente internos: el harness, las herramientas, los estándares) y una PR, sin artefactos de OpenSpec.
 - **Revisión humana** (paso 8 de la regla): la hace el usuario, el único desarrollador. Abro la PR (en español), paso `/koalarnes:review-pr` y le pido que la revise; cuando dice que sí en el chat, archivo el change de OpenSpec si lo hay, y la fusiono yo con `gh pr merge <n> --squash --delete-branch --subject "<tipo>(<scope>): <asunto en inglés>"`, para que `master` siga lineal y en inglés. Nunca fusiono sin su sí.
 
 ## Despliegue
