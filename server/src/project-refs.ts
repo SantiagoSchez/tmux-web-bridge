@@ -5,12 +5,11 @@
 import { parseRemote } from '../../shared/refs.js';
 import type { RefContext, RefRepo } from '../../shared/types.js';
 import { shPath } from './exec.js';
+import { TRELLO_BOARD } from './trello.js';
 
 /** koalarnes.json is small; more than this is not one. */
 const MAX_CONFIG = 65_536;
 const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
-/** A board's shortLink (8 characters) or its id (24 hex). */
-export const TRELLO_BOARD = /^(?:[A-Za-z0-9]{8}|[0-9a-f]{24})$/;
 
 /**
  * One shell script for a folder: K and the top level's .claude/koalarnes.json on one line

@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "Corregidas las rutas de fichero relativas del panel no seleccionado de una ventana partida: se abrían en la carpeta del panel seleccionado",
+  "pr": "13",
+  "issue": "12",
+  "breaking": false
+}

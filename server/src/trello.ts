@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { commentText, findDoingList } from '../../shared/trello.js';
-import { TRELLO_BOARD } from './project-refs.js';
 import type { ExtLaunchResult, TrelloAfterLaunch, TrelloBoard, TrelloCard, TrelloInfo, TrelloLabel, TrelloList } from '../../shared/types.js';
 
 // The hub's Trello account (Settings › Trello): an API key and a token, kept in
@@ -17,6 +16,10 @@ export class TrelloNotFoundError extends Error {}
 const API = 'https://api.trello.com/1';
 const CARD_ID = /^[0-9a-f]{24}$/i;
 const BOARD_ID = /^[0-9a-f]{24}$/i;
+/** A board's shortLink (8 characters) or its id (24 hex). */
+export const TRELLO_BOARD = /^(?:[A-Za-z0-9]{8}|[0-9a-f]{24})$/;
+/** Where a card's page is: the panel opens it in a tab that shares its origin until then. */
+const CARD_PAGE = 'https://trello.com/';
 
 /** Whether a board (shortLink or id) and a card's short number can be put in a Trello path. */
 export function isCardRef(board: string, n: string): boolean {
@@ -135,12 +138,15 @@ export class TrelloService {
   /** The page of the card with short number `n` on a board (its shortLink or id), for a `Trello #N` link in the terminal. */
   async cardUrl(board: string, n: string): Promise<string> {
     if (!isCardRef(board, n)) throw new Error('No se reconoce la tarjeta');
+    let url: unknown;
     try {
-      return (await this.call<{ shortUrl: string }>('GET', `/boards/${board}/cards/${n}`, { fields: 'shortUrl' })).shortUrl;
+      url = (await this.call<{ shortUrl?: unknown }>('GET', `/boards/${board}/cards/${n}`, { fields: 'shortUrl' })).shortUrl;
     } catch (err) {
       if (err instanceof TrelloNotFoundError) throw new TrelloNotFoundError(`No encuentro la tarjeta ${n} en el tablero del proyecto`);
       throw err;
     }
+    if (typeof url !== 'string' || !url.startsWith(CARD_PAGE)) throw new Error(`Trello ha devuelto una dirección de la tarjeta ${n} que no es de Trello`);
+    return url;
   }
 
   async card(cardId: string): Promise<TrelloCard> {

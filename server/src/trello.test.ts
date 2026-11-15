@@ -29,6 +29,9 @@ function fakeTrello(calls: string[], opts: { doing?: boolean; failComment?: bool
     }
     // Card number 470 of board 0mGPkF10, looked up by its short number like the real API does.
     if (url.pathname === '/1/boards/0mGPkF10/cards/470' && method === 'GET') return json({ id: CARD, shortUrl: 'https://trello.com/c/K9xY2abc' });
+    // Answers that are not a Trello page: the panel would put them in a tab of its own origin.
+    if (url.pathname === '/1/boards/0mGPkF10/cards/471' && method === 'GET') return json({ id: CARD, shortUrl: 'javascript:alert(1)' });
+    if (url.pathname === '/1/boards/0mGPkF10/cards/472' && method === 'GET') return json({ id: CARD, shortUrl: 'https://trello.com.example.org/c/x' });
     if (url.pathname === `/1/cards/${CARD}` && method === 'PUT') return json({});
     if (url.pathname === `/1/cards/${CARD}/actions/comments`) return opts.failComment ? json('nope', 500) : json({});
     return json('not found', 404);
@@ -107,6 +110,15 @@ test(
     await t.set(KEY, TOKEN);
     assert.equal(await t.cardUrl('0mGPkF10', '470'), 'https://trello.com/c/K9xY2abc');
     await assert.rejects(t.cardUrl('0mGPkF10', '9999'), (err: Error) => err instanceof TrelloNotFoundError && /No encuentro la tarjeta 9999/.test(err.message));
+  }),
+);
+
+test(
+  'a card address that is not a Trello page is refused',
+  withDir(async (dir) => {
+    const t = new TrelloService(dir, fakeTrello([]));
+    await t.set(KEY, TOKEN);
+    for (const n of ['471', '472']) await assert.rejects(t.cardUrl('0mGPkF10', n), /no es de Trello/, n);
   }),
 );
 

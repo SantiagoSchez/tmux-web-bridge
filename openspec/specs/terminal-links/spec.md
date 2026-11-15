@@ -47,7 +47,7 @@ The terminal SHALL link `PR #N` and `Issue #N`, and on Bitbucket `pipeline #N`, 
 
 ### Requirement: The pane's project decides the repository
 
-The panel SHALL take the repository of a reference from the `.claude/koalarnes.json` of the pane's project (`platform.host` and `platform.repository`) and, when that file is missing or names no repository, from the `origin` remote of the pane's folder. The panel SHALL NOT underline a repository reference it cannot resolve.
+The panel SHALL take the repository of a reference from the `.claude/koalarnes.json` of the project of the pane the reference is written in (`platform.host` and `platform.repository`) and, when that file is missing or names no repository, from the `origin` remote of the pane's folder. The panel SHALL NOT underline a repository reference it cannot resolve.
 
 #### Scenario: koalarnes.json wins over the remote
 
@@ -66,6 +66,18 @@ The panel SHALL take the repository of a reference from the `.claude/koalarnes.j
 - **GIVEN** a pane whose folder is not a git repository, or whose `origin` is neither GitHub nor Bitbucket, and has no `.claude/koalarnes.json`
 - **WHEN** the terminal shows `PR #7`
 - **THEN** the text is not underlined
+
+#### Scenario: Reference in the other pane of a split window
+
+- **GIVEN** a window split into a pane in the GitHub repository `owner/one` and a selected pane in the GitHub repository `owner/two`
+- **WHEN** the user taps `PR #5` written in the `owner/one` pane
+- **THEN** the page opened is `https://github.com/owner/one/pull/5`
+
+#### Scenario: Project read more than five minutes ago
+
+- **GIVEN** a terminal that has stayed open on the same pane for more than five minutes since its project was read
+- **WHEN** the user taps `PR #5`
+- **THEN** the page opens at the first tap
 
 ### Requirement: Trello references open the card
 
@@ -96,9 +108,15 @@ The terminal SHALL link `Trello #N` to the card whose short number is N on the b
 - **WHEN** the user taps `Trello #470`
 - **THEN** the opened tab closes and the panel shows an error toast that points to Ajustes › Trello
 
+#### Scenario: Browser blocks the new tab
+
+- **GIVEN** a browser that blocks the tab the panel opens
+- **WHEN** the user taps `Trello #470`
+- **THEN** the panel shows an error toast saying the browser blocked the tab
+
 ### Requirement: Image placeholders open the pasted image
 
-The terminal SHALL link `[Image #N]` to image N of the Claude Code session running in the pane, as Claude Code saved it when it was pasted, sent or not, and open it in the panel's file viewer. With a mouse, resting on the link SHALL show the same preview as a file path. When the image cannot be found, the panel SHALL show an error toast and open nothing.
+The terminal SHALL link `[Image #N]` to image N of the Claude Code session running in the pane the placeholder is written in, as Claude Code saved it when it was pasted, sent or not, and open it in the panel's file viewer. With a mouse, resting on the link SHALL show the same preview as a file path. When the image cannot be found, the panel SHALL show an error toast and open nothing.
 
 #### Scenario: Image pasted and not sent yet
 
@@ -129,6 +147,12 @@ The terminal SHALL link `[Image #N]` to image N of the Claude Code session runni
 - **GIVEN** a pane whose Claude Code session has no saved image number 4, for example because the machine emptied its temporary folder
 - **WHEN** the user taps `[Image #4]`
 - **THEN** the panel shows an error toast saying it cannot find image 4 and opens nothing
+
+#### Scenario: Image in the other pane of a split window
+
+- **GIVEN** a window split into two panes, each running its own Claude Code session with an image number 1
+- **WHEN** the user taps `[Image #1]` written in the pane that is not selected
+- **THEN** the viewer opens image 1 of that pane's session
 
 #### Scenario: Pane without a Claude Code session
 

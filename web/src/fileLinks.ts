@@ -1,11 +1,22 @@
 import type { ILink, ILinkProvider, Terminal } from '@xterm/xterm';
 import { findPathsInRows } from '../../shared/paths';
 
+/** A cell of the terminal's screen (0-based), where a link starts: which pane it belongs to. */
+export interface ScreenCell {
+  col: number;
+  row: number;
+}
+
+/** The screen cell of a column of a buffer row (0-based both). */
+export function screenCell(term: Terminal, y: number, col: number): ScreenCell {
+  return { col, row: y - term.buffer.active.baseY };
+}
+
 export interface FileLinkHandlers {
   /** Clicked or tapped: open it. */
-  open: (e: MouseEvent, path: string, line?: number) => void;
+  open: (e: MouseEvent, path: string, line: number | undefined, cell: ScreenCell) => void;
   /** The mouse went onto it (a preview), and off it. */
-  hover?: (e: MouseEvent, path: string, line?: number) => void;
+  hover?: (e: MouseEvent, path: string, line: number | undefined, cell: ScreenCell) => void;
   leave?: () => void;
 }
 
@@ -46,14 +57,17 @@ export function fileLinkProvider(term: Terminal, on: FileLinkHandlers): ILinkPro
       if (y - 1 >= end) return callback(undefined);
       const rows = Array.from({ length: end - first }, (_, k) => readRow(term, first + k));
       const at = (p: { row: number; i: number }) => ({ x: rows[p.row].cols[p.i] + 1, y: first + p.row + 1 });
-      const links: ILink[] = findPathsInRows(rows, y - 1 - first).map((hit) => ({
-        range: { start: at(hit.start), end: at(hit.last) },
-        text: hit.text,
-        decorations: { underline: true, pointerCursor: true },
-        activate: (e) => on.open(e, hit.path, hit.line),
-        hover: on.hover ? (e) => on.hover!(e, hit.path, hit.line) : undefined,
-        leave: on.leave ? () => on.leave!() : undefined,
-      }));
+      const links: ILink[] = findPathsInRows(rows, y - 1 - first).map((hit) => {
+        const cell = screenCell(term, first + hit.start.row, rows[hit.start.row].cols[hit.start.i]);
+        return {
+          range: { start: at(hit.start), end: at(hit.last) },
+          text: hit.text,
+          decorations: { underline: true, pointerCursor: true },
+          activate: (e) => on.open(e, hit.path, hit.line, cell),
+          hover: on.hover ? (e) => on.hover!(e, hit.path, hit.line, cell) : undefined,
+          leave: on.leave ? () => on.leave!() : undefined,
+        };
+      });
       callback(links.length ? links : undefined);
     },
   };

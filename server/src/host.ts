@@ -23,7 +23,7 @@ const FIELDS = [
   'window_id', 'window_index', 'window_name', 'window_active', '@win_icon', '@win_state', '@name_pinned', '@twb_temp',
   'window_bell_flag', 'window_activity_flag', 'window_zoomed_flag',
   'pane_id', 'pane_index', 'pane_active', 'pane_current_command', 'pane_current_path', 'pane_title',
-  '@pane_icon', 'pane_width', 'pane_height', 'pane_dead', 'pane_in_mode', '@claude_account', '@claude_session',
+  '@pane_icon', 'pane_width', 'pane_height', 'pane_left', 'pane_top', 'pane_dead', 'pane_in_mode', '@claude_account', '@claude_session',
   // Global options, the same on every row: Claude's usage limits from the statusline,
   // the version of the host-kit (its tmux.conf sets it), and whether the statusline
   // leaves the limits out (the hub's setting).
@@ -190,6 +190,8 @@ function parse(output: string): Parsed {
       state: stateOf(r['@pane_icon']),
       width: Number(r.pane_width),
       height: Number(r.pane_height),
+      left: Number(r.pane_left),
+      top: Number(r.pane_top),
       dead: r.pane_dead === '1',
       inMode: r.pane_in_mode === '1',
       account: r['@claude_account'] && r['@claude_account'] !== '-' ? r['@claude_account'] : undefined,

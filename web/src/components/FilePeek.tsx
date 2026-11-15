@@ -18,14 +18,17 @@ const peek = signal<Peek | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Only devices with a real hover (a mouse or a trackpad). */
-const canHover = matchMedia('(any-hover: hover)');
+export const canHover = matchMedia('(any-hover: hover)');
 
-/** Shown after a moment on the path, so moving the mouse across the terminal does not flash previews. */
-export function peekFile(origin: FileOrigin, path: string, line: number | undefined, e: MouseEvent): void {
+/** How long the mouse rests on a path before its preview, so moving it across the terminal does not flash previews. */
+export const PEEK_DELAY = 350;
+
+/** Shown after a moment on the path (less when the caller already waited part of it). */
+export function peekFile(origin: FileOrigin, path: string, line: number | undefined, e: MouseEvent, delay = PEEK_DELAY): void {
   if (!canHover.matches) return;
   clearTimeout(timer);
   const at = { x: e.clientX, y: e.clientY };
-  timer = setTimeout(() => (peek.value = { origin, path, line, ...at }), 350);
+  timer = setTimeout(() => (peek.value = { origin, path, line, ...at }), delay);
 }
 
 export function hidePeek(): void {

@@ -49,42 +49,60 @@
 - [x] 7.3 Check by hand in a browser against a dev hub (isolated `TMUX_TMPDIR`, no `TMUX`/`TMUX_PANE`) on a phone-sized viewport with touch emulation and on a wide one: every scenario of `specs/terminal-links/spec.md` that does not need a real Bitbucket repository, plus `PR #N` on a fake Bitbucket `origin`; record what was checked in the pull request.
   - Checked in headless Chrome against an isolated hub with four panes (this repository: GitHub via koalarnes.json; a Bitbucket repository with a Trello board in koalarnes.json; a GitHub repository with only `origin`; a folder outside git), at 1400×900 with the mouse and at 390×844 with touch taps: every reference opens the spec's URL, `pipeline #N` on GitHub and everything outside git stay unlinked, `Trello #N` without a board stays unlinked and with a board but no Trello account opens and closes the tab with the Ajustes › Trello toast, `[Image #1]` opens the viewer and `[Image #7]` shows «No encuentro la imagen 7».
   - Found and fixed: right after a page load the links of a row could stay missing while the mouse stayed on it (xterm keeps a row's first answer); the provider now waits for the project read (design D1).
-  - Not checked: the thumbnail on hover, because headless Chrome reports no hover device and the panel then skips every preview; checked up to the panel asking `GET /api/claude-image` on hover. A real Trello card was checked afterwards (5.3); the Mac moved to after the deploy (6.3).
+  - The thumbnail on hover was not visible here, because headless Chrome reports no hover device and the panel then skips every preview: checked in 8.8. A real Trello card was checked afterwards (5.3); the Mac moved to after the deploy (6.3).
 
-## 8. Run tests, typecheck and lint
+## 8. Findings of the first review of PR #13
 
-- [x] 8.1 Run `pnpm --filter server test` and `pnpm --filter server typecheck`; verify both pass.
-- [x] 8.2 Run `pnpm --filter web typecheck`; verify it passes.
-- [x] 8.3 Run `ka features-check`; verify it passes. (`trello-extension` and `host-kit` are not touched: their commands do not apply.)
+- [x] 8.1 Write a failing test in `server/src/stale-cache.test.ts` for `StaleCache` of `shared/stale-cache.ts` with an injected clock: a fresh value answers at once without a load; an expired one still answers at once and starts one reload; a failed reload keeps the old value; a first failed load answers nothing and the next look loads again; see it fail, implement, and use it for the context cache of `web/src/refLinks.ts` (design D1).
+  - Five tests; seen failing without the module and with two mutations (no reload on expiry, a failed reload dropping the value).
+- [x] 8.2 Write a failing test in `server/src/panes.test.ts` for `paneAt(window, col, row)` of `shared/panes.ts`: the pane whose rectangle holds the cell in a window split side by side and one on top of the other, the active pane of a zoomed window, nothing on a border and nothing when the window is larger than the terminal; see it fail and implement it (design D7).
+  - Six tests; seen failing without the module and with the zoom ignored (the zoomed test lists the active pane last so `find` cannot hit it by order).
+- [x] 8.3 Add `left` and `top` (`pane_left`, `pane_top`) to `PaneInfo` in `shared/types.ts` and `server/src/host.ts`, and to the test fixtures that build a `PaneInfo`; verify the server typecheck.
+- [x] 8.4 Pass the cell where each link starts from `fileLinkProvider`, `refLinkProvider` and `imageLinkProvider` to `TerminalView`, which resolves the pane under it with `paneAt` (falling back to the selected pane) for the file viewer, the project context and the image lookup (design D7); reuse `dragged()` for the file links and the URL links of `createTerminal()`.
+- [x] 8.5 Declare `TRELLO_BOARD` in `server/src/trello.ts` and import it from `project-refs.ts`; write a failing test in `server/src/trello.test.ts` for a `shortUrl` that does not start with `https://trello.com/` (an error, no URL), see it fail, and make `cardUrl` check it (design D3).
+  - The test fakes Trello answering `javascript:alert(1)` and `https://trello.com.example.org/c/x`; seen failing before the check.
+- [x] 8.6 Show an error toast when the browser blocks the blank tab of `Trello #N`, without asking the hub (design D3).
+- [x] 8.7 Ask the hub on hover over `[Image #N]` only with `(any-hover: hover)`, after the file previews' wait, and keep the path for a minute (design D4).
+- [x] 8.8 Check by hand against a dev hub (isolated `TMUX_TMPDIR`, no `TMUX`/`TMUX_PANE`): the thumbnail on hover over `[Image #N]` with hover emulated; in a window split into two panes in different repositories and Claude Code sessions, a reference, an image placeholder and a relative file path of the pane that is not selected resolve against that pane; with the context cache's lifetime lowered, the first tap after it expires opens the page; with the tab blocked, the toast.
+  - Checked in headless Chrome against an isolated hub with a window split side by side (left: Bitbucket repository with a Trello board and session A; right, selected: GitHub repository with session B), with a mouse at 1700×900: `PR #5` opens `workspace/left/pull-requests/5` on the left and `owner/right/pull/5` on the right; `[Image #1]` opens session A's image on the left and session B's on the right; `docs/notes.md` opens each pane's own file; `Trello #470` is linked only on the left. With `matchMedia` answering `(any-hover: hover)` (this Chrome ignores the CDP emulation of it), resting on `[Image #1]` shows the thumbnail of each pane's own image after one `GET /api/claude-image`, a second rest shows it again without asking, and crossing it fast asks nothing. With `window.open` returning null, `Trello #470` shows «El navegador ha bloqueado la pestaña de la tarjeta de Trello». With touch emulation and the context lifetime lowered to 8 s for the check (restored afterwards), the first tap on `PR #5` after it expired opened the page while the context was read again.
+- [x] 8.9 Add `"pr": "13"` to the changelog entry, and a `fixed` entry for relative file paths of the pane that is not selected in a split window (they opened in the selected pane's folder).
 
-## 9. Documentation and changelog
+## 9. Run tests, typecheck and lint
 
-- [x] 9.1 Run `/koalarnes:update-docs` for the three new REST endpoints and the pattern of a link provider resolved ahead of the tap (server and web standards); apply the approved patches.
-- [x] 9.2 Add a changelog entry with `/koalarnes:changelog` (user-visible flow and new endpoints, Spanish description, `web` and `server` scopes); verify the file exists under `changelogs/unreleased/`.
+- [x] 9.1 Run `pnpm --filter server test` and `pnpm --filter server typecheck`; verify both pass.
+  - 177 tests pass; typecheck clean.
+- [x] 9.2 Run `pnpm --filter web typecheck`; verify it passes.
+- [x] 9.3 Run `ka features-check`; verify it passes. (`trello-extension` and `host-kit` are not touched: their commands do not apply.)
 
-## 10. Feature catalogue
+## 10. Documentation and changelog
 
-- [x] 10.1 Run `/koalarnes:update-features terminal-reference-links`, review and apply the update of `docs/FEATURES.md` with one anchored section per requirement of `terminal-links`.
+- [x] 10.1 Run `/koalarnes:update-docs` for the three new REST endpoints and the pattern of a link provider resolved ahead of the tap (server and web standards); apply the approved patches.
+- [x] 10.2 Add a changelog entry with `/koalarnes:changelog` (user-visible flow and new endpoints, Spanish description, `web` and `server` scopes); verify the file exists under `changelogs/unreleased/`.
+
+## 11. Feature catalogue
+
+- [x] 11.1 Run `/koalarnes:update-features terminal-reference-links`, review and apply the update of `docs/FEATURES.md` with one anchored section per requirement of `terminal-links`.
   - New area «Terminal» with four sections; the spec was synced to `openspec/specs/terminal-links/` with `/opsx:sync` so the check can see the capability.
-- [x] 10.2 Run `ka features-check`; verify the exit code is 0.
-- [x] 10.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 11.2 Run `ka features-check`; verify the exit code is 0.
+- [x] 11.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
 
-## 11. E2E pipeline
+## 12. E2E pipeline
 
-- [x] 11.1 The project has no E2E suite; this step does not apply. Recorded here.
+- [x] 12.1 The project has no E2E suite; this step does not apply. Recorded here.
 
-## 12. Human review
+## 13. Human review
 
-- [ ] 12.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
+- [ ] 13.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
 
-## 13. features-check before the archive
+## 14. features-check before the archive
 
-- [ ] 13.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [ ] 14.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
 
 ## Workflow follow-up
 
 - After approval: `/opsx:archive`, then `/koalarnes:commit` to push the archive into the same pull request.
 - Merge with `gh pr merge <n> --squash --delete-branch` on the owner's yes, follow the `deploy` run with `gh run watch` and report it.
 - Once merged: propose closing Issue #12 and removing the worktree, in one `AskUserQuestion` call.
+- Once deployed: the owner taps a `Trello #N` in the panel installed as an app (PWA) on the phone and checks the card opens.
 - Once deployed: the owner pastes an image into a Claude Code on the Mac and taps its `[Image #N]` in the panel. If it answers «No encuentro la imagen N», find the temporary folder Claude Code uses on macOS and whether the hub's SSH shell reaches it, and fix the candidate list of design D4 in a `bugfix/` branch.
 - Once deployed and checked: propose a release (`ka changelog release --dry-run`).

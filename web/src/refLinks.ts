@@ -1,20 +1,22 @@
 import type { ILink, ILinkProvider, Terminal } from '@xterm/xterm';
 import { findRefs, refUrl, type RefHit } from '../../shared/refs';
+import { StaleCache } from '../../shared/stale-cache';
 import type { RefContext } from '../../shared/types';
 import { api } from './api';
-import { readRow } from './fileLinks';
+import { readRow, screenCell, type ScreenCell } from './fileLinks';
 import type { FileOrigin } from './fileViewer';
 import { findWindow } from './state';
 
 // Links on what agents write in the terminal: PR #12, Issue #3, pipeline #9 and Trello #470
-// (their page, from the pane's project), and Claude Code's [Image #N] (the pasted image, in
-// the viewer). A tap asks the providers synchronously, so the project is read ahead of it.
+// (their page, from the project of the pane they are written in), and Claude Code's
+// [Image #N] (the pasted image, in the viewer). A tap asks the providers synchronously, so
+// the project is read ahead of it.
 
-/** How long what a project lets link is kept: a new koalarnes.json shows up within this time. */
+/** How long what a project lets link holds: a new koalarnes.json shows up on the first look after it. */
 const CONTEXT_TTL = 5 * 60_000;
 
-/** Per host and folder: what its project lets link once read, and the read while it is on its way. */
-const contexts = new Map<string, { at: number; ctx?: RefContext; pending?: Promise<RefContext | undefined> }>();
+/** Per host and folder, what its project lets link. An expired one keeps answering while it is read again. */
+const contexts = new StaleCache<RefContext>(CONTEXT_TTL);
 
 /** The pane's folder, which decides the project. */
 function paneFolder(origin: FileOrigin): string | undefined {
@@ -23,47 +25,28 @@ function paneFolder(origin: FileOrigin): string | undefined {
 }
 
 /**
- * What the pane's project lets link: at once when already read, else the read on its way
- * (started here if needed; undefined when the machine does not answer). A tap only sees
- * the first case: the terminal reads it ahead (prefetchRefContext).
+ * What the pane's project lets link: at once once read, else the read on its way
+ * (undefined when the machine does not answer). A tap only sees the first case: the
+ * terminal reads it ahead (prefetchRefContext).
  */
 function contextOf(origin: FileOrigin): RefContext | Promise<RefContext | undefined> | undefined {
   const folder = paneFolder(origin);
   if (!folder) return undefined;
-  const key = `${origin.host}\t${folder}`;
-  const known = contexts.get(key);
-  if (known && Date.now() - known.at < CONTEXT_TTL) return known.ctx ?? known.pending;
   const q = new URLSearchParams({ host: origin.host, ...(origin.window ? { window: origin.window } : {}), ...(origin.pane ? { pane: origin.pane } : {}) });
-  const pending = api<RefContext>(`/api/refs/context?${q}`).then(
-    (ctx) => {
-      contexts.set(key, { at: Date.now(), ctx });
-      return ctx;
-    },
-    () => {
-      // The machine did not answer: asked again on the next look instead of waiting five minutes.
-      contexts.delete(key);
-      return undefined;
-    },
-  );
-  contexts.set(key, { at: Date.now(), pending });
-  return pending;
+  const read = contexts.get(`${origin.host}\t${folder}`, () => api<RefContext>(`/api/refs/context?${q}`));
+  return read.ready ? read.value : read.pending;
 }
 
-/** Reads what the pane's project lets link before anything is tapped (the terminal opens, or moves to another pane). */
+/** Reads what a pane's project lets link before anything is tapped (the terminal opens, or its panes change). */
 export function prefetchRefContext(origin: FileOrigin): void {
   contextOf(origin);
 }
 
-/** The links of one row (1-based y) for the hits a handler wants, each covering its text. */
-function rowLinks(term: Terminal, y: number, make: (hit: RefHit) => Omit<ILink, 'range' | 'text'> | undefined): ILink[] | undefined {
-  const row = readRow(term, y - 1);
-  const links: ILink[] = [];
-  for (const hit of findRefs(row.text)) {
-    const link = make(hit);
-    if (!link) continue;
-    links.push({ range: { start: { x: row.cols[hit.start] + 1, y }, end: { x: row.cols[hit.end - 1] + 1, y } }, text: row.text.slice(hit.start, hit.end), ...link });
-  }
-  return links.length ? links : undefined;
+type RowText = ReturnType<typeof readRow>;
+
+/** The link of one hit in a row (1-based y), covering its text. */
+function hitLink(row: RowText, y: number, hit: RefHit, link: Omit<ILink, 'range' | 'text'>): ILink {
+  return { range: { start: { x: row.cols[hit.start] + 1, y }, end: { x: row.cols[hit.end - 1] + 1, y } }, text: row.text.slice(hit.start, hit.end), ...link };
 }
 
 export interface RefLinkHandlers {
@@ -73,35 +56,44 @@ export interface RefLinkHandlers {
   trello: (e: MouseEvent, board: string, n: number) => void;
 }
 
-/** Links on PR #N, Issue #N, pipeline #N and Trello #N, only where the pane's project can resolve them. */
-export function refLinkProvider(term: Terminal, origin: () => FileOrigin, on: RefLinkHandlers): ILinkProvider {
+/**
+ * Links on PR #N, Issue #N, pipeline #N and Trello #N, only where the project of the pane
+ * each one is written in (origin of its first cell) can resolve them.
+ */
+export function refLinkProvider(term: Terminal, origin: (cell: ScreenCell) => FileOrigin, on: RefLinkHandlers): ILinkProvider {
   return {
     provideLinks(y, callback) {
-      const text = readRow(term, y - 1).text;
-      if (!findRefs(text).some((h) => h.kind !== 'image')) return callback(undefined);
-      const links = (ctx: RefContext | undefined) =>
-        ctx &&
-        rowLinks(term, y, (hit) => {
-          const decorations = { underline: true, pointerCursor: true };
+      const row = readRow(term, y - 1);
+      const hits = findRefs(row.text).filter((h) => h.kind !== 'image');
+      if (!hits.length) return callback(undefined);
+      const reads = hits.map((hit) => contextOf(origin(screenCell(term, y - 1, row.cols[hit.start]))));
+      const decorations = { underline: true, pointerCursor: true };
+      const links = (ctxs: (RefContext | undefined)[]) => {
+        const out: ILink[] = [];
+        hits.forEach((hit, i) => {
+          const ctx = ctxs[i];
+          if (!ctx) return;
           if (hit.kind === 'trello') {
             const board = ctx.trelloBoard;
-            return board ? { decorations, activate: (e) => on.trello(e, board, hit.n) } : undefined;
+            if (board) out.push(hitLink(row, y, hit, { decorations, activate: (e) => on.trello(e, board, hit.n) }));
+            return;
           }
           const url = ctx.repo && refUrl(hit.kind, hit.n, ctx.repo);
-          return url ? { decorations, activate: (e) => on.open(e, url) } : undefined;
+          if (url) out.push(hitLink(row, y, hit, { decorations, activate: (e) => on.open(e, url) }));
         });
-      const ctx = contextOf(origin());
-      // Still on its way: xterm keeps the answer while the mouse stays on the row, so it waits for it.
-      if (ctx instanceof Promise) void ctx.then((c) => callback(links(c)));
-      else callback(links(ctx));
+        return out.length ? out : undefined;
+      };
+      // A read still on its way: xterm keeps the answer while the mouse stays on the row, so it waits for it.
+      if (reads.some((r) => r instanceof Promise)) void Promise.all(reads).then((ctxs) => callback(links(ctxs)));
+      else callback(links(reads as (RefContext | undefined)[]));
     },
   };
 }
 
 export interface ImageLinkHandlers {
-  open: (e: MouseEvent, n: number) => void;
+  open: (e: MouseEvent, n: number, cell: ScreenCell) => void;
   /** The mouse went onto it (a preview), and off it. */
-  hover: (e: MouseEvent, n: number) => void;
+  hover: (e: MouseEvent, n: number, cell: ScreenCell) => void;
   leave: () => void;
 }
 
@@ -109,13 +101,19 @@ export interface ImageLinkHandlers {
 export function imageLinkProvider(term: Terminal, on: ImageLinkHandlers): ILinkProvider {
   return {
     provideLinks(y, callback) {
-      callback(
-        rowLinks(term, y, (hit) =>
-          hit.kind === 'image'
-            ? { decorations: { underline: true, pointerCursor: true }, activate: (e) => on.open(e, hit.n), hover: (e) => on.hover(e, hit.n), leave: on.leave }
-            : undefined,
-        ),
-      );
+      const row = readRow(term, y - 1);
+      const links = findRefs(row.text)
+        .filter((hit) => hit.kind === 'image')
+        .map((hit) => {
+          const cell = screenCell(term, y - 1, row.cols[hit.start]);
+          return hitLink(row, y, hit, {
+            decorations: { underline: true, pointerCursor: true },
+            activate: (e) => on.open(e, hit.n, cell),
+            hover: (e) => on.hover(e, hit.n, cell),
+            leave: on.leave,
+          });
+        });
+      callback(links.length ? links : undefined);
     },
   };
 }

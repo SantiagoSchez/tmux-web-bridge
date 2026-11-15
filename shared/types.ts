@@ -19,6 +19,9 @@ export interface PaneInfo {
   state: PaneState | null;
   width: number;
   height: number;
+  /** Where it starts in its window, in cells (pane_left, pane_top): which pane a cell of the terminal belongs to. */
+  left: number;
+  top: number;
   dead: boolean;
   inMode: boolean;
   /** Email of the Claude account of the Claude Code in it (@claude_account, from its statusline). */

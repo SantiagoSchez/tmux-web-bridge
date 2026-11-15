@@ -20,7 +20,7 @@ What exists today:
 
 - A tap on a reference opens its page inside the tap's gesture, so the browser does not block the new tab.
 - Detection and URL building are pure functions in `shared/`, unit-tested from `server/`.
-- No new persisted state, no change to existing payloads, no host-kit change, nothing written on the machines.
+- No new persisted state, no host-kit change, nothing written on the machines. The only change to an existing payload is additive: `PaneInfo` gains the pane's position in its window (D7).
 
 **Non-Goals:**
 
@@ -60,11 +60,11 @@ Tap or hover on "[Image #N]"
 
 **Context.** `linkAt()` asks providers synchronously, and a new tab opened after an `await` is blocked on phones. The URL of a pull request, issue or pipeline depends only on the repository host and path.
 
-**Decision.** The web fetches a `RefContext` once per host and pane folder (`GET /api/refs/context`) and keeps it in memory for five minutes. The reference provider builds links only for references the context supports, with the pure `refUrl()` of `shared/refs.ts`. `TerminalView` reads the context as soon as the terminal opens or moves to another pane, so it is usually there before the first tap. Until it arrives, the provider answers the mouse once the read finishes: xterm keeps a row's answer while the mouse stays on it, so an early empty answer would hide the links until the mouse left the row (seen in the manual check). A tap only uses a context already read.
+**Decision.** The web fetches a `RefContext` once per host and pane folder (`GET /api/refs/context`) and keeps it in memory. After five minutes the next look reads it again, and the old context keeps answering until the new one arrives, so a tap never finds the context missing once it has been read. The cache is the pure `StaleCache` of `shared/stale-cache.ts`, with the clock injected for its test. The reference provider builds links only for references the context supports, with the pure `refUrl()` of `shared/refs.ts`. `TerminalView` reads the context as soon as the terminal opens or moves to another pane, so it is usually there before the first tap. Until it arrives, the provider answers the mouse once the read finishes: xterm keeps a row's answer while the mouse stays on it, so an early empty answer would hide the links until the mouse left the row (seen in the manual check). A tap only uses a context already read.
 
 **Alternatives.** Resolving each reference on click through the hub: needs a blank tab trick for every kind and underlines references that then fail. Adding the remote to `PaneGit` in `GitScanner`: broadcasts it to every device every 15 s for a value read on demand only.
 
-**Consequences.** A reference written in a project whose context changes (a new `koalarnes.json`) picks the change up within five minutes or when the terminal is reopened.
+**Consequences.** A reference written in a project whose context changes (a new `koalarnes.json`) picks the change up on the first look after five minutes, or when the terminal is reopened.
 
 ### D2. koalarnes.json first, `origin` second
 
@@ -74,7 +74,7 @@ The context script runs in the pane's folder: it prints the top level's `.claude
 
 **Context.** The card's URL (`shortUrl`) needs a Trello API call, which cannot finish inside the tap's gesture.
 
-**Decision.** On activation the web opens `about:blank` synchronously, then asks `GET /api/trello/card-url?board=<shortLink>&n=<N>`. On success it sets the tab's location; on error it closes the tab and shows the hub's message as an error toast. `TrelloService.cardUrl(board, n)` calls `GET /1/boards/{board}/cards/{n}?fields=shortUrl`. The board is checked against `^[A-Za-z0-9]{8}$|^[0-9a-f]{24}$` and N against `^\d{1,7}$` before the call.
+**Decision.** On activation the web opens `about:blank` synchronously, then asks `GET /api/trello/card-url?board=<shortLink>&n=<N>`. On success it sets the tab's location; on error it closes the tab and shows the hub's message as an error toast. When the browser blocks the blank tab, the panel shows an error toast saying so instead of opening the card later, which the browser would block too. `TrelloService.cardUrl(board, n)` calls `GET /1/boards/{board}/cards/{n}?fields=shortUrl`. The board is checked against `^[A-Za-z0-9]{8}$|^[0-9a-f]{24}$` (`TRELLO_BOARD`, declared in `trello.ts` and imported by `project-refs.ts`) and N against `^\d{1,7}$` before the call. The hub returns the `shortUrl` only when it starts with `https://trello.com/`, and fails otherwise: the panel assigns it to a blank tab that shares the panel's origin.
 
 **Verified:** the route accepts the short number as `{n}`. With the owner's account on board `0mGPkF10`, cards 1 and 12 answer 200 with their `shortUrl` and number 9999999 answers 404 «Could not find the card». The fallback of listing every card of the board was not needed.
 
@@ -82,7 +82,7 @@ The context script runs in the pane's folder: it prints the top level's `.claude
 
 **Context.** Claude Code already writes every pasted image to disk, sent or not (see Context). The alternatives were a hub-side record of the panel's uploads, which guesses the number and misses images pasted by other means, and decoding the base64 block out of the session transcript.
 
-**Decision.** `GET /api/claude-image?host&pane&n` answers `ClaudeImageResult { path }` or 404. The hub takes `pane.claudeSession` (checked against `^[0-9a-f-]{36}$`; no session is 404) and N (`^\d{1,4}$`), and runs one read-only script on the machine. It looks in `claude-$(id -u)` under each candidate temporary folder (`$TMPDIR`, `/tmp`, and on macOS `getconf DARWIN_USER_TEMP_DIR`), matches `*/<session>/images/<N>.*`, and prints the most recently modified match (`ls -t`). The web opens that absolute path with `openFile` and `peekFile`, which read it through `GET /api/files` unchanged. The owner chose this folder as the only source, without the transcript as a fallback.
+**Decision.** `GET /api/claude-image?host&pane&n` answers `ClaudeImageResult { path }` or 404. The hub takes `pane.claudeSession` (checked against `^[0-9a-f-]{36}$`; no session is 404) and N (`^\d{1,4}$`), and runs one read-only script on the machine. It looks in `claude-$(id -u)` under each candidate temporary folder (`$TMPDIR`, `/tmp`, and on macOS `getconf DARWIN_USER_TEMP_DIR`), matches `*/<session>/images/<N>.*`, and prints the most recently modified match (`ls -t`). The web opens that absolute path with `openFile` and `peekFile`, which read it through `GET /api/files` unchanged. A click always asks the hub. A hover asks only on a device with real hover (`(any-hover: hover)`, the same check as `peekFile`), after the same short wait as the file previews, and keeps the path for a minute, so moving the mouse across the terminal does not run a script on the machine for every placeholder it crosses. The owner chose this folder as the only source, without the transcript as a fallback.
 
 **Consequences.** Nothing is written on the machine and no state is kept on the hub. The feature depends on an undocumented Claude Code layout: if a release moves the folder, or the machine empties its temporary folder (a reboot), the link answers «No encuentro la imagen N». The newest file wins when a session has folders under several working directories.
 
@@ -96,11 +96,18 @@ The context script runs in the pane's folder: it prints the top level's `.claude
 
 `RefRepo { host: 'github' | 'bitbucket'; path: string }`, `RefContext { repo?: RefRepo; trelloBoard?: string }`, `TrelloCardUrl { url: string }` and `ClaudeImageResult { path: string }` go in `shared/types.ts`. No wiring or bootstrap changes: the routes are added to `index.ts` under the HTTP API section; no boot smoke test is needed beyond the usual dev start.
 
+### D7. The pane under the tap, not the selected one
+
+**Context.** The terminal shows the whole tmux window. In a split window, text of another pane belongs to that pane's folder and Claude Code session, but every link resolved against the selected pane: an `[Image #1]` of the other pane opened the selected session's image, a reference used the selected pane's repository, and a relative file path was looked up in the selected pane's folder.
+
+**Decision.** The hub adds `left` and `top` (tmux `pane_left`, `pane_top`) to `PaneInfo`. Each link provider passes the cell where its link starts, and `TerminalView` turns it into the pane under it with the pure `paneAt(window, col, row)` of `shared/panes.ts`: the active pane of a zoomed window, the pane whose rectangle holds the cell otherwise. It answers nothing when the window does not fit in the terminal (tmux then shows only part of it, at an offset the panel does not know) or the cell is on a border, and the selected pane is used then, as before. File links, references and image placeholders all go through it.
+
+**Consequences.** One more pair of fields in the tree the hub broadcasts. A position read before a resize can be a few seconds old until the next poll; a link on the edge of a pane just resized may resolve against its neighbour for that time.
+
 ## Risks / Trade-offs
 
 - [Claude Code moves or stops writing the `images/` folder in a future release] → `[Image #N]` answers «not found»; the references are unaffected. The folder layout is pinned in one place (the script of D4), so adapting it is a one-function change.
 - [The machine empties its temporary folder while a session is still open] → Older images of that session answer «not found». Accepted by the owner over keeping the transcript as a fallback.
-- [The Trello route may not accept the short number] → Fallback in D3, verified with a real call before the task is closed.
 - [A blank tab flashes and closes when the Trello lookup fails] → Only on error; the toast explains it.
 
 ## Migration Plan
