@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "web",
-  "description": "Añadida la elección de la rama base al crear un worktree en «Nuevo espacio», «Nueva ventana», el cajón de Trello y las automatizaciones: el panel lista las ramas de origin y propone la última usada en la carpeta o en el tablero o, si no, la base del proyecto; si la rama del worktree ya existe, se usa tal cual y lo avisa",
-  "pr": "15",
-  "issue": "14",
-  "breaking": false
-}

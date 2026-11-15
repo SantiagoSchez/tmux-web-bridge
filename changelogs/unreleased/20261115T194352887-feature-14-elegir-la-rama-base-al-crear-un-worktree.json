@@ -1,8 +1,0 @@
-{
-  "type": "changed",
-  "scope": "server",
-  "description": "En una máquina sin hook WorktreeCreate, el servidor central crea él cada worktree nuevo en .claude/worktrees/ del checkout principal, con una rama que se llama como el worktree y copiando los ficheros ignorados que seleccione .worktreeinclude, en lugar de claude --worktree, que usaba la rama worktree-<nombre>; una rama extraída en otra carpeta ya no se puede usar como worktree",
-  "pr": "15",
-  "issue": "14",
-  "breaking": false
-}

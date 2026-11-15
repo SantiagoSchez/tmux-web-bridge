@@ -4,6 +4,21 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.23.0 - 2026-11-15
+
+### Añadido
+
+- **Rama base de un worktree nuevo**: al crear un worktree desde «Nuevo espacio», «Nueva ventana», el cajón de Trello, la extensión de Chrome o una automatización, eliges de qué rama de `origin` parte. Se propone la última que usaste en esa carpeta o en ese tablero de Trello y, si no, la base del proyecto. Si la rama del worktree ya existe, se usa tal cual y un aviso lo dice.
+- **Enlaces en el terminal**: «PR #N», «Issue #N» y «pipeline #N» abren su página en el repositorio del proyecto, «Trello #N» abre la tarjeta del tablero del proyecto, y «[Image #N]» abre la imagen que pegaste en Claude Code, con vista previa al pasar el ratón.
+
+### Cambiado
+
+- **Worktrees en máquinas sin hook `WorktreeCreate`**: el servidor central crea él el worktree en `.claude/worktrees/`, con una rama que se llama como el worktree (antes, `worktree-<nombre>`) y con los ficheros que seleccione `.worktreeinclude`. Una rama que ya está abierta en otra carpeta no se puede usar como worktree.
+
+### Corregido
+
+- **Rutas de fichero en una ventana partida**: una ruta relativa del panel no seleccionado se abría en la carpeta del panel seleccionado.
+
 ## 1.22.2 - 2026-11-14
 
 ### Cambiado
