@@ -86,7 +86,7 @@
 ## 11. Feature catalogue
 
 - [x] 11.1 Run `/koalarnes:update-features terminal-reference-links`, review and apply the update of `docs/FEATURES.md` with one anchored section per requirement of `terminal-links`.
-  - New area «Terminal» with four sections; the spec was synced to `openspec/specs/terminal-links/` with `/opsx:sync` so the check can see the capability.
+  - New area «Terminal» with one section per requirement (five, with «File paths open from the pane they are written in» added after the second review of PR #13); the spec was synced to `openspec/specs/terminal-links/` with `/opsx:sync` so the check can see the capability.
 - [x] 11.2 Run `ka features-check`; verify the exit code is 0.
 - [x] 11.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
 

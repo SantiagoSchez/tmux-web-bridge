@@ -36,7 +36,9 @@ export class StaleCache<T> {
       e.pending ??
       (e.pending = load().then(
         (value) => {
-          Object.assign(e, { at: this.now(), read: { value }, pending: undefined });
+          e.at = this.now();
+          e.read = { value };
+          e.pending = undefined;
           return value;
         },
         () => {

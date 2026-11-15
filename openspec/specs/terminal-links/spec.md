@@ -116,7 +116,7 @@ The terminal SHALL link `Trello #N` to the card whose short number is N on the b
 
 ### Requirement: File paths open from the pane they are written in
 
-The terminal SHALL open a file-path link, and show its preview, from the folder of the pane the path is written in. In a split window that is the pane under the link, not the selected pane.
+The terminal SHALL look a relative file-path link up first in the folder of the pane the path is written in, both to open it and to show its preview; the other panes' folders and their repositories come after, as for any file link. In a split window that pane is the one under the link, not the selected pane.
 
 #### Scenario: Relative path in the other pane of a split window
 
@@ -126,7 +126,7 @@ The terminal SHALL open a file-path link, and show its preview, from the folder 
 
 #### Scenario: Preview of the same path in each pane
 
-- **GIVEN** the same window and a desktop browser with a mouse
+- **GIVEN** a window split into two panes whose folders both hold a `docs/notes.md`, and a desktop browser with a mouse
 - **WHEN** the mouse rests on `docs/notes.md` in the left pane and then on `docs/notes.md` in the right pane
 - **THEN** each preview shows the file of its own pane
 

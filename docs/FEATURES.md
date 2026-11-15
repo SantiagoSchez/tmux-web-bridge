@@ -33,7 +33,7 @@ El panel toma el repositorio del `.claude/koalarnes.json` del proyecto en el que
 ### Rutas de fichero en una ventana partida
 <!-- capability: terminal-links; requirement: file-paths-open-from-the-pane-they-are-written-in -->
 
-Una ruta de fichero del terminal se abre en el visor, y se previsualiza con el ratón, desde la carpeta del panel en el que está escrita. En una ventana partida, una ruta relativa como «docs/notes.md» del panel no seleccionado abre el fichero de ese panel, no el del seleccionado.
+Una ruta de fichero relativa del terminal se busca primero en la carpeta del panel en el que está escrita, tanto para abrirla en el visor como para previsualizarla con el ratón; después, en las carpetas de los demás paneles. En una ventana partida, una ruta relativa como «docs/notes.md» del panel no seleccionado abre el fichero de ese panel, no el del seleccionado.
 
 ### Imágenes pegadas en Claude Code
 <!-- capability: terminal-links; requirement: image-placeholders-open-the-pasted-image -->

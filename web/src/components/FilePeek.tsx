@@ -86,7 +86,7 @@ export function FilePeek() {
     };
   }, [p]);
   if (!p) return null;
-  return <PeekCard key={`${p.path}:${p.line ?? ''}`} p={p} />;
+  return <PeekCard key={`${p.origin.pane ?? ''}:${p.path}:${p.line ?? ''}`} p={p} />;
 }
 
 function PeekCard({ p }: { p: Peek }) {
