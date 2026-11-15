@@ -164,6 +164,12 @@ When a branch with the worktree's name already exists in the repository, or on t
 - **WHEN** the user launches a task in worktree `feature/14-login` with base `release/2.0`
 - **THEN** the worktree uses the remote's `feature/14-login` and the user is told that the base was not applied
 
+#### Scenario: Branch on the remote that cannot be fetched
+
+- **GIVEN** a remote with a branch `tema/x` that the machine cannot fetch, such as when its clone still keeps a remote branch `tema` deleted on the remote
+- **WHEN** the user launches a task in worktree `tema/x`
+- **THEN** nothing is launched, no branch is created in its place, and the user is told the remote's branch could not be fetched
+
 #### Scenario: Worktree folder deleted by hand
 
 - **GIVEN** a machine without a worktree hook and a worktree `feature/14-login` whose folder was deleted without telling git
