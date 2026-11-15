@@ -49,7 +49,8 @@ const IMAGE_MAX = 15 * 1024 * 1024;
 const LINES = 14;
 
 function load(o: FileOrigin, path: string, line?: number): Promise<PeekData> {
-  const key = `${o.host}\n${o.window ?? ''}\n${path}\n${line ?? ''}`;
+  // The pane too: a relative path is read from its folder, and two panes of a window can have different ones.
+  const key = `${o.host}\n${o.window ?? ''}\n${o.pane ?? ''}\n${path}\n${line ?? ''}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 60_000) return hit.data;
   const data = (async () => {

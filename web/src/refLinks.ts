@@ -37,6 +37,9 @@ function contextOf(origin: FileOrigin): RefContext | Promise<RefContext | undefi
   return read.ready ? read.value : read.pending;
 }
 
+/** Whether a context is already read (or there is none), not on its way. */
+const isRead = (r: ReturnType<typeof contextOf>): r is RefContext | undefined => !(r instanceof Promise);
+
 /** Reads what a pane's project lets link before anything is tapped (the terminal opens, or its panes change). */
 export function prefetchRefContext(origin: FileOrigin): void {
   contextOf(origin);
@@ -84,8 +87,8 @@ export function refLinkProvider(term: Terminal, origin: (cell: ScreenCell) => Fi
         return out.length ? out : undefined;
       };
       // A read still on its way: xterm keeps the answer while the mouse stays on the row, so it waits for it.
-      if (reads.some((r) => r instanceof Promise)) void Promise.all(reads).then((ctxs) => callback(links(ctxs)));
-      else callback(links(reads as (RefContext | undefined)[]));
+      if (reads.every(isRead)) callback(links(reads));
+      else void Promise.all(reads).then((ctxs) => callback(links(ctxs)));
     },
   };
 }

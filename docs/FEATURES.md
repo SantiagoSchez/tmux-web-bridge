@@ -30,6 +30,11 @@ El panel toma el repositorio del `.claude/koalarnes.json` del proyecto en el que
 
 «Trello #470» abre la tarjeta número 470 del tablero que indica el `.claude/koalarnes.json` del proyecto. El panel busca la tarjeta con la cuenta de Ajustes › Trello. Si el proyecto no indica tablero, el texto no se subraya. Si la tarjeta no existe, o falta la cuenta de Trello o Trello la rechaza, la pestaña se cierra y el panel avisa del motivo; en el segundo caso, remite a Ajustes › Trello. Si el navegador bloquea la pestaña nueva, el panel también lo avisa.
 
+### Rutas de fichero en una ventana partida
+<!-- capability: terminal-links; requirement: file-paths-open-from-the-pane-they-are-written-in -->
+
+Una ruta de fichero del terminal se abre en el visor, y se previsualiza con el ratón, desde la carpeta del panel en el que está escrita. En una ventana partida, una ruta relativa como «docs/notes.md» del panel no seleccionado abre el fichero de ese panel, no el del seleccionado.
+
 ### Imágenes pegadas en Claude Code
 <!-- capability: terminal-links; requirement: image-placeholders-open-the-pasted-image -->
 

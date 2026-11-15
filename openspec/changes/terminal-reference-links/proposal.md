@@ -12,18 +12,19 @@ Agents write references such as `Trello #470`, `PR #123`, `Issue #42` or `pipeli
 - The terminal turns `Trello #N` into a link to the card whose short number is N on the board of the pane's project. The hub looks the card's URL up with the Trello account of Ajustes › Trello.
 - The repository and the board come from the `.claude/koalarnes.json` of the pane's project (`platform.host`, `platform.repository`, `tracker.board`). Without that file, pull requests, issues and pipelines fall back to the `origin` remote; `Trello #N` is linked only when the project names a board. A reference the pane's project cannot resolve is not underlined.
 - Clicking or tapping a reference opens its page in a new tab.
+- In a split window, every terminal link (references, image placeholders and the existing file paths) is resolved against the pane it is written in, not the selected pane. Until now a relative file path of the other pane opened in the selected pane's folder.
 - The terminal turns `[Image #N]` into a link that opens that image in the panel's file viewer, with the same preview on mouse hover as file paths. The image is the file Claude Code itself writes for each pasted image, sent or not, under `<tmp>/claude-<uid>/<project>/<session>/images/<N>.<ext>` on the pane's machine. The session is the one in the `@claude_session` tmux option the host kit already sets.
 - New hub endpoints, all under the existing password session:
   - `GET /api/refs/context`: what the pane's project lets the panel link (repository host and path, Trello board).
   - `GET /api/trello/card-url`: the URL of a Trello card from its board and short number.
   - `GET /api/claude-image`: the path, on the pane's machine, of the image behind `[Image #N]`.
-- New shared types in `shared/types.ts` for those payloads (`RefContext`, `TrelloCardUrl`, `ClaudeImageResult`). No existing payload, message or stored file changes, and no environment variable is added.
+- New shared types in `shared/types.ts` for those payloads (`RefContext`, `TrelloCardUrl`, `ClaudeImageResult`). `PaneInfo`, in the tree the hub broadcasts, gains the pane's position in its window (`left`, `top`), an additive change read only by the panel. No other payload, message or stored file changes, and no environment variable is added.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `terminal-links`: which text of the panel's terminal becomes a link, where each kind of link leads, and when a link is not offered. Covers the new reference and image-placeholder links; the existing URL and file-path links are left for a later change to describe.
+- `terminal-links`: which text of the panel's terminal becomes a link, where each kind of link leads, and when a link is not offered. Covers the new reference and image-placeholder links, and which pane a file-path link belongs to in a split window; the rest of the existing URL and file-path links is left for a later change to describe.
 
 ### Modified Capabilities
 
@@ -35,12 +36,12 @@ None: `openspec/specs/` has no capabilities yet.
 - External services: the Trello REST API (one card lookup per click on a `Trello #N`). GitHub and Bitbucket are only linked to, never called.
 - Machines: the hub runs two new read-only shell scripts on the pane's machine (project context, image lookup) and writes nothing there.
 - Dependency on Claude Code internals: the `images/` folder is Claude Code's own layout, not a documented API. If a Claude Code release moves it, or the machine empties its temporary folder, `[Image #N]` answers «not found» until this change is adapted.
-- Contracts: three new REST endpoints and their types; nothing existing changes.
+- Contracts: three new REST endpoints and their types, and two new fields in `PaneInfo`.
 
 ## Non-goals
 
 - Showing the title of a card, pull request or issue on hover.
 - Linking `pipeline #N` on GitHub Actions, where the run number does not form the URL.
 - Linking other wordings (`card #N`, `#N` alone, `PRs #1 and #2`) or the labels a project sets in `changelog.refs`.
-- Describing the existing URL and file-path links in the new capability spec.
+- Describing the existing URL and file-path links in the new capability spec, beyond the pane a file path belongs to.
 - Reading images from the session transcript (`*.jsonl`) when Claude Code's `images/` file is gone.

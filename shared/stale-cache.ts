@@ -6,9 +6,10 @@
 export type StaleRead<T> = { ready: true; value: T } | { ready: false; pending: Promise<T | undefined> };
 
 interface Entry<T> {
+  /** When the value was read. */
   at: number;
-  has: boolean;
-  value?: T;
+  /** The value, once read (boxed: a value may itself be undefined). */
+  read?: { value: T };
   pending?: Promise<T | undefined>;
 }
 
@@ -28,20 +29,21 @@ export class StaleCache<T> {
    */
   get(key: string, load: () => Promise<T>): StaleRead<T> {
     let entry = this.entries.get(key);
-    if (!entry) this.entries.set(key, (entry = { at: 0, has: false }));
-    if (!entry.pending && (!entry.has || this.now() - entry.at >= this.ttl)) {
-      const e = entry;
-      e.pending = load().then(
+    if (!entry) this.entries.set(key, (entry = { at: 0 }));
+    const e = entry;
+    if (e.read && (e.pending || this.now() - e.at < this.ttl)) return { ready: true, value: e.read.value };
+    const pending =
+      e.pending ??
+      (e.pending = load().then(
         (value) => {
-          Object.assign(e, { at: this.now(), has: true, value, pending: undefined });
+          Object.assign(e, { at: this.now(), read: { value }, pending: undefined });
           return value;
         },
         () => {
           e.pending = undefined;
-          return e.has ? e.value : undefined;
+          return e.read?.value;
         },
-      );
-    }
-    return entry.has ? { ready: true, value: entry.value as T } : { ready: false, pending: entry.pending! };
+      ));
+    return e.read ? { ready: true, value: e.read.value } : { ready: false, pending };
   }
 }

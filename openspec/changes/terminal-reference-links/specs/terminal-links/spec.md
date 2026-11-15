@@ -114,6 +114,22 @@ The terminal SHALL link `Trello #N` to the card whose short number is N on the b
 - **WHEN** the user taps `Trello #470`
 - **THEN** the panel shows an error toast saying the browser blocked the tab
 
+### Requirement: File paths open from the pane they are written in
+
+The terminal SHALL open a file-path link, and show its preview, from the folder of the pane the path is written in. In a split window that is the pane under the link, not the selected pane.
+
+#### Scenario: Relative path in the other pane of a split window
+
+- **GIVEN** a window split into two panes whose folders both hold a `docs/notes.md`, with the right pane selected
+- **WHEN** the user taps `docs/notes.md` written in the left pane
+- **THEN** the viewer opens the left pane's `docs/notes.md`
+
+#### Scenario: Preview of the same path in each pane
+
+- **GIVEN** the same window and a desktop browser with a mouse
+- **WHEN** the mouse rests on `docs/notes.md` in the left pane and then on `docs/notes.md` in the right pane
+- **THEN** each preview shows the file of its own pane
+
 ### Requirement: Image placeholders open the pasted image
 
 The terminal SHALL link `[Image #N]` to image N of the Claude Code session running in the pane the placeholder is written in, as Claude Code saved it when it was pasted, sent or not, and open it in the panel's file viewer. With a mouse, resting on the link SHALL show the same preview as a file path. When the image cannot be found, the panel SHALL show an error toast and open nothing.
