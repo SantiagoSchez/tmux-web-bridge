@@ -213,10 +213,10 @@ class HubSocket {
     });
   }
 
-  /** Runs a tree action; errors become a toast and reject. */
-  action<T = unknown>(host: string, op: ActionOp): Promise<T> {
+  /** Runs a tree action; errors reject, and become a toast unless `quiet` (the caller shows them). */
+  action<T = unknown>(host: string, op: ActionOp, opts: { quiet?: boolean } = {}): Promise<T> {
     return this.request<T>((id) => ({ t: 'action', id, host, ...op })).catch((err: Error) => {
-      toast(err.message, 'error');
+      if (!opts.quiet) toast(err.message, 'error');
       throw err;
     });
   }

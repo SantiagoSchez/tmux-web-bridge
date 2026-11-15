@@ -307,7 +307,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const folder = groups.some((g) => g.items.some((d) => d.key === destKey)) ? destKey : '';
   const dest = host && launchTarget(host, space, folder);
   const problem = inWorktree ? worktreeNameProblem(wtName.trim()) : null;
-  const ready = !!dest && (!!prompt.trim() || inWorktree) && !problem && (!inWorktree || !!base);
+  const ready = !!dest && (!!prompt.trim() || inWorktree) && !problem && (!inWorktree || base !== undefined);
 
   const launch = async () => {
     if (!ready || busy || !dest) return;
@@ -320,12 +320,12 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
       name: worktree ? cardWindowName(worktree) : card.name,
       skipPermissions: prefs.value.skipPermissions,
       worktree,
-      base: worktree ? base : undefined,
+      base: worktree ? base || undefined : undefined,
       card: card.id,
     };
     try {
       const r = await api<ExtLaunchResult>('/api/trello/launch', req);
-      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space, base: worktree ? base : remembered?.base } });
+      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space, base: worktree && base ? base : remembered?.base } });
       setPref('trelloWorktree', inWorktree);
       close();
       toast(`Lanzada en ${r.hostName} › ${r.space}${r.trello?.movedTo ? ` · movida a ${r.trello.movedTo}` : ''}`);

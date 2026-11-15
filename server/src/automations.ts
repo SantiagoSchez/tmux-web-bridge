@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nextRun, scheduleProblem, type Schedule } from '../../shared/schedule.js';
-import type { Automation, AutomationInfo, AutomationRun, ExtLaunchResult, PaneState } from '../../shared/types.js';
+import type { Automation, AutomationInfo, AutomationRun, ExtLaunchRequest, ExtLaunchResult, PaneState } from '../../shared/types.js';
 import { branchNameProblem, runWorktreeName, worktreeNameProblem } from '../../shared/worktree.js';
 
 // Automations: prompts the hub launches on its own on a schedule (Settings ›
@@ -18,8 +18,8 @@ const TICK_MS = 20_000;
 
 /** What the scheduler needs from the rest of the hub. */
 export interface AutomationDeps {
-  /** Launches one run (throws why it could not). */
-  launch(a: Automation, worktree: string | undefined): Promise<ExtLaunchResult>;
+  /** Launches one run of `a` on its machine (throws why it could not). */
+  launch(a: Automation, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult>;
   /** The state of a pane: undefined when it is gone, null when nothing runs in it. */
   paneState(host: string, pane: string): PaneState | null | undefined;
   now?: () => Date;
@@ -146,7 +146,11 @@ export class Automations extends EventEmitter {
     this.running.add(a.id);
     const worktree = a.worktree ? runWorktreeName(a.name, this.now) : undefined;
     try {
-      const r = await this.deps.launch(a, worktree);
+      const req: Omit<ExtLaunchRequest, 'host'> = { target: a.target, prompt: a.prompt, name: worktree ?? a.name };
+      if (worktree) req.worktree = worktree;
+      if (a.base) req.base = a.base;
+      req.skipPermissions = a.skipPermissions;
+      const r = await this.deps.launch(a, req);
       return this.record(a, { at: Date.now(), status: 'launched', manual, session: r.session, window: r.window, pane: r.pane, worktree });
     } catch (err) {
       return this.record(a, { at: Date.now(), status: 'error', manual, message: (err as Error).message, worktree });

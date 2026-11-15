@@ -78,6 +78,8 @@ export function branchNameProblem(name: string): string | null {
   const bad =
     name.length > BRANCH_MAX ||
     name === '@' ||
+    // A valid ref name, but origin/HEAD points at another branch: never a base of its own.
+    name === 'HEAD' ||
     name.startsWith('-') ||
     /[\x00-\x20\x7f~^:?*[\\]/.test(name) ||
     name.includes('..') ||

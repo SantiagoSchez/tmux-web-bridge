@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import type { BranchList } from '../../shared/types.js';
 import { branchNameProblem, pickBase } from '../../shared/worktree.js';
-import { branchesScript, parseBranches, parsePrepare, prepareScript, type Prepared } from './worktree-base.js';
+import { branchesScript, parseBranches, parsePrepare, prelude, prepareScript, type Prepared } from './worktree-base.js';
 
 // ---------------------------------------------------------------- fixtures
 
@@ -63,7 +63,7 @@ const HOOK_SETTINGS = JSON.stringify({ hooks: { WorktreeCreate: [{ hooks: [{ typ
 
 const branches = (home: string, path: string) => sh(branchesScript(path), home).then(parseBranches);
 const prepare = (home: string, path: string, worktree: string, base: string, extra: Record<string, string> = {}): Promise<Prepared> =>
-  sh(prepareScript(path, worktree, base), home, extra).then((out) => parsePrepare(out, base));
+  sh(prepareScript(path, worktree, base), home, extra).then((out) => parsePrepare(out, worktree, base));
 const sha = (home: string, repo: string, ref: string) => git(home, repo, 'rev-parse', ref);
 
 // ---------------------------------------------------------------- names and the branch offered first
@@ -71,7 +71,7 @@ const sha = (home: string, repo: string, ref: string) => git(home, repo, 'rev-pa
 test('a base branch name is checked as git would before it reaches a machine', () => {
   for (const ok of ['master', 'release/2.0', 'feature/14-login', 'v1.2_fix', 'a@b']) assert.equal(branchNameProblem(ok), null, ok);
   assert.match(branchNameProblem('') ?? '', /Falta la rama base/);
-  for (const bad of ['-x', 'a..b', 'a b', 'a\tb', 'a\nb', 'x@{1}', 'a/', '/a', 'a//b', 'a.lock', 'a/.b', 'a.', '@', 'a~1', 'a^', 'a:b', 'a?', 'a*', 'a[b', 'a\\b', 'x'.repeat(201)]) {
+  for (const bad of ['-x', 'a..b', 'a b', 'a\tb', 'a\nb', 'x@{1}', 'a/', '/a', 'a//b', 'a.lock', 'a/.b', 'a.', '@', 'a~1', 'a^', 'a:b', 'a?', 'a*', 'a[b', 'a\\b', 'HEAD', 'x'.repeat(201)]) {
     assert.match(branchNameProblem(bad) ?? '', /no es un nombre de rama válido/, JSON.stringify(bad));
   }
 });
@@ -131,13 +131,29 @@ test('a folder outside git has no branches', () =>
 
 // ---------------------------------------------------------------- preparing the worktree
 
-test('a base origin does not have, or a folder outside git, launches nothing', () =>
+test('a base origin does not have, even one the clone still knows, or a folder outside git, launches nothing', () =>
   withHome(async (home) => {
-    const { repo } = fixture(home);
+    const { bare, repo } = fixture(home);
     await assert.rejects(prepare(home, repo, 'feature/14-login', 'no-existe'), /No existe la rama base «no-existe» en origin/);
+    git(home, bare, 'branch', '-D', 'release/2.0');
+    await assert.rejects(prepare(home, repo, 'feature/14-login', 'release/2.0'), /No existe la rama base «release\/2\.0» en origin/);
     mkdirSync(join(home, 'suelta'));
     await assert.rejects(prepare(home, join(home, 'suelta'), 'feature/14-login', 'master'), /no está en un repositorio git/);
+    await assert.rejects(prepare(home, join(home, 'suelta'), 'feature/14-login', ''), /no está en un repositorio git/);
     assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/14-login'));
+  }));
+
+test('an origin that cannot be reached: the worktree starts from the known origin/<base>, and says why', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    git(home, repo, 'remote', 'set-url', 'origin', join(home, 'no-esta.git'));
+    const made = await prepare(home, repo, 'feature/14-login', 'release/2.0');
+    const path = join(repo, '.claude/worktrees/feature-14-login');
+    assert.equal(made.kind, 'created');
+    assert.equal(made.kind === 'created' && made.path, path);
+    assert.match(made.stale ?? '', /no-esta\.git/);
+    assert.equal(sha(home, path, 'HEAD'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
+    await assert.rejects(prepare(home, repo, 'feature/15-otra', 'no-existe'), /No se ha podido contactar con origin.*«no-existe»/);
   }));
 
 /** The places a WorktreeCreate hook can be declared in: each puts one there and gives the extra environment it needs. */
@@ -176,46 +192,114 @@ test('a plugin with the hook that is not enabled is no hook: the hub makes the w
     assert.equal((await prepare(home, repo, 'feature/14-login', 'release/2.0')).kind, 'created');
   }));
 
-test("with a hook, the project's base needs nothing, and an existing branch is left to the hook", () =>
+test("with a hook, even the project's base is made into the branch; without a base the hook decides; an existing branch is left to it", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
     write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
     write(join(repo, '.claude/koalarnes.json'), KOALARNES);
-    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0'), { kind: 'native' });
-    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/14-login'));
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0'), { kind: 'hook' });
+    assert.equal(sha(home, repo, 'refs/heads/feature/14-login'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
+    assert.deepEqual(await prepare(home, repo, 'feature/15-otra', ''), { kind: 'native' });
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/15-otra'));
     git(home, repo, 'branch', 'feature/local', 'master');
-    assert.deepEqual(await prepare(home, repo, 'feature/local', 'master'), { kind: 'reused' });
-    assert.deepEqual(await prepare(home, repo, 'feature/login', 'master'), { kind: 'reused' });
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'master'), { kind: 'reused', atBase: true });
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'release/2.0'), { kind: 'reused' });
+    assert.deepEqual(await prepare(home, repo, 'feature/login', 'release/2.0'), { kind: 'reused' });
     assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/login'));
   }));
 
-test("without a hook, origin's default branch needs nothing, and any other base gets a worktree from it", () =>
+test("without a hook, the hub always makes the worktree, named like it, from origin/<base> or else the project's base", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
     write(join(repo, '.claude/koalarnes.json'), KOALARNES);
-    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'native' });
-    const made = await prepare(home, join(repo, 'sub'), 'feature/14-login', 'release/2.0');
+    const made = await prepare(home, join(repo, 'sub'), 'feature/14-login', 'master');
     const path = join(repo, '.claude/worktrees/feature-14-login');
     assert.deepEqual(made, { kind: 'created', path });
     assert.equal(git(home, path, 'branch', '--show-current'), 'feature/14-login');
-    assert.equal(sha(home, path, 'HEAD'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
+    assert.equal(sha(home, path, 'HEAD'), sha(home, repo, 'refs/remotes/origin/master'));
     assert.throws(() => git(home, repo, 'rev-parse', '--abbrev-ref', 'feature/14-login@{upstream}'));
-    assert.deepEqual(await prepare(home, repo, 'otro', 'release/2.0'), { kind: 'created', path: join(repo, '.claude/worktrees/otro') });
+    const other = join(repo, '.claude/worktrees/otro');
+    assert.deepEqual(await prepare(home, repo, 'otro', ''), { kind: 'created', path: other });
+    assert.equal(sha(home, other, 'HEAD'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
     const exclude = readFileSync(join(repo, '.git/info/exclude'), 'utf8').split('\n');
     assert.equal(exclude.filter((l) => l === '.claude/worktrees/').length, 1);
     assert.equal(git(home, repo, 'status', '--porcelain', '--untracked-files=all').includes('worktrees'), false);
   }));
 
-test('without a hook, an existing branch opens as it is: its worktree, or a new one on it', () =>
+test('without a hook and without remote branches, the worktree starts from HEAD', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    git(home, repo, 'remote', 'remove', 'origin');
+    git(home, repo, 'checkout', '-qb', 'trabajo');
+    git(home, repo, 'commit', '-q', '--allow-empty', '-m', 'local');
+    const path = join(repo, '.claude/worktrees/feature-1-primera');
+    assert.deepEqual(await prepare(home, repo, 'feature/1-primera', ''), { kind: 'created', path });
+    assert.equal(sha(home, path, 'HEAD'), sha(home, repo, 'HEAD'));
+  }));
+
+test('without a hook, the new worktree gets the ignored files .worktreeinclude selects, and nothing else', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(repo, '.gitignore'), '.env*\nsecret/\n');
+    write(join(repo, '.worktreeinclude'), '.env*\nsecret/\nnotas.txt\n');
+    write(join(repo, '.env'), 'A=1');
+    write(join(repo, '.env.local'), 'B=2');
+    write(join(repo, 'secret/clave'), 'k');
+    write(join(repo, 'notas.txt'), 'no ignorado');
+    const made = await prepare(home, repo, 'feature/14-login', 'master');
+    const path = join(repo, '.claude/worktrees/feature-14-login');
+    assert.deepEqual(made, { kind: 'created', path });
+    assert.equal(readFileSync(join(path, '.env'), 'utf8'), 'A=1');
+    assert.equal(readFileSync(join(path, '.env.local'), 'utf8'), 'B=2');
+    assert.equal(readFileSync(join(path, 'secret/clave'), 'utf8'), 'k');
+    assert.throws(() => readFileSync(join(path, 'notas.txt')));
+  }));
+
+test('without a hook, a target inside a linked worktree gets the new one under the main checkout', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const linked = join(repo, '.claude/worktrees/feature-a');
+    git(home, repo, 'worktree', 'add', '-q', '-b', 'feature/a', linked, 'origin/master');
+    assert.deepEqual(await prepare(home, linked, 'feature/b', 'master'), { kind: 'created', path: join(repo, '.claude/worktrees/feature-b') });
+  }));
+
+test('without a hook, an existing branch opens in its worktree, or a new one on it, and is refused when checked out elsewhere', () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
     git(home, repo, 'branch', 'feature/local', 'master');
     const local = join(repo, '.claude/worktrees/feature-local');
     assert.deepEqual(await prepare(home, repo, 'feature/local', 'release/2.0'), { kind: 'reused', path: local });
     assert.equal(sha(home, local, 'HEAD'), sha(home, repo, 'refs/remotes/origin/master'));
-    assert.deepEqual(await prepare(home, repo, 'feature/local', 'release/2.0'), { kind: 'reused', path: local });
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'master'), { kind: 'reused', path: local, atBase: true });
     const remote = join(repo, '.claude/worktrees/feature-login');
     assert.deepEqual(await prepare(home, repo, 'feature/login', 'release/2.0'), { kind: 'reused', path: remote });
     assert.equal(git(home, remote, 'rev-parse', '--abbrev-ref', '@{upstream}'), 'origin/feature/login');
-    assert.deepEqual(await prepare(home, repo, 'master', 'release/2.0'), { kind: 'reused', path: repo });
+    await assert.rejects(prepare(home, repo, 'master', 'release/2.0'), new RegExp(`La rama master está extraída en ${repo}: elige otro nombre`));
+    const away = join(home, 'fuera');
+    git(home, repo, 'worktree', 'add', '-q', '-b', 'feature/fuera', away, 'origin/master');
+    await assert.rejects(prepare(home, repo, 'feature/fuera', 'master'), new RegExp(`extraída en ${away}:`));
   }));
+
+test("a git failure says git's message", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(repo, '.claude/worktrees/feature-x/ocupado'), 'x');
+    await assert.rejects(prepare(home, repo, 'feature/x', 'master'), /No se ha podido preparar el worktree: .*already exists/);
+  }));
+
+test('a command that takes too long is killed, with the child that hangs on the network', async () => {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-bounded-')));
+  try {
+    git(home, home, 'init', '-q');
+    // `sh` stands for git, and its `sleep` for the ssh it starts.
+    const script = prelude(home, 'exit 9') + `bounded 1 sh -c 'sleep 30 & echo $! > child; wait'; echo "r=$?"`;
+    const start = Date.now();
+    assert.equal((await sh(script, home)).trim(), 'r=143');
+    assert.ok(Date.now() - start < 5000);
+    const child = Number(readFileSync(join(home, 'child'), 'utf8'));
+    await new Promise((r) => setTimeout(r, 100));
+    assert.throws(() => process.kill(child, 0), /ESRCH/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});

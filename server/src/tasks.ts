@@ -91,10 +91,12 @@ export function tmuxLiteral(text: string): string {
   return text.replace(/#/g, '##');
 }
 
-/** Preparing a worktree fetches (bounded on the machine) and may check out a large tree. */
-const PREPARE_TIMEOUT = 60_000;
-/** Reading the branches fetches too (bounded on the machine). */
-const BRANCHES_TIMEOUT = 30_000;
+/**
+ * Preparing a worktree fetches (bounded on the machine) and may check out a large tree;
+ * reading the branches fetches too. Both answer before Chrome drops the extension's call (30 s).
+ */
+const PREPARE_TIMEOUT = 25_000;
+const BRANCHES_TIMEOUT = 25_000;
 
 /** The branches of origin of a target's repository, after a fetch, to pick a new worktree's base. */
 export async function listBranches(host: HostMonitor, machine: MachineFolders, target: unknown): Promise<BranchList> {
@@ -122,9 +124,9 @@ export async function targetFolder(host: HostMonitor, machine: MachineFolders, t
  * the space of an added folder. A folder without a space gets one, and the task goes in
  * its first window; with one open, in a new window there, in the folder. An open space
  * with a folder gets a new window in that folder. With `worktree`,
- * claude starts in a new git worktree of that name, and the prompt may be left out. With
- * `base` too, the worktree is prepared on the machine first to start from origin/<base>
- * (see worktree-base.ts): nothing opens if that fails.
+ * claude starts in a new git worktree of that name, and the prompt may be left out: the
+ * worktree is prepared on the machine first, from origin/<base> when `base` is given (see
+ * worktree-base.ts), and nothing opens if that fails.
  */
 export async function launchTask(host: HostMonitor, machine: MachineFolders, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult> {
   const prompt = typeof req.prompt === 'string' ? req.prompt.trim() : '';
@@ -146,7 +148,10 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
   const run = (args: string[]) => host.exec.run(args);
 
   let prepared: Prepared | undefined;
-  if (base) prepared = parsePrepare(await host.exec.shell(prepareScript(await targetFolder(host, machine, target), worktree, base), PREPARE_TIMEOUT), base);
+  if (worktree) {
+    const out = await host.exec.shell(prepareScript(await targetFolder(host, machine, target), worktree, base), PREPARE_TIMEOUT);
+    prepared = parsePrepare(out, worktree, base);
+  }
   const cd = prepared?.kind === 'created' || prepared?.kind === 'reused' ? prepared.path : undefined;
 
   let session: string;
@@ -188,6 +193,18 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
   await run(['send-keys', '-t', pane, 'Enter']);
   const [window, windowName] = (await host.exec.runFormat(['display-message', '-p', '-t', pane, '#{window_id}\t#{window_name}'])).trim().split('\t');
   const result: ExtLaunchResult = { host: host.id, hostName: host.name, session, space, window: window ?? '', windowName: windowName ?? name, pane, createdSpace };
-  if (prepared?.kind === 'reused') result.notice = `La rama ${worktree} ya existía: se usa tal cual, sin partir de ${base}`;
+  const notice = prepared && prepareNotice(prepared, worktree, base);
+  if (notice) result.notice = notice;
   return result;
+}
+
+/** What the user is told about a prepared worktree: a base not applied, an origin not updated. */
+function prepareNotice(prepared: Prepared, worktree: string, base: string): string | undefined {
+  const notes: string[] = [];
+  if (prepared.kind === 'reused' && base && !prepared.atBase) notes.push(`La rama ${worktree} ya existía: se usa tal cual, sin partir de ${base}`);
+  if (prepared.stale) {
+    const from = base ? `origin/${base}` : 'la rama base del proyecto';
+    notes.push(`No se ha podido actualizar origin: el worktree parte de la copia local de ${from}`);
+  }
+  return notes.length ? notes.join('. ') : undefined;
 }

@@ -246,18 +246,6 @@ test(
 );
 
 test(
-  'a task in a worktree needs no prompt, and its window is named after the worktree',
-  withHome(async (home) => {
-    const tmux: string[][] = [];
-    const host = fakeHost(home, tmux, [{ id: '$3', name: 'otro' }]);
-    await launchTask(host, { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt: '', worktree: '142-login' });
-    assert.deepEqual(tmux.find((a) => a[0] === 'new-window')?.slice(-2), ['-n', '142-login']);
-    assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto --worktree '142-login'"]);
-    await assert.rejects(launchTask(host, { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt: 'x', worktree: 'no vale' }), /solo admite/);
-  }),
-);
-
-test(
   'nothing is launched without a prompt, or somewhere it should not go',
   withHome(async (home) => {
     const tmux: string[][] = [];
@@ -369,5 +357,77 @@ test(
     await launchTask(host, machine, { target: { session: '$3' }, prompt: 'hola', base: 'master' });
     assert.ok(!tmux.some((a) => a[0] === 'display-message' && a.includes('#{pane_current_path}')));
     assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto 'hola'"]);
+  }),
+);
+
+/** A WorktreeCreate hook in the user's Claude settings, as the koalarnes plugin adds. */
+function withHook(home: string) {
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  writeFileSync(join(home, '.claude/settings.json'), '{ "hooks": { "WorktreeCreate": [] } }');
+}
+
+test(
+  'a task in a worktree needs no prompt, and its window is named after the worktree',
+  withHome(async (home) => {
+    const { machine } = cloneAt(home);
+    withHook(home);
+    const tmux: string[][] = [];
+    const host = fakeHost(home, tmux);
+    await launchTask(host, machine, { target: { folder: '~/repo' }, prompt: '', worktree: '142-login' });
+    assert.deepEqual(tmux.find((a) => a[0] === 'new-session')?.slice(-2), ['-n', '142-login']);
+    assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto --worktree '142-login'"]);
+    await assert.rejects(launchTask(host, machine, { target: { folder: '~/repo' }, prompt: 'x', worktree: 'no vale' }), /solo admite/);
+  }),
+);
+
+test(
+  'a worktree without a base is prepared too: without a hook the hub makes it from the project base',
+  withHome(async (home) => {
+    const { git, repo, machine } = cloneAt(home);
+    const tmux: string[][] = [];
+    const res = await launchTask(fakeHost(home, tmux), machine, { target: { folder: '~/repo' }, prompt: 'hola', worktree: 'w1' });
+    const path = join(repo, '.claude/worktrees/w1');
+    assert.equal(git(path, 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'origin/master'));
+    assert.equal(git(path, 'branch', '--show-current'), 'w1');
+    assert.deepEqual(keys(tmux)[0], ['-l', `cd '${path}' && claude --permission-mode auto 'hola'`]);
+    assert.equal(res.notice, undefined);
+  }),
+);
+
+test(
+  'a branch checked out in another folder launches nothing',
+  withHome(async (home) => {
+    const { repo, machine } = cloneAt(home);
+    const tmux: string[][] = [];
+    await assert.rejects(
+      launchTask(fakeHost(home, tmux), machine, { target: { folder: '~/repo' }, prompt: 'x', worktree: 'master', base: 'release/2.0' }),
+      new RegExp(`La rama master está extraída en ${repo}: elige otro nombre para el worktree`),
+    );
+    assert.ok(!tmux.some((a) => ['new-session', 'new-window', 'send-keys'].includes(a[0])));
+  }),
+);
+
+test(
+  'an unreachable origin: the worktree starts from the known copy of the base, and the launch says so',
+  withHome(async (home) => {
+    const { git, repo, machine } = cloneAt(home);
+    git(repo, 'remote', 'set-url', 'origin', join(home, 'no-existe.git'));
+    const tmux: string[][] = [];
+    const res = await launchTask(fakeHost(home, tmux), machine, { target: { folder: '~/repo' }, prompt: 'hola', worktree: 'w', base: 'release/2.0' });
+    assert.equal(git(join(repo, '.claude/worktrees/w'), 'rev-parse', 'HEAD'), git(repo, 'rev-parse', 'origin/release/2.0'));
+    assert.match(res.notice ?? '', /No se ha podido actualizar origin: el worktree parte de la copia local de origin\/release\/2\.0/);
+  }),
+);
+
+test(
+  'an existing branch already at the base, or one launched without a base, says nothing',
+  withHome(async (home) => {
+    const { machine } = cloneAt(home);
+    withHook(home);
+    const host = fakeHost(home, []);
+    const atBase = await launchTask(host, machine, { target: { folder: '~/repo' }, prompt: '', worktree: 'feature/login', base: 'master' });
+    assert.equal(atBase.notice, undefined);
+    const noBase = await launchTask(host, machine, { target: { folder: '~/repo' }, prompt: '', worktree: 'feature/login' });
+    assert.equal(noBase.notice, undefined);
   }),
 );

@@ -17,7 +17,7 @@ async function readError(res: Response): Promise<string> {
 
 // ---------------------------------------------------------------- twb
 
-async function hub<T>(s: Settings, path: string, body?: unknown): Promise<T> {
+async function hub<T>(s: Settings, path: string, body?: unknown, tooOld = 'El panel de twb es anterior a la versión 1.18 de la extensión: actualízalo.'): Promise<T> {
   if (!s.hubUrl || !s.hubToken) throw new SetupError('Falta la dirección o el token de twb en las opciones.');
   if (!(await chrome.permissions.contains({ origins: [hubPattern(s.hubUrl)] }))) {
     throw new SetupError('La extensión no tiene permiso para llegar al panel de twb: vuelve a guardar las opciones.');
@@ -33,7 +33,7 @@ async function hub<T>(s: Settings, path: string, body?: unknown): Promise<T> {
     throw new Error(`No se pudo conectar con twb en ${s.hubUrl}. ¿Estás en la tailnet o en la LAN?`);
   }
   if (res.status === 401) throw new SetupError('twb no acepta el token: genera otro en Ajustes › Trello y pégalo en las opciones.');
-  if (res.status === 404) throw new Error('El panel de twb es anterior a la versión 1.18 de la extensión: actualízalo.');
+  if (res.status === 404) throw new Error(tooOld);
   if (!res.ok) throw new Error(`twb: ${await readError(res)}`);
   return (await res.json()) as T;
 }
@@ -59,8 +59,9 @@ async function launch(req: Extract<Request, { type: 'launch' }>): Promise<ExtLau
   const result = await hub<ExtLaunchResult>(s, '/api/ext/launch', { ...req.req, card: req.card.id });
   const memory = await loadMemory();
   const board = req.card.board.id;
-  // A launch without a worktree keeps the base remembered for the next one with it.
-  memory.boards[board] = { host: req.req.host, destination: req.destination, space: req.space, base: req.req.worktree ? req.req.base : memory.boards[board]?.base };
+  // A launch without a worktree, or without a base, keeps the base remembered for the next one.
+  const base = req.req.worktree && req.req.base ? req.req.base : memory.boards[board]?.base;
+  memory.boards[board] = { host: req.req.host, destination: req.destination, space: req.space, base };
   memory.skipPermissions = req.req.skipPermissions === true;
   memory.worktree = req.worktree;
   await saveMemory(memory);
@@ -75,7 +76,7 @@ async function branches(msg: Extract<Request, { type: 'branches' }>): Promise<Br
   if (t.session) q.set('session', t.session);
   if (t.folder) q.set('folder', t.folder);
   if (t.sub) q.set('sub', t.sub);
-  return hub<BranchList>(s, `/api/ext/branches?${q}`);
+  return hub<BranchList>(s, `/api/ext/branches?${q}`, undefined, 'El panel de twb es anterior a la elección de la rama base: actualízalo para elegirla.');
 }
 
 // ---------------------------------------------------------------- updates

@@ -708,18 +708,18 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
   const baseKey = `${d.host.id}\t${item.folder}\t${item.sub ?? ''}`;
   const problem = name.trim() ? worktreeNameProblem(name.trim()) : null;
   const launch = async () => {
-    if (busy || !name.trim() || problem || !base) return;
+    if (busy || !name.trim() || problem || base === undefined) return;
     setBusy(true);
     try {
       const res = await hub.action<ExtLaunchResult>(d.host.id, {
         op: 'launchTask',
         target: d.session ? { session: d.session.id, ...target } : target,
         worktree: name.trim(),
-        base,
+        base: base || undefined,
         prompt: prompt.trim(),
         skipPermissions: prefs.value.skipPermissions,
       });
-      setPref('worktreeBases', { ...prefs.value.worktreeBases, [baseKey]: base });
+      if (base) setPref('worktreeBases', { ...prefs.value.worktreeBases, [baseKey]: base });
       close();
       if (res.notice) toast(res.notice);
       openWindowWhenReady(d.host.id, res.session, res.window);
@@ -760,7 +760,7 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
           <button type="button" class="btn" onClick={back}>
             Atrás
           </button>
-          <button type="submit" class="btn btn-primary" disabled={busy || !name.trim() || !!problem || !base}>
+          <button type="submit" class="btn btn-primary" disabled={busy || !name.trim() || !!problem || base === undefined}>
             {busy ? 'Lanzando…' : 'Lanzar'}
           </button>
         </div>

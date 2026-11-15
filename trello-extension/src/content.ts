@@ -153,7 +153,8 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
   const baseSel = el('select', { id: 'twb-base' });
   const baseNote = el('p', { class: 'muted small' });
-  const baseField = el('label', { class: 'field' }, el('span', {}, 'Rama base (de origin)'), baseSel, baseNote);
+  const baseAgain = el('button', { type: 'button', class: 'btn' }, 'Volver a leer');
+  const baseField = el('div', {}, el('label', { class: 'field' }, el('span', {}, 'Rama base (de origin)'), baseSel, baseNote), baseAgain);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');
 
   const current = () => hosts.find((h) => h.id === hostSel.value);
@@ -199,6 +200,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     branchesKey = key;
     baseReady = false;
     baseNote.textContent = '';
+    baseAgain.hidden = true;
     baseSel.disabled = true;
     baseSel.replaceChildren(el('option', {}, key ? 'Cargando ramas…' : 'Elige primero dónde se lanza'));
     if (!key || !dest) return;
@@ -206,12 +208,21 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
       baseNote.textContent = note;
       update();
     };
+    /** No branch to pick: the task launches without a base, and the list can be read again. */
+    const withoutBase = (note: string) => {
+      baseSel.append(el('option', { value: '' }, 'Sin rama base'));
+      baseReady = true;
+      baseAgain.hidden = false;
+      settle(`${note} Puedes lanzar igualmente, sin rama base.`);
+    };
     ask<BranchList>({ type: 'branches', host: hostSel.value, target: dest }).then(
       (list) => {
         if (branchesKey !== key) return;
         baseSel.replaceChildren();
         if (!list.repo) return settle('La carpeta no es un repositorio git: no se puede lanzar en un worktree.');
-        if (!list.branches.length) return settle('origin no tiene ramas de las que partir.');
+        if (!list.branches.length) {
+          return withoutBase(list.fetchError ? `No hay ramas de origin: ${list.fetchError.replace(/\.$/, '')}.` : 'origin no tiene ramas de las que partir.');
+        }
         for (const b of list.branches) baseSel.append(el('option', { value: b }, b === list.base ? `${b} · base del proyecto` : b));
         baseSel.value = pickBase(ctx.remembered?.base, list) ?? list.branches[0];
         baseSel.disabled = false;
@@ -221,7 +232,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
       (err: Error) => {
         if (branchesKey !== key) return;
         baseSel.replaceChildren();
-        settle(`No se han podido leer las ramas: ${err.message}`);
+        withoutBase(`No se han podido leer las ramas: ${err.message.replace(/\.$/, '')}.`);
       },
     );
   };
@@ -246,6 +257,10 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     update();
   });
   destSel.addEventListener('change', update);
+  baseAgain.addEventListener('click', () => {
+    branchesKey = '';
+    update();
+  });
   prompt.addEventListener('input', update);
   inWorktree.addEventListener('change', update);
   wtName.addEventListener('input', update);
@@ -285,7 +300,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
           name: worktree ? cardWindowName(worktree) : ctx.card.name,
           skipPermissions: skip.checked,
           worktree,
-          base: worktree ? baseSel.value : undefined,
+          base: worktree && baseSel.value ? baseSel.value : undefined,
         },
       });
       close();

@@ -34,6 +34,18 @@ Every place that creates a worktree SHALL let the user pick the branch it starts
 - **WHEN** the user checks «En un worktree nuevo»
 - **THEN** the base branch choice says the folder is not a git repository and the task cannot be launched in a worktree
 
+#### Scenario: Repository without remote branches
+
+- **GIVEN** a repository with no `origin`, or whose `origin` has no branches
+- **WHEN** the user checks «En un worktree nuevo»
+- **THEN** the base branch choice says there is no branch to start from and the task can still be launched in a worktree without a base
+
+#### Scenario: The branch list cannot be read
+
+- **GIVEN** a machine that fails to answer the branch list
+- **WHEN** the base branch choice opens
+- **THEN** it says the branches could not be read, offers to read them again, and the task can still be launched in a worktree without a base
+
 ### Requirement: The base branch offered first is the last one used
 
 The base branch offered first SHALL be the last one used for the same Trello board, in the extension and in the panel's Trello drawer, and for the same folder, in «Nuevo worktree». With nothing remembered, or when the remembered branch is no longer on the remote, it SHALL be the project's base: `git.baseBranch` of the repository's `.claude/koalarnes.json`, else the remote's default branch.
@@ -70,7 +82,7 @@ The base branch offered first SHALL be the last one used for the same Trello boa
 
 ### Requirement: The worktree starts from the chosen base
 
-A worktree created with a base branch SHALL start from that branch as it is on the remote, whether or not the machine has a hook that creates Claude Code's worktrees. When the machine has such a hook, the hook SHALL still create the worktree and do its own preparation. The worktree's branch SHALL keep the name given to the worktree.
+A worktree created with a base branch SHALL start from that branch as it is on the remote, or, when the remote cannot be reached, from the copy the machine has, telling the user. With a hook that creates Claude Code's worktrees, the hook SHALL still create the worktree and do its own preparation; without one, the hub SHALL create it under the main checkout, copying the ignored files `.worktreeinclude` selects. Its branch SHALL keep the worktree's name.
 
 #### Scenario: Machine with a worktree hook
 
@@ -82,19 +94,31 @@ A worktree created with a base branch SHALL start from that branch as it is on t
 
 - **GIVEN** a machine whose Claude Code has no hook that creates worktrees
 - **WHEN** a task is launched in worktree `feature/14-login` with base `release/2.0`
-- **THEN** Claude Code starts inside a new worktree whose branch `feature/14-login` starts at `origin/release/2.0`
+- **THEN** Claude Code starts inside a new worktree under the repository's `.claude/worktrees/`, whose branch `feature/14-login` starts at `origin/release/2.0` and which has the ignored files `.worktreeinclude` lists
 
 #### Scenario: Base is the project's own
 
 - **GIVEN** a project whose base is `master`
-- **WHEN** a task is launched in a new worktree with base `master`
-- **THEN** the worktree is created as it was before this change
+- **WHEN** a task is launched in worktree `feature/14-login` with base `master`
+- **THEN** its branch `feature/14-login` starts at `origin/master`, created by the hook when the machine has one
 
 #### Scenario: Launch without a base
 
 - **GIVEN** a launch request that names a worktree but no base, such as one from an extension not yet updated
 - **WHEN** the hub launches it
-- **THEN** the worktree is created as it was before this change
+- **THEN** a machine's hook creates the worktree as it did before this change, and without a hook the worktree starts from the project's base
+
+#### Scenario: Destination inside a worktree
+
+- **GIVEN** a machine without a worktree hook and an open space whose folder is a worktree of the repository
+- **WHEN** a task is launched there in worktree `feature/15-otra` with base `master`
+- **THEN** the new worktree is created under the main checkout's `.claude/worktrees/`, not inside the other worktree
+
+#### Scenario: The remote cannot be reached at launch
+
+- **GIVEN** a machine that knows `origin/release/2.0` and cannot reach the remote
+- **WHEN** a task is launched in a new worktree with base `release/2.0`
+- **THEN** the worktree starts from the known `origin/release/2.0` and the user is told the remote could not be updated
 
 ### Requirement: An automation keeps its base branch
 
@@ -122,8 +146,14 @@ When a branch with the worktree's name already exists in the repository, the wor
 - **WHEN** the user launches a task in worktree `feature/14-login` with base `release/2.0`
 - **THEN** the worktree uses the existing `feature/14-login` and the user is told that the base was not applied because the branch already existed
 
+#### Scenario: Branch checked out in another folder
+
+- **GIVEN** a machine without a worktree hook and a branch `master` checked out in the project's folder
+- **WHEN** the user launches a task in worktree `master`
+- **THEN** nothing is launched and the user is told the branch is checked out in that folder
+
 #### Scenario: Unknown base branch
 
-- **GIVEN** a launch request whose base is not a branch of the remote
+- **GIVEN** a launch request whose base is not a branch of the remote, even if the machine still has an old copy of it
 - **WHEN** the hub receives it
 - **THEN** nothing is launched and the user is told the base branch does not exist

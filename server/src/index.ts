@@ -316,11 +316,11 @@ function machineFolders(host: HostMonitor): MachineFolders {
 // ---------------------------------------------------------------- automations
 
 const automations = new Automations(config.dataDir, {
-  launch: async (a, worktree) => {
+  launch: async (a, req) => {
     const host = hosts.get(a.host);
     if (!host) throw new Error(`No existe la máquina «${a.host}»`);
     if (host.snapshot.status !== 'ok') throw new Error(`${host.name} no está conectada`);
-    const result = await launchTask(host, machineFolders(host), { target: a.target, prompt: a.prompt, name: worktree ?? a.name, worktree, base: a.base, skipPermissions: a.skipPermissions });
+    const result = await launchTask(host, machineFolders(host), req);
     await host.refresh();
     return result;
   },
