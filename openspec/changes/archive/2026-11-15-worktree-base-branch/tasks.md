@@ -125,11 +125,13 @@ Fixes from the adversarial review (design D1 as revised):
 
 ## 13. Human review
 
-- [ ] 13.1 After `/opsx:verify`, `/koalarnes:adversarial-review worktree-base-branch` (the change alters a launch payload and runs git on the machines), `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
+- [x] 13.1 After `/opsx:verify`, `/koalarnes:adversarial-review worktree-base-branch` (the change alters a launch payload and runs git on the machines), `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
+  - `/koalarnes:review-pr` approved PR #15 at the fourth round; the owner approved it in the chat on 2026-11-15.
 
 ## 14. features-check before the archive
 
-- [ ] 14.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [x] 14.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+  - `ka features-check` exit 0 (10 sections verified).
 
 ## Workflow follow-up
 
