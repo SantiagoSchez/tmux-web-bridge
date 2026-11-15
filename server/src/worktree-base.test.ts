@@ -1,0 +1,221 @@
+import assert from 'node:assert/strict';
+import { execFile, execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { test } from 'node:test';
+import type { BranchList } from '../../shared/types.js';
+import { branchNameProblem, pickBase } from '../../shared/worktree.js';
+import { branchesScript, parseBranches, parsePrepare, prepareScript, type Prepared } from './worktree-base.js';
+
+// ---------------------------------------------------------------- fixtures
+
+// The environment drops every inherited GIT_* variable: a GIT_DIR from a git hook would
+// otherwise point these commands at the real repository.
+const env = (home: string, extra: Record<string, string> = {}) => ({ PATH: process.env.PATH, HOME: home, ...extra });
+
+const git = (home: string, cwd: string, ...args: string[]) => execFileSync('git', ['-C', cwd, ...args], { env: env(home), stdio: 'pipe' }).toString().trim();
+
+const sh = (script: string, home: string, extra: Record<string, string> = {}) =>
+  new Promise<string>((resolve, reject) => execFile('/bin/sh', ['-c', script], { env: env(home, extra) }, (err, out) => (err ? reject(err) : resolve(out))));
+
+const write = (path: string, text: string) => {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, text);
+};
+
+/**
+ * A bare origin with master, release/2.0 (one commit ahead) and feature/login, and a clone
+ * of it at home/repo, as a machine has it.
+ */
+function fixture(home: string): { bare: string; repo: string } {
+  write(join(home, '.gitconfig'), '[user]\n\tname = t\n\temail = t@example.org\n[init]\n\tdefaultBranch = master\n');
+  const seed = join(home, 'seed');
+  mkdirSync(seed);
+  git(home, seed, 'init', '-q');
+  writeFileSync(join(seed, 'a'), '1');
+  git(home, seed, 'add', 'a');
+  git(home, seed, 'commit', '-qm', 'one');
+  git(home, seed, 'checkout', '-qb', 'release/2.0');
+  writeFileSync(join(seed, 'a'), '2');
+  git(home, seed, 'commit', '-qam', 'release');
+  git(home, seed, 'checkout', '-q', 'master');
+  git(home, seed, 'branch', 'feature/login');
+  const bare = join(home, 'origin.git');
+  execFileSync('git', ['clone', '-q', '--bare', seed, bare], { env: env(home), stdio: 'pipe' });
+  const repo = join(home, 'repo');
+  execFileSync('git', ['clone', '-q', bare, repo], { env: env(home), stdio: 'pipe' });
+  mkdirSync(join(repo, 'sub'));
+  return { bare, repo };
+}
+
+async function withHome(fn: (home: string) => Promise<void>): Promise<void> {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-base-')));
+  try {
+    await fn(home);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+const KOALARNES = JSON.stringify({ git: { baseBranch: 'release/2.0', hotfixBaseBranch: 'master' }, layers: [] }, null, 2);
+const HOOK_SETTINGS = JSON.stringify({ hooks: { WorktreeCreate: [{ hooks: [{ type: 'command', command: 'ka hook worktree-create' }] }] } }, null, 2);
+
+const branches = (home: string, path: string) => sh(branchesScript(path), home).then(parseBranches);
+const prepare = (home: string, path: string, worktree: string, base: string, extra: Record<string, string> = {}): Promise<Prepared> =>
+  sh(prepareScript(path, worktree, base), home, extra).then((out) => parsePrepare(out, base));
+const sha = (home: string, repo: string, ref: string) => git(home, repo, 'rev-parse', ref);
+
+// ---------------------------------------------------------------- names and the branch offered first
+
+test('a base branch name is checked as git would before it reaches a machine', () => {
+  for (const ok of ['master', 'release/2.0', 'feature/14-login', 'v1.2_fix', 'a@b']) assert.equal(branchNameProblem(ok), null, ok);
+  assert.match(branchNameProblem('') ?? '', /Falta la rama base/);
+  for (const bad of ['-x', 'a..b', 'a b', 'a\tb', 'a\nb', 'x@{1}', 'a/', '/a', 'a//b', 'a.lock', 'a/.b', 'a.', '@', 'a~1', 'a^', 'a:b', 'a?', 'a*', 'a[b', 'a\\b', 'x'.repeat(201)]) {
+    assert.match(branchNameProblem(bad) ?? '', /no es un nombre de rama válido/, JSON.stringify(bad));
+  }
+});
+
+test('the branch offered first: the remembered one while origin has it, else the project base, else the first', () => {
+  const list: BranchList = { repo: true, branches: ['develop', 'master', 'release/2.0'], base: 'develop' };
+  assert.equal(pickBase('release/2.0', list), 'release/2.0');
+  assert.equal(pickBase('release/1.9', list), 'develop');
+  assert.equal(pickBase(undefined, list), 'develop');
+  assert.equal(pickBase(undefined, { repo: true, branches: ['b', 'c'] }), 'b');
+  assert.equal(pickBase('x', { repo: true, branches: [] }), undefined);
+  assert.equal(pickBase('x', { repo: false }), undefined);
+});
+
+// ---------------------------------------------------------------- the branch list
+
+test('the branches of origin after a fetch, with the remote default as the base, from any subfolder', () =>
+  withHome(async (home) => {
+    const { bare, repo } = fixture(home);
+    git(home, bare, 'branch', 'hotfix/urgente', 'master');
+    assert.deepEqual(await branches(home, join(repo, 'sub')), { repo: true, branches: ['feature/login', 'hotfix/urgente', 'master', 'release/2.0'], base: 'master' });
+  }));
+
+test("koalarnes.json's git.baseBranch is the base while origin has it", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const base = async () => {
+      const list = await branches(home, repo);
+      return list.repo ? list.base : undefined;
+    };
+    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    assert.equal(await base(), 'release/2.0');
+    write(join(repo, '.claude/koalarnes.json'), JSON.stringify({ git: { baseBranch: 'develop' } }));
+    assert.equal(await base(), 'master');
+    write(join(repo, '.claude/koalarnes.json'), '{ "layers": [] }');
+    assert.equal(await base(), 'master');
+  }));
+
+test('an origin that does not answer: the branches the machine knows, and why they are not fresh', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    git(home, repo, 'remote', 'set-url', 'origin', join(home, 'no-esta.git'));
+    const list = await branches(home, repo);
+    assert.ok(list.repo);
+    assert.deepEqual(list.branches, ['feature/login', 'master', 'release/2.0']);
+    assert.match(list.fetchError ?? '', /no-esta\.git/);
+    git(home, repo, 'remote', 'remove', 'origin');
+    assert.deepEqual(await branches(home, repo), { repo: true, branches: [], fetchError: 'El repositorio no tiene remoto origin' });
+  }));
+
+test('a folder outside git has no branches', () =>
+  withHome(async (home) => {
+    mkdirSync(join(home, 'suelta'));
+    assert.deepEqual(await branches(home, join(home, 'suelta')), { repo: false });
+    assert.deepEqual(await branches(home, join(home, 'no-existe')), { repo: false });
+  }));
+
+// ---------------------------------------------------------------- preparing the worktree
+
+test('a base origin does not have, or a folder outside git, launches nothing', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    await assert.rejects(prepare(home, repo, 'feature/14-login', 'no-existe'), /No existe la rama base «no-existe» en origin/);
+    mkdirSync(join(home, 'suelta'));
+    await assert.rejects(prepare(home, join(home, 'suelta'), 'feature/14-login', 'master'), /no está en un repositorio git/);
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/14-login'));
+  }));
+
+/** The places a WorktreeCreate hook can be declared in: each puts one there and gives the extra environment it needs. */
+const HOOK_PLACES: [string, (home: string, repo: string) => Record<string, string>][] = [
+  ['the user settings', (home) => (write(join(home, '.claude/settings.json'), HOOK_SETTINGS), {})],
+  ['the project settings', (_home, repo) => (write(join(repo, '.claude/settings.json'), HOOK_SETTINGS), {})],
+  ['the local project settings', (_home, repo) => (write(join(repo, '.claude/settings.local.json'), HOOK_SETTINGS), {})],
+  ['the settings of CLAUDE_CONFIG_DIR', (home) => (write(join(home, 'cfg/settings.json'), HOOK_SETTINGS), { CLAUDE_CONFIG_DIR: join(home, 'cfg') })],
+  [
+    'an enabled plugin',
+    (home, repo) => {
+      write(join(repo, '.claude/settings.json'), JSON.stringify({ enabledPlugins: { 'koalarnes@koalarnes': true } }, null, 2));
+      write(join(home, '.claude/plugins/cache/koalarnes/koalarnes/0.8.1/hooks/hooks.json'), HOOK_SETTINGS);
+      return {};
+    },
+  ],
+];
+
+for (const [place, put] of HOOK_PLACES) {
+  test(`with a WorktreeCreate hook in ${place}, the worktree's branch is made from origin/<base> for the hook`, () =>
+    withHome(async (home) => {
+      const { repo } = fixture(home);
+      const extra = put(home, repo);
+      assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0', extra), { kind: 'hook' });
+      assert.equal(sha(home, repo, 'refs/heads/feature/14-login'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
+      assert.throws(() => git(home, repo, 'rev-parse', '--abbrev-ref', 'feature/14-login@{upstream}'));
+      assert.equal(git(home, repo, 'worktree', 'list', '--porcelain').split('\n').filter((l) => l.startsWith('worktree ')).length, 1);
+    }));
+}
+
+test('a plugin with the hook that is not enabled is no hook: the hub makes the worktree', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(home, '.claude/settings.json'), JSON.stringify({ enabledPlugins: { 'koalarnes@koalarnes': false } }));
+    write(join(home, '.claude/plugins/cache/koalarnes/koalarnes/0.8.1/hooks/hooks.json'), HOOK_SETTINGS);
+    assert.equal((await prepare(home, repo, 'feature/14-login', 'release/2.0')).kind, 'created');
+  }));
+
+test("with a hook, the project's base needs nothing, and an existing branch is left to the hook", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
+    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0'), { kind: 'native' });
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/14-login'));
+    git(home, repo, 'branch', 'feature/local', 'master');
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'master'), { kind: 'reused' });
+    assert.deepEqual(await prepare(home, repo, 'feature/login', 'master'), { kind: 'reused' });
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/login'));
+  }));
+
+test("without a hook, origin's default branch needs nothing, and any other base gets a worktree from it", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'native' });
+    const made = await prepare(home, join(repo, 'sub'), 'feature/14-login', 'release/2.0');
+    const path = join(repo, '.claude/worktrees/feature-14-login');
+    assert.deepEqual(made, { kind: 'created', path });
+    assert.equal(git(home, path, 'branch', '--show-current'), 'feature/14-login');
+    assert.equal(sha(home, path, 'HEAD'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
+    assert.throws(() => git(home, repo, 'rev-parse', '--abbrev-ref', 'feature/14-login@{upstream}'));
+    assert.deepEqual(await prepare(home, repo, 'otro', 'release/2.0'), { kind: 'created', path: join(repo, '.claude/worktrees/otro') });
+    const exclude = readFileSync(join(repo, '.git/info/exclude'), 'utf8').split('\n');
+    assert.equal(exclude.filter((l) => l === '.claude/worktrees/').length, 1);
+    assert.equal(git(home, repo, 'status', '--porcelain', '--untracked-files=all').includes('worktrees'), false);
+  }));
+
+test('without a hook, an existing branch opens as it is: its worktree, or a new one on it', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    git(home, repo, 'branch', 'feature/local', 'master');
+    const local = join(repo, '.claude/worktrees/feature-local');
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'release/2.0'), { kind: 'reused', path: local });
+    assert.equal(sha(home, local, 'HEAD'), sha(home, repo, 'refs/remotes/origin/master'));
+    assert.deepEqual(await prepare(home, repo, 'feature/local', 'release/2.0'), { kind: 'reused', path: local });
+    const remote = join(repo, '.claude/worktrees/feature-login');
+    assert.deepEqual(await prepare(home, repo, 'feature/login', 'release/2.0'), { kind: 'reused', path: remote });
+    assert.equal(git(home, remote, 'rev-parse', '--abbrev-ref', '@{upstream}'), 'origin/feature/login');
+    assert.deepEqual(await prepare(home, repo, 'master', 'release/2.0'), { kind: 'reused', path: repo });
+  }));

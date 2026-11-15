@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "trello-extension",
+  "description": "Añadida la elección de la rama base del worktree en el diálogo de la extensión, que recuerda la última usada en cada tablero",
+  "issue": "14",
+  "breaking": false
+}

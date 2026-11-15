@@ -1,5 +1,8 @@
 // Names of the git worktrees a task starts in (`claude --worktree <name>`): Claude Code
-// takes letters, digits, '.', '_', '-' and '/', up to 64 characters.
+// takes letters, digits, '.', '_', '-' and '/', up to 64 characters. And the branch of
+// origin a new worktree starts from.
+
+import type { BranchList } from './types.js';
 
 export const WORKTREE_MAX = 64;
 const WORKTREE_RE = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
@@ -62,4 +65,34 @@ export function runWorktreeName(name: string, at: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   const stamp = `${at.getFullYear()}${p(at.getMonth() + 1)}${p(at.getDate())}-${p(at.getHours())}${p(at.getMinutes())}`;
   return withSlug('', name, `-${stamp}`) || stamp;
+}
+
+const BRANCH_MAX = 200;
+
+/**
+ * Why a base branch name is not one git takes (the rules of `git check-ref-format --branch`
+ * that matter here), or null if it is. Checked before the name reaches a machine.
+ */
+export function branchNameProblem(name: string): string | null {
+  if (!name) return 'Falta la rama base';
+  const bad =
+    name.length > BRANCH_MAX ||
+    name === '@' ||
+    name.startsWith('-') ||
+    /[\x00-\x20\x7f~^:?*[\\]/.test(name) ||
+    name.includes('..') ||
+    name.includes('@{') ||
+    name.split('/').some((part) => !part || part.startsWith('.') || part.endsWith('.lock')) ||
+    name.endsWith('.');
+  return bad ? `«${name.slice(0, 60)}» no es un nombre de rama válido` : null;
+}
+
+/**
+ * The base branch a dialog offers first: the one remembered (for the board or the folder)
+ * while origin still has it, else the project's base, else the first branch.
+ */
+export function pickBase(remembered: string | undefined, list: BranchList): string | undefined {
+  if (!list.repo) return undefined;
+  if (remembered && list.branches.includes(remembered)) return remembered;
+  return list.base ?? list.branches[0];
 }

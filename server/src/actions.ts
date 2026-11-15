@@ -168,6 +168,11 @@ async function folderOnHost(host: HostMonitor, f: PickedFolder, create: boolean)
   return (await host.exec.shell(`cd ${shPath(f.dir)} && pwd`)).trim();
 }
 
+/** The absolute path on the host of an added folder (or `sub`, one inside it), which has to be there. */
+export function folderPath(host: HostMonitor, machine: MachineFolders, action: { folder: string; sub?: string }): Promise<string> {
+  return folderOnHost(host, pickFolder(host, machine, action), false);
+}
+
 /**
  * The space of an added folder (or of `sub`, a folder inside one with subfolders, made
  * first with `create`): the open one of that name, or a new one there with a bare shell.
@@ -373,7 +378,7 @@ async function reboot(host: HostMonitor): Promise<void> {
 }
 
 /** Actions that only read: the tree needs no refresh after them. */
-export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'listWorktrees', 'trelloExtension']);
+export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'listWorktrees', 'listBranches', 'trelloExtension']);
 
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`

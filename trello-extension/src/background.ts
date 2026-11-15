@@ -1,6 +1,6 @@
 import { hubPattern, loadMemory, loadSettings, saveMemory } from './settings';
 import type { TrelloCardContext } from '../../shared/types';
-import type { ExtLaunchResult, ExtTargets, LaunchContext, Reply, Request, Settings } from './types';
+import type { BranchList, ExtLaunchResult, ExtTargets, LaunchContext, Reply, Request, Settings } from './types';
 
 /** A problem the options page fixes: the dialog offers to open it. */
 class SetupError extends Error {}
@@ -58,11 +58,24 @@ async function launch(req: Extract<Request, { type: 'launch' }>): Promise<ExtLau
   const s = await loadSettings();
   const result = await hub<ExtLaunchResult>(s, '/api/ext/launch', { ...req.req, card: req.card.id });
   const memory = await loadMemory();
-  memory.boards[req.card.board.id] = { host: req.req.host, destination: req.destination, space: req.space };
+  const board = req.card.board.id;
+  // A launch without a worktree keeps the base remembered for the next one with it.
+  memory.boards[board] = { host: req.req.host, destination: req.destination, space: req.space, base: req.req.worktree ? req.req.base : memory.boards[board]?.base };
   memory.skipPermissions = req.req.skipPermissions === true;
   memory.worktree = req.worktree;
   await saveMemory(memory);
   return result;
+}
+
+/** The branches of origin of the target's repository, read by the hub on the machine after a fetch. */
+async function branches(msg: Extract<Request, { type: 'branches' }>): Promise<BranchList> {
+  const s = await loadSettings();
+  const t: { session?: string; folder?: string; sub?: string } = msg.target;
+  const q = new URLSearchParams({ host: msg.host });
+  if (t.session) q.set('session', t.session);
+  if (t.folder) q.set('folder', t.folder);
+  if (t.sub) q.set('sub', t.sub);
+  return hub<BranchList>(s, `/api/ext/branches?${q}`);
 }
 
 // ---------------------------------------------------------------- updates
@@ -95,6 +108,8 @@ async function handle(msg: Request): Promise<unknown> {
       return context(msg.cardId);
     case 'launch':
       return launch(msg);
+    case 'branches':
+      return branches(msg);
     case 'openOptions':
       await chrome.runtime.openOptionsPage();
       return null;

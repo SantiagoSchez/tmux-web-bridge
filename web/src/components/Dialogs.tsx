@@ -6,6 +6,7 @@ import { worktreeNameProblem } from '../../../shared/worktree';
 import { newSession, newWindow, openNewWindow, openSessionWhenReady, openWindowWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
+import { BaseBranchSelect } from './BaseBranch';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
 import { IconBranch, IconClose, IconWorktree } from './icons';
 import { hub } from '../ws';
@@ -674,7 +675,7 @@ function RepoStep(props: {
     <Sheet title="¿Dónde arranca Claude?" subtitle={`${item.name}${d.session ? ` · en ${d.session.name}` : ''} · ${d.host.name}`} onClose={props.close}>
       <ul class="menu project-list">
         {row('\there', <IconBranch />, 'Sin worktree', `En la carpeta del proyecto${repo.branch ? ` · ${repo.branch}` : ''}`, props.here)}
-        {row('\tnew', '＋', 'Nuevo worktree…', 'Con una rama nueva (claude --worktree)', props.fresh)}
+        {row('\tnew', '＋', 'Nuevo worktree…', 'Con una rama nueva, desde la de origin que elijas', props.fresh)}
         {repo.worktrees.map((w) =>
           row(w.path, <IconWorktree />, w.name, `${w.branch ?? 'HEAD separado'} · ${homePath(w.path, props.home)}`, () => props.worktree(w.path)),
         )}
@@ -690,30 +691,37 @@ function RepoStep(props: {
 }
 
 /**
- * «Nuevo worktree» of a repo picked in «Nuevo espacio»: the worktree's name and, if wanted, a prompt.
- * Claude starts there with `--worktree`, in a new window named after it, in the folder's
- * space (opened first if it is not), or, from «Nueva ventana», in that space.
+ * «Nuevo worktree» of a repo picked in «Nuevo espacio»: the worktree's name, the branch of
+ * origin it starts from (the last one used for the folder on this device, else the project's
+ * base) and, if wanted, a prompt. Claude starts there in a new window named after it, in the
+ * folder's space (opened first if it is not), or, from «Nueva ventana», in that space.
  */
 function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: FolderItem; close: () => void; back: () => void }) {
   const { d, item, close, back } = props;
   const [name, setName] = useState('');
   const [prompt, setPrompt] = useState('');
+  const [base, setBase] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => input.current?.focus(), []);
+  const target = useMemo(() => ({ folder: item.folder, sub: item.sub }), [item.folder, item.sub]);
+  const baseKey = `${d.host.id}\t${item.folder}\t${item.sub ?? ''}`;
   const problem = name.trim() ? worktreeNameProblem(name.trim()) : null;
   const launch = async () => {
-    if (busy || !name.trim() || problem) return;
+    if (busy || !name.trim() || problem || !base) return;
     setBusy(true);
     try {
       const res = await hub.action<ExtLaunchResult>(d.host.id, {
         op: 'launchTask',
-        target: d.session ? { session: d.session.id, folder: item.folder, sub: item.sub } : { folder: item.folder, sub: item.sub },
+        target: d.session ? { session: d.session.id, ...target } : target,
         worktree: name.trim(),
+        base,
         prompt: prompt.trim(),
         skipPermissions: prefs.value.skipPermissions,
       });
+      setPref('worktreeBases', { ...prefs.value.worktreeBases, [baseKey]: base });
       close();
+      if (res.notice) toast(res.notice);
       openWindowWhenReady(d.host.id, res.session, res.window);
     } catch {
       setBusy(false); // the error is already a toast
@@ -742,6 +750,7 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
           />
         </label>
         {problem && <p class="settings-state small">{problem}</p>}
+        <BaseBranchSelect hostId={d.host.id} target={target} remembered={prefs.value.worktreeBases[baseKey]} value={base} onChange={setBase} />
         <label class="folder-name">
           <span class="dim small">Prompt (opcional)</span>
           <textarea class="text-input" rows={3} value={prompt} onInput={(e) => setPrompt(e.currentTarget.value)} />
@@ -751,7 +760,7 @@ function WorktreeStep(props: { d: Extract<Dialog, { kind: 'project' }>; item: Fo
           <button type="button" class="btn" onClick={back}>
             Atrás
           </button>
-          <button type="submit" class="btn btn-primary" disabled={busy || !name.trim() || !!problem}>
+          <button type="submit" class="btn btn-primary" disabled={busy || !name.trim() || !!problem || !base}>
             {busy ? 'Lanzando…' : 'Lanzar'}
           </button>
         </div>

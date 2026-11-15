@@ -13,7 +13,7 @@ export {
   type Destination,
   type DestinationGroup,
 } from '../../shared/trello';
-export { cardWindowName, cardWorktreeName, worktreeNameProblem } from '../../shared/worktree';
+export { cardWindowName, cardWorktreeName, pickBase, worktreeNameProblem } from '../../shared/worktree';
 
 /** The panel's address as the extension keeps it: http(s), origin and path, no trailing slash. */
 export function normalizeHubUrl(value: string): string {

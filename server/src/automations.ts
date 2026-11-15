@@ -4,7 +4,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { nextRun, scheduleProblem, type Schedule } from '../../shared/schedule.js';
 import type { Automation, AutomationInfo, AutomationRun, ExtLaunchResult, PaneState } from '../../shared/types.js';
-import { runWorktreeName, worktreeNameProblem } from '../../shared/worktree.js';
+import { branchNameProblem, runWorktreeName, worktreeNameProblem } from '../../shared/worktree.js';
 
 // Automations: prompts the hub launches on its own on a schedule (Settings ›
 // Automatizaciones), as a task in a new window of a folder's space, optionally in a new
@@ -183,9 +183,13 @@ function sanitize(raw: unknown, id: string, strict = false): Automation | null {
   if (prompt.length > MAX_PROMPT) return fail('El prompt es demasiado largo');
   const problem = scheduleProblem(x.schedule);
   if (problem) return fail(problem);
+  // The base of each run's worktree: only with worktrees, and empty means the project's.
+  const branch = x.worktree === true && typeof x.base === 'string' ? x.base.trim() : '';
   if (x.worktree === true) {
     const wt = worktreeNameProblem(runWorktreeName(name, new Date()));
     if (wt) return fail(wt);
+    const bad = branch && branchNameProblem(branch);
+    if (bad) return fail(bad);
   }
   const s = x.schedule as Schedule;
   const schedule: Schedule =
@@ -198,6 +202,7 @@ function sanitize(raw: unknown, id: string, strict = false): Automation | null {
     target: t.sub ? { folder: t.folder, sub: t.sub } : { folder: t.folder },
     prompt,
     worktree: x.worktree === true,
+    ...(branch ? { base: branch } : {}),
     skipPermissions: x.skipPermissions === true,
     schedule,
   };

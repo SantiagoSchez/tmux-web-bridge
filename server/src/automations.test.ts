@@ -153,3 +153,19 @@ test(
     assert.equal(again.auto.info.length, 0);
   }),
 );
+
+test(
+  'an automation keeps the base branch of its worktrees across a restart and runs with it; empty or invalid ones do not stay',
+  withDir(async (dir) => {
+    const clock = { now: at('2026-11-12T10:00:00') };
+    const { auto, launched } = setup(dir, clock, new Map());
+    const { id } = auto.upsert({ ...base, base: 'release/2.0' });
+    await auto.runNow(id);
+    assert.equal(launched[0].a.base, 'release/2.0');
+    assert.equal(setup(dir, clock, new Map()).auto.info[0].base, 'release/2.0');
+    assert.throws(() => auto.upsert({ ...base, id, base: 'no vale' }), /no es un nombre de rama válido/);
+    assert.equal(auto.upsert({ ...base, id, base: ' ' }).base, undefined);
+    assert.equal(auto.upsert({ ...base, id, base: 'release/2.0', worktree: false }).base, undefined);
+    assert.equal(auto.upsert({ ...base, id }).base, undefined);
+  }),
+);

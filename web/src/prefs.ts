@@ -16,16 +16,18 @@ export interface Prefs {
   /** The Trello drawer: the board shown, the list shown on each board, and where tasks of each board went last. */
   trelloBoard: string;
   trelloLists: Record<string, string>;
-  /** destination: the folder's key ('' for the space's own); space: the open space's ('' for the folder's), missing before there were both. */
-  trelloLaunch: Record<string, { host: string; destination: string; space?: string }>;
+  /** destination: the folder's key ('' for the space's own); space: the open space's ('' for the folder's), missing before there were both; base: the last base branch of a worktree. */
+  trelloLaunch: Record<string, { host: string; destination: string; space?: string; base?: string }>;
   /** Tasks on Trello cards start in a new worktree. */
   trelloWorktree: boolean;
+  /** The last base branch of «Nuevo worktree» per folder, keyed «host\tfolder\tsub». */
+  worktreeBases: Record<string, string>;
   /** On a wide screen, the list folded into a narrow strip. */
   sidebarCollapsed: boolean;
 }
 
 const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed',
-  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, sidebarCollapsed: false };
+  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, worktreeBases: {}, sidebarCollapsed: false };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {

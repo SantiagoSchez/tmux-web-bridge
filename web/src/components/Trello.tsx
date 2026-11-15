@@ -8,6 +8,7 @@ import { openWindowWhenReady } from '../menus';
 import { prefs, setPref } from '../prefs';
 import { hubSettings, sheet, toast } from '../state';
 import { hub } from '../ws';
+import { BaseBranchSelect } from './BaseBranch';
 import { Sheet, SkipPermissions } from './Dialogs';
 import { IconReload } from './icons';
 
@@ -276,6 +277,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const [prompt, setPrompt] = useState(renderTemplate(template, { url: card.url, name: card.name, shortLink: shortLink(card.url), board }));
   const [inWorktree, setInWorktree] = useState(prefs.value.trelloWorktree);
   const [wtName, setWtName] = useState(cardWorktreeName(card));
+  const [base, setBase] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const promptRef = useRef<HTMLTextAreaElement>(null);
 
@@ -305,19 +307,29 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
   const folder = groups.some((g) => g.items.some((d) => d.key === destKey)) ? destKey : '';
   const dest = host && launchTarget(host, space, folder);
   const problem = inWorktree ? worktreeNameProblem(wtName.trim()) : null;
-  const ready = !!dest && (!!prompt.trim() || inWorktree) && !problem;
+  const ready = !!dest && (!!prompt.trim() || inWorktree) && !problem && (!inWorktree || !!base);
 
   const launch = async () => {
     if (!ready || busy || !dest) return;
     setBusy(true);
     const worktree = inWorktree ? wtName.trim() : undefined;
-    const req: ExtLaunchRequest = { host: hostId, target: dest, prompt: prompt.trim(), name: worktree ? cardWindowName(worktree) : card.name, skipPermissions: prefs.value.skipPermissions, worktree, card: card.id };
+    const req: ExtLaunchRequest = {
+      host: hostId,
+      target: dest,
+      prompt: prompt.trim(),
+      name: worktree ? cardWindowName(worktree) : card.name,
+      skipPermissions: prefs.value.skipPermissions,
+      worktree,
+      base: worktree ? base : undefined,
+      card: card.id,
+    };
     try {
       const r = await api<ExtLaunchResult>('/api/trello/launch', req);
-      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space } });
+      setPref('trelloLaunch', { ...prefs.value.trelloLaunch, [board.id]: { host: hostId, destination: folder, space, base: worktree ? base : remembered?.base } });
       setPref('trelloWorktree', inWorktree);
       close();
       toast(`Lanzada en ${r.hostName} › ${r.space}${r.trello?.movedTo ? ` · movida a ${r.trello.movedTo}` : ''}`);
+      if (r.notice) toast(r.notice);
       for (const w of r.trello?.warnings ?? []) toast(w, 'error');
       openWindowWhenReady(r.host, r.session, r.window);
     } catch (err) {
@@ -408,6 +420,7 @@ function LaunchCard({ board, card, close, back }: { board: TrelloBoard; card: Ca
           </label>
         )}
         {problem && <p class="settings-state small">{problem}</p>}
+        {inWorktree && <BaseBranchSelect hostId={hostId} target={dest} remembered={remembered?.base} value={base} onChange={setBase} />}
         <div class="sheet-actions">
           <SkipPermissions />
           <a class="btn" href={card.url} target="_blank" rel="noreferrer">

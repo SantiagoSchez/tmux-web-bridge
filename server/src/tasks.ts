@@ -1,8 +1,9 @@
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { ExtHostTargets, ExtLaunchRequest, ExtLaunchResult } from '../../shared/types.js';
-import { worktreeNameProblem } from '../../shared/worktree.js';
-import { folderWindow, listProjects, openSpace, projectCommand, type MachineFolders } from './actions.js';
+import type { BranchList, ExtHostTargets, ExtLaunchRequest, ExtLaunchResult } from '../../shared/types.js';
+import { branchNameProblem, worktreeNameProblem } from '../../shared/worktree.js';
+import { folderPath, folderWindow, listProjects, openSpace, projectCommand, type MachineFolders } from './actions.js';
 import type { HostMonitor } from './host.js';
+import { branchesScript, parseBranches, parsePrepare, prepareScript, type Prepared } from './worktree-base.js';
 
 // Tasks: a new window running claude with a prompt, in an open space or in the space of
 // an added folder, optionally in a new git worktree. Launched from the Trello extension,
@@ -39,11 +40,16 @@ export function shellWord(text: string): string {
  * What is typed to launch a task: the machine's command when it runs claude (any other,
  * or none, gives way to plain claude), with the permission mode chosen, the worktree it
  * makes (`--worktree`, through the machine's WorktreeCreate hook if it has one) and the
- * prompt, if any.
+ * prompt, if any. With `cd`, a worktree the hub prepared: claude starts in it instead.
  */
-export function taskCommand(command: string, skipPermissions: boolean, prompt: string, worktree?: string): string {
+export function taskCommand(command: string, skipPermissions: boolean, prompt: string, worktree?: string, cd?: string): string {
   const claude = /^(\S*\/)?claude(\s|$)/.test(command) ? command : DEFAULT_COMMAND;
-  return [projectCommand(claude, skipPermissions), worktree ? `--worktree ${shellWord(worktree)}` : '', prompt ? shellWord(prompt) : '']
+  return [
+    cd ? `cd ${shellWord(cd)} &&` : '',
+    projectCommand(claude, skipPermissions),
+    worktree && !cd ? `--worktree ${shellWord(worktree)}` : '',
+    prompt ? shellWord(prompt) : '',
+  ]
     .filter(Boolean)
     .join(' ');
 }
@@ -85,18 +91,51 @@ export function tmuxLiteral(text: string): string {
   return text.replace(/#/g, '##');
 }
 
+/** Preparing a worktree fetches (bounded on the machine) and may check out a large tree. */
+const PREPARE_TIMEOUT = 60_000;
+/** Reading the branches fetches too (bounded on the machine). */
+const BRANCHES_TIMEOUT = 30_000;
+
+/** The branches of origin of a target's repository, after a fetch, to pick a new worktree's base. */
+export async function listBranches(host: HostMonitor, machine: MachineFolders, target: unknown): Promise<BranchList> {
+  return parseBranches(await host.exec.shell(branchesScript(await targetFolder(host, machine, target)), BRANCHES_TIMEOUT));
+}
+
+/**
+ * The folder a task of this target starts in: the added folder (or `sub`) when there is one,
+ * else where a new window of the open space starts (its current pane's folder).
+ */
+export async function targetFolder(host: HostMonitor, machine: MachineFolders, target: unknown): Promise<string> {
+  const t = target as Partial<{ session: unknown; folder: unknown; sub: unknown }> | undefined;
+  if (!t || typeof t !== 'object') throw new Error('Falta el destino');
+  if (typeof t.folder === 'string') return folderPath(host, machine, { folder: t.folder, sub: typeof t.sub === 'string' ? t.sub : undefined });
+  if (typeof t.session !== 'string') throw new Error('Falta el destino');
+  if (!SESSION_ID.test(t.session)) throw new Error(`Espacio inválido: ${t.session}`);
+  if (!host.snapshot.sessions.some((s) => s.id === t.session)) throw new Error(`Ese espacio ya no está abierto en ${host.name}`);
+  const dir = (await host.exec.runFormat(['display-message', '-p', '-t', `${t.session}:`, '#{pane_current_path}'])).trim();
+  if (!dir) throw new Error(`No se sabe en qué carpeta está ese espacio de ${host.name}`);
+  return dir;
+}
+
 /**
  * Launches a task: a new window running claude with the prompt, in an open space or in
  * the space of an added folder. A folder without a space gets one, and the task goes in
  * its first window; with one open, in a new window there, in the folder. An open space
  * with a folder gets a new window in that folder. With `worktree`,
- * claude starts in a new git worktree of that name, and the prompt may be left out.
+ * claude starts in a new git worktree of that name, and the prompt may be left out. With
+ * `base` too, the worktree is prepared on the machine first to start from origin/<base>
+ * (see worktree-base.ts): nothing opens if that fails.
  */
 export async function launchTask(host: HostMonitor, machine: MachineFolders, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult> {
   const prompt = typeof req.prompt === 'string' ? req.prompt.trim() : '';
   const worktree = typeof req.worktree === 'string' ? req.worktree.trim() : '';
+  const base = worktree && typeof req.base === 'string' ? req.base.trim() : '';
   if (worktree) {
     const problem = worktreeNameProblem(worktree);
+    if (problem) throw new Error(problem);
+  }
+  if (base) {
+    const problem = branchNameProblem(base);
     if (problem) throw new Error(problem);
   }
   if (!prompt && !worktree) throw new Error('Falta el prompt');
@@ -105,6 +144,10 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
   const target = req.target as Partial<{ session: unknown; folder: unknown; sub: unknown }> | undefined;
   if (!target || typeof target !== 'object') throw new Error('Falta el destino');
   const run = (args: string[]) => host.exec.run(args);
+
+  let prepared: Prepared | undefined;
+  if (base) prepared = parsePrepare(await host.exec.shell(prepareScript(await targetFolder(host, machine, target), worktree, base), PREPARE_TIMEOUT), base);
+  const cd = prepared?.kind === 'created' || prepared?.kind === 'reused' ? prepared.path : undefined;
 
   let session: string;
   let space: string;
@@ -141,8 +184,10 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
     if (name) await run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
   }
   // Typed into the window's shell, as «Nuevo espacio» does: quitting claude leaves you there.
-  await run(['send-keys', '-t', pane, '-l', taskCommand(machine.command, req.skipPermissions === true, prompt, worktree || undefined)]);
+  await run(['send-keys', '-t', pane, '-l', taskCommand(machine.command, req.skipPermissions === true, prompt, worktree || undefined, cd)]);
   await run(['send-keys', '-t', pane, 'Enter']);
   const [window, windowName] = (await host.exec.runFormat(['display-message', '-p', '-t', pane, '#{window_id}\t#{window_name}'])).trim().split('\t');
-  return { host: host.id, hostName: host.name, session, space, window: window ?? '', windowName: windowName ?? name, pane, createdSpace };
+  const result: ExtLaunchResult = { host: host.id, hostName: host.name, session, space, window: window ?? '', windowName: windowName ?? name, pane, createdSpace };
+  if (prepared?.kind === 'reused') result.notice = `La rama ${worktree} ya existía: se usa tal cual, sin partir de ${base}`;
+  return result;
 }

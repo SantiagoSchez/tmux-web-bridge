@@ -1,5 +1,5 @@
-import { cardWindowName, cardWorktreeName, folderGroups, launchTarget, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
-import type { ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
+import { cardWindowName, cardWorktreeName, folderGroups, launchTarget, pickBase, rememberedChoice, renderTemplate, spaceChoices, worktreeNameProblem } from './logic';
+import type { BranchList, ExtHostTargets, ExtLaunchResult, LaunchContext, Reply, Request } from './types';
 import { DIALOG_CSS, PAGE_CSS } from './styles';
 
 // On trello.com: a button on every card of the board (shown on hover) that opens the
@@ -151,6 +151,9 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
   const wtName = el('input', { type: 'text', id: 'twb-wt-name', value: cardWorktreeName(ctx.card), spellcheck: false, autocomplete: 'off' });
   const wtNote = el('p', { class: 'error small' });
   const wtField = el('label', { class: 'field' }, el('span', {}, 'Worktree (y rama)'), wtName, wtNote);
+  const baseSel = el('select', { id: 'twb-base' });
+  const baseNote = el('p', { class: 'muted small' });
+  const baseField = el('label', { class: 'field' }, el('span', {}, 'Rama base (de origin)'), baseSel, baseNote);
   const launchBtn = el('button', { type: 'button', class: 'btn primary' }, 'Lanzar');
 
   const current = () => hosts.find((h) => h.id === hostSel.value);
@@ -186,11 +189,49 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     const host = current();
     return host && launchTarget(host, spaceSel.value, destSel.value);
   };
+  /** The base branch choice follows the destination: read again from the hub when it changes. */
+  let branchesKey = '';
+  let baseReady = false;
+  const loadBranches = () => {
+    const dest = target();
+    const key = inWorktree.checked && dest ? `${hostSel.value}\n${JSON.stringify(dest)}` : '';
+    if (key === branchesKey) return;
+    branchesKey = key;
+    baseReady = false;
+    baseNote.textContent = '';
+    baseSel.disabled = true;
+    baseSel.replaceChildren(el('option', {}, key ? 'Cargando ramas…' : 'Elige primero dónde se lanza'));
+    if (!key || !dest) return;
+    const settle = (note: string) => {
+      baseNote.textContent = note;
+      update();
+    };
+    ask<BranchList>({ type: 'branches', host: hostSel.value, target: dest }).then(
+      (list) => {
+        if (branchesKey !== key) return;
+        baseSel.replaceChildren();
+        if (!list.repo) return settle('La carpeta no es un repositorio git: no se puede lanzar en un worktree.');
+        if (!list.branches.length) return settle('origin no tiene ramas de las que partir.');
+        for (const b of list.branches) baseSel.append(el('option', { value: b }, b === list.base ? `${b} · base del proyecto` : b));
+        baseSel.value = pickBase(ctx.remembered?.base, list) ?? list.branches[0];
+        baseSel.disabled = false;
+        baseReady = true;
+        settle(list.fetchError ? `No se han podido actualizar las ramas: ${list.fetchError}` : '');
+      },
+      (err: Error) => {
+        if (branchesKey !== key) return;
+        baseSel.replaceChildren();
+        settle(`No se han podido leer las ramas: ${err.message}`);
+      },
+    );
+  };
   const update = () => {
+    loadBranches();
     const problem = inWorktree.checked ? worktreeNameProblem(wtName.value.trim()) : null;
     wtField.hidden = !inWorktree.checked;
+    baseField.hidden = !inWorktree.checked;
     wtNote.textContent = problem ?? '';
-    launchBtn.disabled = !target() || (!prompt.value.trim() && !inWorktree.checked) || !!problem;
+    launchBtn.disabled = !target() || (!prompt.value.trim() && !inWorktree.checked) || !!problem || (inWorktree.checked && !baseReady);
   };
 
   const remembered = ctx.remembered && hosts.find((h) => h.id === ctx.remembered!.host && h.status === 'ok');
@@ -218,6 +259,7 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
     el('label', { class: 'field' }, el('span', {}, 'Prompt'), prompt),
     el('label', { class: 'check' }, inWorktree, el('span', {}, 'En un worktree nuevo ', el('code', {}, 'claude --worktree'))),
     wtField,
+    baseField,
     el('label', { class: 'check' }, skip, el('span', {}, 'Saltar permisos ', el('code', {}, '--dangerously-skip-permissions'))),
   );
   footer.append(launchBtn);
@@ -236,11 +278,20 @@ function buildForm(ctx: LaunchContext, body: HTMLElement, footer: HTMLElement, c
         destination: destSel.value,
         space: spaceSel.value,
         worktree: inWorktree.checked,
-        req: { host: hostSel.value, target: dest, prompt: prompt.value.trim(), name: worktree ? cardWindowName(worktree) : ctx.card.name, skipPermissions: skip.checked, worktree },
+        req: {
+          host: hostSel.value,
+          target: dest,
+          prompt: prompt.value.trim(),
+          name: worktree ? cardWindowName(worktree) : ctx.card.name,
+          skipPermissions: skip.checked,
+          worktree,
+          base: worktree ? baseSel.value : undefined,
+        },
       });
       close();
       const movedTo = r.trello?.movedTo;
       toast(`Lanzada en ${r.hostName} › ${r.space} · ventana «${r.windowName}»${movedTo ? ` · movida a ${movedTo}` : ''}`);
+      if (r.notice) toast(r.notice, 'warn');
       for (const w of r.trello?.warnings ?? []) toast(w, 'warn');
     } catch (err) {
       launchBtn.textContent = 'Lanzar';
