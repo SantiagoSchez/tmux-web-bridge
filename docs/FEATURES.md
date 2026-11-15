@@ -46,7 +46,7 @@ Claude Code muestra cada imagen adjunta como «[Image #1]». En el panel ese tex
 ### Elegir la rama base de un worktree
 <!-- capability: worktree-base; requirement: creating-a-worktree-asks-for-its-base-branch -->
 
-Al crear un worktree, el panel pregunta de qué rama parte: en el paso «Nuevo worktree» de «Nuevo espacio» y de «Nueva ventana», en el cajón de Trello y en el diálogo de la extensión cuando se marca «En un worktree nuevo», y en las automatizaciones que se ejecutan cada vez en un worktree nuevo. La lista tiene las ramas de `origin` del repositorio del destino, leídas en su máquina después de actualizarlas desde el remoto, y cambia si cambias de destino. Si el remoto no responde, enseña las ramas que la máquina ya conocía y avisa de que no ha podido actualizarlas. Si la carpeta no es un repositorio git, lo dice y no deja lanzar en un worktree.
+Al crear un worktree, el panel pregunta de qué rama parte: en el paso «Nuevo worktree» de «Nuevo espacio» y de «Nueva ventana», en el cajón de Trello y en el diálogo de la extensión cuando se marca «En un worktree nuevo», y en las automatizaciones que se ejecutan cada vez en un worktree nuevo. La lista tiene las ramas de `origin` del repositorio del destino, leídas en su máquina después de actualizarlas desde el remoto, y cambia si cambias de destino. Si el remoto no responde, enseña las ramas que la máquina ya conocía y avisa de que no ha podido actualizarlas. Si el repositorio no tiene ramas en el remoto, o la lista no se ha podido leer, lo dice, ofrece volver a leerla y deja lanzar en un worktree sin rama base. Si la carpeta no es un repositorio git, lo dice y no deja lanzar en un worktree.
 
 ### Qué rama propone primero
 <!-- capability: worktree-base; requirement: the-base-branch-offered-first-is-the-last-one-used -->
@@ -56,7 +56,7 @@ La rama propuesta es la última que usaste: por tablero de Trello en la extensi�
 ### El worktree parte de la rama elegida
 <!-- capability: worktree-base; requirement: the-worktree-starts-from-the-chosen-base -->
 
-El worktree arranca en la rama elegida tal y como está en el remoto, y su rama se llama como el worktree (`feature/14-login`). Si la máquina tiene un hook de Claude Code que crea los worktrees, ese hook lo sigue creando y preparando a su manera; si no lo tiene, Claude Code arranca dentro de un worktree nuevo que crea el servidor central. Con la base del proyecto, o con una petición sin rama base (por ejemplo, de una extensión aún sin actualizar), el worktree se crea igual que antes.
+El worktree arranca en la rama elegida tal y como está en el remoto, y su rama se llama como el worktree (`feature/14-login`). Si la máquina tiene un hook de Claude Code que crea los worktrees, el servidor central crea antes la rama desde la elegida y el hook la reutiliza al crear y preparar el worktree a su manera. Si no lo tiene, el servidor central crea el worktree en la carpeta del proyecto principal (también cuando el destino es otro worktree), copia los ficheros ignorados que seleccione `.worktreeinclude` y Claude Code arranca dentro. Sin rama base (por ejemplo, desde una extensión aún sin actualizar), el hook crea el worktree como antes y, sin hook, parte de la base del proyecto. Si el remoto no responde al lanzar, el worktree parte de la copia de la rama que ya tenía la máquina y se avisa.
 
 ### Automatizaciones con rama base
 <!-- capability: worktree-base; requirement: an-automation-keeps-its-base-branch -->
@@ -66,4 +66,4 @@ Una automatización que se ejecuta en un worktree nuevo guarda su rama base y ca
 ### Una rama que ya existe se reutiliza
 <!-- capability: worktree-base; requirement: an-existing-branch-with-the-worktree-s-name-is-reused -->
 
-Si el repositorio ya tiene una rama con el nombre del worktree, el worktree usa esa rama tal cual, sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si la rama base pedida no existe en el remoto, no se lanza nada y se avisa de que esa rama no existe.
+Si el repositorio ya tiene una rama con el nombre del worktree, el worktree usa esa rama tal cual, sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.
