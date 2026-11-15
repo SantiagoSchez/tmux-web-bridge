@@ -10,9 +10,21 @@ import type { ExtLaunchResult, TrelloAfterLaunch, TrelloBoard, TrelloCard, Trell
 /** Trello said no to the key or the token, or there are none: fixed in Settings › Trello. */
 export class TrelloSetupError extends Error {}
 
+/** Trello answered that what was asked for does not exist (404). */
+export class TrelloNotFoundError extends Error {}
+
 const API = 'https://api.trello.com/1';
 const CARD_ID = /^[0-9a-f]{24}$/i;
 const BOARD_ID = /^[0-9a-f]{24}$/i;
+/** A board's shortLink (8 characters) or its id (24 hex). */
+export const TRELLO_BOARD = /^(?:[A-Za-z0-9]{8}|[0-9a-f]{24})$/;
+/** Where a card's page is: the panel opens it in a tab that shares its origin until then. */
+const CARD_PAGE = 'https://trello.com/';
+
+/** Whether a board (shortLink or id) and a card's short number can be put in a Trello path. */
+export function isCardRef(board: string, n: string): boolean {
+  return TRELLO_BOARD.test(board) && /^\d{1,7}$/.test(n);
+}
 
 /** A card's labels as Trello sends them (missing when it has none): only their name and colour. */
 const labelsOf = (labels: TrelloLabel[] = []): TrelloLabel[] => labels.map((x) => ({ name: x.name, color: x.color }));
@@ -62,6 +74,7 @@ export class TrelloService {
       throw new Error('No se pudo conectar con la API de Trello');
     }
     if (res.status === 401) throw new TrelloSetupError('Trello no acepta la API key o el token de Ajustes › Trello.');
+    if (res.status === 404) throw new TrelloNotFoundError('Trello no lo encuentra');
     if (!res.ok) throw new Error(`Trello: ${(await res.text().catch(() => '')) || `error ${res.status}`}`);
     return (await res.json()) as T;
   }
@@ -120,6 +133,20 @@ export class TrelloService {
       name: l.name,
       cards: (l.cards ?? []).map((c) => ({ id: c.id, name: c.name, idShort: c.idShort, url: c.shortUrl, labels: labelsOf(c.labels) })),
     }));
+  }
+
+  /** The page of the card with short number `n` on a board (its shortLink or id), for a `Trello #N` link in the terminal. */
+  async cardUrl(board: string, n: string): Promise<string> {
+    if (!isCardRef(board, n)) throw new Error('No se reconoce la tarjeta');
+    let url: unknown;
+    try {
+      url = (await this.call<{ shortUrl?: unknown }>('GET', `/boards/${board}/cards/${n}`, { fields: 'shortUrl' })).shortUrl;
+    } catch (err) {
+      if (err instanceof TrelloNotFoundError) throw new TrelloNotFoundError(`No encuentro la tarjeta ${n} en el tablero del proyecto`);
+      throw err;
+    }
+    if (typeof url !== 'string' || !url.startsWith(CARD_PAGE)) throw new Error(`Trello ha devuelto una dirección de la tarjeta ${n} que no es de Trello`);
+    return url;
   }
 
   async card(cardId: string): Promise<TrelloCard> {

@@ -35,6 +35,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - Accessibility: icon-only buttons carry `aria-label` or `title`; decorative SVGs and glyphs are `aria-hidden="true"`; custom widgets set their `role` (`tablist`, `tab`, `tooltip`…).
 - HTML from content (rendered Markdown) is sanitised with DOMPurify before `dangerouslySetInnerHTML`; the only other uses are the hub's own QR SVG and that sanitised HTML.
 - Fire-and-forget promises are marked with `void` (`void hub.action(…)`).
+- Terminal link providers (`registerLinkProvider` in `TerminalView`) answer a tap synchronously: `linkAt()` asks every provider directly and opens the link inside the tap's gesture, so a new tab after an `await` would be blocked. Hub data a provider needs is read ahead (as `prefetchRefContext` does for every pane of the window when the terminal opens or its panes change); while that read is pending, the provider answers the mouse when it finishes, never with an early empty answer, because xterm keeps a row's answer while the mouse stays on it. A provider passes the screen cell where each link starts (`screenCell` of `web/src/fileLinks.ts`), and `TerminalView` resolves the link against the pane under it (`paneAt` of `shared/panes.ts`), not the selected one: the terminal shows the whole tmux window.
 - Heavy code a screen rarely needs is loaded with a dynamic `import()` (as `marked` and `dompurify` in `Files.tsx`) (to confirm).
 - No formatter or linter is configured: match the surrounding style (2-space indent, single quotes, semicolons, trailing commas, long single lines).
 
@@ -56,7 +57,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - The levels this layer tests at and where each kind of test lives, following [testing-standards.md](testing-standards.md).
 - The test, typecheck and lint commands are configured in `.claude/koalarnes.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md); never copy them here, where they would go stale.
 - `web` has no test runner and no tests: the typecheck is its only automated check, and `pnpm typecheck` and `pnpm test` (for the logic it shares) pass before every push.
-- Pure logic the panel needs and that deserves a test lives in `shared/` and is tested from `server/src/<module>.test.ts` (`copy.ts`, `typing.ts`, `keybar.ts`, `paths.ts`, the dictation shortcut).
+- Pure logic the panel needs and that deserves a test lives in `shared/` and is tested from `server/src/<module>.test.ts` (`copy.ts`, `typing.ts`, `keybar.ts`, `paths.ts`, `refs.ts`, `panes.ts`, `stale-cache.ts`, the dictation shortcut).
 - A UI change is checked by hand in a browser against a running hub (`vite` dev server proxying to `HUB_URL`), on a phone-sized viewport as well as a wide one. A hub started for that with a `local` machine runs tmux on this machine: give it its own `TMUX_TMPDIR` and no `TMUX`/`TMUX_PANE`, or it drives the user's real tmux server.
 
 ## Common workflows
@@ -69,3 +70,4 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - **New hub state shown live**: a `ServerMessage` variant and its broadcast on the server, then a signal in `web/src/state.ts`, its `case` in `web/src/ws.ts`, and the component that reads it.
 - **A new dialog or sheet**: a `Dialog` variant in `web/src/state.ts` rendered in `web/src/components/Dialogs.tsx`, or a value of the `sheet` signal in `web/src/state.ts` with its component mounted in `web/src/components/App.tsx`.
 - **A new icon**: an `Icon…` component in `web/src/components/icons.tsx` (24px grid, `currentColor`, `aria-hidden`).
+- **A new kind of terminal link**: the detection as pure logic in `shared/` (as `paths.ts` and `refs.ts`), tested from `server/src/<module>.test.ts`; a provider in `web/src/<kind>Links.ts` reading rows with `readRow` of `web/src/fileLinks.ts`; and its registration in `createTerminal()` of `web/src/components/TerminalView.tsx`, with the drag guard the other links use.

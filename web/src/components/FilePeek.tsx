@@ -18,14 +18,17 @@ const peek = signal<Peek | null>(null);
 let timer: ReturnType<typeof setTimeout> | undefined;
 
 /** Only devices with a real hover (a mouse or a trackpad). */
-const canHover = matchMedia('(any-hover: hover)');
+export const canHover = matchMedia('(any-hover: hover)');
 
-/** Shown after a moment on the path, so moving the mouse across the terminal does not flash previews. */
-export function peekFile(origin: FileOrigin, path: string, line: number | undefined, e: MouseEvent): void {
+/** How long the mouse rests on a path before its preview, so moving it across the terminal does not flash previews. */
+export const PEEK_DELAY = 350;
+
+/** Shown after a moment on the path (less when the caller already waited part of it). */
+export function peekFile(origin: FileOrigin, path: string, line: number | undefined, e: MouseEvent, delay = PEEK_DELAY): void {
   if (!canHover.matches) return;
   clearTimeout(timer);
   const at = { x: e.clientX, y: e.clientY };
-  timer = setTimeout(() => (peek.value = { origin, path, line, ...at }), 350);
+  timer = setTimeout(() => (peek.value = { origin, path, line, ...at }), delay);
 }
 
 export function hidePeek(): void {
@@ -46,7 +49,8 @@ const IMAGE_MAX = 15 * 1024 * 1024;
 const LINES = 14;
 
 function load(o: FileOrigin, path: string, line?: number): Promise<PeekData> {
-  const key = `${o.host}\n${o.window ?? ''}\n${path}\n${line ?? ''}`;
+  // The pane too: a relative path is read from its folder, and two panes of a window can have different ones.
+  const key = `${o.host}\n${o.window ?? ''}\n${o.pane ?? ''}\n${path}\n${line ?? ''}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < 60_000) return hit.data;
   const data = (async () => {
@@ -82,7 +86,7 @@ export function FilePeek() {
     };
   }, [p]);
   if (!p) return null;
-  return <PeekCard key={`${p.path}:${p.line ?? ''}`} p={p} />;
+  return <PeekCard key={`${p.origin.pane ?? ''}:${p.path}:${p.line ?? ''}`} p={p} />;
 }
 
 function PeekCard({ p }: { p: Peek }) {

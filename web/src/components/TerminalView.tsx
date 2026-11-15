@@ -2,20 +2,24 @@ import { ClipboardAddon, type ClipboardSelectionType, type IClipboardProvider } 
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
-import { fileLinkProvider } from '../fileLinks';
-import { hidePeek, peekFile } from './FilePeek';
+import { api } from '../api';
+import { fileLinkProvider, type ScreenCell } from '../fileLinks';
+import { imageLinkProvider, prefetchRefContext, refLinkProvider } from '../refLinks';
+import { canHover, hidePeek, PEEK_DELAY, peekFile } from './FilePeek';
 import { openFile } from './Files';
 import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import type { ClaudeImageResult, HostInfo, PaneInfo, SessionInfo, TrelloCardUrl, WindowInfo } from '../../../shared/types';
 import { cleanCopy } from '../../../shared/copy';
+import { paneAt } from '../../../shared/panes';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
-import { clientId, hubSettings, toast } from '../state';
+import { clientId, findWindow, hubSettings, toast } from '../state';
+import type { FileOrigin } from '../fileViewer';
 import { appearance, TERM_THEMES } from '../theme';
 import { CONNECT_TIMEOUT_MS, hub, PROBE_MS } from '../ws';
 import { AttachButton } from './Attach';
@@ -754,10 +758,8 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     let downAt = { x: 0, y: 0 };
     const onMouseDown = (e: MouseEvent) => (downAt = { x: e.clientX, y: e.clientY });
     box.current!.addEventListener('mousedown', onMouseDown, true);
-    const activate = (e: MouseEvent, uri: string) => {
-      if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
-      openLink(uri);
-    };
+    const dragged = (e: MouseEvent) => e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3;
+    const activate = (e: MouseEvent, uri: string) => !dragged(e) && openLink(uri);
     const term = new Terminal({
       fontFamily: FONT_FAMILY,
       fontSize,
@@ -778,16 +780,87 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     term.loadAddon(new WebLinksAddon(activate));
     // File paths (Update(src/x.ts), /tmp/shot.png…) open in the panel's viewer.
     // With a mouse, resting on one shows a preview first.
-    const origin = () => ({ host: hostId.current, window: target.current.window, pane: target.current.pane });
+    // The pane a link belongs to: the one under its first cell in a split window, else the selected one.
+    const origin = (cell?: ScreenCell): FileOrigin => {
+      const selected = { host: hostId.current, window: target.current.window, pane: target.current.pane };
+      const win = cell && findWindow(selected.host, selected.window)?.window;
+      const under = win && paneAt(win, cell.col, cell.row, term.cols, term.rows);
+      return under ? { ...selected, pane: under.id } : selected;
+    };
     term.registerLinkProvider(
       fileLinkProvider(term, {
-        open: (e, path, line) => {
+        open: (e, path, line, cell) => {
           hidePeek();
-          if (e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3) return;
-          openFile(origin(), path, line);
+          if (dragged(e)) return;
+          openFile(origin(cell), path, line);
         },
-        hover: (e, path, line) => peekFile(origin(), path, line, e),
+        hover: (e, path, line, cell) => peekFile(origin(cell), path, line, e),
         leave: hidePeek,
+      }),
+    );
+    // PR #12, Issue #3, pipeline #9: their page; Trello #470: the card, looked up on the hub
+    // (the tab opens at once, inside the tap, and gets the card's address after).
+    term.registerLinkProvider(
+      refLinkProvider(term, origin, {
+        open: (e, url) => !dragged(e) && openLink(url),
+        trello: (e, board, n) => {
+          if (dragged(e)) return;
+          const tab = globalThis.open('about:blank', '_blank');
+          // Opening it after the lookup would be blocked too: said now instead.
+          if (!tab) return toast('El navegador ha bloqueado la pestaña de la tarjeta de Trello', 'error');
+          tab.opener = null;
+          api<TrelloCardUrl>(`/api/trello/card-url?${new URLSearchParams({ board, n: String(n) })}`)
+            .then(({ url }) => (tab.location.href = url))
+            .catch((err: Error) => {
+              tab.close();
+              toast(err.message, 'error');
+            });
+        },
+      }),
+    );
+    // [Image #N]: the image Claude Code saved, asked to the hub, in the viewer; a preview on hover.
+    const imagePath = (at: FileOrigin, n: number) =>
+      api<ClaudeImageResult>(`/api/claude-image?${new URLSearchParams({ host: at.host, pane: at.pane ?? '', n: String(n) })}`).then((r) => r.path);
+    /** What a hover found, for a minute: crossing the same placeholder again does not ask the machine again. */
+    const hoverPaths = new Map<string, { at: number; path: Promise<string> }>();
+    const hoverPath = (at: FileOrigin, n: number) => {
+      const key = `${at.host}\n${at.pane}\n${n}`;
+      const hit = hoverPaths.get(key);
+      if (hit && Date.now() - hit.at < 60_000) return hit.path;
+      const path = imagePath(at, n);
+      hoverPaths.set(key, { at: Date.now(), path });
+      path.catch(() => hoverPaths.delete(key));
+      return path;
+    };
+    let hovering = 0;
+    term.registerLinkProvider(
+      imageLinkProvider(term, {
+        open: (e, n, cell) => {
+          hidePeek();
+          hovering++;
+          if (dragged(e)) return;
+          const at = origin(cell);
+          imagePath(at, n)
+            .then((path) => openFile(at, path))
+            .catch((err: Error) => toast(err.message, 'error'));
+        },
+        hover: (e, n, cell) => {
+          // Only a real mouse rests on it (Android's compatibility mouse events land here too),
+          // and only after the previews' wait, so crossing the terminal asks the machine nothing.
+          if (!canHover.matches) return;
+          const mine = ++hovering;
+          const at = origin(cell);
+          setTimeout(() => {
+            if (mine !== hovering) return;
+            hoverPath(at, n)
+              .then((path) => mine === hovering && peekFile(at, path, undefined, e, 0))
+              .catch(() => {});
+          }, PEEK_DELAY);
+        },
+        leave: () => {
+          hovering++;
+          hidePeek();
+        },
       }),
     );
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider(term)));
@@ -1000,6 +1073,13 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     target.current = { window: window.id, pane: pane.id };
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ t: 'sel', window: window.id, pane: pane.id }));
   }, [window.id, pane.id]);
+
+  // What the projects of the window's panes let link (PR #12, Trello #470…), read before
+  // the first tap on one: in a split window a link belongs to the pane it is written in.
+  const panePaths = window.panes.map((p) => `${p.id}\t${p.path}`).join('\n');
+  useEffect(() => {
+    for (const p of window.panes) prefetchRefContext({ host: host.id, window: window.id, pane: p.id });
+  }, [host.id, window.id, panePaths]);
 
   // Out of copy mode (scrolled back to the end, q...): the count no longer means anything.
   useEffect(() => {

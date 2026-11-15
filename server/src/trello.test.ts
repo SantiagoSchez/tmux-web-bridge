@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { TrelloService, TrelloSetupError } from './trello.js';
+import { TrelloNotFoundError, TrelloService, TrelloSetupError } from './trello.js';
 
 const KEY = '0123456789abcdef0123456789abcdef';
 const TOKEN = 'ATTA0123456789abcdef0123456789abcdef0123456789';
@@ -27,6 +27,11 @@ function fakeTrello(calls: string[], opts: { doing?: boolean; failComment?: bool
     if (url.pathname === '/1/boards/b1/lists') {
       return json([{ id: 'backlog', name: '🗄 Backlog', closed: false }, ...(opts.doing === false ? [] : [{ id: 'doing', name: '⚙ Doing', closed: false }])]);
     }
+    // Card number 470 of board 0mGPkF10, looked up by its short number like the real API does.
+    if (url.pathname === '/1/boards/0mGPkF10/cards/470' && method === 'GET') return json({ id: CARD, shortUrl: 'https://trello.com/c/K9xY2abc' });
+    // Answers that are not a Trello page: the panel would put them in a tab of its own origin.
+    if (url.pathname === '/1/boards/0mGPkF10/cards/471' && method === 'GET') return json({ id: CARD, shortUrl: 'javascript:alert(1)' });
+    if (url.pathname === '/1/boards/0mGPkF10/cards/472' && method === 'GET') return json({ id: CARD, shortUrl: 'https://trello.com.example.org/c/x' });
     if (url.pathname === `/1/cards/${CARD}` && method === 'PUT') return json({});
     if (url.pathname === `/1/cards/${CARD}/actions/comments`) return opts.failComment ? json('nope', 500) : json({});
     return json('not found', 404);
@@ -95,5 +100,44 @@ test(
     assert.equal(out.warnings.length, 2);
     const none = new TrelloService(join(dir, 'otro'), fakeTrello([]));
     await assert.rejects(none.boards(), TrelloSetupError);
+  }),
+);
+
+test(
+  'a card is found by its board and short number, for a Trello #N link',
+  withDir(async (dir) => {
+    const t = new TrelloService(dir, fakeTrello([]));
+    await t.set(KEY, TOKEN);
+    assert.equal(await t.cardUrl('0mGPkF10', '470'), 'https://trello.com/c/K9xY2abc');
+    await assert.rejects(t.cardUrl('0mGPkF10', '9999'), (err: Error) => err instanceof TrelloNotFoundError && /No encuentro la tarjeta 9999/.test(err.message));
+  }),
+);
+
+test(
+  'a card address that is not a Trello page is refused',
+  withDir(async (dir) => {
+    const t = new TrelloService(dir, fakeTrello([]));
+    await t.set(KEY, TOKEN);
+    for (const n of ['471', '472']) await assert.rejects(t.cardUrl('0mGPkF10', n), /no es de Trello/, n);
+  }),
+);
+
+test(
+  'a board or a number that cannot be one is refused before asking Trello',
+  withDir(async (dir) => {
+    const calls: string[] = [];
+    const t = new TrelloService(dir, fakeTrello(calls));
+    await t.set(KEY, TOKEN);
+    calls.length = 0;
+    for (const [board, n] of [['../members/me', '1'], ['0mGPkF10', '1/../../x'], ['0mGPkF10', ''], ['0mGPkF10', '12345678'], ['', '1']])
+      await assert.rejects(t.cardUrl(board, n), /No se reconoce/, `${board} ${n}`);
+    assert.deepEqual(calls, []);
+  }),
+);
+
+test(
+  'without an account the lookup says to fix it in Ajustes › Trello',
+  withDir(async (dir) => {
+    await assert.rejects(new TrelloService(dir, fakeTrello([])).cardUrl('0mGPkF10', '470'), TrelloSetupError);
   }),
 );

@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadidos enlaces en el terminal del panel: «PR #N», «Issue #N» y «pipeline #N» (en Bitbucket) abren su página en el repositorio del proyecto, «Trello #N» abre la tarjeta del tablero que indica el .claude/koalarnes.json del proyecto, y «[Image #N]» abre en el visor la imagen pegada en Claude Code, con vista previa al pasar el ratón",
+  "pr": "13",
+  "issue": "12",
+  "breaking": false
+}

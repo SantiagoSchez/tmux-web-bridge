@@ -6,7 +6,7 @@ import { rollUpStates } from './host.js';
 const ICONS: Record<PaneState, string> = { question: '🙋', attention: '💬', done: '✅', busy: '🔨', claude: '🤖', ssh: '📡' };
 
 function pane(state: PaneState | null): PaneInfo {
-  return { id: '%1', index: 0, active: true, command: 'claude', path: '/', title: '', icon: state ? ICONS[state] : '', state, width: 80, height: 24, dead: false, inMode: false };
+  return { id: '%1', index: 0, active: true, command: 'claude', path: '/', title: '', icon: state ? ICONS[state] : '', state, width: 80, height: 24, left: 0, top: 0, dead: false, inMode: false };
 }
 
 function win(states: (PaneState | null)[], stale: PaneState | null = null): WindowInfo {

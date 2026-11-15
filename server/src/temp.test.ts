@@ -43,7 +43,7 @@ function withTmp(fn: (tmp: string) => Promise<void>): () => Promise<void> {
 
 const win = (id: string, temp: string | undefined, ...paths: string[]): WindowInfo => ({
   id, index: 0, name: id, active: true, icon: '', state: null, pinned: false, temp, bell: false, activity: false, zoomed: false,
-  panes: paths.map((path, i) => ({ id: `%${i}`, index: i, active: i === 0, command: 'zsh', path, title: '', icon: '', state: null, width: 80, height: 24, dead: false, inMode: false })),
+  panes: paths.map((path, i) => ({ id: `%${i}`, index: i, active: i === 0, command: 'zsh', path, title: '', icon: '', state: null, width: 80, height: 24, left: 0, top: 0, dead: false, inMode: false })),
 });
 const snap = (...windows: WindowInfo[]): HostInfo => ({ id: 'h', name: 'h', status: 'ok', sessions: [{ id: '$1', name: 's', num: 1, icon: '', attached: 0, windows }] });
 /** Until every script it started (and those they led to) is done. */

@@ -19,6 +19,9 @@ export interface PaneInfo {
   state: PaneState | null;
   width: number;
   height: number;
+  /** Where it starts in its window, in cells (pane_left, pane_top): which pane a cell of the terminal belongs to. */
+  left: number;
+  top: number;
   dead: boolean;
   inMode: boolean;
   /** Email of the Claude account of the Claude Code in it (@claude_account, from its statusline). */
@@ -411,6 +414,33 @@ export interface TrelloList {
   id: string;
   name: string;
   cards: { id: string; name: string; idShort: number; url: string; labels: TrelloLabel[] }[];
+}
+
+/** The URL of a Trello card found by its board and short number (GET /api/trello/card-url), for a `Trello #N` link. */
+export interface TrelloCardUrl {
+  url: string;
+}
+
+/** Where a terminal reference (`PR #N`, `Issue #N`, `pipeline #N`) can point: a GitHub or Bitbucket repository. */
+export interface RefRepo {
+  host: 'github' | 'bitbucket';
+  /** «owner/repo» (GitHub) or «workspace/repo» (Bitbucket). */
+  path: string;
+}
+
+/**
+ * What a pane's project lets the terminal link (GET /api/refs/context): its repository, from
+ * .claude/koalarnes.json or else the origin remote, and its Trello board (koalarnes.json only).
+ */
+export interface RefContext {
+  repo?: RefRepo;
+  /** The board's shortLink or id, for `Trello #N`. */
+  trelloBoard?: string;
+}
+
+/** Where `[Image #N]` is on the pane's machine (GET /api/claude-image): the file Claude Code saved when it was pasted. */
+export interface ClaudeImageResult {
+  path: string;
 }
 
 /** Trello in Settings › Trello: whether the hub has an account, and whose. */
