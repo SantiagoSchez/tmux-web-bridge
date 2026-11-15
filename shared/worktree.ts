@@ -11,6 +11,8 @@ const WORKTREE_RE = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/;
 export function worktreeNameProblem(name: string): string | null {
   if (!name) return 'Falta el nombre del worktree';
   if (name.length > WORKTREE_MAX) return `El nombre del worktree pasa de ${WORKTREE_MAX} caracteres`;
+  // It is also the branch's name, and git would read a leading '-' as an option.
+  if (name.startsWith('-')) return 'El nombre del worktree no puede empezar por «-»';
   if (!WORKTREE_RE.test(name) || name.split('/').some((s) => s === '.' || s === '..')) {
     return 'El nombre del worktree solo admite letras, números, «.», «_», «-» y «/»';
   }

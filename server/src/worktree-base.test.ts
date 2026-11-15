@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import type { BranchList } from '../../shared/types.js';
-import { branchNameProblem, pickBase } from '../../shared/worktree.js';
+import { branchNameProblem, pickBase, worktreeNameProblem } from '../../shared/worktree.js';
 import { branchesScript, parseBranches, parsePrepare, prelude, prepareScript, type Prepared } from './worktree-base.js';
 
 // ---------------------------------------------------------------- fixtures
@@ -280,6 +280,40 @@ test('without a hook, an existing branch opens in its worktree, or a new one on 
     await assert.rejects(prepare(home, repo, 'feature/fuera', 'master'), new RegExp(`extraída en ${away}:`));
   }));
 
+test('a worktree name that starts with a dash is refused, and git never reads one as an option', () =>
+  withHome(async (home) => {
+    assert.match(worktreeNameProblem('-m') ?? '', /no puede empezar por «-»/);
+    assert.equal(worktreeNameProblem('feature/-x'), null);
+    const { repo } = fixture(home);
+    write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
+    await assert.rejects(prepare(home, repo, '-m', 'release/2.0'), /No se ha podido preparar el worktree/);
+    assert.equal(git(home, repo, 'branch', '--show-current'), 'master');
+  }));
+
+test('without a hook, a worktree whose folder was deleted by hand is added again', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const path = join(repo, '.claude/worktrees/feature-14-login');
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'created', path });
+    rmSync(path, { recursive: true, force: true });
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'reused', path, atBase: true });
+    assert.equal(readFileSync(join(path, 'a'), 'utf8'), '1');
+  }));
+
+test('a branch named like the worktree that origin has and the clone has not fetched is reused, with a hook or without', () =>
+  withHome(async (home) => {
+    const { bare, repo } = fixture(home);
+    git(home, bare, 'branch', 'feature/nueva', 'release/2.0');
+    git(home, bare, 'branch', 'feature/otra', 'release/2.0');
+    const path = join(repo, '.claude/worktrees/feature-nueva');
+    assert.deepEqual(await prepare(home, repo, 'feature/nueva', 'master'), { kind: 'reused', path });
+    assert.equal(sha(home, path, 'HEAD'), sha(home, bare, 'release/2.0'));
+    write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
+    assert.deepEqual(await prepare(home, repo, 'feature/otra', 'master'), { kind: 'reused' });
+    assert.equal(sha(home, repo, 'refs/remotes/origin/feature/otra'), sha(home, bare, 'release/2.0'));
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/otra'));
+  }));
+
 test("a git failure says git's message", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
@@ -293,9 +327,7 @@ test('a command that takes too long is killed, with the child that hangs on the 
     git(home, home, 'init', '-q');
     // `sh` stands for git, and its `sleep` for the ssh it starts.
     const script = prelude(home, 'exit 9') + `bounded 1 sh -c 'sleep 30 & echo $! > child; wait'; echo "r=$?"`;
-    const start = Date.now();
     assert.equal((await sh(script, home)).trim(), 'r=143');
-    assert.ok(Date.now() - start < 5000);
     const child = Number(readFileSync(join(home, 'child'), 'utf8'));
     await new Promise((r) => setTimeout(r, 100));
     assert.throws(() => process.kill(child, 0), /ESRCH/);

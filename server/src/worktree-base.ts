@@ -104,7 +104,8 @@ export function parseBranches(out: string): BranchList {
  * `base` may be empty: with a hook, the hook then decides; without one, the project's base,
  * else HEAD. Prints S and why first when origin could not be reached, then one line:
  * E and why (repo, base, unreachable, inuse and the path, git and its message); X, the branch
- * exists (with the path to start in when there is no hook, and 1 when it is at origin/<base>);
+ * exists, locally, in origin or on the remote (with the path to start in when there is no hook,
+ * and 1 when it is at origin/<base>);
  * N, nothing to do; H, the branch was made for the hook; W and the worktree made.
  */
 export function prepareScript(path: string, worktree: string, base: string): string {
@@ -122,7 +123,7 @@ export function prepareScript(path: string, worktree: string, base: string): str
     `while IFS= read -r f; do mkdir -p "$dir/$(dirname "$f")" && cp -p "$main/$f" "$dir/$f"; done; }; ` +
     HOOK +
     PROJECT_BASE +
-    `[ -z "$b" ] && [ -z "$hook" ] && b=$pb; ` +
+    `[ -z "$b" ] && [ -z "$hook" ] && b=$pb; stale=''; ` +
     `if [ -n "$b" ]; then ` +
     `bounded ${FETCH_SECONDS} git fetch --quiet origin "+refs/heads/$b:refs/remotes/origin/$b"; r=$?; ` +
     `if [ "$r" -ne 0 ]; then why=$(oneline < "$tmp"); why=\${why:-sin respuesta en ${FETCH_SECONDS} s}; lr=1; ` +
@@ -130,13 +131,19 @@ export function prepareScript(path: string, worktree: string, base: string): str
     `[ "$lr" -eq 2 ] && { printf 'E\\tbase\\n'; exit 0; }; ` +
     `[ "$lr" -eq 0 ] && fail "$why"; ` +
     `has "$b" || { printf 'E\\tunreachable\\t%s\\n' "$why"; exit 0; }; ` +
-    `printf 'S\\t%s\\n' "$why"; fi; ` +
+    `stale=1; printf 'S\\t%s\\n' "$why"; fi; ` +
     `has "$b" || { printf 'E\\tbase\\n'; exit 0; }; fi; ` +
     `here=''; git show-ref --verify --quiet "refs/heads/$w" && here=local; [ -z "$here" ] && has "$w" && here=remote; ` +
+    // A branch pushed from elsewhere that the clone has not fetched: reused, not shadowed by a new one.
+    `if [ -z "$here" ] && [ -z "$stale" ] && { [ -n "$b" ] || [ -z "$hook" ]; }; then ` +
+    `bounded ${LS_REMOTE_SECONDS} git ls-remote --exit-code origin "refs/heads/$w" && ` +
+    `bounded ${LS_REMOTE_SECONDS} git fetch --quiet origin "+refs/heads/$w:refs/remotes/origin/$w"; has "$w" && here=remote; fi; ` +
     `if [ -n "$here" ]; then ` +
     `ref="refs/heads/$w"; [ "$here" = remote ] && ref="refs/remotes/origin/$w"; ` +
     `same=''; [ -n "$b" ] && [ "$(git rev-parse "$ref")" = "$(git rev-parse "refs/remotes/origin/$b")" ] && same=1; ` +
     `[ -n "$hook" ] && { printf 'X\\t\\t%s\\n' "$same"; exit 0; }; ` +
+    // A worktree whose folder was deleted by hand is still registered: forget it first.
+    `git worktree prune 2>/dev/null; ` +
     `at=$(git worktree list --porcelain | awk -v r="branch refs/heads/$w" '/^worktree /{p=substr($0,10)} $0==r{print p; exit}'); ` +
     `if [ -n "$at" ]; then [ "$at" = "$dir" ] && { printf 'X\\t%s\\t%s\\n' "$dir" "$same"; exit 0; }; printf 'E\\tinuse\\t%s\\n' "$at"; exit 0; fi; ` +
     `exclude; ` +
@@ -145,7 +152,7 @@ export function prepareScript(path: string, worktree: string, base: string): str
     `include; printf 'X\\t%s\\t%s\\n' "$dir" "$same"; exit 0; fi; ` +
     `if [ -n "$hook" ]; then ` +
     `[ -z "$b" ] && { printf 'N\\n'; exit 0; }; ` +
-    `err=$(git branch --no-track "$w" "refs/remotes/origin/$b" 2>&1) || fail "$err"; ` +
+    `err=$(git branch --no-track -- "$w" "refs/remotes/origin/$b" 2>&1) || fail "$err"; ` +
     `printf 'H\\n'; exit 0; fi; ` +
     `exclude; from=HEAD; [ -n "$b" ] && from="refs/remotes/origin/$b"; ` +
     `err=$(git worktree add --quiet --no-track -b "$w" "$dir" "$from" 2>&1) || fail "$err"; ` +

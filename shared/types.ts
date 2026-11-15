@@ -356,8 +356,9 @@ export interface ExtLaunchRequest {
   /** Start claude in a new git worktree of this name (`claude --worktree`); the prompt may be left out then. */
   worktree?: string;
   /**
-   * The branch of `origin` the new worktree starts from (with `worktree`). Missing: as
-   * `claude --worktree` does on the machine, from the project's base.
+   * The branch of `origin` the new worktree starts from (with `worktree`). Missing: the
+   * machine's WorktreeCreate hook decides, as for `claude --worktree`; without a hook, the
+   * project's base.
    */
   base?: string;
   /**
@@ -712,7 +713,7 @@ export interface Automation {
   prompt: string;
   /** Each run in a new worktree, «<name>-<date>». */
   worktree: boolean;
-  /** The branch of `origin` each run's worktree starts from; missing: the project's base at each run. */
+  /** The branch of `origin` each run's worktree starts from; missing: each run launches without one (ExtLaunchRequest.base). */
   base?: string;
   skipPermissions: boolean;
   schedule: Schedule;
