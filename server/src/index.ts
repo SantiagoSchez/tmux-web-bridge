@@ -12,7 +12,7 @@ import type { AccountsInfo, ActivityEvent, ClaudeImageResult, GitDiffMode, Clien
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
-import { shq } from './exec.js';
+import { shq, TmuxError } from './exec.js';
 import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig, removeConfigHosts } from './config.js';
 import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
@@ -576,7 +576,8 @@ app.get('/api/ext/branches', async (req, reply) => {
   try {
     return await listBranches(host, machineFolders(host), folder ? { folder, sub } : { session });
   } catch (err) {
-    return reply.code(502).send({ error: (err as Error).message });
+    // A command that failed on the machine is its failure; anything else, a target it does not have.
+    return reply.code(err instanceof TmuxError ? 502 : 400).send({ error: (err as Error).message });
   }
 });
 

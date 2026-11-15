@@ -28,7 +28,7 @@
 - [x] 4.3 Add a `targetFolder(host, machine, target)` that resolves a launch target to its folder as `launchTask` does (the folder and `sub` when given, else the folder of the open space's current pane) with a failing test in `server/src/ext.test.ts` first, and use it from `listBranches`.
   - `targetFolder` in `server/src/tasks.ts` (with `folderPath` exported from `actions.ts`); one test, seen failing without the function and with the space's folder read from the wrong target.
 - [x] 4.4 Add the read-only `listBranches` action to `server/src/actions.ts` (in `READ_ONLY_OPS`) and `GET /api/ext/branches?host&session&folder&sub` to `server/src/index.ts` next to `GET /api/ext/targets` (400 on bad input or unknown machine, 502 when the machine fails); verify with `curl` against a dev hub (isolated `TMUX_TMPDIR`, no `TMUX`/`TMUX_PANE`) on a folder of this repository, a folder outside git and an open space.
-  - Checked with `curl` against an isolated hub (scratch `HOME`, `TMUX_TMPDIR`, fake `claude`): a repository with a hook gives its branches and base `develop` (koalarnes `git.baseBranch`), one without gives base `master` (origin's default), a folder outside git and an open space outside git give `repo: false`; no target or an unknown machine give 400. A folder the hub cannot reach (`/etc`) gives 502 rather than 400: the machine's failure and a bad folder are not told apart.
+  - Checked with `curl` against an isolated hub (scratch `HOME`, `TMUX_TMPDIR`, fake `claude`): a repository with a hook gives its branches and base `develop` (koalarnes `git.baseBranch`), one without gives base `master` (origin's default), a folder outside git and an open space outside git give `repo: false`; no target or an unknown machine give 400. A folder that is not an added one (`/etc`), a missing subfolder and a closed or invalid space give 400; only a command that fails on the machine (`TmuxError`) gives 502.
 
 ## 5. Applying the base at launch
 
@@ -93,11 +93,13 @@
   - `openspec/specs/worktree-base/spec.md` created from the delta (Purpose and five requirements; `openspec validate --specs` passes); `docs/FEATURES.md` gained the «Worktrees» area with one anchored section per requirement and its index line.
 - [x] 11.2 Run `ka features-check`; verify the exit code is 0.
   - `ka features-check`: 2 capability specs, 10 requirements, in sync; exit 0.
-- [ ] 11.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 11.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+  - Committed as `docs: add the worktree base branch to the feature catalogue`, after the implementation commit.
 
 ## 12. E2E pipeline
 
-- [ ] 12.1 The project has no E2E suite; this step does not apply. Record it here.
+- [x] 12.1 The project has no E2E suite; this step does not apply. Record it here.
+  - The project has no E2E suite: this step does not apply.
 
 ## 13. Human review
 
