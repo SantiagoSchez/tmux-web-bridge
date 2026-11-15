@@ -354,7 +354,14 @@ export interface ExtLaunchRequest {
   name?: string;
   skipPermissions?: boolean;
   /** Start claude in a new git worktree of this name (`claude --worktree`); the prompt may be left out then. */
-  worktree?: string;  /**
+  worktree?: string;
+  /**
+   * The branch of `origin` the new worktree starts from (with `worktree`). Missing: the
+   * machine's WorktreeCreate hook decides, as for `claude --worktree`; without a hook, the
+   * project's base.
+   */
+  base?: string;
+  /**
    * The Trello card (its id) the task is about: once launched, the hub moves it to its
    * board's Doing list and comments on it, with the Trello account of Settings › Trello.
    */
@@ -375,6 +382,8 @@ export interface ExtLaunchResult {
   createdSpace: boolean;
   /** What happened to the card of the request, if it had one. */
   trello?: TrelloAfterLaunch;
+  /** Something to tell the user about the launch: the worktree's branch already existed, so the base was not applied. */
+  notice?: string;
 }
 
 /** A Trello card as a launch needs it. */
@@ -495,6 +504,22 @@ export type WorktreeList =
       worktrees: { name: string; path: string; branch?: string }[];
     };
 
+/**
+ * GET /api/ext/branches and the listBranches action: the branches of `origin` of a launch
+ * target's repository, read after a fetch, to pick a new worktree's base.
+ */
+export type BranchList =
+  | { repo: false }
+  | {
+      repo: true;
+      /** Without `origin/`, sorted. */
+      branches: string[];
+      /** The project's base: koalarnes.json's `git.baseBranch`, else `origin`'s default branch, when `origin` has it. */
+      base?: string;
+      /** Why the branches could not be refreshed (git's message): the list is what the machine knew. */
+      fetchError?: string;
+    };
+
 /** A folder of a host, for the folder picker: where it is and the folders inside. */
 export interface DirListing {
   /** Absolute, or ~/… under the home folder. */
@@ -573,6 +598,8 @@ export type ActionOp =
   | { op: 'trelloExtension'; on: boolean }
   /** The folders inside one, for the folder picker. */
   | { op: 'listDirs'; path: string }
+  /** The branches of `origin` of a launch target's repository, after a fetch: answers a BranchList. */
+  | { op: 'listBranches'; target: ExtLaunchTarget }
   /** The git worktrees of an added folder's repo (or of `sub`, inside one): answers a WorktreeList. */
   | { op: 'listWorktrees'; folder: string; sub?: string }
   /**
@@ -686,6 +713,8 @@ export interface Automation {
   prompt: string;
   /** Each run in a new worktree, «<name>-<date>». */
   worktree: boolean;
+  /** The branch of `origin` each run's worktree starts from; missing: each run launches without one (ExtLaunchRequest.base). */
+  base?: string;
   skipPermissions: boolean;
   schedule: Schedule;
 }

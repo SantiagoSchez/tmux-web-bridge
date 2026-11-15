@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { describeSchedule, nextRun, parseCron, scheduleProblem, type Schedule } from '../../shared/schedule.js';
-import type { Automation, ExtLaunchResult, PaneState } from '../../shared/types.js';
+import type { ExtLaunchRequest, ExtLaunchResult, PaneState } from '../../shared/types.js';
 import { Automations } from './automations.js';
 
 const at = (s: string) => new Date(s);
@@ -59,14 +59,14 @@ const base = {
 };
 
 function setup(dir: string, clock: { now: Date }, panes: Map<string, PaneState | null>, fail?: string) {
-  const launched: { a: Automation; worktree?: string }[] = [];
+  const launched: Omit<ExtLaunchRequest, 'host'>[] = [];
   let n = 0;
   const auto = new Automations(dir, {
     now: () => clock.now,
     paneState: (_h, pane) => (panes.has(pane) ? panes.get(pane) : undefined),
-    launch: async (a, worktree) => {
+    launch: async (_a, req) => {
       if (fail) throw new Error(fail);
-      launched.push({ a, worktree });
+      launched.push(req);
       const pane = `%${++n}`;
       panes.set(pane, 'busy');
       return { host: 'mac', hostName: 'Mac', session: '$1', space: 'twb', window: `@${n}`, windowName: 'x', pane, createdSpace: false } satisfies ExtLaunchResult;
@@ -151,5 +151,27 @@ test(
     assert.throws(() => again.auto.upsert({ ...base, schedule: { kind: 'cron', expr: 'nada' } }), /5 campos/);
     again.auto.remove(id);
     assert.equal(again.auto.info.length, 0);
+  }),
+);
+
+test(
+  'an automation keeps the base branch of its worktrees across a restart and runs with it; empty or invalid ones do not stay',
+  withDir(async (dir) => {
+    const clock = { now: at('2026-11-12T10:00:00') };
+    const panes = new Map<string, PaneState | null>();
+    const { auto, launched } = setup(dir, clock, panes);
+    const { id } = auto.upsert({ ...base, base: 'release/2.0' });
+    await auto.runNow(id);
+    const worktree = 'deps-nocturnas-20261112-1000';
+    assert.deepEqual(launched[0], { target: base.target, prompt: base.prompt, name: worktree, worktree, base: 'release/2.0', skipPermissions: false });
+    assert.equal(setup(dir, clock, new Map()).auto.info[0].base, 'release/2.0');
+    panes.set('%1', null);
+    auto.upsert({ ...base, id, worktree: false, skipPermissions: true });
+    await auto.runNow(id);
+    assert.deepEqual(launched[1], { target: base.target, prompt: base.prompt, name: base.name, skipPermissions: true });
+    assert.throws(() => auto.upsert({ ...base, id, base: 'no vale' }), /no es un nombre de rama válido/);
+    assert.equal(auto.upsert({ ...base, id, base: ' ' }).base, undefined);
+    assert.equal(auto.upsert({ ...base, id, base: 'release/2.0', worktree: false }).base, undefined);
+    assert.equal(auto.upsert({ ...base, id }).base, undefined);
   }),
 );

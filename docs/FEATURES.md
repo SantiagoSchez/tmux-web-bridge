@@ -12,6 +12,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 ## Índice
 
 - [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
+- [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo.
 
 ## Terminal
 
@@ -39,3 +40,30 @@ Una ruta de fichero relativa del terminal se busca primero en la carpeta del pan
 <!-- capability: terminal-links; requirement: image-placeholders-open-the-pasted-image -->
 
 Claude Code muestra cada imagen adjunta como «[Image #1]». En el panel ese texto abre la imagen en el visor de ficheros, tanto si el mensaje ya se ha enviado como si aún se está escribiendo. Con ratón, basta con dejarlo encima para ver una vista previa, igual que con las rutas de fichero. Si Claude Code reutiliza un número en la misma sesión, se abre la imagen más reciente. En una ventana partida, abre la imagen de la sesión de Claude Code del panel donde aparece el texto. Cuando la imagen ya no está (por ejemplo, porque la máquina ha vaciado su carpeta temporal) o el panel no ejecuta Claude Code con el kit, el panel avisa de que no la encuentra.
+
+## Worktrees
+
+### Elegir la rama base de un worktree
+<!-- capability: worktree-base; requirement: creating-a-worktree-asks-for-its-base-branch -->
+
+Al crear un worktree, el panel pregunta de qué rama parte: en el paso «Nuevo worktree» de «Nuevo espacio» y de «Nueva ventana», en el cajón de Trello y en el diálogo de la extensión cuando se marca «En un worktree nuevo», y en las automatizaciones que se ejecutan cada vez en un worktree nuevo. La lista tiene las ramas de `origin` del repositorio del destino, leídas en su máquina después de actualizarlas desde el remoto, y cambia si cambias de destino. Si el remoto no responde, enseña las ramas que la máquina ya conocía y avisa de que no ha podido actualizarlas. Si el repositorio no tiene ramas en el remoto, o la lista no se ha podido leer, lo dice, ofrece volver a leerla y deja lanzar en un worktree sin rama base. Si la carpeta no es un repositorio git, lo dice y no deja lanzar en un worktree.
+
+### Qué rama propone primero
+<!-- capability: worktree-base; requirement: the-base-branch-offered-first-is-the-last-one-used -->
+
+La rama propuesta es la última que usaste: por tablero de Trello en la extensión y en el cajón de Trello, y por carpeta en «Nuevo worktree» (en cada dispositivo). Si no hay ninguna recordada, o la recordada ya no está en el remoto, propone la base del proyecto: `git.baseBranch` del `.claude/koalarnes.json` del repositorio o, si no lo tiene, la rama por defecto del remoto. Así, otro tablero empieza desde la base del proyecto aunque en el primero usaras `release/2.0`.
+
+### El worktree parte de la rama elegida
+<!-- capability: worktree-base; requirement: the-worktree-starts-from-the-chosen-base -->
+
+El worktree arranca en la rama elegida tal y como está en el remoto, y su rama se llama como el worktree (`feature/14-login`). Si la máquina tiene un hook de Claude Code que crea los worktrees, el servidor central crea antes la rama desde la elegida y el hook la reutiliza al crear y preparar el worktree a su manera. Si no lo tiene, el servidor central crea el worktree en la carpeta del proyecto principal (también cuando el destino es otro worktree), copia los ficheros ignorados que seleccione `.worktreeinclude` y Claude Code arranca dentro. Sin rama base (por ejemplo, desde una extensión aún sin actualizar), el hook crea el worktree como antes y, sin hook, parte de la base del proyecto. Si el remoto no responde al lanzar, el worktree parte de la copia de la rama que ya tenía la máquina y se avisa.
+
+### Automatizaciones con rama base
+<!-- capability: worktree-base; requirement: an-automation-keeps-its-base-branch -->
+
+Una automatización que se ejecuta en un worktree nuevo guarda su rama base y cada ejecución parte de ella. Si se guarda con «Base del proyecto», o es anterior a esta funcionalidad, cada ejecución se lanza sin rama base: si la máquina tiene un hook que crea los worktrees, decide él, y si no, parte de la base que tenga el proyecto en ese momento.
+
+### Una rama que ya existe se reutiliza
+<!-- capability: worktree-base; requirement: an-existing-branch-with-the-worktree-s-name-is-reused -->
+
+Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el remoto aunque la máquina aún no la haya traído, el worktree usa esa rama tal cual (si la máquina no puede traerla, no se lanza nada y se avisa), sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre; si la carpeta de su worktree se borró a mano, el worktree se vuelve a crear. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.

@@ -4,6 +4,7 @@ import type { Automation, AutomationInfo, AutomationRun, ExtHostTargets, ExtTarg
 import { runWorktreeName } from '../../../shared/worktree';
 import { api } from '../api';
 import { openWindow } from '../router';
+import { BaseBranchSelect } from './BaseBranch';
 import { dialog, findWindow, hosts, sheet, toast } from '../state';
 
 // Settings › Automatizaciones: prompts the hub launches on its own on a schedule, each as
@@ -115,7 +116,7 @@ export function AutomationSettings() {
                   <h3>{a.name}</h3>
                   <p class="dim small">
                     {describeSchedule(a.schedule)} · {hostName} › {a.target.sub ?? a.target.folder}
-                    {a.worktree ? ' · worktree' : ''}
+                    {a.worktree ? ` · worktree${a.base ? ` desde ${a.base}` : ''}` : ''}
                   </p>
                   <p class="small">{a.enabled ? (a.nextRun ? `Próxima: ${when(a.nextRun)}` : 'No volverá a ejecutarse') : 'Pausada'}</p>
                   {last && (
@@ -165,6 +166,8 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
   const [target, setTarget] = useState(init.target ? targetKey(init.target) : '');
   const [prompt, setPrompt] = useState(init.prompt ?? '');
   const [worktree, setWorktree] = useState(init.worktree ?? false);
+  /** '' is the project's base at each run; undefined, the list is not read (the saved one is kept). */
+  const [base, setBase] = useState<string | undefined>(undefined);
   const [skip, setSkip] = useState(init.skipPermissions ?? false);
   const s = init.schedule;
   const [mode, setMode] = useState<Mode>(s?.kind ?? 'days');
@@ -212,7 +215,8 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
     if (!ready || busy) return;
     setBusy(true);
     try {
-      await props.onSave({ ...init, name: name.trim(), host: hostId, target: finalTarget, prompt: prompt.trim(), worktree, skipPermissions: skip, schedule, enabled: init.enabled ?? true });
+      const savedBase = worktree ? (base === undefined ? init.base : base || undefined) : undefined;
+      await props.onSave({ ...init, name: name.trim(), host: hostId, target: finalTarget, prompt: prompt.trim(), worktree, base: savedBase, skipPermissions: skip, schedule, enabled: init.enabled ?? true });
     } catch (err) {
       toast((err as Error).message, 'error');
       setBusy(false);
@@ -334,6 +338,7 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
           <input type="checkbox" checked={worktree} onChange={(e) => setWorktree(e.currentTarget.checked)} />
           Cada ejecución en un worktree nuevo{name.trim() ? ` (${runWorktreeName(name.trim(), new Date())})` : ''}
         </label>
+        {worktree && <BaseBranchSelect hostId={hostId} target={finalTarget} remembered={init.base} value={base} onChange={setBase} projectOption />}
         <label class="kb-check">
           <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.currentTarget.checked)} />
           Saltarse los permisos

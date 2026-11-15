@@ -8,12 +8,12 @@ Al pasar el ratón por una tarjeta aparece un botón con el icono de una termina
 - **Espacio**: el de la carpeta (si ya está abierto, la tarea va a una ventana nueva en él; si no, se crea el espacio) o uno de los espacios abiertos, donde se abre una ventana nueva.
 - **Carpeta**: una de «Nuevo espacio» (⚙️ Ajustes › Carpetas en twb). Con un espacio abierto es opcional: sin ella, la ventana nueva se abre donde esté ese espacio.
 - **Prompt**: sale de la plantilla del panel, en ⚙️ Ajustes › Trello (`Haz la tarjeta {url}` por defecto), y se puede retocar antes de lanzar.
-- **En un worktree nuevo**: Claude arranca con `claude --worktree <nombre>`, que por defecto es la rama: `bugfix/` si la tarjeta tiene una etiqueta «bug», «bugfix», «fix» o «issue» (o sus plurales) (`feature/` en cualquier otro caso, también sin etiquetas), seguido del número y el título de la tarjeta (`feature/142-arreglar-login-movil`), y se puede cambiar. El nombre entero cabe en los 64 caracteres que admite Claude Code. Recuerda su último valor.
+- **En un worktree nuevo**: Claude arranca con `claude --worktree <nombre>`, que por defecto es la rama: `bugfix/` si la tarjeta tiene una etiqueta «bug», «bugfix», «fix» o «issue» (o sus plurales) (`feature/` en cualquier otro caso, también sin etiquetas), seguido del número y el título de la tarjeta (`feature/142-arreglar-login-movil`), y se puede cambiar. El nombre entero cabe en los 64 caracteres que admite Claude Code. Recuerda su último valor. Parte de la rama de `origin` que elijas en «Rama base»: la lista se lee de la máquina al elegir el destino y propone la última que usaste en ese tablero o, si no, la base del proyecto. Si el repositorio no tiene ramas en `origin`, o la lista no se ha podido leer, lo dice, deja lanzar sin rama base y ofrece «Volver a leer».
 - **Saltar permisos**: arranca con `--dangerously-skip-permissions` en lugar de `--permission-mode auto`. Recuerda su último valor.
 
 Con «Lanzar» (o Ctrl/Cmd+Enter):
 
-1. twb abre la ventana, llamada como la tarjeta (o como el worktree, con `feat/` o `bug/` en lugar de `feature/` o `bugfix/`), y escribe `claude … '<prompt>'`.
+1. twb abre la ventana, llamada como la tarjeta (o como el worktree, con `feat/` o `bug/` en lugar de `feature/` o `bugfix/`), y escribe `claude … '<prompt>'` (o `cd <worktree> && claude …` cuando crea él el worktree, en una máquina sin hook `WorktreeCreate`).
 2. El panel mueve la tarjeta al final de la lista «Doing» de su tablero (la que se llame así, con emoji o sin él).
 3. Y comenta en ella: «🤖 Lanzada en Mac › proyecto · ventana «…»».
 
