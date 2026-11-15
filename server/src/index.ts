@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -21,7 +21,7 @@ import { ConnectionRegistry } from './connections.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask } from './tasks.js';
-import { TrelloService, TrelloSetupError } from './trello.js';
+import { isCardRef, TrelloNotFoundError, TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
 import { ActivityLog } from './activity.js';
 import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
@@ -29,7 +29,9 @@ import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
+import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
+import { contextScript, parseContext } from './project-refs.js';
 import { PushService } from './push.js';
 import { SettingsStore } from './settings.js';
 import { TempFolders } from './temp.js';
@@ -640,6 +642,21 @@ app.get('/api/trello/boards/:id', async (req, reply) => {
   }
 });
 
+/** The page of card number n of a board, for a Trello #N link in the terminal. */
+app.get('/api/trello/card-url', async (req, reply) => {
+  const q = req.query as { board?: unknown; n?: unknown };
+  const board = typeof q.board === 'string' ? q.board : '';
+  const n = typeof q.n === 'string' ? q.n : '';
+  if (!isCardRef(board, n)) return reply.code(400).send({ error: 'No se reconoce la tarjeta' });
+  try {
+    return { url: await trello.cardUrl(board, n) } satisfies TrelloCardUrl;
+  } catch (err) {
+    if (err instanceof TrelloSetupError) return trelloError(reply, err);
+    if (err instanceof TrelloNotFoundError) return reply.code(404).send({ error: err.message });
+    return reply.code(502).send({ error: (err as Error).message });
+  }
+});
+
 app.post('/api/trello/launch', async (req, reply) => {
   try {
     return await launchFromRequest((req.body ?? {}) as Partial<ExtLaunchRequest>, 'trello');
@@ -898,6 +915,39 @@ app.get('/api/git/stat', async (req, reply) => {
     return await gitStat(host, cwd);
   } catch (err) {
     return fileError(reply, err);
+  }
+});
+
+/** What the pane's project lets the terminal link (PR #12, Trello #470…): its repository and its Trello board. */
+app.get('/api/refs/context', async (req, reply) => {
+  const q = req.query as { host?: string; window?: string; pane?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  const cwd = paneFolders(host, q.window, q.pane)[0];
+  if (!cwd) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
+  try {
+    return parseContext(await host.exec.shell(contextScript(cwd))) satisfies RefContext;
+  } catch (err) {
+    return reply.code(502).send({ error: `No se pudo leer el proyecto en ${host.name}: ${(err as Error).message}` });
+  }
+});
+
+/** Where [Image #N] of the pane's Claude Code session is on its machine: the file Claude Code saved when it was pasted. */
+app.get('/api/claude-image', async (req, reply) => {
+  const q = req.query as { host?: string; pane?: string; n?: string };
+  const host = q.host ? hosts.get(q.host) : undefined;
+  if (!host || !/^%\d+$/.test(q.pane ?? '') || !/^\d{1,4}$/.test(q.n ?? '')) return reply.code(400).send({ error: 'Petición inválida' });
+  const ctx = host.findPane(q.pane!);
+  if (!ctx) return reply.code(404).send({ error: 'El panel ya no existe' });
+  const n = Number(q.n);
+  const session = ctx.pane.claudeSession;
+  const notFound = () => reply.code(404).send({ error: `No encuentro la imagen ${n}` });
+  if (!session || !isImageRef(session, n)) return notFound();
+  try {
+    const path = parseImage(await host.exec.shell(imageScript(session, n)));
+    return path ? ({ path } satisfies ClaudeImageResult) : notFound();
+  } catch (err) {
+    return reply.code(502).send({ error: `No se pudo buscar la imagen en ${host.name}: ${(err as Error).message}` });
   }
 });
 

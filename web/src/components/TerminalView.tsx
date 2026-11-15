@@ -2,14 +2,16 @@ import { ClipboardAddon, type ClipboardSelectionType, type IClipboardProvider } 
 import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { api } from '../api';
 import { fileLinkProvider } from '../fileLinks';
+import { imageLinkProvider, prefetchRefContext, refLinkProvider } from '../refLinks';
 import { hidePeek, peekFile } from './FilePeek';
 import { openFile } from './Files';
 import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import type { ClaudeImageResult, HostInfo, PaneInfo, SessionInfo, TrelloCardUrl, WindowInfo } from '../../../shared/types';
 import { cleanCopy } from '../../../shared/copy';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
@@ -790,6 +792,53 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
         leave: hidePeek,
       }),
     );
+    // PR #12, Issue #3, pipeline #9: their page; Trello #470: the card, looked up on the hub
+    // (the tab opens at once, inside the tap, and gets the card's address after).
+    const dragged = (e: MouseEvent) => e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3;
+    term.registerLinkProvider(
+      refLinkProvider(term, origin, {
+        open: (e, url) => !dragged(e) && openLink(url),
+        trello: (e, board, n) => {
+          if (dragged(e)) return;
+          const tab = globalThis.open('about:blank', '_blank');
+          if (tab) tab.opener = null;
+          api<TrelloCardUrl>(`/api/trello/card-url?${new URLSearchParams({ board, n: String(n) })}`)
+            .then(({ url }) => (tab ? (tab.location.href = url) : openLink(url)))
+            .catch((err: Error) => {
+              tab?.close();
+              toast(err.message, 'error');
+            });
+        },
+      }),
+    );
+    // [Image #N]: the image Claude Code saved, asked to the hub, in the viewer; a preview on hover.
+    const imagePath = (n: number) => {
+      const at = origin();
+      return api<ClaudeImageResult>(`/api/claude-image?${new URLSearchParams({ host: at.host, pane: at.pane ?? '', n: String(n) })}`).then((r) => r.path);
+    };
+    let hovering = 0;
+    term.registerLinkProvider(
+      imageLinkProvider(term, {
+        open: (e, n) => {
+          hidePeek();
+          hovering++;
+          if (dragged(e)) return;
+          imagePath(n)
+            .then((path) => openFile(origin(), path))
+            .catch((err: Error) => toast(err.message, 'error'));
+        },
+        hover: (e, n) => {
+          const mine = ++hovering;
+          imagePath(n)
+            .then((path) => mine === hovering && peekFile(origin(), path, undefined, e))
+            .catch(() => {});
+        },
+        leave: () => {
+          hovering++;
+          hidePeek();
+        },
+      }),
+    );
     term.loadAddon(new ClipboardAddon(undefined, clipboardProvider(term)));
     const unicode = new Unicode11Addon();
     term.loadAddon(unicode);
@@ -1000,6 +1049,11 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     target.current = { window: window.id, pane: pane.id };
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify({ t: 'sel', window: window.id, pane: pane.id }));
   }, [window.id, pane.id]);
+
+  // What the pane's project lets link (PR #12, Trello #470…), read before the first tap on one.
+  useEffect(() => {
+    prefetchRefContext({ host: host.id, window: window.id, pane: pane.id });
+  }, [host.id, window.id, pane.id, pane.path]);
 
   // Out of copy mode (scrolled back to the end, q...): the count no longer means anything.
   useEffect(() => {
