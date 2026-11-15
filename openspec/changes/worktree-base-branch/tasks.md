@@ -52,7 +52,9 @@ Fixes from the adversarial review (design D1 as revised):
 - [x] 5.9 PR #15 review. Write failing tests and see them fail: `worktreeNameProblem` refuses a name that starts with `-`; with a hook and a base, `prepareScript` given `-m` does not rename the checked-out branch; without a hook, a worktree whose folder was deleted by hand is added again (`X` with its path); a branch named like the worktree that `origin` has and the clone has not fetched is reused (`X`, at the remote's commit), with and without a hook; the watchdog test asserts no wall-clock budget. Implement (`--` before the name in `git branch`, `git worktree prune`, a bounded `ls-remote` and fetch of the worktree's branch) until they pass.
   - 3 tests; 5 mutations caught (`--`, the prune, the remote lookup and its condition, the name check).
 - [x] 5.10 PR #15 second review. Extend the deleted-folder test so another worktree whose folder is missing stays registered, and see it fail with `git worktree prune`; replace it with `git worktree remove --force` of the launched worktree's folder only. Bound the worktree branch's `ls-remote` at 4 s and fail the launch when the remote has the branch and its fetch fails. State in the README and the design that a hook must reuse the branch named like the worktree, local or in `origin`, and fix the row of `POST /api/ext/launch`, the proposal and the comment in `server/src/automations.ts` about a launch without a base.
-  - The extended test failed with `git worktree prune` and passes with the targeted removal (2 mutations caught). The fetch failure after a positive `ls-remote` has no test (it needs a remote that lists a branch and then fails to send it); the generated script passes `sh -n` and `bash -n`.
+  - The extended test failed with `git worktree prune` and passes with the targeted removal (2 mutations caught). The generated script passes `sh -n` and `bash -n`.
+- [x] 5.11 PR #15 third review. Write failing tests and see them fail: a branch that `origin` has and the clone cannot fetch (its clone keeps `origin/tema`, deleted on the remote, while the remote has `tema/x`) fails the launch with «origin tiene la rama tema/x y no se ha podido traer» and no local branch; a locked worktree whose folder was deleted by hand is added again. Implement (`git worktree remove --force --force`, the branch's fetch bounded by its own constant) until they pass, and add the sentence to the catalogue section «Una rama que ya existe se reutiliza».
+  - 2 tests (the unfetchable branch from the review, the locked worktree, seen failing with `--force` once); 2 mutations caught. `pnpm --filter server test`: 214 pass after it.
 
 ## 6. Automations
 
@@ -89,7 +91,7 @@ Fixes from the adversarial review (design D1 as revised):
 ## 9. Run tests, typecheck and lint
 
 - [x] 9.1 Run `pnpm --filter server test` and `pnpm --filter server typecheck`; verify both pass.
-  - After the PR #15 review: `pnpm --filter server test`: 212 pass, 0 fail; `typecheck` clean.
+  - After the third round of the PR #15 review: see the note of 5.11.
 - [x] 9.2 Run `pnpm --filter web typecheck`; verify it passes.
   - `pnpm --filter web typecheck` clean.
 - [x] 9.3 Run `pnpm --filter trello-extension test` and `pnpm --filter trello-extension typecheck`; verify both pass.

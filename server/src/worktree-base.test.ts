@@ -319,6 +319,28 @@ test('a branch named like the worktree that origin has and the clone has not fet
     assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/feature/otra'));
   }));
 
+test('a branch that origin has and the clone cannot fetch fails the launch, with no new branch in its place', () =>
+  withHome(async (home) => {
+    const { bare, repo } = fixture(home);
+    git(home, bare, 'branch', 'tema', 'master');
+    git(home, repo, 'fetch', '-q', 'origin');
+    git(home, bare, 'branch', '-D', 'tema');
+    git(home, bare, 'branch', 'tema/x', 'release/2.0');
+    await assert.rejects(prepare(home, repo, 'tema/x', 'master'), /origin tiene la rama tema\/x y no se ha podido traer/);
+    assert.throws(() => git(home, repo, 'rev-parse', '--verify', 'refs/heads/tema/x'));
+  }));
+
+test('without a hook, a locked worktree whose folder was deleted by hand is added again', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const path = join(repo, '.claude/worktrees/feature-14-login');
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'created', path });
+    git(home, repo, 'worktree', 'lock', path);
+    rmSync(path, { recursive: true, force: true });
+    assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'reused', path, atBase: true });
+    assert.equal(readFileSync(join(path, 'a'), 'utf8'), '1');
+  }));
+
 test("a git failure says git's message", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);

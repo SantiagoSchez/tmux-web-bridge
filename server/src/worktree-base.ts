@@ -13,10 +13,11 @@ const FETCH_SECONDS = 12;
 /** Seconds `git ls-remote` may take to tell a missing branch from a remote that does not answer. */
 const LS_REMOTE_SECONDS = 6;
 /**
- * Seconds to ask the remote for a branch named like the worktree: with the fetch (12 s) and
- * that branch's fetch (6 s), a launch stays under the hub's 25 s.
+ * Seconds to ask the remote for a branch named like the worktree, and to fetch it: with the
+ * base's fetch (12 s), a launch stays under the hub's 25 s.
  */
 const BRANCH_SECONDS = 4;
+const BRANCH_FETCH_SECONDS = 6;
 /** koalarnes.json is small; more than this is not one. */
 const MAX_CONFIG = 65_536;
 
@@ -121,8 +122,8 @@ export function prepareScript(path: string, worktree: string, base: string): str
     // New worktrees go under the main checkout, never inside a linked worktree the target is in.
     `main=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p'); [ -n "$main" ] || main=$top; ` +
     `dir="$main/.claude/worktrees/$(printf %s "$w" | tr / -)"; ` +
-    // Its folder deleted by hand, the worktree is still registered: forget that one, no other.
-    `[ -d "$dir" ] || git worktree remove --force "$dir" >/dev/null 2>&1; ` +
+    // Its folder deleted by hand, the worktree is still registered (maybe locked): forget that one, no other.
+    `[ -d "$dir" ] || git worktree remove --force --force "$dir" >/dev/null 2>&1; ` +
     `exclude() { ex=$(git rev-parse --git-path info/exclude); mkdir -p "$(dirname "$ex")"; grep -qxF '.claude/worktrees/' "$ex" 2>/dev/null || printf '.claude/worktrees/\\n' >> "$ex"; }; ` +
     // The ignored files .worktreeinclude selects, copied as Claude Code's own worktrees do.
     `include() { [ -f "$main/.worktreeinclude" ] || return 0; ` +
@@ -144,8 +145,8 @@ export function prepareScript(path: string, worktree: string, base: string): str
     // A branch pushed from elsewhere that the clone has not fetched: reused, not shadowed by a new one.
     `if [ -z "$here" ] && [ -z "$stale" ] && { [ -n "$b" ] || [ -z "$hook" ]; }; then ` +
     `if bounded ${BRANCH_SECONDS} git ls-remote --exit-code origin "refs/heads/$w"; then ` +
-    `bounded ${LS_REMOTE_SECONDS} git fetch --quiet origin "+refs/heads/$w:refs/remotes/origin/$w" || ` +
-    `{ why=$(oneline < "$tmp"); fail "origin tiene la rama $w y no se ha podido traer: \${why:-sin respuesta en ${LS_REMOTE_SECONDS} s}"; }; ` +
+    `bounded ${BRANCH_FETCH_SECONDS} git fetch --quiet origin "+refs/heads/$w:refs/remotes/origin/$w" || ` +
+    `{ why=$(oneline < "$tmp"); fail "origin tiene la rama $w y no se ha podido traer: \${why:-sin respuesta en ${BRANCH_FETCH_SECONDS} s}"; }; ` +
     `here=remote; fi; fi; ` +
     `if [ -n "$here" ]; then ` +
     `ref="refs/heads/$w"; [ "$here" = remote ] && ref="refs/remotes/origin/$w"; ` +
