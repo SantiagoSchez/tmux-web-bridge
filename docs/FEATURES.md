@@ -61,9 +61,9 @@ El worktree arranca en la rama elegida tal y como está en el remoto, y su rama 
 ### Automatizaciones con rama base
 <!-- capability: worktree-base; requirement: an-automation-keeps-its-base-branch -->
 
-Una automatización que se ejecuta en un worktree nuevo guarda su rama base y cada ejecución parte de ella. Si se guarda con «Base del proyecto», o es anterior a esta funcionalidad, cada ejecución parte de la base que tenga el proyecto en ese momento.
+Una automatización que se ejecuta en un worktree nuevo guarda su rama base y cada ejecución parte de ella. Si se guarda con «Base del proyecto», o es anterior a esta funcionalidad, cada ejecución se lanza sin rama base: si la máquina tiene un hook que crea los worktrees, decide él, y si no, parte de la base que tenga el proyecto en ese momento.
 
 ### Una rama que ya existe se reutiliza
 <!-- capability: worktree-base; requirement: an-existing-branch-with-the-worktree-s-name-is-reused -->
 
-Si el repositorio ya tiene una rama con el nombre del worktree, el worktree usa esa rama tal cual, sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.
+Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el remoto aunque la máquina aún no la haya traído, el worktree usa esa rama tal cual, sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre; si la carpeta de su worktree se borró a mano, el worktree se vuelve a crear. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.

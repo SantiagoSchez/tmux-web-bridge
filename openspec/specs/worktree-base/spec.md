@@ -108,6 +108,12 @@ A worktree created with a base branch SHALL start from that branch as it is on t
 - **WHEN** the hub launches it
 - **THEN** a machine's hook creates the worktree as it did before this change, and without a hook the worktree starts from the project's base
 
+#### Scenario: Worktree name that starts with a dash
+
+- **GIVEN** a worktree name that starts with `-`, such as `-m`
+- **WHEN** a task is launched in it
+- **THEN** nothing is launched, nothing changes in the repository, and the user is told the name is not valid
+
 #### Scenario: Destination inside a worktree
 
 - **GIVEN** a machine without a worktree hook and an open space whose folder is a worktree of the repository
@@ -122,7 +128,7 @@ A worktree created with a base branch SHALL start from that branch as it is on t
 
 ### Requirement: An automation keeps its base branch
 
-An automation that runs in a new worktree SHALL keep the base branch saved with it and start every run's worktree from that branch. An automation saved without a base SHALL use the project's base at each run.
+An automation that runs in a new worktree SHALL keep the base branch saved with it and start every run's worktree from that branch. An automation saved without a base SHALL launch each run without one: the machine's worktree hook creates the worktree as it would for any launch without a base, and without a hook the worktree starts from the project's base at that run.
 
 #### Scenario: Automation with a saved base
 
@@ -132,19 +138,37 @@ An automation that runs in a new worktree SHALL keep the base branch saved with 
 
 #### Scenario: Automation without a base
 
-- **GIVEN** an automation saved before this change, or with the base left on the project's base
+- **GIVEN** an automation saved before this change, or with the base left on the project's base, on a machine without a worktree hook
 - **WHEN** it runs in a project whose base is `develop`
 - **THEN** its worktree starts at `origin/develop`
 
+#### Scenario: Automation without a base on a machine with a hook
+
+- **GIVEN** an automation saved without a base, on a machine with a worktree hook
+- **WHEN** it runs
+- **THEN** the hook creates the worktree as it does for any launch without a base
+
 ### Requirement: An existing branch with the worktree's name is reused
 
-When a branch with the worktree's name already exists in the repository, the worktree SHALL use that branch as it is, the chosen base SHALL be ignored, and the panel or the extension SHALL tell the user so after launching.
+When a branch with the worktree's name already exists in the repository, or on the remote although the machine has not fetched it yet, the worktree SHALL use that branch as it is, the chosen base SHALL be ignored, and the panel or the extension SHALL tell the user so after launching.
 
 #### Scenario: Branch already exists
 
 - **GIVEN** a repository with a branch `feature/14-login`
 - **WHEN** the user launches a task in worktree `feature/14-login` with base `release/2.0`
 - **THEN** the worktree uses the existing `feature/14-login` and the user is told that the base was not applied because the branch already existed
+
+#### Scenario: Branch on the remote not fetched yet
+
+- **GIVEN** a remote with a branch `feature/14-login` that the machine's clone has not fetched
+- **WHEN** the user launches a task in worktree `feature/14-login` with base `release/2.0`
+- **THEN** the worktree uses the remote's `feature/14-login` and the user is told that the base was not applied
+
+#### Scenario: Worktree folder deleted by hand
+
+- **GIVEN** a machine without a worktree hook and a worktree `feature/14-login` whose folder was deleted without telling git
+- **WHEN** the user launches a task in worktree `feature/14-login` again
+- **THEN** the worktree is created again on its branch and the task starts in it
 
 #### Scenario: Branch checked out in another folder
 
