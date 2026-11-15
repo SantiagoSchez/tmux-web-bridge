@@ -12,6 +12,11 @@ import { shPath, shQuote } from './exec.js';
 const FETCH_SECONDS = 12;
 /** Seconds `git ls-remote` may take to tell a missing branch from a remote that does not answer. */
 const LS_REMOTE_SECONDS = 6;
+/**
+ * Seconds to ask the remote for a branch named like the worktree: with the fetch (12 s) and
+ * that branch's fetch (6 s), a launch stays under the hub's 25 s.
+ */
+const BRANCH_SECONDS = 4;
 /** koalarnes.json is small; more than this is not one. */
 const MAX_CONFIG = 65_536;
 
@@ -116,6 +121,8 @@ export function prepareScript(path: string, worktree: string, base: string): str
     // New worktrees go under the main checkout, never inside a linked worktree the target is in.
     `main=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p'); [ -n "$main" ] || main=$top; ` +
     `dir="$main/.claude/worktrees/$(printf %s "$w" | tr / -)"; ` +
+    // Its folder deleted by hand, the worktree is still registered: forget that one, no other.
+    `[ -d "$dir" ] || git worktree remove --force "$dir" >/dev/null 2>&1; ` +
     `exclude() { ex=$(git rev-parse --git-path info/exclude); mkdir -p "$(dirname "$ex")"; grep -qxF '.claude/worktrees/' "$ex" 2>/dev/null || printf '.claude/worktrees/\\n' >> "$ex"; }; ` +
     // The ignored files .worktreeinclude selects, copied as Claude Code's own worktrees do.
     `include() { [ -f "$main/.worktreeinclude" ] || return 0; ` +
@@ -136,14 +143,14 @@ export function prepareScript(path: string, worktree: string, base: string): str
     `here=''; git show-ref --verify --quiet "refs/heads/$w" && here=local; [ -z "$here" ] && has "$w" && here=remote; ` +
     // A branch pushed from elsewhere that the clone has not fetched: reused, not shadowed by a new one.
     `if [ -z "$here" ] && [ -z "$stale" ] && { [ -n "$b" ] || [ -z "$hook" ]; }; then ` +
-    `bounded ${LS_REMOTE_SECONDS} git ls-remote --exit-code origin "refs/heads/$w" && ` +
-    `bounded ${LS_REMOTE_SECONDS} git fetch --quiet origin "+refs/heads/$w:refs/remotes/origin/$w"; has "$w" && here=remote; fi; ` +
+    `if bounded ${BRANCH_SECONDS} git ls-remote --exit-code origin "refs/heads/$w"; then ` +
+    `bounded ${LS_REMOTE_SECONDS} git fetch --quiet origin "+refs/heads/$w:refs/remotes/origin/$w" || ` +
+    `{ why=$(oneline < "$tmp"); fail "origin tiene la rama $w y no se ha podido traer: \${why:-sin respuesta en ${LS_REMOTE_SECONDS} s}"; }; ` +
+    `here=remote; fi; fi; ` +
     `if [ -n "$here" ]; then ` +
     `ref="refs/heads/$w"; [ "$here" = remote ] && ref="refs/remotes/origin/$w"; ` +
     `same=''; [ -n "$b" ] && [ "$(git rev-parse "$ref")" = "$(git rev-parse "refs/remotes/origin/$b")" ] && same=1; ` +
     `[ -n "$hook" ] && { printf 'X\\t\\t%s\\n' "$same"; exit 0; }; ` +
-    // A worktree whose folder was deleted by hand is still registered: forget it first.
-    `git worktree prune 2>/dev/null; ` +
     `at=$(git worktree list --porcelain | awk -v r="branch refs/heads/$w" '/^worktree /{p=substr($0,10)} $0==r{print p; exit}'); ` +
     `if [ -n "$at" ]; then [ "$at" = "$dir" ] && { printf 'X\\t%s\\t%s\\n' "$dir" "$same"; exit 0; }; printf 'E\\tinuse\\t%s\\n' "$at"; exit 0; fi; ` +
     `exclude; ` +

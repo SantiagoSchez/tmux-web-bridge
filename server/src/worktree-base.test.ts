@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -290,14 +290,19 @@ test('a worktree name that starts with a dash is refused, and git never reads on
     assert.equal(git(home, repo, 'branch', '--show-current'), 'master');
   }));
 
-test('without a hook, a worktree whose folder was deleted by hand is added again', () =>
+test('without a hook, a worktree whose folder was deleted by hand is added again; others whose folder is missing stay', () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
     const path = join(repo, '.claude/worktrees/feature-14-login');
     assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'created', path });
+    // Another worktree on a drive that is not mounted now: git must not forget it.
+    const away = join(home, 'disco/otro');
+    git(home, repo, 'worktree', 'add', '-q', '-b', 'feature/otro', away, 'origin/master');
+    renameSync(join(home, 'disco'), join(home, 'disco-fuera'));
     rmSync(path, { recursive: true, force: true });
     assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'master'), { kind: 'reused', path, atBase: true });
     assert.equal(readFileSync(join(path, 'a'), 'utf8'), '1');
+    assert.ok(git(home, repo, 'worktree', 'list', '--porcelain').split('\n').includes(`worktree ${away}`));
   }));
 
 test('a branch named like the worktree that origin has and the clone has not fetched is reused, with a hook or without', () =>

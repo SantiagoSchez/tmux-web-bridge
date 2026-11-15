@@ -187,7 +187,7 @@ function sanitize(raw: unknown, id: string, strict = false): Automation | null {
   if (prompt.length > MAX_PROMPT) return fail('El prompt es demasiado largo');
   const problem = scheduleProblem(x.schedule);
   if (problem) return fail(problem);
-  // The base of each run's worktree: only with worktrees, and empty means the project's.
+  // The base of each run's worktree: only with worktrees; empty, each run launches without one.
   const branch = x.worktree === true && typeof x.base === 'string' ? x.base.trim() : '';
   if (x.worktree === true) {
     const wt = worktreeNameProblem(runWorktreeName(name, new Date()));
