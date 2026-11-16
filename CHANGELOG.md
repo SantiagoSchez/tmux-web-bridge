@@ -4,6 +4,20 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.24.0 - 2026-11-16
+
+### Añadido
+
+- **Scratchpads para lo que le dirás después a Claude**: tres listas de notas de colores (azul, verde y naranja), de hasta 10 notas cada una, que se ven al momento en todos tus dispositivos. Un botón pega la nota sin Enter en el panel de la ventana abierta y la nota desaparece, salvo que la fijes. En el ordenador están en una columna a la derecha que se pliega con ⌘. (Ctrl+Mayús+. fuera del Mac); en el móvil, en un cajón que se abre deslizando desde el borde derecho.
+
+### Eliminado
+
+- **Notificación local del Mac**: el kit ya no muestra su propia notificación de macOS (la que al pulsarla abría Ghostty), y desaparece su opción `PUSH_MIN_IDLE`. Todas las notificaciones llegan ya del servidor central.
+
+### Corregido
+
+- **Notificaciones con twb oculta**: con «Silenciar mientras lo uso» activado, no llegaba ninguna notificación mientras usabas un dispositivo con twb oculta (Cmd+H en el Mac). Ahora llegan solo a ese dispositivo, o a los demás si en él no están activadas; con twb a la vista siguen sin llegar.
+
 ## 1.23.1 - 2026-11-16
 
 ### Corregido

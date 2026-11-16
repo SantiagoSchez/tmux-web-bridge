@@ -1,8 +1,0 @@
-{
-  "type": "removed",
-  "scope": "host-kit",
-  "description": "Eliminada la notificación local de macOS del kit (terminal-notifier, que al pulsarla abría Ghostty) y su opción PUSH_MIN_IDLE: todas las notificaciones las envía ya el servidor central. Mientras usas el Mac, el móvil solo deja de recibirlas si tienes twb abierta en el Mac con «Silenciar mientras lo uso» activado",
-  "issue": "20",
-  "breaking": false,
-  "pr": "22"
-}
