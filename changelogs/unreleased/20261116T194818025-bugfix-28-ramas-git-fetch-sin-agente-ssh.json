@@ -3,5 +3,6 @@
   "scope": "server",
   "description": "Corregida la lista de ramas al crear un worktree en una máquina cuya clave SSH solo está en el agente (como en el Mac): las ramas se actualizan y el worktree parte de ellas, en vez de avisar de «Permission denied (publickey)»",
   "issue": "28",
-  "breaking": false
+  "breaking": false,
+  "pr": "29"
 }
