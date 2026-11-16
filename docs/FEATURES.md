@@ -162,12 +162,12 @@ Una nota que se añade con una ventana abierta recuerda esa ventana y la enseña
 ### Volver a la ventana de una nota
 <!-- capability: scratchpads; requirement: the-window-line-opens-its-window -->
 
-Mientras la ventana de una nota sigue abierta, su línea enseña los nombres que tiene ahora (si se renombra, la línea lo refleja) y, al pulsarla, abre esa ventana; en el móvil, además, cierra el cajón de los scratchpads. Pegar no cambia: «Pegar» escribe la nota en la ventana abierta en ese momento, sea cual sea la ventana de la que vino.
+Mientras la ventana de una nota sigue abierta en la misma sesión, su línea enseña los nombres que tienen ahora la ventana y la sesión (si se renombra una de las dos, la línea lo refleja) y, al pulsarla, abre esa ventana; en el móvil, además, cierra el cajón de los scratchpads. Pegar no cambia: «Pegar» escribe la nota en la ventana abierta en ese momento, sea cual sea la ventana de la que vino.
 
 ### Una ventana cerrada sigue nombrada
 <!-- capability: scratchpads; requirement: a-closed-window-stays-named -->
 
-Cuando la ventana de una nota se cierra, su línea conserva la máquina, la sesión y la ventana que tenía al añadir la nota, atenuada y sin abrir nada al pulsarla.
+Cuando la ventana de una nota se cierra, o su máquina deja de responder, su línea conserva la máquina, la sesión y la ventana que tenía al añadir la nota, atenuada, en cursiva y sin abrir nada al pulsarla. Su descripción emergente dice si la ventana se cerró o si la máquina está sin conexión.
 
 ### Columna lateral en pantallas anchas
 <!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->

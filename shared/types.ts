@@ -56,6 +56,8 @@ export interface WindowInfo {
 export interface SessionInfo {
   id: string; // $1
   name: string;
+  /** When tmux created it, in seconds: with `id`, tells it apart from a session of a later tmux server. */
+  created: number;
   num: number | null; // @space_num
   icon: string; // @space_icon
   attached: number;
@@ -702,6 +704,9 @@ export interface ScratchpadNoteOrigin {
   window: string; // @3
   hostName: string;
   session: string;
+  /** The session's id and creation time: the window is still the note's while it is in that session, renamed or not. */
+  sessionId: string;
+  sessionCreated: number;
   index: number;
   name: string;
 }

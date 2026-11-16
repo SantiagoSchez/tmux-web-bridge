@@ -5,7 +5,7 @@ import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, Scrat
 import { api } from '../api';
 import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
 import { openWindow, route } from '../router';
-import { findWindow, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
+import { findWindow, hosts, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
 /**
@@ -129,15 +129,17 @@ export function Scratchpads() {
 }
 
 /**
- * The window a note was added in: while it is open (found in a session of the same name, as
- * tmux reuses ids after a restart), a button with its current names that opens it; once
- * closed, its names as they were, dimmed.
+ * The window a note was added in: while it is open in the same session (by id and creation
+ * time, which survive a rename and change when tmux restarts and reuses the ids), a button
+ * with its current names that opens it; once closed, or while its machine does not answer,
+ * its names as they were, dimmed.
  */
 function OriginLine({ origin }: { origin: ScratchpadNoteOrigin }) {
   const found = findWindow(origin.host, origin.window);
-  if (!found || found.session.name !== origin.session) {
+  if (!found || found.session.id !== origin.sessionId || found.session.created !== origin.sessionCreated) {
+    const offline = hosts.value.find((h) => h.id === origin.host)?.status !== 'ok';
     return (
-      <span class="pads-origin closed" title="Ventana cerrada">
+      <span class="pads-origin closed" title={offline ? 'Máquina sin conexión' : 'Ventana cerrada'}>
         {origin.hostName} · {origin.session} · {origin.index} {origin.name}
       </span>
     );

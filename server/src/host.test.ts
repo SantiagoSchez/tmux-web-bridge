@@ -14,7 +14,7 @@ function win(states: (PaneState | null)[], stale: PaneState | null = null): Wind
 }
 
 function space(windows: WindowInfo[], stale = ''): SessionInfo {
-  return { id: '$1', name: 's', num: 1, icon: stale, attached: 0, windows };
+  return { id: '$1', name: 's', created: 0, num: 1, icon: stale, attached: 0, windows };
 }
 
 test('a window and its space take the most urgent state of their panes, whatever tmux left behind', () => {

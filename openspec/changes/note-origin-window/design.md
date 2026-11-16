@@ -13,25 +13,25 @@ See proposal.md for the motivation. Notes live in `ScratchpadStore` (`server/src
 
 **Non-Goals:**
 
-- Following a window across a tmux server restart, or across a session rename (see Risks).
+- Following a window moved to another session (see Risks).
 
 ## Decisions
 
 ### The panel sends ids; the hub stores ids and names
 
 - **Context**: the line must keep naming the window after it closes, and the names come from the machine.
-- **Decision**: `ScratchpadAddRequest` gains `origin?: { host: string; window: string }`, filled by `AddField` from the route when it shows a window. The add route resolves it with `originOf(host, windowId)`, a new function in `server/src/scratchpads.ts` that takes the `HostMonitor` (its `id`, `name` and `findWindow`) and returns a `ScratchpadNoteOrigin` `{ host, window, hostName, session, index, name }`, or `undefined` when the machine or the window is unknown. `ScratchpadStore.add(pad, text, origin?)` stores it on the note. `edit` and `paste` copy the note as it is, so they keep it.
+- **Decision**: `ScratchpadAddRequest` gains `origin?: { host: string; window: string }`, filled by `AddField` from the route when it shows a window. The add route resolves it with `originOf(host, windowId)`, a new function in `server/src/scratchpads.ts` that takes the `HostMonitor` (its `id`, `name` and `findWindow`) and returns a `ScratchpadNoteOrigin` `{ host, window, hostName, session, sessionId, sessionCreated, index, name }`, or `undefined` when the machine or the window is unknown. It cuts each name to 200 characters, the limit loading keeps, so a long tmux name never loses the origin at the next load. `ScratchpadStore.add(pad, text, origin?)` stores it on the note. `edit` and `paste` copy the note as it is, so they keep it.
 - **Alternatives**: the panel could send the names, but then a client could store any text as a window name; storing only the ids would leave nothing to show once the window closes.
 - **Consequences**: the WebSocket `scratchpads` message and `scratchpads.json` carry the new optional field. A hub rolled back drops it at its next save.
 
 ### Loading keeps only well-formed origins
 
-- **Decision**: `sanitizeScratchpads` reads `origin` through a new `noteOrigin(raw)` in `shared/scratchpads.ts`: an object whose `host`, `window`, `hostName`, `session` and `name` are strings of at most 200 characters and whose `index` is a non-negative integer, else no origin. A malformed origin never drops the note.
+- **Decision**: `sanitizeScratchpads` reads `origin` through a new `noteOrigin(raw)` in `shared/scratchpads.ts`: an object whose `host`, `window`, `hostName`, `session`, `sessionId` and `name` are strings of at most 200 characters and whose `index` and `sessionCreated` are non-negative integers, else no origin. A malformed origin never drops the note.
 
 ### The panel decides open or closed
 
-- **Decision**: a new `OriginLine` in `Scratchpads.tsx` looks the window up with `findWindow(origin.host, origin.window)` and treats it as open only when it is found in a session whose name is the stored `session`. Open: a `<button class="pads-origin">` with the current names («`host.name` · `session.name` · `window.index` `window.name`») that calls `openWindow` and, on a phone, sets `scratchpadsOpen` to false. Closed: a `<span class="pads-origin closed">` with the stored names, dimmed, `title` «Ventana cerrada». The note's layout becomes a column for the text and its line, with the action buttons beside it as today.
-- **Alternatives**: trusting the window id alone would show another window's names, and open it, after a tmux server restart reuses the id; comparing session ids has the same problem, as tmux restarts those from `$0` too.
+- **Decision**: a new `OriginLine` in `Scratchpads.tsx` looks the window up with `findWindow(origin.host, origin.window)` and treats it as open only when it is found in the session with the stored `sessionId` and `sessionCreated`. `SessionInfo` gains `created` (tmux's `session_created`, in seconds, already read by `HostMonitor`) for this. Open: a `<button class="pads-origin">` with the current names («`host.name` · `session.name` · `window.index` `window.name`») that calls `openWindow` and, on a phone, sets `scratchpadsOpen` to false. Closed: a `<span class="pads-origin closed">` with the stored names, dimmed (`--overlay1` against the open line's `--subtext1`) and in italics, so it does not rest on colour alone, `title` «Ventana cerrada», or «Máquina sin conexión» while the machine's `status` is not `ok` (the hub empties its sessions after a while without answers). On a touch screen the open line is `--tap` high. The note's layout becomes a column for the text and its line, with the action buttons beside it as today.
+- **Alternatives**: trusting the window id alone would show another window's names, and open it, after a tmux server restart reuses the id; session ids have the same problem, as tmux restarts those from `$0` too, and session names change with a rename. A session's id and creation time together survive a rename and differ after a restart.
 
 ### Flow
 
@@ -42,8 +42,8 @@ See proposal.md for the motivation. Notes live in `ScratchpadStore` (`server/src
 
 ## Risks / Trade-offs
 
-- [The machine's tmux server restarts and a new window reuses the id in a session with the same name] → the line shows and opens that new window. Accepted (proposal Non-goals); restarts are rare and the line still points at a window of the same session.
-- [A session is renamed] → its notes' lines read as closed, with the old names. Accepted: the names stay true to where the note was written.
+- [A window is moved to another session] → its notes' lines read as closed. Accepted (proposal Non-goals): moving windows between sessions is rare.
+- [A session id and creation second repeat after a tmux restart] → the line would open the new window. Accepted: it needs a restart within the same second and the same ids.
 - [The window closes between the panel sending the note and the hub adding it] → `originOf` finds nothing and the note is added without a line, as the spec says.
 
 ## Migration Plan

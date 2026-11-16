@@ -288,7 +288,7 @@ A note added while the panel shows a window SHALL remember that window, and SHAL
 
 ### Requirement: The window line opens its window
 
-While the window a note remembers is open, its line SHALL show the window's current names and SHALL open that window when pressed; on a phone it SHALL also close the scratchpads drawer. Pasting SHALL keep typing the note into the window open now, whichever window the note remembers.
+While the window a note remembers is open, in the session it was added in, its line SHALL show the window's and the session's current names and SHALL open that window when pressed; on a phone it SHALL also close the scratchpads drawer. Pasting SHALL keep typing the note into the window open now, whichever window the note remembers.
 
 #### Scenario: Going back to the window
 
@@ -314,12 +314,24 @@ While the window a note remembers is open, its line SHALL show the window's curr
 - **WHEN** the panel shows the note
 - **THEN** its line reads «Local · demo · 1 api»
 
+#### Scenario: A renamed session
+
+- **GIVEN** a note added in window «Local · demo · 1 claude», and session «demo» renamed «web» afterwards
+- **WHEN** the panel shows the note
+- **THEN** its line reads «Local · web · 1 claude» and still opens the window
+
 ### Requirement: A closed window stays named
 
-When the window a note remembers is no longer open, its line SHALL keep the machine, session and window names it had when the note was added, shown dimmed and without opening anything.
+When the window a note remembers is no longer open, or its machine is not answering, its line SHALL keep the machine, session and window names it had when the note was added, shown dimmed and without opening anything, and its tooltip SHALL say whether the window was closed or the machine is not answering.
 
 #### Scenario: The window was closed
 
 - **GIVEN** a note added in window «Local · demo · 1 claude», and that window closed afterwards
 - **WHEN** the panel shows the note
 - **THEN** its line still reads «Local · demo · 1 claude», dimmed, and pressing it does nothing
+
+#### Scenario: The machine is not answering
+
+- **GIVEN** a note added in a window of machine «Local», and «Local» not answering the hub
+- **WHEN** the panel shows the note
+- **THEN** its line reads as it was, dimmed, and its tooltip says the machine has no connection

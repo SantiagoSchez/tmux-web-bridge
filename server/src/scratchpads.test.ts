@@ -72,7 +72,7 @@ test('a note id repeated in the file is kept only the first time', () => {
   assert.deepEqual(sanitizeScratchpads([[dup], [{ ...dup, text: 'dos' }]]), [[dup], [], [], [], []]);
 });
 
-const origin = { host: 'local', window: '@3', hostName: 'Local', session: 'demo', index: 1, name: 'claude' };
+const origin = { host: 'local', window: '@3', hostName: 'Local', session: 'demo', sessionId: '$1', sessionCreated: 1763300000, index: 1, name: 'claude' };
 
 test('a well-formed window origin is kept as it is', () => {
   assert.deepEqual(noteOrigin({ ...origin, extra: 'x' }), origin);
@@ -87,6 +87,11 @@ test('an origin with a missing field, a name that is not a string or too long, o
     { ...origin, host: undefined },
     { ...origin, window: 3 },
     { ...origin, session: null },
+    { ...origin, sessionId: undefined },
+    { ...origin, sessionId: 1 },
+    { ...origin, sessionCreated: undefined },
+    { ...origin, sessionCreated: -5 },
+    { ...origin, sessionCreated: 1.5 },
     { ...origin, hostName: 'a'.repeat(201) },
     { ...origin, name: ['claude'] },
     { ...origin, index: -1 },
@@ -331,12 +336,30 @@ const machine = {
   id: 'local',
   name: 'Local',
   findWindow: (windowId: string) =>
-    windowId === '@3' ? { session: { name: 'demo' } as SessionInfo, window: { id: '@3', index: 1, name: 'claude' } as WindowInfo } : null,
+    windowId === '@3'
+      ? { session: { id: '$1', name: 'demo', created: 1763300000 } as SessionInfo, window: { id: '@3', index: 1, name: 'claude' } as WindowInfo }
+      : null,
 };
 
 test('the origin of an open window carries its ids and the names the hub sees', () => {
   assert.deepEqual(originOf(machine, '@3'), origin);
 });
+
+test(
+  'names longer than an origin keeps are cut, so the origin survives the next load',
+  withStore((store, dir) => {
+    const long = 'x'.repeat(250);
+    const named = {
+      id: 'local',
+      name: long,
+      findWindow: () => ({ session: { id: '$1', name: long, created: 1 } as SessionInfo, window: { id: '@3', index: 1, name: long } as WindowInfo }),
+    };
+    const cut = originOf(named, '@3');
+    assert.deepEqual(cut && [cut.hostName, cut.session, cut.name], ['x'.repeat(200), 'x'.repeat(200), 'x'.repeat(200)]);
+    store.add(0, 'Nombres largos', cut);
+    assert.deepEqual(new ScratchpadStore(dir).pads[0][0].origin, cut);
+  }),
+);
 
 test('a window the machine does not have gives no origin', () => {
   assert.equal(originOf(machine, '@9'), undefined);

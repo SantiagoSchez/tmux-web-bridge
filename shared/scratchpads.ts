@@ -27,16 +27,17 @@ export function noteText(raw: unknown): { ok: true; text: string } | { ok: false
 }
 
 /** The longest id or name a note's window origin keeps. */
-const ORIGIN_MAX_CHARS = 200;
+export const ORIGIN_MAX_CHARS = 200;
 
 /** A note's window origin read from storage, or undefined when any field is missing or malformed. */
 export function noteOrigin(raw: unknown): ScratchpadNoteOrigin | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
-  const { host, window, hostName, session, index, name } = raw as Record<string, unknown>;
-  const names = [host, window, hostName, session, name];
-  if (!names.every((v): v is string => typeof v === 'string' && v.length <= ORIGIN_MAX_CHARS)) return undefined;
-  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) return undefined;
-  return { host: host as string, window: window as string, hostName: hostName as string, session: session as string, index, name: name as string };
+  const { host, window, hostName, session, sessionId, sessionCreated, index, name } = raw as Record<string, unknown>;
+  const text = (v: unknown): v is string => typeof v === 'string' && v.length <= ORIGIN_MAX_CHARS;
+  const count = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+  if (!text(host) || !text(window) || !text(hostName) || !text(session) || !text(sessionId) || !text(name)) return undefined;
+  if (!count(index) || !count(sessionCreated)) return undefined;
+  return { host, window, hostName, session, sessionId, sessionCreated, index, name };
 }
 
 /**

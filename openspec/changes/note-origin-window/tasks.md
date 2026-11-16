@@ -76,6 +76,21 @@
 
 - [ ] 11.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
 
+## 12. Review round 1 (PR #35)
+
+- [x] 12.1 Update the artifacts for the findings: a renamed session keeps the line open (session id and creation time), names cut to 200 characters on add, the line `--tap` high on touch screens, the closed line's contrast, and «Máquina sin conexión» while the machine does not answer.
+  - proposal, design, spec delta, synced main spec and these tasks updated.
+- [x] 12.2 Write failing tests in `server/src/scratchpads.test.ts`: `noteOrigin` requires `sessionId` (string) and `sessionCreated` (non-negative integer); `originOf` returns them and cuts names over 200 characters, and the store reloads such an origin. See them fail.
+  - Seen failing (6 tests: origin without session id and creation, names not cut).
+- [x] 12.3 Add `created` to `SessionInfo` (filled from `session_created` in `server/src/host.ts`), `sessionId` and `sessionCreated` to `ScratchpadNoteOrigin`, implement 12.2 until it passes, and update the test helpers that build sessions.
+  - 290 pass; server and web typecheck pass.
+- [x] 12.4 In `OriginLine`, compare the session's id and creation time instead of its name; title «Máquina sin conexión» while the host's `status` is not `ok`; in `styles.css`, the open line `--tap` high under `pointer: coarse` and the closed line in `--overlay1` without opacity.
+  - Done; the open line moved to `--subtext1` and the closed one to `--overlay1` in italics: contrast 6.75 / 3.65 dark, 5.53 / 4.64 light.
+- [x] 12.5 Check by hand against the isolated hub: renaming the session keeps the line open with the new name; stopping the test tmux server shows the machine without connection; the closed line reads in dark and light.
+  - Isolated hub: renaming session «demo» to «web» turned the line into «Local · web · 1 claude», still a button; restarting the test tmux server with the same ids ($0, @1) left the older note closed and a new note open; with machine «local» reconfigured as an unreachable SSH host, both lines read dimmed with the title «Máquina sin conexión»; phone dark: the open line is 44px high, the closed one dimmed in italics.
+- [x] 12.6 Run `pnpm --filter server test`, `pnpm --filter server typecheck`, `pnpm --filter web typecheck` and `ka features-check`; update the two catalogue sections the spec changed; commit and re-run `/koalarnes:review-pr`.
+  - server test 290 pass, server and web typecheck pass, `ka features-check` exit 0; `/opsx:verify`: no critical issues (10.1 and 11.1 pending by design); the two catalogue sections updated with the owner's approval; committed and review re-run on PR #35.
+
 ## Workflow follow-up
 
 - After approval: `/opsx:archive note-origin-window`, then `/koalarnes:commit` to push the archive into the same pull request.
