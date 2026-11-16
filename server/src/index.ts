@@ -434,6 +434,9 @@ app.get('/ws', { websocket: true }, (ws, req) => {
         case 'presence':
           conns.update(conn.id, { present: msg.present === true });
           break;
+        case 'pushEndpoint':
+          conns.setPushEndpoint(conn.id, typeof msg.endpoint === 'string' && /^https:\/\/\S{1,2000}$/.test(msg.endpoint) ? msg.endpoint : null);
+          break;
         case 'hostOrder':
           if (!Array.isArray(msg.hosts)) break;
           hostOrder.set(msg.hosts.map(String));
@@ -1177,7 +1180,7 @@ app.post('/api/push/unsubscribe', async (req) => {
 
 app.post('/api/push/test', async (req) => {
   const { endpoint } = (req.body ?? {}) as { endpoint?: string };
-  const n = await push.send({ title: '🔔 twb', body: 'Las notificaciones funcionan', tag: 'test', url: '/' }, endpoint);
+  const n = await push.send({ title: '🔔 twb', body: 'Las notificaciones funcionan', tag: 'test', url: '/' }, typeof endpoint === 'string' && endpoint ? [endpoint] : undefined);
   return { ok: n > 0, sent: n };
 });
 

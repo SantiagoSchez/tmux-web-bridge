@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "server",
+  "description": "Corregido que, con «Silenciar mientras lo uso» activado, no llegara ninguna notificación mientras usabas el dispositivo con twb oculta: ahora llegan solo a ese dispositivo, y a los demás si en él no están activadas. Con twb a la vista siguen sin llegar",
+  "issue": "20",
+  "breaking": false,
+  "pr": "22"
+}

@@ -65,11 +65,23 @@ async function whois(ip: string): Promise<Whois> {
 }
 
 /**
+ * Where a push goes, from the devices where you are working right now: every device
+ * when you are at none; nobody when the app is on screen at one (its list of pending
+ * panes already shows it); else only those devices, if they can receive it.
+ */
+export type PushRoute =
+  | { to: 'all' }
+  | { to: 'none'; at: ConnectionInfo }
+  | { to: 'devices'; endpoints: string[]; at: ConnectionInfo };
+
+/**
  * Live browser connections to the panel (one per open app tab), shown to every
  * client as a security counter. Emits 'change' with the full list.
  */
 export class ConnectionRegistry extends EventEmitter {
   private readonly conns = new Map<string, ConnectionInfo>();
+  /** Each connection's Web Push endpoint, kept out of the list every client sees. */
+  private readonly endpoints = new Map<string, string>();
 
   add(meta: { login?: string; userName?: string; ip?: string; userAgent?: string }): ConnectionInfo {
     const conn: ConnectionInfo = {
@@ -99,7 +111,15 @@ export class ConnectionRegistry extends EventEmitter {
   }
 
   remove(id: string): void {
+    this.endpoints.delete(id);
     if (this.conns.delete(id)) this.changed();
+  }
+
+  /** The push subscription of the browser behind a connection (null: it has none). */
+  setPushEndpoint(id: string, endpoint: string | null): void {
+    if (!this.conns.has(id)) return;
+    if (endpoint) this.endpoints.set(id, endpoint);
+    else this.endpoints.delete(id);
   }
 
   get(id: string): ConnectionInfo | undefined {
@@ -135,9 +155,18 @@ export class ConnectionRegistry extends EventEmitter {
     return false;
   }
 
-  /** A device where you are working right now (it reports system-wide activity), if any. */
-  presentDevice(): ConnectionInfo | undefined {
-    for (const c of this.conns.values()) if (c.present) return c;
+  /** Who gets a push, given the devices where you are working (they report system-wide activity). */
+  pushRoute(isSubscribed: (endpoint: string) => boolean): PushRoute {
+    const present = [...this.conns.values()].filter((c) => c.present);
+    if (!present.length) return { to: 'all' };
+    const onScreen = present.find((c) => c.visible);
+    if (onScreen) return { to: 'none', at: onScreen };
+    const reachable = present.flatMap((c) => {
+      const endpoint = this.endpoints.get(c.id);
+      return endpoint && isSubscribed(endpoint) ? [{ c, endpoint }] : [];
+    });
+    if (!reachable.length) return { to: 'all' };
+    return { to: 'devices', endpoints: [...new Set(reachable.map((r) => r.endpoint))], at: reachable[0].c };
   }
 
   private changed(): void {

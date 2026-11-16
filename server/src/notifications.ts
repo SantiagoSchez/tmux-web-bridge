@@ -33,13 +33,14 @@ function summarize(capture: string): string {
 }
 
 /**
- * Decides when to push to the phone. Two sources:
+ * Decides when and where to push. Two sources:
  *  - the host's tmux-window-title.sh posts to /api/notify with the question or
- *    answer text and whether you are looking at that pane on the computer;
+ *    answer text and whether you are looking at that pane in a terminal;
  *  - as a fallback, a pane icon changing to 🙋/💬/✅ that no script reported
  *    within a few seconds (host without host-kit, hub unreachable from it...).
- * Nothing is pushed for a pane someone has open in the web app, nor at all while
- * you are working at a device that reports your presence.
+ * Nothing is pushed for a pane someone has open in the web app. While you are
+ * working at a device that reports your presence, nothing is pushed if the app is
+ * on screen there, and otherwise the push goes only to that device.
  */
 export class Notifier {
   private readonly timers = new Map<string, NodeJS.Timeout>();
@@ -85,14 +86,16 @@ export class Notifier {
     if ((this.scriptAt.get(key) ?? 0) >= since - 2000) return;
     const ctx = host.findPane(paneId);
     if (!ctx || ctx.pane.state !== state) return;
-    if (this.conns.isWatched(host.id, paneId, ctx.window.id) || this.silenced(ctx, state)) return;
+    if (this.conns.isWatched(host.id, paneId, ctx.window.id)) return;
+    const route = this.route(ctx, state);
+    if (!route) return;
     let body = ALERT[state].label;
     try {
       body = summarize(await host.exec.run(['capture-pane', '-p', '-J', '-t', paneId])) || body;
     } catch {
       /* keep the generic label */
     }
-    await this.send(ctx, state, body);
+    await this.send(ctx, state, body, route.only);
   }
 
   /** POST /api/notify from a host. */
@@ -112,25 +115,42 @@ export class Notifier {
     await host.refresh().catch(() => {});
     const ctx = host.findPane(req.pane);
     if (ctx && this.conns.isWatched(host.id, req.pane, ctx.window.id)) return { pushed: false, reason: 'watched in web' };
-    if (this.silenced(ctx, req.state)) return { pushed: false, reason: 'present' };
+    const route = this.route(ctx, req.state);
+    if (!route) return { pushed: false, reason: 'present' };
 
     const state = req.state;
     const body = req.message?.trim() || ALERT[state].label;
     if (ctx) {
-      await this.send(ctx, state, body);
+      await this.send(ctx, state, body, route.only);
     } else {
-      await this.push.send({ title: req.title || `${ALERT[state].icon} ${host.name}`, body, tag: key, url: '/' });
+      await this.deliver({ title: req.title || `${ALERT[state].icon} ${host.name}`, body, tag: key, url: '/' }, route.only);
     }
     return { pushed: true };
   }
 
-  /** You are at a device with the app open: the pending list already shows it. */
-  private silenced(ctx: PaneContext | null, state: AlertState): boolean {
-    const at = this.conns.presentDevice();
-    if (!at) return false;
+  /** Pushes to `only` those endpoints, or to every device when none of them took it (a subscription gone). */
+  private async deliver(payload: PushPayload, only?: readonly string[]): Promise<number> {
+    const n = await this.push.send(payload, only);
+    if (n > 0 || !only) return n;
+    console.log(`[push] ${payload.title}: no ha llegado al dispositivo donde estás, se envía a todos`);
+    return this.push.send(payload);
+  }
+
+  /**
+   * Where the push goes while you are at a device: null when the app is on screen there
+   * (its pending list already shows it), `only` that device's endpoints when it is hidden.
+   */
+  private route(ctx: PaneContext | null, state: AlertState): { only?: string[] } | null {
+    const route = this.conns.pushRoute((e) => this.push.has(e));
+    if (route.to === 'all') return {};
     const what = ctx ? this.title(ctx, state) : ALERT[state].icon;
-    console.log(`[push] ${what}: no se envía, estás en ${at.device ?? at.ip ?? 'otro dispositivo'}`);
-    return true;
+    const where = route.at.device ?? route.at.ip ?? 'otro dispositivo';
+    if (route.to === 'none') {
+      console.log(`[push] ${what}: no se envía, tienes twb a la vista en ${where}`);
+      return null;
+    }
+    console.log(`[push] ${what}: solo a ${where}, donde estás`);
+    return { only: route.endpoints };
   }
 
   /**
@@ -150,7 +170,7 @@ export class Notifier {
     return null;
   }
 
-  private async send(ctx: PaneContext, state: AlertState, body: string): Promise<void> {
+  private async send(ctx: PaneContext, state: AlertState, body: string, only?: readonly string[]): Promise<void> {
     const payload: PushPayload = {
       title: this.title(ctx, state),
       body,
@@ -168,7 +188,7 @@ export class Notifier {
         if (body === ALERT[state].label && prompt.question) payload.body = prompt.question;
       }
     }
-    const n = await this.push.send(payload);
+    const n = await this.deliver(payload, only);
     console.log(`[push] ${payload.title}: ${payload.body.slice(0, 60)} (${n} destinatarios)`);
   }
 }

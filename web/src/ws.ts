@@ -30,6 +30,7 @@ class HubSocket {
   private retry = 0;
   private view: ViewInfo | null = null;
   private present = false;
+  private pushEndpoint: string | null = null;
   /** Logged out: no reconnecting until the next login. */
   private stopped = false;
   /** A ping without answer yet: when it fires, the socket is dead. */
@@ -58,6 +59,7 @@ class HubSocket {
       // Restore what this tab was doing before the reconnection.
       this.sendView();
       if (this.present) this.send({ t: 'presence', present: true });
+      if (this.pushEndpoint) this.send({ t: 'pushEndpoint', endpoint: this.pushEndpoint });
     };
     ws.onmessage = (ev) => this.onMessage(JSON.parse(ev.data) as ServerMessage);
     ws.onclose = (ev) => {
@@ -198,6 +200,12 @@ class HubSocket {
   setPresent(present: boolean): void {
     this.present = present;
     this.send({ t: 'presence', present });
+  }
+
+  /** This browser's push subscription (see push.ts). */
+  setPushEndpoint(endpoint: string | null): void {
+    this.pushEndpoint = endpoint;
+    this.send({ t: 'pushEndpoint', endpoint });
   }
 
   /** Sends a request and waits for its result (rejects with the error, and its code if any). */
