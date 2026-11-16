@@ -78,7 +78,7 @@ Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el re
 ### Ramas sin nota de creación
 <!-- capability: worktree-base; requirement: without-a-usable-creation-note-the-main-branch-is-used -->
 
-Si git no apuntó de dónde salió la rama, o apuntó algo que no sirve para comparar, el panel compara con la rama principal, como antes: `origin/HEAD` o, si no, `origin/main`, `origin/master`, `main` o `master`. Pasa con una rama creada desde `HEAD` o desde un commit, con una que salió de otra rama que ya no existe, cuando git ya no guarda la nota y cuando la rama se creó desde su propia copia en `origin`, como hace el panel al reutilizar una rama que ya estaba en el remoto. En la rama principal, «Ficheros cambiados» sigue abriéndose en «Sin commit».
+Si git no apuntó de dónde salió la rama, o apuntó algo que no sirve para comparar, el panel compara con la rama principal, como antes: `origin/HEAD` o, si no, `origin/main`, `origin/master`, `main` o `master`. Pasa con una rama creada desde `HEAD` (también al crearla sin decir de qué rama sale, como `git checkout -b <rama>` a secas) o desde un commit, con una que salió de otra rama que ya no existe, cuando git ya no guarda la nota y cuando la rama se creó desde su propia copia en `origin`, como hace el panel al reutilizar una rama que ya estaba en el remoto. En la rama principal, «Ficheros cambiados» sigue abriéndose en «Sin commit».
 
 ### El contador +/− de la ventana
 <!-- capability: worktree-base; requirement: the-counter-compares-with-the-branch-it-started-from -->
