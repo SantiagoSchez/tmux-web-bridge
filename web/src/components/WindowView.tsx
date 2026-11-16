@@ -4,7 +4,7 @@ import { killPane, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
 import { goHome, openWindow } from '../router';
-import { hubSettings, isSolo, multiHost, STATE_LABEL, type MenuItem } from '../state';
+import { hubSettings, isSolo, multiHost, paneOf, STATE_LABEL, type MenuItem } from '../state';
 import { uploadFiles } from '../upload';
 import { hub } from '../ws';
 import { PendingStrip } from './Assist';
@@ -24,7 +24,7 @@ interface Props {
 /** One tmux window: pane tabs, its terminal and window actions. */
 export function WindowView({ host, session, window, paneId }: Props) {
   const desktop = isDesktop.value;
-  const pane = window.panes.find((p) => p.id === paneId) ?? window.panes.find((p) => p.active) ?? window.panes[0];
+  const pane = paneOf(window, paneId);
 
   // Tell the hub what this tab shows: connection list + no push for what you are looking at.
   useEffect(() => {
@@ -106,7 +106,11 @@ export function WindowView({ host, session, window, paneId }: Props) {
     <div class={`wv ${dropping ? 'dropping' : ''}`} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} onPasteCapture={onPaste}>
       <header
         class="wv-head"
-        onTouchStart={(e) => (touch.current = e.touches[0].clientX > EDGE ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null)}
+        onTouchStart={(e) => {
+          // A touch from either edge opens a drawer (the list, the scratchpads), not another window.
+          const { clientX: x, clientY: y } = e.touches[0];
+          touch.current = x > EDGE && x < innerWidth - EDGE ? { x, y } : null;
+        }}
         onTouchEnd={(e) => {
           const t = touch.current;
           touch.current = null;

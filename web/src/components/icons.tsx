@@ -131,3 +131,27 @@ export const IconSidebar = () => (
     <path d="M9 4v16" />
   </Svg>
 );
+/** The sidebar on the right (the scratchpads). */
+export const IconSidebarRight = () => (
+  <Svg>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <path d="M15 4v16" />
+  </Svg>
+);
+/** Into the terminal: an arrow onto a prompt line. */
+export const IconPaste = () => (
+  <Svg size={18}>
+    <path d="M4 12h11M11 7.5l4.5 4.5-4.5 4.5" />
+    <path d="M20 5v14" />
+  </Svg>
+);
+export const IconPin = () => (
+  <Svg size={18}>
+    <path d="M9 3.5h6M10 3.5v6.2l-3 3.3h10l-3-3.3V3.5M12 13v7.5" />
+  </Svg>
+);
+export const IconTrash = () => (
+  <Svg size={18}>
+    <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
+  </Svg>
+);

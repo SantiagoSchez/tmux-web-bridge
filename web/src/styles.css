@@ -207,14 +207,17 @@ h3 {
   flex-direction: column;
 }
 .layout.desktop {
+  --list-w: 340px;
+  --pads-w: 320px;
   height: 100dvh;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: var(--list-w) minmax(0, 1fr) var(--pads-w);
   grid-template-rows: auto auto minmax(0, 1fr);
 }
-/* Without the limits strip (or the update notice) the sidebar and the window take the whole height. */
+/* Without the limits strip (or the update notice) the sidebar, the window and the scratchpads take the whole height. */
 .layout.desktop > .sidebar,
-.layout.desktop > .main {
+.layout.desktop > .main,
+.layout.desktop > .pads-side {
   grid-row: -2;
 }
 .sidebar {
@@ -227,7 +230,11 @@ h3 {
 /* The list folded (Cmd+B / Ctrl+Shift+B): a strip with the button that unfolds it and the
    panes waiting for you, one icon each, edged with their state's colour. */
 .layout.desktop.folded {
-  grid-template-columns: 56px minmax(0, 1fr);
+  --list-w: 56px;
+}
+/* The scratchpads folded (Cmd+. / Ctrl+Shift+.): a strip with the button that unfolds them and the three colours. */
+.layout.desktop.pads-folded {
+  --pads-w: 56px;
 }
 .rail-body {
   flex: 1;
@@ -1803,6 +1810,16 @@ body.dragging-host * {
   transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
   visibility: hidden;
 }
+/* The scratchpads, from the right edge. */
+.drawer-right {
+  left: auto;
+  right: 0;
+  border-right: none;
+  border-left: 1px solid var(--surface0);
+  box-shadow: -12px 0 40px var(--shadow-strong);
+  transform: translateX(100%);
+  padding-top: var(--safe-top);
+}
 .drawer.open,
 .drawer[style] {
   visibility: visible;
@@ -3313,4 +3330,166 @@ textarea.text-input {
 }
 .changes-found {
   padding: 4px 4px 8px;
+}
+
+/* ------------------------------------------------------------ scratchpads */
+
+/* On a wide screen, the column on the right; on a phone, inside the right drawer. */
+.pads-side {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--mantle);
+  border-left: 1px solid var(--surface0);
+}
+.pads {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pads-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(5px + var(--safe-top)) 6px 5px 10px;
+  border-bottom: 1px solid var(--surface0);
+}
+.drawer-right .pads-head {
+  padding-top: 5px;
+}
+.pads-tabs {
+  display: flex;
+  gap: 4px;
+}
+/* A colour: its dot, ringed when it is the one shown, and how many notes it holds. */
+.pads-tab {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+}
+.pads-tab:hover,
+.pads-tab.on {
+  background: var(--surface0);
+}
+.pads-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pad);
+}
+.pads-tab.on .pads-dot {
+  box-shadow: 0 0 0 3px var(--mantle), 0 0 0 5px var(--pad);
+}
+.pads-count {
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--subtext0);
+}
+.pads-notes {
+  flex: 1;
+  min-height: 0;
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pads-empty {
+  padding: 8px 4px;
+}
+.pads-note {
+  display: flex;
+  align-items: flex-start;
+  border-radius: 8px;
+  background: var(--base);
+  border: 1px solid var(--surface0);
+  border-left: 3px solid var(--pad);
+}
+.pads-text {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  text-align: left;
+  padding: 7px 4px 7px 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+.pads-actions {
+  display: flex;
+  flex: none;
+  padding: 2px 2px 0 0;
+}
+.pads-actions .icon-btn {
+  width: 30px;
+  height: 30px;
+}
+.pads-note.pinned .pads-actions .icon-btn.on {
+  color: var(--pad);
+  background: none;
+}
+.pads-actions .icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.pads-input {
+  width: 100%;
+  resize: none;
+  field-sizing: content;
+  max-height: 40vh;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pads-input:focus {
+  outline: 2px solid var(--pad, var(--blue));
+  outline-offset: -1px;
+}
+.pads-edit {
+  flex: 1;
+  min-width: 0;
+  margin: 3px;
+  width: auto;
+}
+.pads-add {
+  position: relative;
+  padding: 8px;
+  border-top: 1px solid var(--surface0);
+}
+.pads-add .pads-input {
+  min-height: calc(2lh + 18px);
+  padding-right: 48px;
+}
+.pads-total {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+}
+.pads-total.full {
+  color: var(--peach);
+}
+/* Folded: the strip on the right, as the list's on the left. */
+.pads-rail {
+  border-left: none;
+}
+.pads-rail .pads-tab {
+  width: 40px;
 }

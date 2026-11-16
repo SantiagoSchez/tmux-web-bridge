@@ -1,6 +1,6 @@
 import { effect } from '@preact/signals';
 import type { HostInfo } from '../../shared/types';
-import { isDesktop, toggleSidebar } from './prefs';
+import { isDesktop, toggleScratchpads, toggleSidebar } from './prefs';
 import { openWindow, route } from './router';
 import { findWindow, hosts, paletteOpen, toast } from './state';
 
@@ -52,7 +52,8 @@ function hostWindow(host: HostInfo): string | null {
  * numbers them), on the machine you are on (from the list, the last one you were
  * on). Ctrl+Shift+Alt+1..9 goes to machine N, in the list's order. Cmd+K (Mac)
  * opens the search to jump to any window by name. On a wide screen, Cmd+B (Mac) or
- * Ctrl+Shift+B folds the list into a strip or unfolds it (not Ctrl+B: tmux's prefix).
+ * Ctrl+Shift+B folds the list into a strip or unfolds it (not Ctrl+B: tmux's prefix),
+ * and Cmd+. or Ctrl+Shift+. does the same with the scratchpads on the right.
  *
  * They move the app like a click in the list, so the web terminal never switches
  * by itself behind the app's back. Capture phase on window: they fire before the
@@ -71,6 +72,14 @@ export function bindShortcuts(): () => void {
       e.preventDefault();
       e.stopPropagation();
       toggleSidebar();
+      return;
+    }
+    // By key position, so Shift+. still counts where it types another character.
+    const padsKey = e.code === 'Period' && !e.altKey && (e.metaKey ? !e.ctrlKey && !e.shiftKey : e.ctrlKey && e.shiftKey);
+    if (padsKey && isDesktop.value) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleScratchpads();
       return;
     }
     if (!e.ctrlKey || e.metaKey || (e.altKey && !e.shiftKey)) return;

@@ -8,13 +8,14 @@ import { Connections } from './Connections';
 import { FilePeek } from './FilePeek';
 import { FileViewerSheet } from './Files';
 import { Dialogs, Toasts } from './Dialogs';
-import { Drawer } from './Drawer';
+import { Drawer, ScratchpadsDrawer } from './Drawer';
 import { Grid } from './Grid';
 import { Header } from './Header';
 import { LimitsBar } from './LimitsBar';
 import { Login } from './Login';
 import { Palette } from './Palette';
 import { Rail } from './Rail';
+import { Scratchpads, ScratchpadsRail } from './Scratchpads';
 import { Settings } from './Settings';
 import { loadTrelloInfo, TrelloSheet } from './Trello';
 import { Tree } from './Tree';
@@ -55,8 +56,9 @@ export function App() {
 
   if (desktop) {
     const folded = prefs.value.sidebarCollapsed;
+    const padsFolded = prefs.value.scratchpadsCollapsed;
     return (
-      <div class={`layout desktop ${folded ? 'folded' : ''}`}>
+      <div class={`layout desktop ${folded ? 'folded' : ''} ${padsFolded ? 'pads-folded' : ''}`}>
         <LimitsBar />
         <UpdateBanner />
         {folded ? (
@@ -70,6 +72,7 @@ export function App() {
           </aside>
         )}
         <main class="main">{main ?? <Empty />}</main>
+        <aside class={`pads-side ${padsFolded ? 'rail' : ''}`}>{padsFolded ? <ScratchpadsRail /> : <Scratchpads />}</aside>
         <Overlays />
       </div>
     );
@@ -85,6 +88,7 @@ export function App() {
         </>
       )}
       {r.name === 'window' && <Drawer />}
+      <ScratchpadsDrawer />
       <Overlays />
     </div>
   );

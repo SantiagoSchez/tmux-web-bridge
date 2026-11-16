@@ -24,10 +24,14 @@ export interface Prefs {
   worktreeBases: Record<string, string>;
   /** On a wide screen, the list folded into a narrow strip. */
   sidebarCollapsed: boolean;
+  /** On a wide screen, the scratchpads folded into a narrow strip on the right. */
+  scratchpadsCollapsed: boolean;
+  /** The scratchpad shown (0 blue, 1 green, 2 orange). */
+  scratchpad: number;
 }
 
 const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed',
-  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, worktreeBases: {}, sidebarCollapsed: false };
+  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, worktreeBases: {}, sidebarCollapsed: false, scratchpadsCollapsed: false, scratchpad: 0 };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {
@@ -63,5 +67,13 @@ export function toggleSidebar(): void {
 
 /** How to fold the list from the keyboard, for the buttons' titles. */
 export const SIDEBAR_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘B' : 'Ctrl+Shift+B';
+
+/** Folds the scratchpads into a strip on the right, or unfolds them (wide screens only). */
+export function toggleScratchpads(): void {
+  setPref('scratchpadsCollapsed', !prefs.value.scratchpadsCollapsed);
+}
+
+/** How to fold the scratchpads from the keyboard, for the buttons' titles. */
+export const SCRATCHPADS_KEY = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘.' : 'Ctrl+Shift+.';
 
 export const isTouch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;

@@ -678,8 +678,39 @@ export type ServerMessage =
   /** The activity of the last days, newest first (on connect), and each new event. */
   | { t: 'activity'; events: ActivityEvent[] }
   | { t: 'activityAdd'; event: ActivityEvent }
+  /** The notes of the three scratchpads (on connect, and after every change). */
+  | { t: 'scratchpads'; pads: Scratchpads }
   /** code: what kind of failure, when the panel can do something about it ('needsLogin'). */
   | { t: 'result'; id: number; ok: boolean; error?: string; code?: string; data?: unknown };
+
+/** A note of a scratchpad: plain text to paste into a pane later. */
+export interface ScratchpadNote {
+  id: string;
+  text: string;
+  /** Stays in its scratchpad when pasted (an unpinned note is removed). */
+  pinned: boolean;
+}
+
+/** The three scratchpads, in colour order (blue, green, orange), each with its notes in order. */
+export type Scratchpads = [ScratchpadNote[], ScratchpadNote[], ScratchpadNote[]];
+
+/** Body of POST /api/scratchpads/notes: a new note at the end of scratchpad `pad` (0..2). Answers { id }. */
+export interface ScratchpadAddRequest {
+  pad: number;
+  text: string;
+}
+
+/** Body of POST /api/scratchpads/notes/:id: its new text (empty removes it) and/or whether it is pinned. */
+export interface ScratchpadEditRequest {
+  text?: string;
+  pinned?: boolean;
+}
+
+/** Body of POST /api/scratchpads/notes/:id/paste: the pane it is typed into, without Enter. */
+export interface ScratchpadPasteRequest {
+  host: string;
+  pane: string;
+}
 
 /** Body of POST /api/notify, sent by tmux-window-title.sh on each host. */
 export interface NotifyRequest {
