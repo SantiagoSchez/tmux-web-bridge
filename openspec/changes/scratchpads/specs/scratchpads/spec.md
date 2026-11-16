@@ -198,6 +198,12 @@ On a narrow screen the scratchpads SHALL open in a drawer that slides in from th
 - **WHEN** the owner swipes left from the right edge of the screen
 - **THEN** the scratchpads drawer opens
 
+#### Scenario: A strip that scrolls sideways keeps its swipe
+
+- **GIVEN** a phone with a window open and the key bar able to scroll further right
+- **WHEN** the owner swipes left from the right edge over the key bar
+- **THEN** the key bar scrolls and the drawer stays shut; once the key bar reaches its end, the same swipe opens the drawer
+
 #### Scenario: Closing
 
 - **GIVEN** the scratchpads drawer open

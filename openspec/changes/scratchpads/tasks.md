@@ -97,6 +97,9 @@
 - [x] 14.2 Web: the add field empties when Enter sends and gets the text back if the hub refuses it; `EdgeDrawer` does not start on an element that scrolls sideways and can still scroll toward its edge. Verify `pnpm --filter web typecheck`, and check by hand on the isolated hub (a refused note comes back to the field; on a phone viewport, a swipe from the right edge over the key bar scrolls it instead of opening the drawer while it has room).
   - Done: the add field empties on Enter and a refused note comes back (a 5000-character note returned to the field; a double Enter on «corta» added it once); `EdgeDrawer` skips a touch on a sideways scroller with room toward its edge (390x844, key bar with 865 px to scroll: a right-edge swipe scrolled it to 228 px and left the drawer shut; with the bar at its end, the same swipe opened the drawer). Web and server typecheck, 270 server tests and `ka features-check` pass.
 
+- [x] 14.3 Add the scenario «A strip that scrolls sideways keeps its swipe» to the drawer requirement (delta and synced spec) and a sentence to «Cajón en el móvil» of `docs/FEATURES.md` (review round 3, artifacts only).
+  - Done: scenario added to both specs, catalogue sentence added; `openspec validate` and `ka features-check` pass.
+
 ## 11. Human review
 
 - [ ] 11.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.

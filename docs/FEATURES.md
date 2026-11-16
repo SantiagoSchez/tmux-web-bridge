@@ -137,4 +137,4 @@ En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel
 ### Cajón en el móvil
 <!-- capability: scratchpads; requirement: scratchpads-drawer-on-phones -->
 
-En el móvil, los scratchpads se abren en un cajón deslizando desde el borde derecho de la pantalla, igual que la lista se abre desde el izquierdo. Se cierra deslizándolo de vuelta, tocando fuera o con el botón atrás del móvil, sin salir de la página. Al pegar una nota desde el cajón, este se cierra y deja a la vista el terminal con el texto pegado.
+En el móvil, los scratchpads se abren en un cajón deslizando desde el borde derecho de la pantalla, igual que la lista se abre desde el izquierdo. Sobre una tira que se desplaza de lado, como la barra de teclas, el gesto la desplaza mientras le quede recorrido, y abre el cajón cuando llega al final. Se cierra deslizándolo de vuelta, tocando fuera o con el botón atrás del móvil, sin salir de la página. Al pegar una nota desde el cajón, este se cierra y deja a la vista el terminal con el texto pegado.
