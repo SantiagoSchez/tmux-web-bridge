@@ -9,6 +9,19 @@ function hostName(id: string): string {
 }
 
 /**
+ * Why an account has a ⚠ when a machine's statusline published another account's
+ * limits under it (the hub keeps those out of the strip); undefined if none did.
+ */
+export function mislabelledWarning(acc: ClaudeAccount): string | undefined {
+  const on = acc.mislabelledOn;
+  if (!on.length) return undefined;
+  const names = on.map(hostName).join(' · ');
+  return on.length === 1
+    ? `Un Claude de ${names} ha publicado con esta cuenta los límites de otra: seguramente sigue con la anterior. Si no se corrige con su próximo mensaje, reinícialo.`
+    : `Claudes de ${names} han publicado con esta cuenta los límites de otra: seguramente siguen con la anterior. Si no se corrige con su próximo mensaje, reinícialos.`;
+}
+
+/**
  * Makes `acc` the account of the machine's Claude Code (the running ones pick it up
  * on their own). Without a spare login of it, it asks for one first and switches after.
  */
@@ -93,15 +106,19 @@ export function accountMenu(acc: ClaudeAccount, here?: string): void {
     { label: 'Quitar del hub', icon: '✕', danger: true, disabled: acc.activeOn.length > 0, run: () => remove(acc) },
   );
   const spare = acc.spare ? ` · ${acc.spare === 1 ? '1 sesión libre' : `${acc.spare} sesiones libres`}` : '';
+  const mislabelled = mislabelledWarning(acc);
   const top = (
-    <div class="account-hosts">
-      <span class="account-hosts-label">{acc.activeOn.length ? 'En uso en' : 'Sin usar en ninguna máquina'}</span>
-      {acc.activeOn.map((id) => (
-        <span key={id} class={`pill ${id === here ? 'pill-alert' : ''}`}>
-          {hostName(id)}
-        </span>
-      ))}
-    </div>
+    <>
+      <div class="account-hosts">
+        <span class="account-hosts-label">{acc.activeOn.length ? 'En uso en' : 'Sin usar en ninguna máquina'}</span>
+        {acc.activeOn.map((id) => (
+          <span key={id} class={`pill ${id === here ? 'pill-alert' : ''}`}>
+            {hostName(id)}
+          </span>
+        ))}
+      </div>
+      {mislabelled && <p class="account-warning">⚠ {mislabelled}</p>}
+    </>
   );
   dialog.value = { kind: 'menu', title: acc.alias, subtitle: `${acc.email}${acc.plan ? ` · ${acc.plan}` : ''}${spare}`, top, items };
 }

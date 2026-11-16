@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, HostInfo, RateLimits, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -27,6 +27,7 @@ import { ActivityLog } from './activity.js';
 import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
+import { checkLimits, type LimitsCheck } from './limits-check.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
 import { imageScript, isImageRef, parseImage } from './claude-image.js';
@@ -216,15 +217,70 @@ function broadcast(msg: ServerMessage): void {
   for (const ws of clients.values()) if (ws.readyState === ws.OPEN) ws.send(json);
 }
 
+// ---------------------------------------------------------------- statusline readings, checked (limits-check.ts)
+
+// The panel gets the machines without the statusline readings published under the
+// wrong account, and the accounts with the machines that published them. Both depend
+// on the machines and on the hub's readings of the accounts, so a change on either
+// side re-sends the other when what the panel last got of it moved.
+
+/** What every browser last got: each host's kept readings and every account's machines, as JSON. */
+const sentLimits = new Map<string, string>();
+let sentMislabelled = '';
+
+function checkNow(): LimitsCheck {
+  return checkLimits([...hosts.values()].map((h) => h.snapshot), accounts.info.list, Math.floor(Date.now() / 1000));
+}
+
+function hostView(info: HostInfo, check: LimitsCheck): HostInfo {
+  const kept = check.kept.get(info.id);
+  return info.limits && kept ? { ...info, limits: kept } : info;
+}
+
+function treeView(check: LimitsCheck): HostInfo[] {
+  return hostOrder.list.map((id) => hostView(hosts.get(id)!.snapshot, check));
+}
+
+function accountsView(check: LimitsCheck, info: AccountsInfo = accounts.info): AccountsInfo {
+  return { ...info, list: info.list.map((a) => ({ ...a, mislabelledOn: check.mislabelledOn.get(a.id) ?? [] })) };
+}
+
+function limitsKey(limits: RateLimits[] | undefined): string {
+  return JSON.stringify(limits ?? []);
+}
+
+function mislabelledKey(check: LimitsCheck): string {
+  return JSON.stringify([...check.mislabelledOn]);
+}
+
+function broadcastHost(info: HostInfo, check: LimitsCheck): void {
+  const view = hostView(info, check);
+  sentLimits.set(view.id, limitsKey(view.limits));
+  broadcast({ t: 'host', host: view });
+}
+
+function broadcastTree(check: LimitsCheck): void {
+  const list = treeView(check);
+  for (const h of list) sentLimits.set(h.id, limitsKey(h.limits));
+  broadcast({ t: 'tree', hosts: list });
+}
+
+function broadcastAccounts(check: LimitsCheck, info?: AccountsInfo): void {
+  sentMislabelled = mislabelledKey(check);
+  broadcast({ t: 'accounts', info: accountsView(check, info) });
+}
+
 /** A machine joins the hub: watched from now on (started once the hub listens, or at once after). */
 function attachHost(saved: SavedHost): HostMonitor {
   const host = new HostMonitor(hostConfig(saved), config);
   host.limitsInStatusLine = settings.value.limitsInStatusLine;
   new TempFolders(host);
-  host.on('change', (info) => {
-    broadcast({ t: 'host', host: info });
+  host.on('change', (info: HostInfo) => {
+    const check = checkNow();
+    broadcastHost(info, check);
+    if (mislabelledKey(check) !== sentMislabelled) broadcastAccounts(check);
     let added = false;
-    for (const l of info.limits ?? []) added = usage.add(l) || added;
+    for (const l of check.kept.get(info.id) ?? []) added = usage.add(l) || added;
     if (added) broadcast({ t: 'usage', samples: usage.list });
   });
   host.on('transition', (t) => {
@@ -243,12 +299,17 @@ function detachHost(id: string): void {
   host.removeAllListeners();
   host.exec.closeMaster();
   hosts.delete(id);
+  sentLimits.delete(id);
 }
 
 for (const saved of machines.list) attachHost(saved);
 activity.on('add', (event: ActivityEvent) => broadcast({ t: 'activityAdd', event }));
 accounts.on('change', (info: AccountsInfo) => {
-  broadcast({ t: 'accounts', info });
+  const check = checkNow();
+  broadcastAccounts(check, info);
+  for (const host of hosts.values()) {
+    if (limitsKey(check.kept.get(host.id)) !== (sentLimits.get(host.id) ?? limitsKey(undefined))) broadcastHost(host.snapshot, check);
+  }
   // The hub's readings feed the forecast too, keyed like the statusline's: by email,
   // so only when no other account shares it.
   let added = false;
@@ -350,14 +411,15 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   const conn = conns.add(identify(req));
   clients.set(conn.id, ws);
   send(ws, { t: 'welcome', clientId: conn.id, vapidPublicKey: push.publicKey });
-  send(ws, { t: 'tree', hosts: hostOrder.list.map((id) => hosts.get(id)!.snapshot) });
+  const check = checkNow();
+  send(ws, { t: 'tree', hosts: treeView(check) });
   send(ws, { t: 'connections', list: conns.list() });
   send(ws, { t: 'usage', samples: usage.list });
   send(ws, { t: 'updates', info: updates.info });
   send(ws, { t: 'settings', settings: settings.value });
   send(ws, { t: 'machines', info: machinesInfo() });
   send(ws, { t: 'dictation', info: dictation.info });
-  send(ws, { t: 'accounts', info: accounts.info });
+  send(ws, { t: 'accounts', info: accountsView(check) });
   send(ws, { t: 'activity', events: activity.list.slice(0, 400) });
 
   ws.on('message', async (raw) => {
@@ -721,7 +783,10 @@ function machinesInfo(): MachinesInfo {
 /** Every device sees the change: Ajustes › Máquinas and the tree. */
 function machinesChanged(): void {
   broadcast({ t: 'machines', info: machinesInfo() });
-  broadcast({ t: 'tree', hosts: hostOrder.list.map((id) => hosts.get(id)!.snapshot) });
+  const check = checkNow();
+  broadcastTree(check);
+  // A machine removed takes its readings, and with them its place in an account's warning.
+  if (mislabelledKey(check) !== sentMislabelled) broadcastAccounts(check);
 }
 
 /** A machine as the panel sent it, checked; a new one gets the hub's key. */

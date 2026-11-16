@@ -1988,6 +1988,13 @@ body.dragging-host * {
   font-size: 13px;
   margin-right: 2px;
 }
+/* An account's menu: a machine published another account's limits under it. */
+.account-warning {
+  margin: 0 8px 12px;
+  color: var(--peach);
+  font-size: 13px;
+  line-height: 1.4;
+}
 .menu {
   list-style: none;
   margin: 0;

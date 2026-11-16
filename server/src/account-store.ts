@@ -289,6 +289,8 @@ export class AccountStore {
         activeOn: Object.entries(this.data.hosts)
           .filter(([, acc]) => acc === a.id)
           .map(([h]) => h),
+        // Filled by the hub from the statusline readings (limits-check.ts).
+        mislabelledOn: [],
         spare: live.filter((l) => l.host === null).length,
         needsLogin: live.length === 0,
       };
