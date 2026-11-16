@@ -62,18 +62,24 @@
 
 ## 8. Documentation and changelog
 
-- [ ] 8.1 Add a changelog entry with `/koalarnes:changelog` (type `added`, scope `web`, Issue #21).
-- [ ] 8.2 Run `/koalarnes:update-docs`: the new store, routes and broadcast follow the existing workflows of `docs/dev-standards/server-standards.md`; add the scratchpads to the README's feature list and to its keyboard shortcuts if it lists them; apply what it proposes after review.
+- [x] 8.1 Add a changelog entry with `/koalarnes:changelog` (type `added`, scope `web`, Issue #21).
+  - Done: `added`/`web` entry with Issue 21 in changelogs/unreleased/ (PR number added when the PR opens).
+- [x] 8.2 Run `/koalarnes:update-docs`: the new store, routes and broadcast follow the existing workflows of `docs/dev-standards/server-standards.md`; add the scratchpads to the README's feature list and to its keyboard shortcuts if it lists them; apply what it proposes after review.
+  - Done with /koalarnes:update-docs, approved by the owner: README feature bullet; web-standards convention on `paneOf()` and workflow for edge drawers and back-button layers. server-standards already describes the store + broadcast workflow followed; nothing stale.
 
 ## 9. Feature catalogue
 
-- [ ] 9.1 Sync the spec to `openspec/specs/scratchpads/` with `/opsx:sync`, then run `/koalarnes:update-features scratchpads`, review and apply the update of `docs/FEATURES.md` with one anchored section per requirement of `scratchpads`.
-- [ ] 9.2 Run `ka features-check`; verify the exit code is 0.
-- [ ] 9.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 9.1 Sync the spec to `openspec/specs/scratchpads/` with `/opsx:sync`, then run `/koalarnes:update-features scratchpads`, review and apply the update of `docs/FEATURES.md` with one anchored section per requirement of `scratchpads`.
+  - Done: `openspec/specs/scratchpads/spec.md` created from the delta (Purpose and 9 requirements), `openspec validate --specs` passes; new «Scratchpads» area in docs/FEATURES.md with one anchored section per requirement and its index line, approved by the owner.
+- [x] 9.2 Run `ka features-check`; verify the exit code is 0.
+  - Done: `ka features-check` exit 0 (23 sections verified).
+- [x] 9.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+  - Done: committed with the docs and the changelog entry in `docs: describe the scratchpads`.
 
 ## 10. E2E pipeline
 
-- [ ] 10.1 The project has no E2E suite; this step does not apply. Record it here.
+- [x] 10.1 The project has no E2E suite; this step does not apply. Record it here.
+  - Not applicable: the project has no E2E suite (step 7 of the mandatory steps).
 
 ## 11. Human review
 

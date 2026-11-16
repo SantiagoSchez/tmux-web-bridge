@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadidos tres scratchpads de colores (azul, verde y naranja) para apuntar lo que quieres decirle después a Claude: hasta 10 notas en cada uno, guardadas en el servidor central y sincronizadas entre dispositivos. Un botón pega la nota sin Enter en el panel de la ventana abierta, y la nota desaparece salvo que la fijes. En pantallas anchas están en una columna a la derecha que se pliega con ⌘. (Ctrl+Mayús+. fuera del Mac); en el móvil, en un cajón que se abre deslizando desde el borde derecho",
+  "issue": "21",
+  "breaking": false
+}

@@ -14,6 +14,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
 - [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo.
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
+- [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 
 ## Terminal
 
@@ -90,3 +91,50 @@ La previsión de cuándo se agota un límite se calcula solo con lecturas de la 
 <!-- capability: usage-limits; requirement: the-account-s-row-warns-about-a-foreign-reading -->
 
 Mientras una máquina tenga una lectura de otra cuenta a nombre de una cuenta, su fila muestra ⚠ y el aviso dice qué máquina la publicó y que ese Claude seguramente sigue con la cuenta anterior: si no se corrige con su próximo mensaje, hay que reiniciarlo. El aviso está en el tooltip de la fila y en el menú de la cuenta, para verlo también en el móvil. Desaparece cuando un Claude de esa máquina publica una lectura que coincide con la del servidor central; si no publica ninguna, sigue mientras dure la ventana de la lectura, una semana como mucho.
+
+## Scratchpads
+
+### Tres scratchpads compartidos
+<!-- capability: scratchpads; requirement: three-scratchpads-shared-by-every-device -->
+
+El panel tiene tres scratchpads para apuntar lo que quieres decirle después a Claude. No tienen nombre: se distinguen por su color (azul, verde y naranja), y un clic en un color enseña sus notas. Las notas se guardan en el servidor central, así que todos los dispositivos ven las mismas, un cambio en uno aparece en los demás sin recargar y siguen ahí después de reiniciar el servidor.
+
+### Añadir una nota
+<!-- capability: scratchpads; requirement: adding-a-note -->
+
+Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar, y el campo dice cuántas notas tiene el scratchpad de las 10 posibles. Un texto vacío o solo con espacios no añade nada.
+
+### Límite de 10 notas
+<!-- capability: scratchpads; requirement: a-scratchpad-holds-at-most-10-notes -->
+
+Cada scratchpad guarda como mucho 10 notas, y cada nota como mucho 4000 caracteres. Con 10 notas, el campo se desactiva y avisa de que está lleno. Si dos dispositivos añaden a la vez la nota que ocupa el último hueco, se guarda una y el otro dispositivo recibe un aviso de que el scratchpad está lleno. Una nota más larga de 4000 caracteres se rechaza con un aviso que lo explica.
+
+### Editar una nota
+<!-- capability: scratchpads; requirement: editing-a-note -->
+
+Un clic en el texto de una nota la abre para editarla ahí mismo. Enter, o salir de la nota, guarda el cambio en todos los dispositivos; Mayús+Enter salta de línea y Escape deja la nota como estaba. Guardar una nota vacía la borra.
+
+### Fijar una nota
+<!-- capability: scratchpads; requirement: pinning-a-note -->
+
+Cada nota tiene un botón para fijarla, y la nota enseña si está fijada. Una nota fijada se queda en su scratchpad después de pegarla, para reutilizarla. El mismo botón la desfija, y el cambio se ve en todos los dispositivos.
+
+### Borrar una nota
+<!-- capability: scratchpads; requirement: deleting-a-note -->
+
+Cada nota tiene un botón para borrarla, esté fijada o no. Desaparece de todos los dispositivos.
+
+### Pegar una nota en el panel
+<!-- capability: scratchpads; requirement: pasting-a-note-into-the-active-pane -->
+
+Cada nota tiene un botón que escribe su texto en el panel activo de la ventana abierta, como un pegado y sin pulsar Enter, para repasarlo antes de enviarlo. Una nota de varias líneas llega entera a la entrada de Claude Code sin enviarse. Después de pegarla, la nota desaparece de todos los dispositivos, salvo que esté fijada. Sin una ventana abierta, como en la pantalla de inicio, el botón está desactivado. Si la máquina no responde, el panel avisa del error y la nota se queda. Si dos dispositivos pegan la misma nota a la vez, se pega una sola vez y el otro recibe un aviso de que la nota ya no existe.
+
+### Columna lateral en pantallas anchas
+<!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->
+
+En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel, en todas las pantallas. La columna se pliega a una tira estrecha con los tres colores; un clic en un color la despliega en ese scratchpad. ⌘. en el Mac, y Ctrl+Mayús+. en los demás ordenadores, la pliega o la despliega. Cada dispositivo recuerda si la tenía plegada.
+
+### Cajón en el móvil
+<!-- capability: scratchpads; requirement: scratchpads-drawer-on-phones -->
+
+En el móvil, los scratchpads se abren en un cajón deslizando desde el borde derecho de la pantalla, igual que la lista se abre desde el izquierdo. Se cierra deslizándolo de vuelta, tocando fuera o con el botón atrás del móvil, sin salir de la página. Al pegar una nota desde el cajón, este se cierra y deja a la vista el terminal con el texto pegado.
