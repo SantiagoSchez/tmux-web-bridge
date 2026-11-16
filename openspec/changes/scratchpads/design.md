@@ -76,7 +76,7 @@ POST …/notes/:id/paste ───▶  check host, pane (^%\d+$, findPane)
 
 To paste a note once when two devices press at the same time, the route marks the note as being pasted before awaiting `pasteText` (an in-memory set in the store: `startPaste(id)` throws 404 if the note is gone or already being pasted, `finishPaste(id, ok)` removes it if unpinned and the paste worked, else just releases it). Node runs the route's synchronous part without interleaving, so the second request finds the mark and gets 404 «La nota ya no existe».
 
-The note's text reaches tmux through stdin only, never on a command line. Logs name the scratchpad and the note id, never its text.
+The note's text reaches tmux through stdin only, never on a command line. Logs name the note id and where it was pasted, never its text.
 
 ### Target pane in the panel
 
@@ -84,7 +84,7 @@ A helper `paneOf(window, paneId)` in `web/src/state.ts` holds the rule `WindowVi
 
 ### Layout on wide screens
 
-The desktop grid gets a third column for `<aside class="scratchpads">`: `340px minmax(0, 1fr) 320px` (as `--list-w` and `--pads-w`), and `56px` for the folded strip (both for the list's own fold). The limits strip and the update notice span all columns. The preference `scratchpadsCollapsed: boolean` in `prefs.ts`, toggled by `toggleScratchpads()`, and the shortcut in `shortcuts.ts` next to Cmd+B: `⌘.` when `navigator.platform` is a Mac, else `Ctrl+Shift+.` (matched on `e.code === 'Period'`, so a keyboard layout where Shift+. is `:` still works). The sidebar shows on every screen, home included.
+The desktop grid gets a third column for `<aside class="pads-side">`: `340px minmax(0, 1fr) 320px` (as `--list-w` and `--pads-w`), and `56px` for the folded strip (both for the list's own fold). The limits strip and the update notice span all columns. The preference `scratchpadsCollapsed: boolean` in `prefs.ts`, toggled by `toggleScratchpads()`, and the shortcut in `shortcuts.ts` next to Cmd+B: `⌘.` when `navigator.platform` is a Mac, else `Ctrl+Shift+.` (matched on `e.code === 'Period'`, so a keyboard layout where Shift+. is `:` still works). The sidebar shows on every screen, home included.
 
 ### Drawer on phones
 
