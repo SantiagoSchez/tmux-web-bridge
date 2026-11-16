@@ -28,7 +28,14 @@
 PR #17 review (design: The check is a pure module of the hub, as revised):
 
 - [x] 3.5 Write failing tests for `isForeign` for the requirement «A window that started before the hub saw it closed is not shown»: with no hub window (none, or a reset of 0), a reading whose window started before the hub's reading is foreign and one that started after is not, for both windows; the margin of one reset step either side (5-hour: 9 and 11 minutes; 7-day: 59 and 61 minutes); with a hub window that has ended, a reading whose window started before its reset is foreign and one of the next window is not; and two resets exactly 300 seconds apart are the same window. See them fail, implement until they pass, and check each new branch with a mutation.
+  - The old tests of a hub without a window and of a reset of 0 described the behaviour the review rejected: they now keep only an account never read and a window the reading lacks. Four new tests (no hub window before and after, margins, ended window, plus a hub window ending right now) failed three of them before `windowForeign()`. Nine mutations (no margin, double margin, swapped steps, `>=` 300, ended reset ignored, ended reading windows looked at, no hub reading foreign, a hub window ending now taken as current) each make at least one fail.
 - [x] 3.6 Write failing tests for `SentLimits` in `server/src/limits-check.test.ts`: a fresh one reports no change for a check with no foreign reading and no readings (no re-send after a start); a host whose kept readings differ from what was recorded is reported, and not once recorded; a host never recorded with no readings is not; the accounts are reported when their machines change and not once recorded; a forgotten host's readings are no longer compared. See them fail, implement until they pass.
+  - Five tests; the file failed to load before `SentLimits` existed. Four mutations (a starting key of `''`, no default for a host never sent, `forget` not deleting, no readings told apart from an empty list) each make at least one fail.
+
+Second PR #17 review:
+
+- [x] 3.7 Write failing tests for `isForeign`, with the hub's reading time as a parameter of the tests' `hub()`: a hub reading taken after its window ended, with a reading whose window started between that reset and the reading, is foreign; a start exactly one step before the hub's reading (10 minutes, 1 hour) is not; a reading window whose reset is exactly `now` is not looked at. Move the hub's reading time before its ended reset in the existing tests of an ended window, where the scenario needs it. Implement `max(ended reset, usage.t)` in `windowForeign()` (design: The check is a pure module of the hub) until they pass, and repeat the mutations, including `<` turned into `<=` on both comparisons.
+  - One new test (a hub reading after its window ended) failed before the maximum; the exact steps and a reading reset of exactly `now` were added to the existing tests, and the ended-window tests now read the account before its reset. 22 tests pass. Seventeen mutations, the round-one rule without the maximum, a minimum instead of it and both `<`/`<=` swaps among them, each make at least one fail.
 
 ## 4. Wiring in the hub
 
@@ -42,6 +49,7 @@ PR #17 review (design: The check is a pure module of the hub, as revised):
   - The hub of the worktree started with a scratch `HOME`, `dataDir` and config, `TMUX_TMPDIR=/tmp/twbt-tmux` and a `local` machine on the socket `twbtest`: it logged «tmux-web-bridge escuchando en http://127.0.0.1:7799 (1 máquinas…)» and `/api/health` answered `{"ok":true,"hosts":[{"id":"claude","status":"ok"}]}`. It was stopped after 6.2.
 
 - [x] 4.4 Replace `sentLimits` and `sentMislabelled` in `server/src/index.ts` with a `SentLimits` (design: What the panel last got is a small class of the same module); verify `pnpm --filter server typecheck` passes and repeat the boot smoke test of 4.3.
+  - `index.ts` keeps only `sent.sentHost`, `sent.sentAccounts`, `sent.forget`, `sent.hostsChanged` and `sent.accountsChanged`; the unused `RateLimits` import went with the keys. Typecheck exits 0; the hub started and logged «tmux-web-bridge escuchando en http://127.0.0.1:7799 (1 máquinas…)» before 6.3.
 
 ## 5. The warning in the panel
 
@@ -58,6 +66,7 @@ PR #17 review (design: The check is a pure module of the hub, as revised):
   - At 1600×900, with the foreign reading: s2's row showed the hub's 40 % and 96 % with their resets (13:10, 19/11), and its tooltip ended with the warning naming `drangleic-claude`. On an emulated Pixel 7, s2's menu showed the warning in peach under «Sin usar en ninguna máquina». After the matching reading (42 %), without reloading: the row showed 42 %, and the warning left the tooltip and the menu. Both rows keep a ⚠ for «Hace falta iniciar sesión otra vez», since the test accounts have no logins. Headless Chrome has no font for ⚠ in the menu, as for its other glyphs (↻, ✎).
 
 - [x] 6.3 Repeat 6.1 with s2 read by the hub without a 7-day window and with a 5-hour window that has ended: s1's reading under s2's email is dropped and lists the machine; a reading of a window opened after the hub's reading is kept.
+  - s2 in `accounts.json` with no `sevenDay` and a 5-hour reset an hour back; s1's windows started 3 hours (5-hour) and 2 days (7-day) back. s1's reading under s2's email: no readings in the `host` message, `accounts` listed `s2:[claude]`, a new connection's snapshot the same, s2's history empty. s2's reading of windows opened after the hub's reading: kept (41 %/96 %), `s2:[]`, history 41/96.
 
 ## 7. Tests, typecheck and lint
 
@@ -65,6 +74,9 @@ PR #17 review (design: The check is a pure module of the hub, as revised):
   - `pnpm --filter server test`: 226 pass, 0 fail. Both typechecks exit 0. `ka features-check` exits 0 (the new capability enters the catalogue in 9.1).
 
 - [x] 7.2 After the PR #17 review fixes, run the same commands again; all pass.
+  - `pnpm --filter server test`: 235 pass, 0 fail. Both typechecks exit 0. `ka features-check` exits 0. `openspec validate fix-foreign-statusline-limits --strict`: valid.
+- [x] 7.3 After the second PR #17 review fixes, run the same commands again; all pass.
+  - `pnpm --filter server test`: 236 pass, 0 fail. Both typechecks exit 0. `ka features-check` exits 0. `openspec validate fix-foreign-statusline-limits --strict`: valid.
 
 ## 8. Documentation and changelog
 
@@ -79,6 +91,9 @@ PR #17 review (design: The check is a pure module of the hub, as revised):
   - Applied with the owner's approval: a new area «Límites de uso» with one section per requirement and its index entry. The spec was synced to `openspec/specs/usage-limits/spec.md` with `/opsx:sync`, as PR #15 did, because `ka features-check` only reads the main specs; it exits 0. Committed in «docs: add the usage limits checks to the feature catalogue» (PR #17).
 
 - [x] 9.2 After the PR #17 review: sync the revised spec to `openspec/specs/usage-limits/spec.md`, add the new requirement to the catalogue with `/koalarnes:update-features` (and revise «Lecturas de otra cuenta», whose last sentence no longer holds), run `ka features-check` (exit code 0) and commit with `/koalarnes:commit`.
+  - Spec synced; the catalogue gained «Ventanas que el servidor vio cerradas», and «Lecturas de otra cuenta» now says the hub skips a reading's ended window, not one the hub saw end. The `README.md` sentence on the check covers the new case too. `ka features-check` exits 0 (14 sections). Committed in «fix: catch foreign readings of a window the hub saw closed» (PR #17).
+- [x] 9.3 After the second PR #17 review: sync the revised spec again, check that the catalogue section «Ventanas que el servidor vio cerradas» still matches it, run `ka features-check` (exit code 0), update the PR description (test counts, the new rule) and commit with `/koalarnes:commit`.
+  - Spec synced and valid. The catalogue section already says «antes de esa lectura del servidor, o antes de que terminara su ventana anterior», which is the later of the two: unchanged. `ka features-check` exits 0. The PR description now has the new rule, 236 tests and an open item for the real answer of `/api/oauth/usage`. Committed in «fix: take the later of the hub's reading and its ended reset» (PR #17).
 
 ## 10. E2E pipeline
 

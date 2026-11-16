@@ -51,7 +51,7 @@ The hub SHALL compare each statusline reading (`RateLimits`) with its own readin
 
 ### Requirement: A window that started before the hub saw it closed is not shown
 
-When the hub's reading of the account, taken at time t, has no current window of a kind (none, or one that has already ended), the hub SHALL treat as foreign a statusline reading whose window of that kind started before t, or before the hub's ended window reset. A window starts at its reset minus its length (5 hours or 7 days), give or take one reset step: 10 minutes for 5 hours, 1 hour for 7 days.
+When the hub's reading of the account (`AccountUsage`), taken at time t, has no current window of a kind (none, or one that has already ended), the hub SHALL treat as foreign a statusline reading whose window of that kind started before t, or before the hub's ended window reset, whichever is later. A window starts at its reset minus its length (5 hours or 7 days), give or take one reset step: 10 minutes for 5 hours, 1 hour for 7 days.
 
 #### Scenario: An account not used since its weekly reset
 
@@ -74,9 +74,16 @@ When the hub's reading of the account, taken at time t, has no current window of
 - **WHEN** the panel shows the usage strip
 - **THEN** the reading is treated as foreign
 
+#### Scenario: A window that opened between the hub's ended one and its reading
+
+- **GIVEN** the hub read account s2 at 12:00 and its 5-hour window had ended at 10:00
+- **AND** a statusline published, under s2's email, a reading whose 5-hour window started at 11:00
+- **WHEN** the panel shows the usage strip
+- **THEN** the reading is treated as foreign
+
 #### Scenario: A reading of the week after the hub's ended one
 
-- **GIVEN** the hub read account s2 with a 7-day reset on 19/11 12:00, which has already passed
+- **GIVEN** the hub read account s2 on 19/11 at 11:00, with a 7-day reset on 19/11 12:00, which has already passed
 - **AND** a statusline published, under s2's email, a reading whose 7-day window started on 19/11 14:00
 - **WHEN** the panel shows the usage strip
 - **THEN** the reading is not treated as foreign

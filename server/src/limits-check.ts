@@ -26,8 +26,9 @@ const SEVEN_DAY: WindowKind = { length: 7 * 24 * 3600, step: 3600 };
  * Whether the reading's window cannot be the one the hub saw for the account. A
  * window the reading lacks, or one that has ended, says nothing. When the hub's window
  * is current, the two resets must match. When the hub saw none, or saw it end, the
- * account had no window open then: the reading's cannot have started before that, give
- * or take one step of the grid its start is computed from.
+ * account had no window open from that end until the hub's reading: the reading's
+ * cannot have started before the later of the two, give or take one step of the grid
+ * its start is computed from.
  */
 function windowForeign(
   r: UsageWindow | undefined,
@@ -38,7 +39,7 @@ function windowForeign(
 ): boolean {
   if (!r || r.resetsAt <= now) return false;
   if (h && h.resetsAt > now) return Math.abs(r.resetsAt - h.resetsAt) > SAME_RESET;
-  const closedSince = h && h.resetsAt > 0 ? h.resetsAt : readAt;
+  const closedSince = Math.max(h?.resetsAt ?? 0, readAt);
   return r.resetsAt - kind.length < closedSince - kind.step;
 }
 

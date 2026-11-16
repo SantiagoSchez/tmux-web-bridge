@@ -6,10 +6,13 @@ import { checkLimits, isForeign, type LimitsCheck, SentLimits } from './limits-c
 const H = 3600;
 const NOW = Date.parse('2026-11-16T09:40:00Z') / 1000;
 
-/** The hub's reading of an account: its 5-hour and weekly resets, `undefined` for a window it has none of. */
-function hub(five: number | undefined, seven: number | undefined): AccountUsage {
+/**
+ * The hub's reading of an account, taken at `t` (a minute ago by default): its 5-hour
+ * and weekly resets, `undefined` for a window it has none of.
+ */
+function hub(five: number | undefined, seven: number | undefined, t = NOW - 60): AccountUsage {
   return {
-    t: NOW - 60,
+    t,
     fiveHour: five === undefined ? undefined : { pct: 40, resetsAt: five },
     sevenDay: seven === undefined ? undefined : { pct: 96, resetsAt: seven },
     models: [],
@@ -46,11 +49,14 @@ test('resets up to 5 minutes apart are the same window', () => {
 
 test("after the hub's weekly reset has passed, a reading of the new week is not foreign", () => {
   const past = NOW - H;
-  assert.equal(isForeign(reading(S2_FIVE, past + 7 * 24 * H), hub(S2_FIVE - 5 * H, past), NOW), false);
+  // The hub read the account before both its windows ended.
+  assert.equal(isForeign(reading(S2_FIVE, past + 7 * 24 * H), hub(S2_FIVE - 5 * H, past, NOW - 3 * H), NOW), false);
 });
 
 test('a reading whose own windows have ended is not foreign', () => {
   assert.equal(isForeign(reading(NOW - 2 * H, NOW - H), hub(S2_FIVE, S2_SEVEN), NOW), false);
+  // A reset of exactly now has ended too.
+  assert.equal(isForeign(reading(NOW, S2_SEVEN), hub(S2_FIVE, S2_SEVEN), NOW), false);
 });
 
 test('an account the hub has never read is not compared', () => {
@@ -87,18 +93,31 @@ test("a window's start is compared with one reset step of margin: 10 minutes for
   assert.equal(isForeign(reading(READ_AT - 11 * 60 + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), true);
   assert.equal(isForeign(reading(S2_FIVE, READ_AT - 59 * 60 + WEEK), hub(S2_FIVE, undefined), NOW), false);
   assert.equal(isForeign(reading(S2_FIVE, READ_AT - 61 * 60 + WEEK), hub(S2_FIVE, undefined), NOW), true);
+  // Exactly one step before is still within the margin.
+  assert.equal(isForeign(reading(READ_AT - 10 * 60 + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), false);
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT - 60 * 60 + WEEK), hub(S2_FIVE, undefined), NOW), false);
 });
 
 test("a reading whose window started before the hub's ended window reset is foreign", () => {
   const ended = NOW - H;
+  // The hub read the account two hours ago, while these windows were still current.
+  const readBefore = NOW - 2 * H;
   // 7 days: s1's week started three hours ago, before s2's week ended an hour ago.
-  assert.equal(isForeign(reading(S2_FIVE, NOW - 3 * H + WEEK), hub(S2_FIVE, ended), NOW), true);
+  assert.equal(isForeign(reading(S2_FIVE, NOW - 3 * H + WEEK), hub(S2_FIVE, ended, readBefore), NOW), true);
   // 5 hours: a window that started two hours ago, before the hub's ended an hour ago.
-  assert.equal(isForeign(reading(NOW - 2 * H + FIVE, S2_SEVEN), hub(ended, S2_SEVEN), NOW), true);
+  assert.equal(isForeign(reading(NOW - 2 * H + FIVE, S2_SEVEN), hub(ended, S2_SEVEN, readBefore), NOW), true);
   // The next 5-hour window, opened after the hub's ended.
-  assert.equal(isForeign(reading(NOW - 30 * 60 + FIVE, S2_SEVEN), hub(ended, S2_SEVEN), NOW), false);
+  assert.equal(isForeign(reading(NOW - 30 * 60 + FIVE, S2_SEVEN), hub(ended, S2_SEVEN, readBefore), NOW), false);
   // A hub window that ends right now has ended: the next one, opening now, is the account's.
   assert.equal(isForeign(reading(NOW + FIVE, S2_SEVEN), hub(NOW, S2_SEVEN), NOW), false);
+});
+
+test('when the hub read the account after its window ended, a window opened in between is foreign', () => {
+  // The hub's 5-hour window ended three hours ago and it read the account a minute ago,
+  // still with that window: the account had none open in between.
+  assert.equal(isForeign(reading(NOW - 2 * H + FIVE, S2_SEVEN), hub(NOW - 3 * H, S2_SEVEN), NOW), true);
+  // A window opened after the hub's reading is the account's.
+  assert.equal(isForeign(reading(NOW + FIVE, S2_SEVEN), hub(NOW - 3 * H, S2_SEVEN), NOW), false);
 });
 
 // ---------------------------------------------------------------- every host and account
