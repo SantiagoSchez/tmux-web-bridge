@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { DEFAULT_DICTATION_SHORTCUT, dictationShortcutOf } from '../../../shared/dictation';
-import { PANEL_SHORTCUT_IDS, PANEL_SHORTCUTS, panelDefault, parseShortcut, serializeShortcut, shortcutClash, shortcutRefusal, type PanelShortcutId, type Shortcut } from '../../../shared/shortcuts';
+import { PANEL_SHORTCUT_IDS, PANEL_SHORTCUTS, panelDefault, panelShortcut, serializeShortcut, shortcutClash, shortcutRefusal, type PanelShortcutId, type Shortcut } from '../../../shared/shortcuts';
 import { prefs, setPref } from '../prefs';
 import { isMac, recordingShortcut, shortcutFromEvent, shortcutOf, shortcutText } from '../shortcuts';
 import { hubSettings } from '../state';
@@ -51,6 +51,9 @@ function ShortcutRow(props: { id: string; label: string; desc?: string; value: S
   // A refused «Restablecer» is explained while the reason holds: once the other shortcut moves, it goes.
   const [resetTried, setResetTried] = useState(false);
   const resetWhy = shortcutRefusal(fallback, props.taken);
+  useEffect(() => {
+    if (!resetWhy) setResetTried(false);
+  }, [resetWhy]);
   const reset = () => {
     setProblem(null);
     setResetTried(!!resetWhy);
@@ -126,7 +129,7 @@ export function ShortcutSettings() {
           id={p.id}
           label={p.label}
           value={p.shortcut}
-          fallback={parseShortcut(panelDefault(p.id, isMac))!}
+          fallback={panelShortcut(p.id, undefined, isMac)}
           taken={others(p.id)}
           onChange={(v) => setPanel(p.id, v)}
         />

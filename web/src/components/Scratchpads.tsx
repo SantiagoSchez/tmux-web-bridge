@@ -6,7 +6,7 @@ import { api } from '../api';
 import { isDesktop, prefs, setPref, toggleScratchpads } from '../prefs';
 import { isMac, shortcutLabel } from '../shortcuts';
 import { openWindow, route } from '../router';
-import { findWindow, hosts, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
+import { findWindow, hosts, paneOf, scratchpads, scratchpadsOpen, terminalFocus, toast } from '../state';
 import { Sheet } from './Sheet';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
@@ -171,7 +171,7 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
     setBusy(false);
     if (!ok) return;
     // Back to the terminal: on a phone to see it, on a computer to send it with Enter.
-    scratchpadPasted.value = { pane: to.pane, at: Date.now() };
+    terminalFocus.value = { pane: to.pane, at: Date.now() };
     if (!isDesktop.value) scratchpadsOpen.value = false;
   };
 
@@ -380,10 +380,9 @@ export function QuickNoteDialog({ close }: { close: () => void }) {
     closed.current = true;
     close();
     // After the dialog goes, so the focus lands on what was under it.
-    // Opened from the search, what had the focus went with it: the terminal takes it.
     const back = before.current;
-    const target = back instanceof HTMLElement && back.isConnected && back !== document.body ? back : document.querySelector<HTMLElement>('.xterm-helper-textarea');
-    requestAnimationFrame(() => target?.focus());
+    if (back instanceof HTMLElement && back.isConnected && back !== document.body) requestAnimationFrame(() => back.focus());
+    else if (target.value) terminalFocus.value = { pane: target.value.pane, at: Date.now() }; // what had it went with the search
   };
   const choose = (i: number, focus = false) => {
     setPad(PADS[i].at);

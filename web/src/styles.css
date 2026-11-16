@@ -235,7 +235,7 @@ h3 {
 .layout.desktop.folded {
   --list-w: 56px;
 }
-/* The scratchpads folded (Cmd+. / Ctrl+Shift+.): a strip with the button that unfolds them and the five colours. */
+/* The scratchpads folded (⌘. / Ctrl+Shift+. by default): a strip with the button that unfolds them and the five colours. */
 .layout.desktop.pads-folded {
   --pads-w: 56px;
 }

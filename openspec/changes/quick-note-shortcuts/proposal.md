@@ -13,10 +13,10 @@ Adding a scratchpad note takes the mouse: click the field at the foot of the scr
 - Enter adds the note and closes the dialog, Shift+Enter is a new line, Escape closes it without adding anything. The focus goes back where it was (the terminal). The note remembers the open window, as notes added at the foot do, and the scratchpad shown switches to the note's colour.
 - A new section «Atajos» in the settings lists every shortcut of the panel. The single-combination ones are changed there by pressing the new combination, each with «Restablecer»: search, fold the list, fold the scratchpads, quick note and dictation. The families Ctrl+1…9, Ctrl+Shift+1…9 and Ctrl+Shift+Alt+1…9 are listed, fixed.
 - The panel's shortcuts are kept on each device. The dictation shortcut moves from Ajustes › Dictado to Atajos but stays in the hub, shared by every device, as now; Dictado names it and links to Atajos.
-- A combination already used by another shortcut of the panel is refused, as are the ones refused today for the dictation (without Ctrl, Alt or Cmd, Ctrl with a letter alone, Ctrl with a number).
+- A combination already used by another shortcut of the panel is refused, as are the ones refused today for the dictation (without Ctrl, Alt or Cmd, Ctrl with a letter alone, Ctrl with a number) and, for every shortcut, the dictation included, Alt with 1 to 5 alone, which chooses the quick note's colour.
 - The search gets Ctrl+Shift+K outside the Mac (⌘K on the Mac, as now); today it only answers Cmd/Win+K.
 - The buttons' titles that name a shortcut (fold the list, fold the scratchpads) show the one configured on the device.
-- **Contract**: no API, message or stored hub data changes. `HubSettings.dictationShortcut` keeps its format and meaning. The hub's check of the dictation shortcut stops refusing Cmd+K, as the search shortcut becomes configurable and the panel refuses clashes. The device preferences in the browser (`tmux-web-bridge:prefs`) gain the panel's shortcuts.
+- **Contract**: no API, message or stored hub data changes. `HubSettings.dictationShortcut` keeps its format and meaning. The hub's check of the dictation shortcut stops refusing Cmd+K, as the search shortcut becomes configurable and the panel refuses clashes, and starts refusing Alt+1…5 alone. A hub that already kept one of those would read as the default; the owner confirmed theirs does not, so nothing stored changes. The device preferences in the browser (`tmux-web-bridge:prefs`) gain the panel's shortcuts.
 
 ## Capabilities
 
@@ -32,7 +32,7 @@ Adding a scratchpad note takes the mouse: click the field at the foot of the scr
 
 - **Layers**: `web` (`web/src/shortcuts.ts`, `web/src/prefs.ts`, `web/src/dictation.ts`, `web/src/state.ts`, `web/src/components/Settings.tsx`, the new `ShortcutSettings.tsx` and `Sheet.tsx`, `Dialogs.tsx`, `Scratchpads.tsx`, `Mic.tsx`, the other users of `Sheet`, `Header.tsx`, `Rail.tsx`, `web/src/styles.css`) and `server` (`shared/`, where the shortcut logic moves from `shared/dictation.ts` to a new `shared/shortcuts.ts`, `server/src/settings.ts` and its tests). The `trello-extension` and `host-kit` layers are untouched.
 - **External services**: none.
-- **Data**: the browser's device preferences gain an optional field; a device without it uses the defaults. Nothing to migrate in the hub.
+- **Data**: the browser's device preferences gain an optional field; a device without it uses the defaults. Nothing to migrate in the hub: a dictation shortcut stored as Alt+1…5 alone, now refused, would fall back to Ctrl+Shift+Space, and the owner's hub has none.
 
 ## Non-goals
 

@@ -13,7 +13,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 
 ## Structure
 
-- `web/src/components/`: one PascalCase `.tsx` file per screen or feature (`Settings.tsx`, `Machines.tsx`, `TerminalView.tsx`, `Trello.tsx`…), which may hold several related components. `icons.tsx` holds the inline SVG icons; `Dialogs.tsx` holds `Sheet`, the dialog renderer and the toasts.
+- `web/src/components/`: one PascalCase `.tsx` file per screen or feature (`Settings.tsx`, `Machines.tsx`, `TerminalView.tsx`, `Trello.tsx`…), which may hold several related components. `icons.tsx` holds the inline SVG icons; `Sheet.tsx` holds `Sheet`, the bottom sheet or centred card every dialog and side panel uses; `Dialogs.tsx` holds the dialog renderer and the toasts.
 - `web/src/*.ts`: camelCase modules with the non-visual logic and global signals (`state.ts`, `ws.ts`, `prefs.ts`…).
 - `web/public/`: files served as is (fonts with their licences, icons, manifest, `sw.js`).
 - Types and pure logic shared with the hub come from `shared/` (`../../shared/types`, `../../../shared/keybar`…), imported without a file extension.
@@ -66,7 +66,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - **A new tree action in a menu**: `shared/types.ts` (`ActionOp`) and `server/src/actions.ts` (see [server-standards.md](server-standards.md)), then `web/src/menus.ts` (or the component) calling `hub.action(host.id, { op: … })`.
 - **A new hub setting with its control**: `shared/types.ts` and `server/src/settings.ts` (see [server-standards.md](server-standards.md)), then the control in the section component of `web/src/components/Settings.tsx` (or its own file), reading `hubSettings.value` and writing with `hub.send({ t: 'settings', settings: { … } })`.
 - **A new per-device preference**: `web/src/prefs.ts` (a documented field of `Prefs` and its value in `DEFAULTS`), and the control in `DeviceSettings` of `web/src/components/Settings.tsx` using `setPref`.
-- **A new configurable shortcut**: an entry of `PANEL_SHORTCUTS` in `shared/shortcuts.ts` (id, label, Mac and other defaults; `PanelShortcutId` grows with it) and its action in `bindShortcuts` of `web/src/shortcuts.ts` through `matchesShortcut(e, shortcutOf(id))`. Ajustes › Atajos lists it on its own; a title that names it uses `shortcutLabel(id)`.
+- **A new configurable shortcut**: its id in `PANEL_SHORTCUT_IDS` of `shared/shortcuts.ts` (which gives `PanelShortcutId` and the order Ajustes › Atajos lists them in) and its entry in `PANEL_SHORTCUTS` (label, Mac and other defaults) and its action in `bindShortcuts` of `web/src/shortcuts.ts` through `matchesShortcut(e, shortcutOf(id))`. Ajustes › Atajos lists it on its own; a title that names it uses `shortcutLabel(id)`.
 - **A new Settings section**: `web/src/state.ts` (`SettingsTab`), `web/src/components/Settings.tsx` (`SECTIONS` and the `SettingsSection` switch), and the section component in `web/src/components/<Feature>.tsx`; styles in `web/src/styles.css`.
 - **A screen fed by a new REST endpoint**: the route and types on the server (see [server-standards.md](server-standards.md)), then `web/src/components/<Feature>.tsx` calling it through `api<T>()` (`web/src/api.ts`) and its styles in `web/src/styles.css`.
 - **New hub state shown live**: a `ServerMessage` variant and its broadcast on the server, then a signal in `web/src/state.ts`, its `case` in `web/src/ws.ts`, and the component that reads it.

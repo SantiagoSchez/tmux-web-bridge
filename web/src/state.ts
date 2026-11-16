@@ -172,7 +172,10 @@ export function openFolderSettings(hostId: string): void {
 export const drawerOpen = signal(false);
 /** The scratchpads as a drawer from the right edge, on phones. */
 export const scratchpadsOpen = signal(false);
-/** The pane a scratchpad note was just pasted into: on a computer its terminal takes the keyboard back. */
-export const scratchpadPasted = signal<{ pane: string; at: number } | null>(null);
+/**
+ * A pane whose terminal takes the keyboard back on a computer: a scratchpad note was just
+ * pasted into it, or the quick note closed over it with nothing else to give the focus to.
+ */
+export const terminalFocus = signal<{ pane: string; at: number } | null>(null);
 /** The search (⌘K / Ctrl+Shift+K, changed in Ajustes › Atajos), to jump to any window. */
 export const paletteOpen = signal(false);
