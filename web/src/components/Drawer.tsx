@@ -1,29 +1,50 @@
-import { signal } from '@preact/signals';
+import { useSignal, type Signal } from '@preact/signals';
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { route } from '../router';
-import { drawerOpen } from '../state';
+import { fileViewer } from '../fileViewer';
+import { dialog, drawerOpen, paletteOpen, scratchpadsOpen, sheet } from '../state';
 import { Header } from './Header';
+import { Scratchpads } from './Scratchpads';
 import { Tree } from './Tree';
 
-/** Where a swipe has to start to open the drawer (px from the left edge). */
+/**
+ * Whether the touch starts on a strip that scrolls sideways (the key bar, the pane tabs) and
+ * can still scroll toward `side`: the strip keeps that swipe, and the drawer opens once it ends.
+ */
+function scrollsToward(target: EventTarget | null, side: 'left' | 'right'): boolean {
+  for (let el = target instanceof Element ? target : null; el && el !== document.body; el = el.parentElement) {
+    if (el.scrollWidth <= el.clientWidth + 1) continue;
+    const overflow = getComputedStyle(el).overflowX;
+    if (overflow !== 'auto' && overflow !== 'scroll') continue;
+    // Swiping in from the right edge scrolls the content toward its end, from the left toward its start.
+    if (side === 'right' ? el.scrollLeft + el.clientWidth < el.scrollWidth - 1 : el.scrollLeft > 1) return true;
+  }
+  return false;
+}
+
+/** Where a swipe has to start to open a drawer (px from its edge of the screen). */
 export const EDGE = 36;
 const OPEN_AT = 70;
 
-/** Finger offset while dragging (px of drawer showing), null when not dragging. */
-const dragX = signal<number | null>(null);
+interface EdgeDrawerProps {
+  side: 'left' | 'right';
+  open: Signal<boolean>;
+  /** The drawer on the other edge: while it is open, this one does not start. */
+  other: Signal<boolean>;
+  class: string;
+  children: ComponentChildren;
+}
 
 /**
- * The list as a drawer over a window, on phones: opened by swiping from the
- * left edge, closed by swiping it back, tapping outside or picking a window.
+ * A drawer over the page, on phones: opened by swiping from its edge of the screen,
+ * closed by swiping it back or tapping outside.
  */
-export function Drawer() {
+function EdgeDrawer({ side, open, other, class: cls, children }: EdgeDrawerProps) {
   const panel = useRef<HTMLDivElement>(null);
-  const r = route.value;
-
-  // Picking a window (or going home) closes it.
-  useEffect(() => {
-    drawerOpen.value = false;
-  }, [r.name === 'window' ? `${r.host}:${r.window}:${r.pane}` : 'home']);
+  /** Finger offset while dragging (px of drawer showing), null when not dragging. */
+  const dragX = useSignal<number | null>(null);
+  const right = side === 'right';
 
   // Edge swipe on the whole page. Capture phase, so the terminal's own touch
   // scrolling and the header's window swipe never see a drawer gesture.
@@ -31,13 +52,18 @@ export function Drawer() {
     let start: { x: number; y: number } | null = null;
     let horizontal: boolean | null = null;
     const width = () => panel.current?.offsetWidth ?? 320;
+    /** How far from this drawer's edge of the screen. */
+    const fromEdge = (x: number) => (right ? innerWidth - x : x);
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (e.touches.length !== 1) return;
+      if (e.touches.length !== 1 || other.value) return;
+      // What sits above the drawers (a sheet, a dialog, the palette, the file viewer) keeps its touches.
+      if (sheet.value || dialog.value || paletteOpen.value || fileViewer.value) return;
       // Dragging a terminal selection handle near the edge.
       if ((e.target as Element | null)?.closest?.('.sel-handle')) return;
-      if (!drawerOpen.value && t.clientX > EDGE) return;
-      if (drawerOpen.value && t.clientX > width()) return; // the backdrop handles taps
+      if (!open.value && fromEdge(t.clientX) > EDGE) return;
+      if (!open.value && scrollsToward(e.target, side)) return;
+      if (open.value && fromEdge(t.clientX) > width()) return; // the backdrop handles taps
       start = { x: t.clientX, y: t.clientY };
       horizontal = null;
     };
@@ -62,7 +88,7 @@ export function Drawer() {
       e.preventDefault();
       e.stopPropagation();
       const w = width();
-      dragX.value = Math.max(0, Math.min(w, (drawerOpen.value ? w : 0) + dx));
+      dragX.value = Math.max(0, Math.min(w, (open.value ? w : 0) + (right ? -dx : dx)));
     };
     const onEnd = (e: TouchEvent) => {
       if (!start || horizontal !== true) {
@@ -71,7 +97,7 @@ export function Drawer() {
       }
       e.stopPropagation();
       const shown = dragX.value ?? 0;
-      drawerOpen.value = drawerOpen.value ? shown > width() - OPEN_AT : shown > OPEN_AT;
+      open.value = open.value ? shown > width() - OPEN_AT : shown > OPEN_AT;
       dragX.value = null;
       start = null;
     };
@@ -87,22 +113,46 @@ export function Drawer() {
   }, []);
 
   const drag = dragX.value;
-  const open = drawerOpen.value;
-  const style = drag !== null ? { transform: `translateX(calc(-100% + ${drag}px))`, transition: 'none' } : undefined;
-  const visible = open || drag !== null;
+  const isOpen = open.value;
+  const hidden = right ? '100%' : '-100%';
+  const style = drag !== null ? { transform: `translateX(calc(${hidden} ${right ? '-' : '+'} ${drag}px))`, transition: 'none' } : undefined;
+  const visible = isOpen || drag !== null;
   return (
     <>
       {visible && (
         <div
           class="drawer-backdrop"
           style={drag !== null ? { opacity: Math.min(1, drag / 300), transition: 'none' } : undefined}
-          onClick={() => (drawerOpen.value = false)}
+          onClick={() => (open.value = false)}
         />
       )}
-      <div ref={panel} class={`drawer ${open ? 'open' : ''}`} style={style} aria-hidden={!visible} inert={!visible}>
-        <Header />
-        <Tree />
+      <div ref={panel} class={`drawer drawer-${side} ${cls} ${isOpen ? 'open' : ''}`} style={style} aria-hidden={!visible} inert={!visible}>
+        {children}
       </div>
     </>
+  );
+}
+
+/** The list as a drawer from the left edge over a window, on phones; picking a window closes it. */
+export function Drawer() {
+  const r = route.value;
+  // Picking a window (or going home) closes it.
+  useEffect(() => {
+    drawerOpen.value = false;
+  }, [r.name === 'window' ? `${r.host}:${r.window}:${r.pane}` : 'home']);
+  return (
+    <EdgeDrawer side="left" open={drawerOpen} other={scratchpadsOpen} class="drawer-list">
+      <Header />
+      <Tree />
+    </EdgeDrawer>
+  );
+}
+
+/** The scratchpads as a drawer from the right edge, on phones (every screen). */
+export function ScratchpadsDrawer() {
+  return (
+    <EdgeDrawer side="right" open={scratchpadsOpen} other={drawerOpen} class="drawer-scratchpads">
+      <Scratchpads />
+    </EdgeDrawer>
   );
 }

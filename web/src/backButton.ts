@@ -1,10 +1,10 @@
 import { effect } from '@preact/signals';
 import { isDesktop } from './prefs';
 import { fileViewer, fileViewerBack } from './fileViewer';
-import { dialog, drawerOpen, paletteOpen, settingsTab, sheet } from './state';
+import { dialog, drawerOpen, paletteOpen, scratchpadsOpen, settingsTab, sheet } from './state';
 
 // The phone's back button closes what is open on top (a dialog, a menu, a sheet, a
-// section of the settings, the search, the drawer) instead of leaving the page. Each
+// section of the settings, the search, a drawer) instead of leaving the page. Each
 // of those layers has a history entry of ours, with the same URL and its depth in the
 // state (1 for the bottom one), pushed when it opens: going back from it closes it.
 //
@@ -25,7 +25,7 @@ import { dialog, drawerOpen, paletteOpen, settingsTab, sheet } from './state';
 function layers(): number {
   const settingsSection = sheet.value === 'settings' && !!settingsTab.value && !isDesktop.value;
   const files = fileViewer.value?.stack.length ?? 0;
-  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value) + files;
+  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value) + Number(scratchpadsOpen.value) + files;
 }
 
 /** The depth of an entry of ours, 0 for a page (true: one from before depths were kept). */
@@ -46,6 +46,7 @@ function closeTop(): void {
   else if (fileViewer.value) fileViewerBack();
   else if (sheet.value === 'settings' && settingsTab.value && !isDesktop.value) settingsTab.value = null;
   else if (sheet.value) sheet.value = null;
+  else if (scratchpadsOpen.value) scratchpadsOpen.value = false;
   else drawerOpen.value = false;
 }
 

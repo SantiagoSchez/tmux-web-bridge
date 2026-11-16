@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -34,6 +34,7 @@ import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
 import { contextScript, parseContext } from './project-refs.js';
 import { PushService } from './push.js';
+import { ScratchpadError, ScratchpadStore } from './scratchpads.js';
 import { SettingsStore } from './settings.js';
 import { TempFolders } from './temp.js';
 import { openTerminal } from './terminal.js';
@@ -79,6 +80,7 @@ const updates = new UpdateChecker(config.dataDir);
 const settings = new SettingsStore(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
 const activity = new ActivityLog(config.dataDir);
+const scratchpads = new ScratchpadStore(config.dataDir);
 const trello = new TrelloService(config.dataDir);
 // The folders of «Nuevo espacio» live in the hub now: a `projects` block becomes one, once.
 const migrated = settings.migrateProjects(config.configHosts.map((c) => ({ id: c.host.id, projects: c.projects })));
@@ -295,6 +297,7 @@ function detachHost(id: string): void {
 
 for (const saved of machines.list) attachHost(saved);
 activity.on('add', (event: ActivityEvent) => broadcast({ t: 'activityAdd', event }));
+scratchpads.on('change', (pads: Scratchpads) => broadcast({ t: 'scratchpads', pads }));
 accounts.on('change', (info: AccountsInfo) => {
   const check = checkNow();
   broadcastAccounts(check, info);
@@ -410,6 +413,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'dictation', info: dictation.info });
   send(ws, { t: 'accounts', info: accountsView(check) });
   send(ws, { t: 'activity', events: activity.list.slice(0, 400) });
+  send(ws, { t: 'scratchpads', pads: scratchpads.pads });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -764,6 +768,61 @@ app.post('/api/automations/:id/run', async (req, reply) => {
   } catch (err) {
     return reply.code(400).send({ error: (err as Error).message });
   }
+});
+
+// ---------------------------------------------------------------- scratchpads
+
+/** Runs a scratchpad change, answering a refusal with its status. Note texts are never logged. */
+async function scratchpadRoute<T>(reply: FastifyReply, run: () => T | Promise<T>): Promise<T | FastifyReply> {
+  try {
+    return await run();
+  } catch (err) {
+    if (err instanceof ScratchpadError) return reply.code(err.status).send({ error: err.message });
+    throw err;
+  }
+}
+
+app.post('/api/scratchpads/notes', async (req, reply) => {
+  const body = (req.body ?? {}) as Partial<ScratchpadAddRequest>;
+  return scratchpadRoute(reply, () => ({ id: scratchpads.add(typeof body.pad === 'number' ? body.pad : -1, body.text) }));
+});
+
+app.post('/api/scratchpads/notes/:id', async (req, reply) => {
+  const body = (req.body ?? {}) as Partial<ScratchpadEditRequest>;
+  const id = (req.params as { id: string }).id;
+  return scratchpadRoute(reply, () => {
+    scratchpads.edit(id, { text: body.text, pinned: typeof body.pinned === 'boolean' ? body.pinned : undefined });
+    return { ok: true };
+  });
+});
+
+app.post('/api/scratchpads/notes/:id/delete', async (req, reply) => {
+  const id = (req.params as { id: string }).id;
+  return scratchpadRoute(reply, () => {
+    scratchpads.remove(id);
+    return { ok: true };
+  });
+});
+
+/** Types a note into a pane as a paste, without Enter; an unpinned note goes once pasted. */
+app.post('/api/scratchpads/notes/:id/paste', async (req, reply) => {
+  const body = (req.body ?? {}) as Partial<ScratchpadPasteRequest>;
+  const id = (req.params as { id: string }).id;
+  const host = typeof body.host === 'string' ? hosts.get(body.host) : undefined;
+  if (!host || typeof body.pane !== 'string' || !/^%\d+$/.test(body.pane)) return reply.code(400).send({ error: 'Petición inválida' });
+  if (!host.findPane(body.pane)) return reply.code(404).send({ error: 'El panel ya no existe' });
+  const pane = body.pane;
+  return scratchpadRoute(reply, async () => {
+    await scratchpads.paste(id, async (text) => {
+      try {
+        await pasteText(host, pane, text);
+      } catch (err) {
+        throw new ScratchpadError(`No se pudo pegar en ${host.name}: ${(err as Error).message}`, 502);
+      }
+    });
+    console.log(`[scratchpads] nota ${id} pegada en ${host.id} ${pane}`);
+    return { ok: true };
+  });
 });
 
 // ---------------------------------------------------------------- machines (Ajustes › Máquinas)

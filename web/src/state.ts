@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, MachinesInfo, PaneInfo, PaneState, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, MachinesInfo, PaneInfo, PaneState, Scratchpads, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -73,6 +73,11 @@ export function findWindow(hostId: string, windowId: string): { host: HostInfo; 
   return null;
 }
 
+/** The pane of a window the panel works on: the one in the route, else the window's active one, else its first. */
+export function paneOf(window: WindowInfo, paneId: string | null): PaneInfo | undefined {
+  return window.panes.find((p) => p.id === paneId) ?? window.panes.find((p) => p.active) ?? window.panes[0];
+}
+
 export const multiHost = computed(() => hosts.value.length > 1);
 
 /** Puts the machines in the hub's order (host ids); any it does not name keep their place at the end. */
@@ -140,6 +145,9 @@ export const sheet = signal<'connections' | 'settings' | 'trello' | 'activity' |
 /** The activity of the last days, newest first (see ActivityEvent). */
 export const activity = signal<ActivityEvent[]>([]);
 
+/** The notes of the three scratchpads (from the hub). */
+export const scratchpads = signal<Scratchpads>([[], [], []]);
+
 export type SettingsTab = 'device' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */
 export const settingsTab = signal<SettingsTab | null>(null);
@@ -160,5 +168,9 @@ export function openFolderSettings(hostId: string): void {
 }
 /** The list as a drawer over a window, on phones. */
 export const drawerOpen = signal(false);
+/** The scratchpads as a drawer from the right edge, on phones. */
+export const scratchpadsOpen = signal(false);
+/** The pane a scratchpad note was just pasted into: on a computer its terminal takes the keyboard back. */
+export const scratchpadPasted = signal<{ pane: string; at: number } | null>(null);
 /** The Cmd+K search, to jump to any window. */
 export const paletteOpen = signal(false);
