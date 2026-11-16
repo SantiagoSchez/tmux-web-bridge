@@ -56,6 +56,8 @@ export interface WindowInfo {
 export interface SessionInfo {
   id: string; // $1
   name: string;
+  /** When tmux created it, in seconds: with `id`, tells it apart from a session of a later tmux server. */
+  created: number;
   num: number | null; // @space_num
   icon: string; // @space_icon
   attached: number;
@@ -689,6 +691,24 @@ export interface ScratchpadNote {
   text: string;
   /** Stays in its scratchpad when pasted (an unpinned note is removed). */
   pinned: boolean;
+  /** The window the panel showed when the note was added; absent when it showed none, and on notes saved before. */
+  origin?: ScratchpadNoteOrigin;
+}
+
+/**
+ * Where a note was added, as the hub saw that window then: the ids, to find it again
+ * while it is open, and the names, to show it once it is closed.
+ */
+export interface ScratchpadNoteOrigin {
+  host: string;
+  window: string; // @3
+  hostName: string;
+  session: string;
+  /** The session's id and creation time: the window is still the note's while it is in that session, renamed or not. */
+  sessionId: string;
+  sessionCreated: number;
+  index: number;
+  name: string;
 }
 
 /** The five scratchpads by storage position (blue, green, orange, yellow, purple), each with its notes in order. */
@@ -698,6 +718,8 @@ export type Scratchpads = [ScratchpadNote[], ScratchpadNote[], ScratchpadNote[],
 export interface ScratchpadAddRequest {
   pad: number;
   text: string;
+  /** The ids of the window the panel shows; the hub stores its names with the note, or nothing when it does not know it. */
+  origin?: { host: string; window: string };
 }
 
 /** Body of POST /api/scratchpads/notes/:id: its new text (empty removes it) and/or whether it is pinned. */

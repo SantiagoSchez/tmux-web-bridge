@@ -151,6 +151,7 @@ function parse(output: string): Parsed {
       session = {
         id: r.session_id,
         name: r.session_name,
+        created: Number(r.session_created),
         num: r['@space_num'] ? Number(r['@space_num']) : null,
         icon: r['@space_icon'],
         attached: Number(r.session_attached),

@@ -6,8 +6,9 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { noteText, sanitizeScratchpads, SCRATCHPAD_COUNT, SCRATCHPAD_MAX_NOTES } from '../../shared/scratchpads.js';
-import type { ScratchpadNote, Scratchpads } from '../../shared/types.js';
+import { noteText, ORIGIN_MAX_CHARS, sanitizeScratchpads, SCRATCHPAD_COUNT, SCRATCHPAD_MAX_NOTES } from '../../shared/scratchpads.js';
+import type { ScratchpadNote, ScratchpadNoteOrigin, Scratchpads } from '../../shared/types.js';
+import type { HostMonitor } from './host.js';
 
 /** A refused change, with the HTTP status its route answers (400 bad input, 404 gone, 409 full or already being pasted, 502 the machine failed the paste). */
 export class ScratchpadError extends Error {
@@ -20,6 +21,27 @@ export class ScratchpadError extends Error {
 }
 
 const GONE = 'La nota ya no existe';
+
+/**
+ * Window `windowId` of `host` as a note's origin, with the names the hub sees now, cut to what
+ * loading keeps; undefined when the machine does not have that window (closed meanwhile, or never there).
+ */
+export function originOf(host: Pick<HostMonitor, 'id' | 'name' | 'findWindow'>, windowId: string): ScratchpadNoteOrigin | undefined {
+  const found = host.findWindow(windowId);
+  if (!found) return undefined;
+  const { session, window } = found;
+  const cut = (name: string) => name.slice(0, ORIGIN_MAX_CHARS);
+  return {
+    host: host.id,
+    window: window.id,
+    hostName: cut(host.name),
+    session: cut(session.name),
+    sessionId: session.id,
+    sessionCreated: session.created,
+    index: window.index,
+    name: cut(window.name),
+  };
+}
 
 /**
  * The notes of the five scratchpads, in dataDir/scratchpads.json.
@@ -47,14 +69,15 @@ export class ScratchpadStore extends EventEmitter {
     return this.data;
   }
 
-  /** Adds a note at the end of scratchpad `pad` (0..4) and returns its id. */
-  add(pad: number, text: unknown): string {
+  /** Adds a note at the end of scratchpad `pad` (0..4), remembering the window it was added in, and returns its id. */
+  add(pad: number, text: unknown, origin?: ScratchpadNoteOrigin): string {
     if (!Number.isInteger(pad) || pad < 0 || pad >= SCRATCHPAD_COUNT) throw new ScratchpadError('Ese scratchpad no existe', 400);
     const checked = noteText(text);
     if (!checked.ok) throw new ScratchpadError(checked.error, 400);
     if (this.data[pad].length >= SCRATCHPAD_MAX_NOTES) throw new ScratchpadError(`El scratchpad está lleno: admite ${SCRATCHPAD_MAX_NOTES} notas`, 409);
     const id = randomUUID();
-    this.change(pad, [...this.data[pad], { id, text: checked.text, pinned: false }]);
+    const note: ScratchpadNote = { id, text: checked.text, pinned: false };
+    this.change(pad, [...this.data[pad], origin ? { ...note, origin } : note]);
     return id;
   }
 

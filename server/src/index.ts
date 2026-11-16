@@ -35,7 +35,7 @@ import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
 import { contextScript, parseContext } from './project-refs.js';
 import { PushService } from './push.js';
-import { ScratchpadError, ScratchpadStore } from './scratchpads.js';
+import { originOf, ScratchpadError, ScratchpadStore } from './scratchpads.js';
 import { SettingsStore } from './settings.js';
 import { TempFolders } from './temp.js';
 import { openTerminal } from './terminal.js';
@@ -784,8 +784,12 @@ async function scratchpadRoute<T>(reply: FastifyReply, run: () => T | Promise<T>
 }
 
 app.post('/api/scratchpads/notes', async (req, reply) => {
-  const body = (req.body ?? {}) as Partial<ScratchpadAddRequest>;
-  return scratchpadRoute(reply, () => ({ id: scratchpads.add(typeof body.pad === 'number' ? body.pad : -1, body.text) }));
+  const body = (req.body ?? {}) as Partial<Record<keyof ScratchpadAddRequest, unknown>>;
+  // The window the panel showed: the hub names it from its own view, and drops one it does not know.
+  const from = body.origin && typeof body.origin === 'object' ? (body.origin as Record<string, unknown>) : {};
+  const host = typeof from.host === 'string' ? hosts.get(from.host) : undefined;
+  const origin = host && typeof from.window === 'string' ? originOf(host, from.window) : undefined;
+  return scratchpadRoute(reply, () => ({ id: scratchpads.add(typeof body.pad === 'number' ? body.pad : -1, body.text, origin) }));
 });
 
 app.post('/api/scratchpads/notes/:id', async (req, reply) => {

@@ -157,7 +157,7 @@ function fakeHost(home: string, tmux: string[][], sessions: { id: string; name: 
     id: 'mac',
     name: 'Mac',
     status,
-    sessions: sessions.map((s) => ({ id: s.id, name: s.name, num: null, icon: '', attached: 0, windows: [] })),
+    sessions: sessions.map((s) => ({ id: s.id, name: s.name, num: null, icon: '', attached: 0, created: 0, windows: [] })),
   };
   return { id: 'mac', name: 'Mac', hostConfig: {}, snapshot, exec: { shell, run, runFormat: run } } as unknown as HostMonitor;
 }

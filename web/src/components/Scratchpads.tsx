@@ -1,11 +1,11 @@
 import { computed } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { noteLength, SCRATCHPAD_COUNT, SCRATCHPAD_COUNTER_FROM, SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
-import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadPasteRequest } from '../../../shared/types';
+import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadNoteOrigin, ScratchpadPasteRequest } from '../../../shared/types';
 import { api } from '../api';
 import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
-import { route } from '../router';
-import { findWindow, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
+import { openWindow, route } from '../router';
+import { findWindow, hosts, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
 /**
@@ -128,7 +128,35 @@ export function Scratchpads() {
   );
 }
 
-/** A note: its text (a click edits it) and the buttons to paste, pin and delete it. */
+/**
+ * The window a note was added in: while it is open in the same session (by id and creation
+ * time, which survive a rename and change when tmux restarts and reuses the ids), a button
+ * with its current names that opens it; once closed, or while its machine does not answer,
+ * its names as they were, dimmed.
+ */
+function OriginLine({ origin }: { origin: ScratchpadNoteOrigin }) {
+  const found = findWindow(origin.host, origin.window);
+  if (!found || found.session.id !== origin.sessionId || found.session.created !== origin.sessionCreated) {
+    const offline = hosts.value.find((h) => h.id === origin.host)?.status !== 'ok';
+    return (
+      <span class="pads-origin closed" title={offline ? 'Máquina sin conexión' : 'Ventana cerrada'}>
+        {origin.hostName} · {origin.session} · {origin.index} {origin.name}
+      </span>
+    );
+  }
+  const { host, session, window } = found;
+  const open = () => {
+    openWindow(host.id, window.id);
+    if (!isDesktop.value) scratchpadsOpen.value = false;
+  };
+  return (
+    <button class="pads-origin" title="Abrir la ventana en la que se añadió" onClick={open}>
+      {host.name} · {session.name} · {window.index} {window.name}
+    </button>
+  );
+}
+
+/** A note: its text (a click edits it), the window it was added in and the buttons to paste, pin and delete it. */
 function NoteRow({ note }: { note: ScratchpadNote }) {
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -147,13 +175,16 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
 
   return (
     <li class="pads-note">
-      {editing ? (
-        <NoteEditor note={note} onDone={() => setEditing(false)} />
-      ) : (
-        <button class="pads-text" title="Editar" onClick={() => setEditing(true)}>
-          {note.text}
-        </button>
-      )}
+      <div class="pads-body">
+        {editing ? (
+          <NoteEditor note={note} onDone={() => setEditing(false)} />
+        ) : (
+          <button class="pads-text" title="Editar" onClick={() => setEditing(true)}>
+            {note.text}
+          </button>
+        )}
+        {note.origin && <OriginLine origin={note.origin} />}
+      </div>
       <div class="pads-actions">
         <button
           class="icon-btn"
@@ -244,7 +275,10 @@ function AddField({ pad, count }: { pad: number; count: number }) {
     const sent = text;
     if (!sent.trim()) return;
     setText('');
-    if (!(await call('/api/scratchpads/notes', { pad, text: sent } satisfies ScratchpadAddRequest))) {
+    // The window shown now, by its ids: the hub stores its names with the note.
+    const r = route.value;
+    const origin = r.name === 'window' ? { host: r.host, window: r.window } : undefined;
+    if (!(await call('/api/scratchpads/notes', { pad, text: sent, origin } satisfies ScratchpadAddRequest))) {
       setText((now) => (now ? `${sent}\n${now}` : sent));
     }
   };
