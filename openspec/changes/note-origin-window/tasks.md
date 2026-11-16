@@ -60,7 +60,8 @@
   - Main spec openspec/specs/scratchpads/spec.md synced (3 requirements appended); FEATURES.md: «La ventana de cada nota», «Volver a la ventana de una nota», «Una ventana cerrada sigue nombrada», approved by the owner.
 - [x] 8.2 Run `ka features-check`; verify the exit code is 0.
   - `ka features-check` exit 0 (31 sections).
-- [ ] 8.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 8.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+  - Committed in 16ea2fd with the implementation, before the review; PR #35.
 
 ## 9. E2E pipeline
 
