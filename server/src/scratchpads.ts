@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { noteText, sanitizeScratchpads, SCRATCHPAD_COUNT, SCRATCHPAD_MAX_NOTES } from '../../shared/scratchpads.js';
 import type { ScratchpadNote, Scratchpads } from '../../shared/types.js';
 
-/** A refused change, with the HTTP status its route answers (400 bad input, 404 gone, 409 full). */
+/** A refused change, with the HTTP status its route answers (400 bad input, 404 gone, 409 full or already being pasted, 502 the machine failed the paste). */
 export class ScratchpadError extends Error {
   constructor(
     message: string,

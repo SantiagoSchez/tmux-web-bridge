@@ -208,14 +208,18 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
 /** The field at the foot of a scratchpad: Enter adds its text as a note. */
 function AddField({ pad, count }: { pad: number; count: number }) {
   const [text, setText] = useState('');
-  /** A note on its way to the hub: a second Enter meanwhile would add it twice. */
-  const adding = useRef(false);
   const full = count >= SCRATCHPAD_MAX_NOTES;
+  /**
+   * Sends the text and empties the field at once, so a second Enter finds it empty and the
+   * next note can be typed meanwhile; a refused note comes back, before what was typed since.
+   */
   const add = async () => {
-    if (!text.trim() || adding.current) return;
-    adding.current = true;
-    if (await call('/api/scratchpads/notes', { pad, text } satisfies ScratchpadAddRequest)) setText('');
-    adding.current = false;
+    const sent = text;
+    if (!sent.trim()) return;
+    setText('');
+    if (!(await call('/api/scratchpads/notes', { pad, text: sent } satisfies ScratchpadAddRequest))) {
+      setText((now) => (now ? `${sent}\n${now}` : sent));
+    }
   };
   return (
     <div class="pads-add">

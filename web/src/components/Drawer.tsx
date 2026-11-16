@@ -8,6 +8,21 @@ import { Header } from './Header';
 import { Scratchpads } from './Scratchpads';
 import { Tree } from './Tree';
 
+/**
+ * Whether the touch starts on a strip that scrolls sideways (the key bar, the pane tabs) and
+ * can still scroll toward `side`: the strip keeps that swipe, and the drawer opens once it ends.
+ */
+function scrollsToward(target: EventTarget | null, side: 'left' | 'right'): boolean {
+  for (let el = target instanceof Element ? target : null; el && el !== document.body; el = el.parentElement) {
+    if (el.scrollWidth <= el.clientWidth + 1) continue;
+    const overflow = getComputedStyle(el).overflowX;
+    if (overflow !== 'auto' && overflow !== 'scroll') continue;
+    // Swiping in from the right edge scrolls the content toward its end, from the left toward its start.
+    if (side === 'right' ? el.scrollLeft + el.clientWidth < el.scrollWidth - 1 : el.scrollLeft > 1) return true;
+  }
+  return false;
+}
+
 /** Where a swipe has to start to open a drawer (px from its edge of the screen). */
 export const EDGE = 36;
 const OPEN_AT = 70;
@@ -47,6 +62,7 @@ function EdgeDrawer({ side, open, other, class: cls, children }: EdgeDrawerProps
       // Dragging a terminal selection handle near the edge.
       if ((e.target as Element | null)?.closest?.('.sel-handle')) return;
       if (!open.value && fromEdge(t.clientX) > EDGE) return;
+      if (!open.value && scrollsToward(e.target, side)) return;
       if (open.value && fromEdge(t.clientX) > width()) return; // the backdrop handles taps
       start = { x: t.clientX, y: t.clientY };
       horizontal = null;

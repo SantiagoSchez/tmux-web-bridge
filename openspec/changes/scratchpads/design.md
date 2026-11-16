@@ -66,10 +66,10 @@ Alternative considered: websocket messages for the mutations. Rejected: the pane
 ```
 panel                        hub                                   machine
 POST …/notes/:id/paste ───▶  check host, pane (^%\d+$, findPane)
-                             note = store.startPaste(id) (404 if gone or being pasted)
-                             pasteText(host, pane, note.text) ───▶ load-buffer (stdin) + paste-buffer -p
-                             ◀─── ok / error (502, note kept)
-                             store.finishPaste(id, ok) (removes it if ok and unpinned)
+                             store.paste(id, send) (404 if gone, 409 if being pasted)
+                               send(text) = pasteText(host, pane, text) ───▶ load-buffer (stdin) + paste-buffer -p
+                               ◀─── ok / error (502 naming the machine, note kept)
+                               ok: the note goes unless it is pinned
                              emit change ──▶ broadcast { t: 'scratchpads' } to every browser
 ◀── { ok: true }
 ```
@@ -88,11 +88,11 @@ The desktop grid gets a third column for `<aside class="pads-side">`: `340px min
 
 ### Drawer on phones
 
-The edge-swipe logic of `Drawer.tsx` becomes a component `EdgeDrawer` (`side`, `open`, `other`) used by the list's drawer (left) and a new scratchpads drawer (right). Each drawer listens only to touches starting on its own edge and does not start while the other is open, so they never compete; the window header's swipe between windows ignores touches that start on either edge. The phone's back button closes the scratchpads drawer like the list's (`backButton.ts` counts `scratchpadsOpen` as a layer). A successful paste from the drawer closes it, so the terminal with the pasted text is in view. Neither drawer starts while a sheet, a dialog, the palette or the file viewer is open, since those sit above the drawers. The scratchpads drawer is mounted on every phone screen; `drawerOpen` keeps its meaning for the list and a new signal `scratchpadsOpen` is added for the right one.
+The edge-swipe logic of `Drawer.tsx` becomes a component `EdgeDrawer` (`side`, `open`, `other`) used by the list's drawer (left) and a new scratchpads drawer (right). Each drawer listens only to touches starting on its own edge and does not start while the other is open, so they never compete; the window header's swipe between windows ignores touches that start on either edge. The phone's back button closes the scratchpads drawer like the list's (`backButton.ts` counts `scratchpadsOpen` as a layer). A successful paste from the drawer closes it, so the terminal with the pasted text is in view. Neither drawer starts while a sheet, a dialog, the palette or the file viewer is open, since those sit above the drawers, nor on a strip that scrolls sideways (the key bar, the pane tabs) while it can still scroll toward that edge: the strip keeps the swipe, and the drawer opens from it once the strip reaches its end. The scratchpads drawer is mounted on every phone screen; `drawerOpen` keeps its meaning for the list and a new signal `scratchpadsOpen` is added for the right one.
 
 ### Fields, buttons and focus
 
-The fields never cut the text (no `maxLength`): a note over 4000 characters reaches the hub, which refuses it with a message, and the text stays in the field (or the note stays open) for the owner to shorten. The add field ignores Enter while its request is in flight, so a repeated Enter cannot add the note twice. The note buttons are 30 px on a mouse and `--tap` (44 px) under `pointer: coarse`, as the web standards ask. After a paste on a computer the terminal of that pane takes the keyboard back (a `scratchpadPasted` signal in `state.ts`, read by `TerminalView` like `dictationEnded`), so Enter sends the text instead of pressing the paste button again.
+The fields never cut the text (no `maxLength`): a note over 4000 characters reaches the hub, which refuses it with a message, and the text stays in the field (or the note stays open) for the owner to shorten. The add field empties as soon as Enter sends its text, so a repeated Enter finds it empty and cannot add the note twice, and the owner can type the next note at once; if the hub refuses the note, its text comes back to the field (before whatever was typed meanwhile). The note buttons are 30 px on a mouse and `--tap` (44 px) under `pointer: coarse`, as the web standards ask. After a paste on a computer the terminal of that pane takes the keyboard back (a `scratchpadPasted` signal in `state.ts`, read by `TerminalView` like `dictationEnded`), so Enter sends the text instead of pressing the paste button again. As with dictation, a computer with a touch screen counts as touch (`isTouch`) and keeps the focus where it was, since focusing the terminal would open the on-screen keyboard on a tablet.
 
 ### Components
 

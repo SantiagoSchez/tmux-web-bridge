@@ -90,6 +90,13 @@
 - [x] 13.3 Re-run the step 4 commands and `ka features-check`; update the «Pegar una nota en el panel», «Editar una nota» and «Límite de 10 notas» sections of `docs/FEATURES.md` to the amended spec; check the panel by hand against the isolated hub (5000-character note in the field and in an edit, focus after paste, 44 px buttons on the phone viewport, drawer not opening under a sheet).
   - Done: 270 server tests, both typechecks and `ka features-check` pass; three catalogue sections updated. By hand on the isolated hub: a 5000-character note shows «Una nota admite como mucho 4000 caracteres» and stays in the field; a 5000-character edit stays open and Escape then cancels it; after a paste, typed keys and Enter reach the pane without clicking it; on 390x844 with touch emulation the note buttons measure 44x44 and the right-edge swipe does nothing while Ajustes is open.
 
+## 14. Review round 2 (PR #23)
+
+- [x] 14.1 Redraw the «Paste flow» diagram of `design.md` with `store.paste(id, send)` and its 404/409/502; mention the 409 and 502 in the JSDoc of `ScratchpadError`.
+  - Done: the diagram shows `store.paste(id, send)` with 404, 409 and 502; the JSDoc of `ScratchpadError` lists 409 and 502.
+- [x] 14.2 Web: the add field empties when Enter sends and gets the text back if the hub refuses it; `EdgeDrawer` does not start on an element that scrolls sideways and can still scroll toward its edge. Verify `pnpm --filter web typecheck`, and check by hand on the isolated hub (a refused note comes back to the field; on a phone viewport, a swipe from the right edge over the key bar scrolls it instead of opening the drawer while it has room).
+  - Done: the add field empties on Enter and a refused note comes back (a 5000-character note returned to the field; a double Enter on «corta» added it once); `EdgeDrawer` skips a touch on a sideways scroller with room toward its edge (390x844, key bar with 865 px to scroll: a right-edge swipe scrolled it to 228 px and left the drawer shut; with the bar at its end, the same swipe opened the drawer). Web and server typecheck, 270 server tests and `ka features-check` pass.
+
 ## 11. Human review
 
 - [ ] 11.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
