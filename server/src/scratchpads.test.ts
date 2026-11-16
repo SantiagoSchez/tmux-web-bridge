@@ -3,9 +3,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { noteLength, noteText, sanitizeScratchpads } from '../../shared/scratchpads.js';
-import type { Scratchpads } from '../../shared/types.js';
-import { ScratchpadError, ScratchpadStore } from './scratchpads.js';
+import { noteLength, noteOrigin, noteText, sanitizeScratchpads } from '../../shared/scratchpads.js';
+import type { SessionInfo, Scratchpads, WindowInfo } from '../../shared/types.js';
+import { originOf, ScratchpadError, ScratchpadStore } from './scratchpads.js';
 
 test('a note keeps its text without the trailing whitespace', () => {
   assert.deepEqual(noteText('  Revisar el test\nde login \n\n'), { ok: true, text: '  Revisar el test\nde login' });
@@ -70,6 +70,37 @@ test('anything that is not a list of scratchpads reads as five empty ones', () =
 test('a note id repeated in the file is kept only the first time', () => {
   const dup = { id: 'a', text: 'uno', pinned: false };
   assert.deepEqual(sanitizeScratchpads([[dup], [{ ...dup, text: 'dos' }]]), [[dup], [], [], [], []]);
+});
+
+const origin = { host: 'local', window: '@3', hostName: 'Local', session: 'demo', index: 1, name: 'claude' };
+
+test('a well-formed window origin is kept as it is', () => {
+  assert.deepEqual(noteOrigin({ ...origin, extra: 'x' }), origin);
+  assert.deepEqual(noteOrigin({ ...origin, index: 0 }), { ...origin, index: 0 });
+});
+
+test('an origin with a missing field, a name that is not a string or too long, or a bad index is dropped', () => {
+  const bad = [
+    undefined,
+    null,
+    'local:@3',
+    { ...origin, host: undefined },
+    { ...origin, window: 3 },
+    { ...origin, session: null },
+    { ...origin, hostName: 'a'.repeat(201) },
+    { ...origin, name: ['claude'] },
+    { ...origin, index: -1 },
+    { ...origin, index: 1.5 },
+    { ...origin, index: '1' },
+  ];
+  for (const raw of bad) assert.equal(noteOrigin(raw), undefined, JSON.stringify(raw));
+  assert.deepEqual(noteOrigin({ ...origin, name: 'a'.repeat(200) }), { ...origin, name: 'a'.repeat(200) });
+});
+
+test('a saved note keeps its window origin, and a malformed origin is dropped without dropping the note', () => {
+  const raw = [[{ ...note(1), origin }, { ...note(2), origin: { ...origin, index: -1 } }, note(3)]];
+  assert.deepEqual(sanitizeScratchpads(raw), [[{ ...note(1), origin }, note(2), note(3)], [], [], [], []]);
+  assert.equal('origin' in sanitizeScratchpads(raw)[0][1], false);
 });
 
 // ---------------------------------------------------------------- the store
@@ -290,5 +321,44 @@ test(
     held.release();
     await pasting;
     assert.deepEqual(store.pads[1], []);
+  }),
+);
+
+// ---------------------------------------------------------------- the window a note was added in
+
+/** A machine with one session «demo» holding window @3 «claude» at index 1, as originOf sees it. */
+const machine = {
+  id: 'local',
+  name: 'Local',
+  findWindow: (windowId: string) =>
+    windowId === '@3' ? { session: { name: 'demo' } as SessionInfo, window: { id: '@3', index: 1, name: 'claude' } as WindowInfo } : null,
+};
+
+test('the origin of an open window carries its ids and the names the hub sees', () => {
+  assert.deepEqual(originOf(machine, '@3'), origin);
+});
+
+test('a window the machine does not have gives no origin', () => {
+  assert.equal(originOf(machine, '@9'), undefined);
+});
+
+test(
+  'a note added with an origin keeps it through a reload, an edit, a pin and a paste of a pinned note',
+  withStore(async (store, dir) => {
+    const id = store.add(0, 'Revisar el test de login', origin);
+    assert.deepEqual(store.pads[0], [{ id, text: 'Revisar el test de login', pinned: false, origin }]);
+    assert.deepEqual(new ScratchpadStore(dir).pads[0][0].origin, origin);
+    store.edit(id, { text: 'Revisar el test de logout', pinned: true });
+    await store.paste(id, async () => {});
+    assert.deepEqual(store.pads[0], [{ id, text: 'Revisar el test de logout', pinned: true, origin }]);
+  }),
+);
+
+test(
+  'a note added without an origin has none',
+  withStore((store) => {
+    const id = store.add(0, 'Sin ventana');
+    assert.deepEqual(store.pads[0], [{ id, text: 'Sin ventana', pinned: false }]);
+    assert.equal('origin' in store.pads[0][0], false);
   }),
 );

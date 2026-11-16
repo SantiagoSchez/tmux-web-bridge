@@ -3454,10 +3454,16 @@ textarea.text-input {
   border: 1px solid var(--surface0);
   border-left: 3px solid var(--pad);
 }
-.pads-text {
+.pads-body {
   flex: 1;
   min-width: 0;
   align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+.pads-text {
+  flex: 1;
+  min-width: 0;
   text-align: left;
   padding: 7px 4px 7px 10px;
   font-family: var(--mono);
@@ -3467,6 +3473,29 @@ textarea.text-input {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   cursor: text;
+}
+.pads-origin {
+  align-self: flex-start;
+  max-width: 100%;
+  margin: -3px 0 5px 6px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--subtext0);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+button.pads-origin:hover {
+  color: var(--text);
+  background: var(--surface0);
+  text-decoration: underline;
+}
+.pads-origin.closed {
+  color: var(--overlay0);
+  opacity: 0.7;
 }
 .pads-actions {
   display: flex;

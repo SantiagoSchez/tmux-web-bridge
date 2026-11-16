@@ -154,6 +154,21 @@ Cada nota tiene un botón para borrarla, esté fijada o no. Desaparece de todos 
 
 Cada nota tiene un botón que escribe su texto en el panel activo de la ventana abierta, como un pegado y sin pulsar Enter, para repasarlo antes de enviarlo. Una nota de varias líneas llega entera a la entrada de Claude Code sin enviarse. Después de pegarla, la nota desaparece de todos los dispositivos, salvo que esté fijada, y en el ordenador el terminal recupera el teclado, así que Enter envía el texto. Sin una ventana abierta, como en la pantalla de inicio, el botón está desactivado. Si la máquina no responde, el panel avisa del error y la nota se queda. Si dos dispositivos pegan la misma nota a la vez, se pega una sola vez y el otro recibe un aviso de que ya se está pegando.
 
+### La ventana de cada nota
+<!-- capability: scratchpads; requirement: a-note-remembers-the-window-it-was-added-in -->
+
+Una nota que se añade con una ventana abierta recuerda esa ventana y la enseña bajo su texto, en una línea pequeña con la máquina, la sesión y la ventana (su número y su nombre), por ejemplo «Local · demo · 1 claude». Se ve igual en todos los dispositivos. Editar, fijar o pegar la nota no la cambia. Las notas añadidas desde la pantalla de inicio, y las guardadas antes de que existiera esta línea, no la tienen. Si la ventana se cierra justo mientras se añade la nota, la nota se guarda sin línea.
+
+### Volver a la ventana de una nota
+<!-- capability: scratchpads; requirement: the-window-line-opens-its-window -->
+
+Mientras la ventana de una nota sigue abierta, su línea enseña los nombres que tiene ahora (si se renombra, la línea lo refleja) y, al pulsarla, abre esa ventana; en el móvil, además, cierra el cajón de los scratchpads. Pegar no cambia: «Pegar» escribe la nota en la ventana abierta en ese momento, sea cual sea la ventana de la que vino.
+
+### Una ventana cerrada sigue nombrada
+<!-- capability: scratchpads; requirement: a-closed-window-stays-named -->
+
+Cuando la ventana de una nota se cierra, su línea conserva la máquina, la sesión y la ventana que tenía al añadir la nota, atenuada y sin abrir nada al pulsarla.
+
 ### Columna lateral en pantallas anchas
 <!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->
 

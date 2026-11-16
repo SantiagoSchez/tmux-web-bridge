@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadida bajo cada nota del scratchpad la ventana en la que se escribió (máquina · sesión · ventana): mientras sigue abierta, al pulsarla se abre; cerrada, conserva sus nombres atenuada",
+  "issue": "33",
+  "breaking": false
+}

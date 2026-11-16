@@ -3,7 +3,7 @@
  * Their limits and validation, shared by the hub (which enforces them) and the panel
  * (which shows them).
  */
-import type { ScratchpadNote, Scratchpads } from './types.js';
+import type { ScratchpadNote, ScratchpadNoteOrigin, Scratchpads } from './types.js';
 
 /** How many scratchpads there are, by storage position: blue, green, orange, yellow, purple. */
 export const SCRATCHPAD_COUNT = 5 satisfies Scratchpads['length'];
@@ -26,9 +26,23 @@ export function noteText(raw: unknown): { ok: true; text: string } | { ok: false
   return { ok: true, text };
 }
 
+/** The longest id or name a note's window origin keeps. */
+const ORIGIN_MAX_CHARS = 200;
+
+/** A note's window origin read from storage, or undefined when any field is missing or malformed. */
+export function noteOrigin(raw: unknown): ScratchpadNoteOrigin | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { host, window, hostName, session, index, name } = raw as Record<string, unknown>;
+  const names = [host, window, hostName, session, name];
+  if (!names.every((v): v is string => typeof v === 'string' && v.length <= ORIGIN_MAX_CHARS)) return undefined;
+  if (typeof index !== 'number' || !Number.isInteger(index) || index < 0) return undefined;
+  return { host: host as string, window: window as string, hostName: hostName as string, session: session as string, index, name: name as string };
+}
+
 /**
  * Scratchpads read from storage: always `SCRATCHPAD_COUNT`, each with at most
- * `SCRATCHPAD_MAX_NOTES` valid notes, every id once. A missing position reads as empty,
+ * `SCRATCHPAD_MAX_NOTES` valid notes, every id once; a malformed window origin is
+ * dropped and its note kept. A missing position reads as empty,
  * so a file saved with three scratchpads keeps its notes in place.
  */
 export function sanitizeScratchpads(raw: unknown): Scratchpads {
@@ -38,11 +52,12 @@ export function sanitizeScratchpads(raw: unknown): Scratchpads {
     const notes: ScratchpadNote[] = [];
     for (const n of list) {
       if (!n || typeof n !== 'object') continue;
-      const { id, text, pinned } = n as Record<string, unknown>;
+      const { id, text, pinned, origin } = n as Record<string, unknown>;
       const checked = noteText(text);
       if (typeof id !== 'string' || !id || seen.has(id) || !checked.ok) continue;
       seen.add(id);
-      notes.push({ id, text: checked.text, pinned: !!pinned });
+      const from = noteOrigin(origin);
+      notes.push(from ? { id, text: checked.text, pinned: !!pinned, origin: from } : { id, text: checked.text, pinned: !!pinned });
       if (notes.length === SCRATCHPAD_MAX_NOTES) break;
     }
     return notes;
