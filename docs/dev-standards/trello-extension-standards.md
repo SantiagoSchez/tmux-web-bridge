@@ -7,7 +7,7 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 - A Chrome extension, Manifest V3 (`static/manifest.json`): a content script on `https://trello.com/*`, a service worker and an options page. No runtime dependencies.
 - Vite through `scripts/build.mjs`: one self-contained IIFE per entry (`content`, `background`, `options`), target `chrome120`, not minified, into `dist/`. Content scripts cannot load modules, so the entries must not share chunks.
 - Tests with `node:test` and `node:assert/strict`, run by `tsx`.
-- A pnpm workspace package (`trello-extension`). It is not deployed: it is built by hand or by `.github/workflows/trello-extension.yml` on each release tag, and loaded unpacked in `chrome://extensions`.
+- A pnpm workspace package (`trello-extension`). It is not deployed: it is built by hand or by `.github/workflows/release.yml` on each release tag, and loaded unpacked in `chrome://extensions`.
 
 ## Structure
 
@@ -48,7 +48,7 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 - Unit tests live next to the code as `src/*.test.ts` and cover the browser-free logic of `logic.ts`, including the `shared/trello.ts` and `shared/worktree.ts` functions it re-exports, with no mocks.
 - The hub side of `/api/ext/*` (token, targets, launch) is tested in the server layer, `server/src/ext.test.ts`.
 - `content.ts`, `background.ts` and `options.ts` have no automated tests in the repo: a change to them is checked in Chrome against a local hub, building with `TWB_EXTRA_HOSTS` for a headless browser (to confirm the expected level for UI changes).
-- The `trello-extension` workflow runs typecheck, tests and build again on every release tag before it attaches the zip.
+- The `release` workflow runs typecheck, tests and build again on every release tag before it attaches the zip.
 
 ## Common workflows
 
@@ -57,4 +57,4 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 - **A new option:** the field in `Settings` (`src/types.ts`), its default in `DEFAULTS` and `loadSettings()` (`src/settings.ts`), `FIELDS` in `src/options.ts`, and the input in `static/options.html` (styles in `static/options.css`).
 - **Dialog logic shared with the panel:** the function in `shared/trello.ts` or `shared/worktree.ts`, re-exported from `src/logic.ts`, tested in `src/logic.test.ts`; the panel's `web/src/components/Trello.tsx` imports the same function.
 - **A manifest change** (permission, match, icon): `static/manifest.json` (and `static/icons/`); `build.mjs` overrides `version` and appends `TWB_EXTRA_HOSTS` to `host_permissions`. After building, reload the extension by hand in `chrome://extensions`, and remind the user to do the same.
-- **Shipping:** a push of `trello-extension/**` deploys nothing: after any change, rebuild the extension, reload it by hand in `chrome://extensions`, and remind the user to do the same. The release tag starts the `trello-extension` workflow, which attaches `twb-trello-extension-vX.Y.Z.zip` to the draft release; publish the release only once the zip is there, because kits with the extension turned on download it when they update.
+- **Shipping:** a push of `trello-extension/**` deploys nothing: after any change, rebuild the extension, reload it by hand in `chrome://extensions`, and remind the user to do the same. The release tag starts the `release` workflow, which attaches `twb-trello-extension-vX.Y.Z.zip` to the GitHub release and publishes it only once the zip is there, because kits with the extension turned on download it when they update.

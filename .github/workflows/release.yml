@@ -1,0 +1,62 @@
+# Publica la release de GitHub de cada tag, con la extensión de Trello construida y en un .zip.
+# Al subir el tag crea la release en borrador (si no existe) con la sección de esa versión de
+# CHANGELOG.md, le adjunta el .zip y solo entonces la publica: los kits que se actualizan al ver
+# la release nueva ya lo encuentran. A mano (workflow_dispatch), sobre un tag ya subido: por
+# ejemplo, si este workflow falló.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag de la release (vX.Y.Z)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter trello-extension
+      - run: pnpm --filter trello-extension typecheck
+      - run: pnpm --filter trello-extension test
+      - run: pnpm --filter trello-extension build
+      # Zipped here and not with the package script, so any tag works (even one older than it).
+      - run: cd trello-extension/dist && zip -qr "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" .
+      - name: Crea la release en borrador si aún no existe
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
+          # The tag's own section of CHANGELOG.md, without its "## X.Y.Z - date" heading.
+          awk -v v="${TAG#v}" '
+            index($0, "## " v " ") == 1 { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' CHANGELOG.md | sed '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          if ! grep -q . "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md no tiene sección para ${TAG#v}"
+            exit 1
+          fi
+          gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+      - run: gh release upload "$TAG" "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" --clobber
+      # Only a draft: editing a published release could mark an older one as the latest again.
+      - name: Publica la release, ya con el .zip
+        run: |
+          if [ "$(gh release view "$TAG" --json isDraft -q .isDraft)" = true ]; then
+            gh release edit "$TAG" --draft=false
+          fi
