@@ -62,8 +62,10 @@
 
 ## 9. Human review
 
-- [ ] 9.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
+- [x] 9.1 After `/opsx:verify`, `/koalarnes:commit`, the pull request and a clean `/koalarnes:review-pr`, the owner reviews the pull request; findings go through the artifacts and `/opsx:apply` again, until the owner approves in the chat.
+  - Done: the owner approved PR #25 in the chat on 2026-11-16.
 
 ## 10. features-check before the archive
 
-- [ ] 10.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [x] 10.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+  - Done: exit 0 (23 sections verified).
