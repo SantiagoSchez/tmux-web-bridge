@@ -69,7 +69,8 @@
   - Done: spec synced to `openspec/specs/worktree-base/spec.md` (five requirements added, Purpose extended), `openspec validate --specs` passes; five anchored sections at the end of «Worktrees» in `docs/FEATURES.md` and its index line, approved by the owner.
 - [x] 9.2 Run `ka features-check`; verify the exit code is 0.
   - Done: `ka features-check` exit 0 (28 sections verified).
-- [ ] 9.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 9.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+  - Done: committed with the code in `feat: compare a branch's changes with the branch it started from` (02da9d7), PR #31.
 
 ## 10. E2E pipeline
 
