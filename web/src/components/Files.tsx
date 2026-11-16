@@ -27,6 +27,11 @@ const changesQuery = signal('');
 const changesMode = signal<GitDiffMode | undefined>(undefined);
 /** The branch of origin «Toda la rama» compares with ('': the one the branch started from), kept like the filter. */
 const changesBase = signal('');
+/**
+ * What the branch choice offers, from the last answer, kept like the filter: when a picked
+ * branch is gone or has no history in common, the choice stays to pick another one.
+ */
+const changesChoice = signal<Pick<GitChanges, 'defaultBase' | 'branches'> | null>(null);
 
 /** Lower case and without accents, to search. */
 const fold = (s: string) =>
@@ -40,6 +45,7 @@ export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   changesQuery.value = '';
   changesMode.value = mode;
   changesBase.value = '';
+  changesChoice.value = null;
   fileViewer.value = { origin, stack: [{ kind: 'changes' }] };
 }
 
@@ -251,30 +257,40 @@ function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () =>
   /** The tab chosen; until then the hub picks one, and the answer says which. */
   const asked = changesMode.value;
   const picked = changesBase.value;
+  const choice = changesChoice.value;
   const [changes, setChanges] = useState<GitChanges | null>(null);
-  /** What the branch choice offers, from the last answer: kept when a picked branch is gone, to pick another. */
-  const [choice, setChoice] = useState<Pick<GitChanges, 'defaultBase' | 'branches'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mode = asked ?? changes?.mode ?? 'head';
+  /** The request on its way: a newer one aborts it, so a late answer never shows. */
+  const inFlight = useRef<AbortController | null>(null);
   const load = () => {
+    inFlight.current?.abort();
+    const ctl = (inFlight.current = new AbortController());
     setLoading(true);
     setError(null);
-    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode: asked, base: asked === 'branch' ? picked : undefined })}`)
+    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode: asked, base: asked === 'branch' ? picked : undefined })}`, {
+      signal: ctl.signal,
+    })
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
+        if (ctl.signal.aborted) return;
         const c = data as GitChanges;
         setChanges(c);
-        setChoice({ defaultBase: c.defaultBase, branches: c.branches });
+        changesChoice.value = { defaultBase: c.defaultBase, branches: c.branches };
       })
       .catch((err: Error) => {
+        if (ctl.signal.aborted) return;
         setChanges(null);
         setError(err.message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => !ctl.signal.aborted && setLoading(false));
   };
-  useEffect(load, [asked, picked]);
+  useEffect(() => {
+    load();
+    return () => inFlight.current?.abort();
+  }, [asked, picked]);
 
   // The branches to pick besides the one it started from; a picked one that is gone stays, selected.
   const others = (choice?.branches ?? []).filter((b) => `origin/${b}` !== choice?.defaultBase);
@@ -507,7 +523,7 @@ export function ChangesButton({ host, window, paneId }: { host: HostInfo; window
   }, [host.id, window.id, paneId, window.state, host.status]);
   if (!stat) return null;
   const clean = !stat.added && !stat.removed && !stat.files;
-  const since = stat.mode === 'branch' ? `desde ${stat.base ?? 'la rama principal'}` : 'sin commit';
+  const since = stat.mode === 'branch' ? `desde ${stat.base ?? 'su rama base'}` : 'sin commit';
   const label = clean ? `Ficheros cambiados (${since}): ninguno` : `Ficheros cambiados (${since}): ${stat.files}, +${stat.added} −${stat.removed} líneas`;
   return (
     <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin, stat.mode)}>

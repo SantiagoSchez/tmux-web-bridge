@@ -6,7 +6,7 @@ import type { HostMonitor } from './host.js';
 
 // Files of a machine for the panel's viewer: a path seen in a pane (relative to its
 // folder), read over the same connection as tmux; and the repo of a pane, its changed
-// files and their diff, since HEAD or since the branch left the main one.
+// files and their diff, since HEAD or since the branch left the one it started from.
 
 const MAX_DIFF = 4 * 1024 * 1024;
 
@@ -165,13 +165,13 @@ const START_SCRIPT =
  * was created from, else the repo's main branch (origin's HEAD, else main or master); and
  * the ref compared with and the commit where they part, as M<tab>ref<tab>commit, in $base.
  * With `asked`, a branch of origin (a valid branch name, see branchNameProblem), the ref
- * compared with is origin's copy of it, or the script prints GONE and stops when the
- * machine does not have it.
+ * compared with is origin's copy of it; the script prints GONE and stops when the machine
+ * does not have it, and NOBASE when it shares no commit with HEAD (an orphan gh-pages).
  */
 function baseScript(asked?: string): string {
   const compared = asked
-    ? `a=${quote(asked)}; if git show-ref --verify -q "refs/remotes/origin/$a" && base=$(git merge-base HEAD "refs/remotes/origin/$a" 2>/dev/null); ` +
-      `then printf 'M\\t%s\\t%s\\n' "origin/$a" "$base"; else echo GONE; exit 0; fi`
+    ? `a=${quote(asked)}; git show-ref --verify -q "refs/remotes/origin/$a" || { echo GONE; exit 0; }; ` +
+      `base=$(git merge-base HEAD "refs/remotes/origin/$a" 2>/dev/null) || { echo NOBASE; exit 0; }; printf 'M\\t%s\\t%s\\n' "origin/$a" "$base"`
     : `base=$dbase; [ -n "$base" ] && printf 'M\\t%s\\t%s\\n' "$d" "$base"; true`;
   return (
     `${START_SCRIPT}; d=''; dbase=''; ` +
@@ -243,10 +243,12 @@ export async function gitChanges(host: HostMonitor, cwd: string, asked: GitDiffM
   const text = out.toString('utf8');
   if (text.startsWith('NODIR')) throw new FileError('Esa carpeta ya no está', 404);
   if (text.startsWith('NOREPO')) throw new FileError('Ese panel no está en un repo de git', 404);
-  if (/^GONE$/m.test(text)) throw new FileError(`La rama ${base} ya no está en origin`, 404);
-  // A line of its own: a branch name can end in F too.
+  // A line of its own: a branch name can end in F too. The labels are only looked for
+  // before it, where no file name goes; a script stopped by one has no F line.
   const cut = text.indexOf('\nF\n');
-  const header = text.slice(0, cut).split('\n');
+  const header = (cut < 0 ? text : text.slice(0, cut)).split('\n');
+  if (header.includes('GONE')) throw new FileError(`La rama ${base} ya no está en origin`, 404);
+  if (header.includes('NOBASE')) throw new FileError(`La rama ${base} no tiene historia en común con esta`, 409);
   const body = text.slice(cut + 3);
   const res: GitChanges = { root: '', branch: '', mode: asked === 'auto' ? 'head' : asked, branches: [], files: [] };
   for (const line of header) {
@@ -306,7 +308,7 @@ export async function gitStat(host: HostMonitor, cwd: string): Promise<GitStat |
 /** The diff of one file of the repo at `root` (a path inside it): since HEAD or since the branch's base commit. */
 export async function gitDiff(host: HostMonitor, root: string, file: string, mode: GitDiffMode, base?: string): Promise<string> {
   if (!file || file.startsWith('/') || file.split('/').includes('..') || /[\0\n]/.test(file)) throw new FileError('Fichero inválido', 400);
-  if (mode === 'branch' && !/^[0-9a-f]{7,64}$/.test(base ?? '')) throw new FileError('Falta el commit de la rama principal', 400);
+  if (mode === 'branch' && !/^[0-9a-f]{7,64}$/.test(base ?? '')) throw new FileError('Falta el commit desde el que comparar la rama', 400);
   const from = mode === 'head' ? 'HEAD' : base!;
   // A file git does not know yet is all new: against /dev/null.
   const script =

@@ -780,7 +780,7 @@ export interface AutomationInfo extends Automation {
   runs: AutomationRun[];
 }
 
-/** «Ficheros cambiados»: since HEAD (what has no commit yet), or since the branch left the main one. */
+/** «Ficheros cambiados»: since HEAD (what has no commit yet), or since the branch left the one it started from (else the main one). */
 export type GitDiffMode = 'head' | 'branch';
 
 /** A changed file: M modified, A added, D deleted, R renamed (from), ? untracked, U in conflict. */
@@ -793,7 +793,10 @@ export interface GitChange {
 
 /** GET /api/git/stat: how much a window's repo changed since HEAD (null: not in a repo). */
 export interface GitStat {
-  /** What it counts: the whole branch on any branch but the main one, else what has no commit yet. */
+  /**
+   * What it counts: the whole branch on any branch but the one it is compared with (the
+   * main one, on a branch with no creation note), else what has no commit yet.
+   */
   mode: GitDiffMode;
   /**
    * The branch it is compared with (branch mode): the one the current branch was created

@@ -178,6 +178,10 @@ async function withBranches(run: (h: { repo: string; wt: (name: string) => strin
     commit(seed, 'dev.txt');
     // A branch of origin that the clone checks out as its own.
     git(seed, 'branch', 'own');
+    // A branch with no commit in common with the others, as gh-pages.
+    git(seed, 'checkout', '-q', '--orphan', 'pages');
+    git(seed, 'rm', '-rqf', '.');
+    commit(seed, 'page.txt');
     git(seed, 'checkout', '-q', 'master');
     const repo = join(home, 'repo');
     git(home, 'clone', '-q', seed, repo);
@@ -284,12 +288,18 @@ test('the whole branch can be compared with another branch of origin', () =>
     assert.equal(c.defaultBase, 'origin/develop');
     assert.deepEqual(changed(c), ['dev.txt', 'hub.txt']);
     // origin's branches, without its HEAD.
-    assert.deepEqual(c.branches, ['develop', 'master', 'own']);
-    assert.deepEqual((await gitChanges(host, wt('hub'), 'auto')).branches, ['develop', 'master', 'own']);
+    assert.deepEqual(c.branches, ['develop', 'master', 'own', 'pages']);
+    assert.deepEqual((await gitChanges(host, wt('hub'), 'auto')).branches, ['develop', 'master', 'own', 'pages']);
     // A branch origin does not have, even when the machine has it locally.
     await assert.rejects(gitChanges(host, wt('hub'), 'branch', 'prueba'), (err: Error & { status?: number }) => {
       assert.match(err.message, /prueba ya no está en origin/);
       assert.equal(err.status, 404);
+      return true;
+    });
+    // A branch origin has, but with no commit in common: not «gone».
+    await assert.rejects(gitChanges(host, wt('hub'), 'branch', 'pages'), (err: Error & { status?: number }) => {
+      assert.match(err.message, /pages no tiene historia en común con esta/);
+      assert.equal(err.status, 409);
       return true;
     });
     // What has no commit yet does not depend on any branch.
@@ -297,4 +307,12 @@ test('the whole branch can be compared with another branch of origin', () =>
     assert.equal(head.mode, 'head');
     assert.equal(head.base?.ref, 'origin/develop');
     assert.deepEqual(changed(head), []);
+  }));
+
+test('a file name with a line of the script\'s labels in it is only a file', () =>
+  withBranches(async ({ wt, host }) => {
+    const name = 'a\nGONE\nNOBASE\nb.txt';
+    writeFileSync(join(wt('hub'), name), 'x\n');
+    assert.deepEqual(changed(await gitChanges(host, wt('hub'), 'branch')), [name, 'hub.txt']);
+    assert.deepEqual(changed(await gitChanges(host, wt('hub'), 'head')), [name]);
   }));

@@ -77,6 +77,15 @@
 - [x] 10.1 The project has no E2E suite; this step does not apply. Record it here.
   - Not applicable: the project has no E2E suite (step 7 of the mandatory steps).
 
+## 13. Review round 1 (PR #31)
+
+- [x] 13.1 Write a failing test in `server/src/files.test.ts`: an orphan branch `pages` on origin (added to `withBranches`, and to the expected `branches`) asked as base rejects with a 409 `FileError` «La rama pages no tiene historia en común con esta», and a tracked file whose content does not matter but whose name is `GONE` on a line of its own does not break the list; then make `baseScript(asked)` print `NOBASE` when the merge-base fails, and look for `GONE` and `NOBASE` only in the header; verify the tests pass.
+  - Done: orphan `pages` in the fixture; asking for it gives a 409 «La rama pages no tiene historia en común con esta»; a file named `a\nGONE\nNOBASE\nb.txt` is listed in both modes. Both seen failing (404 «ya no está», the file name taken for the label); `baseScript` prints `NOBASE` when the merge-base fails, and the labels are looked for only in the header. 14 tests pass.
+- [x] 13.2 Web: keep what the choice offers in a `changesChoice` signal reset in `openChanges`, and abort a superseded request in `ChangesView` (its answer ignored); verify `pnpm --filter web typecheck` and check by hand that a gone branch picked, a diff opened and back, still shows the choice.
+  - Done: `changesChoice` signal reset in `openChanges`; `ChangesView` aborts the request a newer one replaces (and on unmount) and ignores its answer; `pnpm --filter web typecheck` passes. By hand against the isolated hub: `origin/feature/login` picked, `feat.txt`'s diff opened, the branch deleted, back: «La rama feature/login ya no está en origin» with the choice still there.
+- [x] 13.3 Rewrite the comments that still say «the main one» (`server/src/files.ts` header and `gitDiff`'s message, `GitStat.mode` in `shared/types.ts`); re-run the step 4 commands and `ka features-check`.
+  - Done: `server/src/files.ts` header and `gitDiff` message, `GitStat.mode` and `GitDiffMode` in `shared/types.ts`, and the counter label fallback in `Files.tsx` no longer say the comparison is always with the main branch. 282 server tests pass, server and web typecheck exit 0, `ka features-check` exit 0.
+
 ## 11. Human review
 
 - [ ] 11.1 Another developer (the owner) reviews the pull request after `/koalarnes:review-pr` comes back clean; findings go through the change-request steps until approval.

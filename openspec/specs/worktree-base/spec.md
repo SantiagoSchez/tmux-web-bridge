@@ -282,6 +282,12 @@ In «Toda la rama», the «Ficheros cambiados» modal SHALL offer a choice of th
 - **WHEN** the user picks `feature/login`
 - **THEN** the modal says that branch is no longer on `origin` and the user can pick another one
 
+#### Scenario: The picked branch has no history in common
+
+- **GIVEN** a repository whose `origin` has an orphan branch `pages` that shares no commit with the current branch
+- **WHEN** the user picks `pages`
+- **THEN** the modal says that branch has no history in common with the current one, not that it is gone, and the user can pick another one
+
 #### Scenario: A request with an invalid branch name
 
 - **GIVEN** a request for the changes of a window whose `base` is not a valid branch name, such as `-x` or `a..b`

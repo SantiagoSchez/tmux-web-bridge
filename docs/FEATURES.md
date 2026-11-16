@@ -73,7 +73,7 @@ Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el re
 ### Con qué rama se comparan los cambios
 <!-- capability: worktree-base; requirement: a-branch-s-changes-are-compared-with-the-branch-it-started-from -->
 
-«Toda la rama», en «Ficheros cambiados», compara la rama de la ventana con la rama de la que salió, tal y como lo apuntó git al crearla en esa máquina. Un worktree creado desde `release/2.0` (por el panel, por el hook de Claude Code o a mano con `git checkout -b`) enseña solo sus propios cambios desde que salió de `origin/release/2.0`. Si salió de una rama local, compara con su copia en `origin` cuando existe y, si no, con la local. Usa la copia de las ramas que ya tiene la máquina, sin actualizarlas desde el remoto, y el subtítulo dice con cuál compara («desde origin/release/2.0»).
+«Toda la rama», en «Ficheros cambiados», compara la rama de la ventana con la rama de la que salió, tal y como lo apuntó git al crearla en esa máquina. Un worktree creado desde `release/2.0` (por el panel, por el hook de Claude Code o a mano con `git checkout -b <rama> origin/release/2.0`) enseña solo sus propios cambios desde que salió de `origin/release/2.0`. Si salió de una rama local, compara con su copia en `origin` cuando existe y, si no, con la local. Usa la copia de las ramas que ya tiene la máquina, sin actualizarlas desde el remoto, y el subtítulo dice con cuál compara («desde origin/release/2.0»).
 
 ### Ramas sin nota de creación
 <!-- capability: worktree-base; requirement: without-a-usable-creation-note-the-main-branch-is-used -->
@@ -88,7 +88,7 @@ El botón **+12 −3** de la cabecera de la ventana cuenta las líneas y los fic
 ### Comparar con otra rama
 <!-- capability: worktree-base; requirement: the-changes-modal-compares-with-the-branch-the-user-picks -->
 
-En «Toda la rama», un desplegable debajo de las pestañas lista la rama de la que salió, seleccionada al abrir, y las demás ramas de `origin` que conoce la máquina. Al elegir otra, la lista enseña los ficheros cambiados desde que la rama se separó de esa rama de `origin`, y el diff de cada fichero compara con el mismo punto. Si la rama elegida ya no está en `origin` (por ejemplo, porque se borró al actualizar las ramas), el modal lo dice y deja elegir otra.
+En «Toda la rama», un desplegable debajo de las pestañas lista la rama de la que salió, seleccionada al abrir, y las demás ramas de `origin` que conoce la máquina. Al elegir otra, la lista enseña los ficheros cambiados desde que la rama se separó de esa rama de `origin`, y el diff de cada fichero compara con el mismo punto. Si la rama elegida ya no está en `origin` (por ejemplo, porque se borró al actualizar las ramas), o no tiene ningún commit en común con la de la ventana (como una rama huérfana `gh-pages`), el modal lo dice y deja elegir otra.
 
 ### La rama elegida dura lo que el modal
 <!-- capability: worktree-base; requirement: the-picked-branch-lasts-while-the-modal-is-open -->
