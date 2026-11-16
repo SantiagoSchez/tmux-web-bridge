@@ -91,6 +91,22 @@ test('a notice for a pane the hub does not know also goes only to the device you
   assert.deepEqual(sent.map((s) => s.only), [[MAC]]);
 });
 
+test('a pane icon turning ✅ with no notice from its kit also goes only to the device you are at', async () => {
+  const conns = new ConnectionRegistry();
+  const mac = conns.add({});
+  conns.update(mac.id, { visible: false, present: true });
+  conns.setPushEndpoint(mac.id, MAC);
+  const { push, sent } = fakePush([MAC, 'https://push.example/phone']);
+  const host = fakeHost();
+  const n = new Notifier({ fallbackDelayMs: 0 } as Config, new Map([['mac', host]]), push, conns);
+
+  const ctx = host.findPane('%1');
+  assert.ok(ctx);
+  n.onTransition({ ...ctx, from: 'busy', to: 'done' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(sent.map((s) => s.only), [[MAC]]);
+});
+
 test('a pane finishing while you are at no device notifies every device', async () => {
   const conns = new ConnectionRegistry();
   const { push, sent } = fakePush([MAC, 'https://push.example/phone']);

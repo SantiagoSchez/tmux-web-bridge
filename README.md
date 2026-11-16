@@ -203,7 +203,7 @@ El panel saca los límites de uso de una opción global de tmux que publica la s
 
 ### 4. Ábrelo en el móvil
 
-Abre la URL del panel en Chrome (Android), **Añadir a pantalla de inicio**, y activa las notificaciones en ⚙️ **Ajustes › Dispositivo › Notificaciones**. Listo.
+Abre la URL del panel en Chrome (Android), **Añadir a pantalla de inicio**, y activa las notificaciones en ⚙️ **Ajustes › Dispositivo › Notificaciones**. En el ordenador, igual: instala la PWA desde Chrome y activa allí sus notificaciones; con «Silenciar mientras lo uso», mientras lo usas te llegan solo a él. Listo.
 
 ### Extra: dictado
 

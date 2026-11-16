@@ -5,7 +5,7 @@ export interface Prefs {
   collapsedHosts: string[];
   /** "host:session name" of the spaces folded in the list. */
   collapsedSessions: string[];
-  /** No pushes to any device while you are using this one (Idle Detection). */
+  /** While you are using this device (Idle Detection), pushes go only here, and none while the app is on screen. */
   silenceWhilePresent: boolean;
   /** Light or dark, or whatever the device uses. */
   theme: 'dark' | 'light' | 'system';
