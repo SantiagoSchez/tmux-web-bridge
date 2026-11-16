@@ -3,5 +3,6 @@
   "scope": "web",
   "description": "Corregidos los desplegables: la flecha ya no queda pegada al borde y, en el ordenador, desplegables y campos de texto son más bajos y con la misma altura; en el móvil conservan su tamaño",
   "issue": "26",
-  "breaking": false
+  "breaking": false,
+  "pr": "27"
 }
