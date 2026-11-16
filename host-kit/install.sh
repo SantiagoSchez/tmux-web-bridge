@@ -154,8 +154,6 @@ unlink_old "$HOME/.scripts/tmux-spaces.sh"
 mkdir -p "$CONF_DIR"
 if [ -n "$HUB" ]; then
     [ -f "$ENV_FILE" ] && cp "$ENV_FILE" "$ENV_FILE.bak.$STAMP"
-    idle=0
-    [ "$(uname -s)" = "Darwin" ] && idle=60
     (
         umask 077
         cat > "$ENV_FILE" <<EOF
@@ -163,13 +161,12 @@ if [ -n "$HUB" ]; then
 HUB_URL=$HUB
 HOST_ID=$HOST_ID
 NOTIFY_TOKEN=$TOKEN
-PUSH_MIN_IDLE=$idle
 EOF
     )
     say "Configuración escrita: $ENV_FILE"
 elif [ ! -f "$ENV_FILE" ]; then
     (umask 077; cp "$KIT/notify.env.example" "$ENV_FILE")
-    warn "Edita $ENV_FILE (HUB_URL, HOST_ID, NOTIFY_TOKEN) para activar los avisos al móvil"
+    warn "Edita $ENV_FILE (HUB_URL, HOST_ID, NOTIFY_TOKEN) para activar las notificaciones"
 fi
 chmod 600 "$ENV_FILE"
 
@@ -359,6 +356,6 @@ fi
 
 # ------------------------------------------------------------ comprobación
 if [ "$QUIET" = 0 ] && grep -q '^HUB_URL=https\?://' "$ENV_FILE" && ! grep -q 'example.com' "$ENV_FILE"; then
-    (check_hub) || warn "Los avisos al móvil no funcionarán hasta que el servidor central sea accesible"
+    (check_hub) || warn "Las notificaciones no funcionarán hasta que el servidor central sea accesible"
 fi
 same "Listo. Para actualizar: desde el panel, o git -C $(dirname "$KIT") fetch --tags && git -C $(dirname "$KIT") checkout vX.Y.Z"

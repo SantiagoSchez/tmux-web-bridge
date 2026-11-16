@@ -3,6 +3,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { auth, logout } from '../auth';
 import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
+import { currentSubscription } from '../push';
 import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut, shortcutProblem, type DictationButton } from '../../../shared/dictation';
 import { formatShortcut, notReady, recordingShortcut, shortcutFromEvent } from '../dictation';
 import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
@@ -30,11 +31,6 @@ async function post(path: string, body: unknown): Promise<any> {
   const res = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json();
-}
-
-async function currentSubscription(): Promise<PushSubscription | null> {
-  const reg = await navigator.serviceWorker.ready;
-  return reg.pushManager.getSubscription();
 }
 
 async function detect(): Promise<PushState> {
@@ -225,6 +221,7 @@ function DeviceSettings() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(vapidKey.value) });
       await post('/api/push/subscribe', { subscription: sub.toJSON() });
+      hub.setPushEndpoint(sub.endpoint);
       setPush('on');
       toast('Notificaciones activadas');
     } catch (err) {
@@ -240,6 +237,7 @@ function DeviceSettings() {
       await post('/api/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
       await sub.unsubscribe();
     }
+    hub.setPushEndpoint(null);
     setPush('off');
   };
 
@@ -300,7 +298,7 @@ function DeviceSettings() {
 
       <Toggle
         title="Silenciar mientras lo uso"
-        desc="Si has usado el teclado o el ratón en los últimos 5 minutos (en cualquier aplicación) y la pantalla no está bloqueada, no llegan notificaciones a ningún dispositivo: los avisos ya están en la lista de pendientes. Necesita esta app abierta, aunque sea en segundo plano."
+        desc="Si has usado el teclado o el ratón en los últimos 5 minutos (en cualquier aplicación) y la pantalla no está bloqueada, las notificaciones llegan solo a este dispositivo, y ninguna mientras tengas esta app a la vista: los avisos ya están en la lista de pendientes. Si aquí no tienes activadas las notificaciones, llegan a los demás dispositivos. Necesita esta app abierta, aunque sea oculta o en segundo plano."
         on={presence === 'on'}
         disabled={presence !== 'on' && presence !== 'off'}
         onChange={(on) => (on ? void enablePresence() : disablePresence())}

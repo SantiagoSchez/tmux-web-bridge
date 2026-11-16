@@ -55,10 +55,10 @@ export class PushService {
     this.save();
   }
 
-  /** Sends to every subscribed browser. Returns how many accepted it. */
-  async send(payload: PushPayload, only?: string): Promise<number> {
+  /** Sends to every subscribed browser, or `only` to those endpoints. Returns how many accepted it. */
+  async send(payload: PushPayload, only?: readonly string[]): Promise<number> {
     const body = JSON.stringify(payload);
-    const targets = only ? this.subs.filter((s) => s.endpoint === only) : this.subs;
+    const targets = only ? this.subs.filter((s) => only.includes(s.endpoint)) : this.subs;
     let ok = 0;
     const gone: string[] = [];
     await Promise.all(

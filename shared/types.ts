@@ -576,7 +576,7 @@ export interface ConnectionInfo {
   userAgent?: string;
   connectedAt: number;
   visible: boolean;
-  /** You are using that device (it reports system-wide activity): no pushes are sent. */
+  /** You are using that device (it reports system-wide activity): pushes go only there, and none while the app is on screen. */
   present?: boolean;
   terminals: number;
   view?: ViewInfo;
@@ -649,6 +649,8 @@ export type ClientMessage =
   | { t: 'ping' }
   | { t: 'view'; view: ViewInfo | null; visible: boolean }
   | { t: 'presence'; present: boolean }
+  /** This browser's Web Push subscription (null: none), so pushes can go only to the device you are at. */
+  | { t: 'pushEndpoint'; endpoint: string | null }
   /** The machines' order in the list (host ids), kept by the hub for every device. */
   | { t: 'hostOrder'; hosts: string[] }
   | { t: 'updateCheck'; enabled: boolean }

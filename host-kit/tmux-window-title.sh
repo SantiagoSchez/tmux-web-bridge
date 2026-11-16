@@ -21,7 +21,6 @@
 #   tmux-window-title.sh focus <pane-id>       el panel recibe foco: ✅ pasa a 🤖
 #   tmux-window-title.sh clear                 borra el estado del panel actual
 #   tmux-window-title.sh rename <window-id> [nombre]   fija el nombre (vacío = automático)
-#   tmux-window-title.sh jump <socket> <pane-id>  clic en una notificación: salta al panel
 #   tmux-window-title.sh reload <pane-id>      relanza el panel: shell nueva (recarga .zshrc) y,
 #                                              si tenía un Claude, lo reanuda con su conversación
 #   tmux-window-title.sh close <pane|window|session> <id> [cliente]
@@ -29,12 +28,10 @@
 #                                              popup con su session_id y copia cómo reanudarlo
 #   tmux-window-title.sh wrap-kill-keys        los atajos que cierran a pelo pasan por close
 #
-# Avisos al móvil: si existe ~/.config/tmux-web-bridge/notify.env (HUB_URL,
-# HOST_ID, NOTIFY_TOKEN), cada pregunta/atención/terminado se envía también al
-# servidor central de tmux-web-bridge, que decide si manda una notificación push.
-#
-# Funciona en macOS (notificación local con terminal-notifier y Ghostty) y en
-# Linux/WSL (sin notificación local: solo el aviso al servidor central).
+# Avisos: si existe ~/.config/tmux-web-bridge/notify.env (HUB_URL, HOST_ID,
+# NOTIFY_TOKEN), cada pregunta/atención/terminado se envía al servidor central de
+# tmux-web-bridge, que decide a qué dispositivos manda la notificación push. El
+# kit no lanza notificaciones propias: solo le dice si ya lo estás viendo.
 #
 # Estados: question | attention | done | busy | claude | ssh
 #
@@ -46,33 +43,6 @@ SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]
 
 set -u
 
-# Clic en una notificación (lo ejecuta terminal-notifier, fuera de tmux): tmux
-# salta al panel y Ghostty se muestra. Si hay quick terminal (el terminal que
-# no pertenece a ninguna ventana) se enfoca ese, lo que lo despliega si estaba
-# oculto; si no, se activa Ghostty sin más.
-if [ "${1:-}" = "jump" ]; then
-    socket="${2:-}" pane="${3:-}"
-    PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    tmux -S "$socket" switch-client -t "$pane" \; select-window -t "$pane" \; select-pane -t "$pane" 2>/dev/null
-    [ "$(uname -s)" = "Darwin" ] || exit 0
-    osascript >/dev/null 2>&1 <<'EOF'
-tell application "Ghostty"
-    set inWindows to {}
-    repeat with w in windows
-        set inWindows to inWindows & (id of terminals of w)
-    end repeat
-    repeat with t in terminals
-        if inWindows does not contain (id of t) then
-            focus t
-            return
-        end if
-    end repeat
-    activate
-end tell
-EOF
-    exit 0
-fi
-
 # Fuera de tmux no hay nada que hacer (hooks de Claude en una terminal suelta).
 [ -n "${TMUX:-}" ] || exit 0
 
@@ -81,18 +51,10 @@ fi
 # "<estado>\t<nombre>\t<session_id de Claude>".
 STATE_DIR="/tmp/tmux-window-state-$(id -u)-$(printf '%s' "$TMUX" | cut -d, -f2)"
 
-# Notificador: la copia con el icono de Claude Code (claude-notifier-build.sh)
-# o, si no existe, el terminal-notifier de brew. Vacío = osascript.
-# Fuera de macOS no hay notificación local (solo el aviso al servidor central).
 IS_MAC=0
 [ "$(uname -s)" = "Darwin" ] && IS_MAC=1
-NOTIFIER=""
-if [ "$IS_MAC" = 1 ]; then
-    NOTIFIER="$HOME/Applications/Claude Code Notify.app/Contents/MacOS/terminal-notifier"
-    [ -x "$NOTIFIER" ] || NOTIFIER="$(command -v terminal-notifier 2>/dev/null || true)"
-fi
 
-# Servidor central de tmux-web-bridge (avisos push al móvil). Sin este fichero, nada.
+# Servidor central de tmux-web-bridge (avisos push). Sin este fichero, nada.
 HUB_ENV="${XDG_CONFIG_HOME:-$HOME/.config}/tmux-web-bridge/notify.env"
 
 icon_for() {
@@ -281,14 +243,7 @@ hub_notify() {
         # shellcheck disable=SC1090
         . "$HUB_ENV"
         [ -n "${HUB_URL:-}" ] && [ -n "${HOST_ID:-}" ] || exit 0
-        viewed="$3"
-        # En macOS, si estás usando el Mac (actividad de teclado/ratón reciente)
-        # basta con la notificación local: no se avisa también al móvil.
-        if [ "$viewed" = 0 ] && [ "$IS_MAC" = 1 ] && [ "${PUSH_MIN_IDLE:-0}" -gt 0 ]; then
-            idle="$(ioreg -c IOHIDSystem 2>/dev/null | awk '/HIDIdleTime/ {print int($NF / 1000000000); exit}')"
-            [ -n "$idle" ] && [ "$idle" -lt "$PUSH_MIN_IDLE" ] && viewed=1
-        fi
-        jq -n --arg host "$HOST_ID" --arg pane "$1" --arg state "$2" --arg viewed "$viewed" --arg title "$4" --arg message "$5" \
+        jq -n --arg host "$HOST_ID" --arg pane "$1" --arg state "$2" --arg viewed "$3" --arg title "$4" --arg message "$5" \
             '{host: $host, pane: $pane, state: $state, viewed: ($viewed == "1"), title: $title, message: $message}' |
             curl -fsS -m 5 -X POST -H "Authorization: Bearer ${NOTIFY_TOKEN:-}" -H 'Content-Type: application/json' \
                 --data @- "${HUB_URL%/}/api/notify" >/dev/null 2>&1
@@ -319,48 +274,25 @@ notify_preview() {
     printf '%s' "$text" | tr '\n\t' '  ' | sed -E 's/[*`#>]+//g; s/  +/ /g; s/^ //' | cut -c1-200
 }
 
-# Notificación de macOS para el panel, salvo que lo tengas delante. Al pulsarla
-# trae Ghostty al frente y salta a ese panel. Agrupada por panel: la nueva
-# sustituye a la anterior del mismo Claude.
+# Aviso al servidor central de una pregunta, un permiso o un final: decide él a
+# qué dispositivos manda la notificación. Si tienes el panel delante, se le dice
+# que ya lo has visto para que no avise a nadie.
 notify() {
-    local pane="$1" state="$2" payload="$3" label sound title message
+    local pane="$1" state="$2" payload="$3" label title message
     if pane_is_viewed "$pane" && user_is_looking "$pane"; then
-        # Lo estás viendo: el servidor central tampoco debe avisar al móvil.
         hub_notify "$pane" "$state" 1 "" ""
         return 0
     fi
     case "$state" in
-        question)  label="Pregunta";        sound="Submarine" ;;
-        attention) label="Necesita atención"; sound="Submarine" ;;
-        done)      label="Terminado";       sound="Glass" ;;
+        question)  label="Pregunta" ;;
+        attention) label="Necesita atención" ;;
+        done)      label="Terminado" ;;
         *)         return 0 ;;
     esac
     title="$(icon_for "$state") $(tmux display-message -p -t "$pane" '#W [#S]' 2>/dev/null)"
     message="$(notify_preview "$state" "$payload")"
     [ -n "$message" ] || message="$label"
-
     hub_notify "$pane" "$state" 0 "$title" "$message"
-    [ "$IS_MAC" = 1 ] || { : > "$STATE_DIR/$pane.notified"; return 0; }
-
-    if [ -n "$NOTIFIER" ]; then
-        "$NOTIFIER" -title "$title" -message "$message" -sound "$sound" \
-            -group "claude-tmux-$pane" -execute "'$SELF' jump '${TMUX%%,*}' '$pane'" >/dev/null 2>&1 &
-    else
-        osascript - "$title" "$message" "$sound" >/dev/null 2>&1 <<'EOF' &
-on run argv
-    display notification (item 2 of argv) with title (item 1 of argv) sound name (item 3 of argv)
-end run
-EOF
-    fi
-    : > "$STATE_DIR/$pane.notified"
-}
-
-# Retira la notificación pendiente del panel (ya lo has visto o ya has respondido).
-notify_clear() {
-    local pane="$1"
-    [ -f "$STATE_DIR/$pane.notified" ] || return 0
-    rm -f "$STATE_DIR/$pane.notified"
-    [ -n "$NOTIFIER" ] && "$NOTIFIER" -remove "claude-tmux-$pane" >/dev/null 2>&1 &
 }
 
 # Un solo cambio de estado a la vez por servidor tmux: dos hooks a la vez (dos Claude en
@@ -410,7 +342,6 @@ cmd_state() {
 
     case "$event" in
         question|attention|done) notify "$TMUX_PANE" "$event" "$payload" ;;
-        busy)                    notify_clear "$TMUX_PANE" ;;
     esac
 }
 
@@ -467,13 +398,11 @@ cmd_focus() {
         IFS=$'\t' read -r state name sid < "$STATE_DIR/$pane"
         [ "${state:-}" = "done" ] && write_state "$pane" claude "${name:-}" "${sid:-}"
     fi
-    notify_clear "$pane"
     cmd_refresh "$(tmux display-message -p -t "$pane" '#{window_id}' 2>/dev/null)"
 }
 
 cmd_clear() {
     [ -n "${TMUX_PANE:-}" ] || return 0
-    notify_clear "$TMUX_PANE"
     rm -f "$STATE_DIR/$TMUX_PANE" "$STATE_DIR/$TMUX_PANE.since"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
 }
@@ -538,7 +467,7 @@ cmd_reload() {
     fi
 
     # El Claude nuevo vuelve a escribir su estado al arrancar (hook SessionStart).
-    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.notified" "$STATE_DIR/$pane.since"
+    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.since"
     if [ -n "$resume" ]; then
         tmux respawn-pane -k -t "$pane" -c "$dir" "$shell" -ic "$resume; exec $(printf '%q' "$shell")"
     else
