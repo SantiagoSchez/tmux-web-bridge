@@ -63,7 +63,7 @@ export function FolderSettings() {
       {all.length > 1 && (
         <label class="folder-host">
           <span class="dim small">Máquina</span>
-          <select value={host.id} onChange={(e) => (folderHost.value = e.currentTarget.value)}>
+          <select class="text-input" value={host.id} onChange={(e) => (folderHost.value = e.currentTarget.value)}>
             {all.map((h) => (
               <option key={h.id} value={h.id}>
                 {h.name} · {folderCount(s.folders[h.id]?.length ?? 0)}

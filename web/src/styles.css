@@ -2120,20 +2120,6 @@ body.dragging-host * {
   gap: 4px;
   margin: 12px 4px 0;
 }
-.folder-host select {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--surface1);
-  background: var(--base);
-  color: var(--text);
-  font-size: 15px;
-  outline: none;
-}
-.folder-host select:focus {
-  border-color: var(--mauve);
-}
 .folder-list {
   list-style: none;
   margin: 0 0 12px;
@@ -2826,6 +2812,44 @@ kbd.shortcut {
 .kb-field input:focus,
 .kb-field select:focus {
   border-color: var(--mauve);
+}
+
+/*
+ * Every drop-down: the system's arrow sat at the very edge, and its size differs per
+ * browser, so a chevron of our own takes its place, as far from the right edge as the
+ * text is from the left. An image cannot read a CSS variable, so each theme has its own,
+ * drawn in --overlay1. After `.text-input` and `.kb-field select`, whose `background`
+ * and `padding` shorthands would reset it.
+ */
+select.text-input,
+.kb-field select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23838ba7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-position: right 14px center;
+  background-size: 12px 8px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
+}
+:root[data-theme='light'] select.text-input,
+:root[data-theme='light'] .kb-field select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23686b7f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+/*
+ * With a mouse, form fields need no finger-sized height. On touch they keep it, and 16px
+ * text, which also keeps iOS from zooming in on focus. A textarea keeps its own height.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .text-input {
+    height: 38px;
+    font-size: 14px;
+  }
+  .kb-field input,
+  .kb-field select {
+    min-height: 38px;
+    padding-block: 6px;
+    font-size: 14px;
+  }
 }
 .kb-keyfields {
   display: flex;
