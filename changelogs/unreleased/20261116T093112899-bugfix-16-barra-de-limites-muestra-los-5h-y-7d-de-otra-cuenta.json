@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "**Límites de una cuenta con los de otra**: si tras cambiar de cuenta en una máquina un Claude seguía con la anterior, la barra de límites podía mostrar en la fila de la cuenta nueva los 5h y 7d de la anterior, y la previsión los mezclaba. Ahora el servidor central descarta esas lecturas y la fila de la cuenta avisa con ⚠ de la máquina que las publicó",
+  "issue": "16",
+  "breaking": false,
+  "pr": "17"
+}

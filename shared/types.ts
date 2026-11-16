@@ -105,6 +105,12 @@ export interface ClaudeAccount {
   usageError?: string;
   /** Machines whose Claude Code is logged in with it right now (host ids). */
   activeOn: string[];
+  /**
+   * Machines whose statusline published another account's limits under this account's
+   * email (host ids): a Claude there is probably still on the previous account. The hub
+   * keeps those readings from the panel and from the usage history.
+   */
+  mislabelledOn: string[];
   /** Logins the hub holds that no machine is using: each one can go to a machine without logging in again. */
   spare: number;
   /** Every login the hub had of it stopped working: it needs a new one. */

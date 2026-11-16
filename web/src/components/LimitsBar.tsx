@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ClaudeAccount, PaneState, RateLimits, UsageSample, UsageWindow } from '../../../shared/types';
-import { accountMenu, addAccount, useAccount } from '../accounts';
+import { accountMenu, addAccount, mislabelledWarning, useAccount } from '../accounts';
 import { openWindow, route } from '../router';
 import { accountsInfo, findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
 
@@ -284,12 +284,14 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
   const mine = samples.filter((s) => s.account === email);
   const age = row.readAt ? left(now - row.readAt) : null;
   const switching = accountsInfo.value?.switching ?? [];
+  const mislabelled = acc ? mislabelledWarning(acc) : undefined;
   const title = [
     acc ? `${acc.alias} · ${acc.email}` : email,
     acc?.plan,
     acc?.org && acc.plan === 'Team' ? acc.org : undefined,
     age ? `leídos hace ${age === '—' ? 'un momento' : age}` : 'sin lecturas todavía',
     acc?.usageError,
+    mislabelled && `⚠ ${mislabelled}`,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -303,7 +305,7 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
         <button type="button" class="limit-account" title={title} onClick={open}>
           {row.label}
           {acc?.plan && <span class="limit-plan"> {acc.plan}</span>}
-          {(acc?.needsLogin || (acc?.usageError && !acc.usage)) && <span class="limit-warn"> ⚠</span>}
+          {(acc?.needsLogin || (acc?.usageError && !acc.usage) || mislabelled) && <span class="limit-warn"> ⚠</span>}
         </button>
       </span>
       {row.five ? (

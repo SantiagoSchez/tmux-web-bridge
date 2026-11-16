@@ -198,7 +198,7 @@ La status line del kit muestra los límites 5h/7d al final, salvo en un panel es
 <details>
 <summary>Usar tu propia status line en vez de la del kit</summary>
 
-El panel saca los límites de uso de una opción global de tmux que publica la status line (Claude Code solo le pasa `rate_limits` a ella), con una entrada por cuenta separada por `;`: `pct5h reset5h pct7d reset7d actualizado email`. El email sale de `oauthAccount.emailAddress` en `.claude.json` y la barra muestra una fila por cuenta. Si instalas con `--skip-claude`, copia a la tuya el bloque «Límites de uso para el panel web» de [`host-kit/statusline.sh`](host-kit/statusline.sh), después de leer el JSON en `$input` y sacar de él `PCT_5H`, `RESET_5H`, `PCT_7D` y `RESET_7D`.
+El panel saca los límites de uso de una opción global de tmux que publica la status line (Claude Code solo le pasa `rate_limits` a ella), con una entrada por cuenta separada por `;`: `pct5h reset5h pct7d reset7d actualizado email`. El email sale de `oauthAccount.emailAddress` en `.claude.json` y la barra muestra una fila por cuenta. El servidor central también lee cada cuenta de la que tiene sesión y compara con esa lectura las horas de reinicio de cada entrada: si no coinciden, o si la ventana de la entrada ya estaba abierta cuando el servidor la vio cerrada, la entrada es de otra cuenta (un Claude que sigue con la anterior tras cambiar de cuenta), no la muestra y avisa en la fila de la cuenta. Si instalas con `--skip-claude`, copia a la tuya el bloque «Límites de uso para el panel web» de [`host-kit/statusline.sh`](host-kit/statusline.sh), después de leer el JSON en `$input` y sacar de él `PCT_5H`, `RESET_5H`, `PCT_7D` y `RESET_7D`.
 </details>
 
 ### 4. Ábrelo en el móvil
