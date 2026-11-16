@@ -14,7 +14,8 @@ const FETCH_SECONDS = 12;
 const LS_REMOTE_SECONDS = 6;
 /**
  * Seconds to ask the remote for a branch named like the worktree, and to fetch it: with the
- * base's fetch (12 s), a launch stays under the hub's 25 s.
+ * base's fetch (12 s), a launch stays under the hub's 25 s, unless several SSH agents do not
+ * answer (AGENT_SECONDS each, asked once, before the fetch).
  */
 const BRANCH_SECONDS = 4;
 const BRANCH_FETCH_SECONDS = 6;
@@ -29,14 +30,14 @@ const AGENT_SECONDS = 2;
  * owner's terminals, so a key that lives only in that agent never reaches `git fetch` over
  * ssh. Without an agent that has keys, this takes the first one that does: the machine's tmux
  * server's, then each tmux session's (what a terminal brings on attach), then macOS's own
- * (launchd's socket). Each socket is asked once, bounded, and the paths are read one per
- * line, so a path with spaces stays one. `tmux` is the command line that reaches the
+ * (launchd's socket). Only sockets of the user's own are asked, each once and bounded, and
+ * the paths are read one per line, so a path with spaces stays one. `tmux` is the command line that reaches the
  * machine's tmux server. Needs `bounded`.
  */
 function sshAgent(tmux: string): string {
   return (
     `t() { ( PATH="$PATH:${EXTRA_PATH}"; export PATH; exec ${tmux} "$@" ) 2>/dev/null </dev/null; }; ` +
-    `keys() { [ -S "$1" ] && bounded ${AGENT_SECONDS} env SSH_AUTH_SOCK="$1" ssh-add -l; }; ` +
+    `keys() { [ -S "$1" ] && [ -O "$1" ] && bounded ${AGENT_SECONDS} env SSH_AUTH_SOCK="$1" ssh-add -l; }; ` +
     `if ! keys "\${SSH_AUTH_SOCK:-}"; then ` +
     `nl=$(printf '\\nx'); nl=\${nl%x}; ifs=$IFS; IFS=$nl; tried="$nl\${SSH_AUTH_SOCK:-}$nl"; ` +
     `for a in $( { t show-environment -g SSH_AUTH_SOCK; for s in $(t list-sessions -F '#{session_id}'); do t show-environment -t "$s" SSH_AUTH_SOCK; done; } | sed -n 's/^SSH_AUTH_SOCK=//p' ) /private/tmp/com.apple.launchd.*/Listeners; do ` +

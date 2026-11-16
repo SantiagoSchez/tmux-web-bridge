@@ -148,13 +148,15 @@ interface Agents {
 /**
  * The machine as the hub reaches it over ssh, for the fetch's agent: origin over ssh to a
  * fake `ssh` that writes down the SSH_AUTH_SOCK it got and is refused; a fake `ssh-add -l`
- * that answers «has keys» for `keys` and hangs on `slow`; and a fake tmux whose server has
+ * that writes down each socket it is asked about, answers «has keys» for `keys` and hangs on `slow`; and a fake tmux whose server has
  * `global` as SSH_AUTH_SOCK and whose one session ($1) has `session`.
  */
-function agents(home: string, repo: string, a: Agents): { extra: Record<string, string>; tmux: string; seen: () => string } {
+function agents(home: string, repo: string, a: Agents): { extra: Record<string, string>; tmux: string; seen: () => string; asked: () => string[] } {
   const bin = join(home, 'bin');
   const seen = join(home, 'seen');
+  const asked = join(home, 'asked');
   rmSync(seen, { force: true });
+  rmSync(asked, { force: true });
   const script = (name: string, body: string) => {
     write(join(bin, name), `#!/bin/sh\n${body}\n`);
     chmodSync(join(bin, name), 0o755);
@@ -162,7 +164,7 @@ function agents(home: string, repo: string, a: Agents): { extra: Record<string, 
   script('ssh', `printf '%s' "\${SSH_AUTH_SOCK:-}" > ${shQuote(seen)}; echo 'Permission denied (publickey).' >&2; exit 255`);
   script(
     'ssh-add',
-    `[ "$1" = -l ] || exit 2; case "\${SSH_AUTH_SOCK:-}" in ` +
+    `[ "$1" = -l ] || exit 2; printf '%s\\n' "\${SSH_AUTH_SOCK:-}" >> ${shQuote(asked)}; case "\${SSH_AUTH_SOCK:-}" in ` +
       (a.slow ? `${shQuote(a.slow)}) sleep 30; exit 0 ;; ` : '') +
       a.keys.map((k) => `${shQuote(k)}) exit 0 ;; `).join('') +
       `esac; exit 2`,
@@ -176,7 +178,7 @@ function agents(home: string, repo: string, a: Agents): { extra: Record<string, 
       `*) exit 1 ;; esac`,
   );
   git(home, repo, 'remote', 'set-url', 'origin', 'ssh://git.example.invalid/repo.git');
-  return { extra: { PATH: `${join(home, 'bin')}:${process.env.PATH}`, GIT_SSH_COMMAND: join(bin, 'ssh') }, tmux: shQuote(join(bin, 'tmux')), seen: () => readFileSync(seen, 'utf8') };
+  return { extra: { PATH: `${join(home, 'bin')}:${process.env.PATH}`, GIT_SSH_COMMAND: join(bin, 'ssh') }, tmux: shQuote(join(bin, 'tmux')), seen: () => readFileSync(seen, 'utf8'), asked: () => readFileSync(asked, 'utf8').split('\n').filter(Boolean) };
 }
 
 /** Runs `fn` with an agent socket at each path, closed afterwards. */
@@ -233,16 +235,16 @@ test('a path that is no socket is never taken, and with no agent that has keys t
     });
   }));
 
-test('an agent that does not answer is given up for the next one, and a path with spaces is one path', () =>
+test('an agent that does not answer is asked once and given up for the next one, and a path with spaces is one path', () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
     const [hung, spaced] = [join(home, 'hung.sock'), join(home, 'Group Containers', 'agent.sock')];
     await withSockets([hung, spaced], async () => {
+      // The hung agent is the session's own and tmux's server's too.
       const m = agents(home, repo, { keys: [spaced], slow: hung, global: hung, session: spaced });
-      const started = Date.now();
-      await branches(home, repo, m.extra, m.tmux);
+      await branches(home, repo, { ...m.extra, SSH_AUTH_SOCK: hung }, m.tmux);
+      assert.deepEqual(m.asked(), [hung, spaced]);
       assert.equal(m.seen(), spaced);
-      assert.ok(Date.now() - started < 10_000, `took ${Date.now() - started} ms`);
     });
   }));
 
