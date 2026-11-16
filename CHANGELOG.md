@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.23.1 - 2026-11-16
+
+### Corregido
+
+- **Límites de una cuenta con los de otra**: tras cambiar de cuenta en una máquina, la barra de límites podía mostrar en la fila de la cuenta nueva los 5h y 7d de la anterior, y la previsión los mezclaba. Ahora la fila se queda con los límites de su cuenta y avisa con ⚠ de la máquina donde un Claude sigue con la cuenta anterior.
+
 ## 1.23.0 - 2026-11-15
 
 ### Añadido
