@@ -94,25 +94,25 @@ Mientras una máquina tenga una lectura de otra cuenta a nombre de una cuenta, s
 
 ## Scratchpads
 
-### Tres scratchpads compartidos
-<!-- capability: scratchpads; requirement: three-scratchpads-shared-by-every-device -->
+### Cinco scratchpads compartidos
+<!-- capability: scratchpads; requirement: coloured-scratchpads-shared-by-every-device -->
 
-El panel tiene tres scratchpads para apuntar lo que quieres decirle después a Claude. No tienen nombre: se distinguen por su color (azul, verde y naranja), y un clic en un color enseña sus notas. Las notas se guardan en el servidor central, así que todos los dispositivos ven las mismas, un cambio en uno aparece en los demás sin recargar y siguen ahí después de reiniciar el servidor.
+El panel tiene cinco scratchpads para apuntar lo que quieres decirle después a Claude. No tienen nombre: se distinguen por su color, en este orden: azul, verde, amarillo, naranja y morado. Cada color enseña cuántas notas tiene, y un clic en él enseña sus notas. Las notas se guardan en el servidor central, así que todos los dispositivos ven las mismas, un cambio en uno aparece en los demás sin recargar y siguen ahí después de reiniciar el servidor. Las notas guardadas cuando había tres scratchpads conservan su color; el amarillo y el morado empiezan vacíos.
 
 ### Añadir una nota
 <!-- capability: scratchpads; requirement: adding-a-note -->
 
-Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar, y el campo dice cuántas notas tiene el scratchpad de las 10 posibles. Un texto vacío o solo con espacios no añade nada.
+Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar. Cuando el texto llega a 3500 caracteres, el campo enseña cuántos lleva de los 4000 posibles (por ejemplo, «3600/4000»), sin contar los espacios ni los saltos de línea del final, que no se guardan, y lo marca si se pasa. Un texto vacío o solo con espacios no añade nada.
 
-### Límite de 10 notas
-<!-- capability: scratchpads; requirement: a-scratchpad-holds-at-most-10-notes -->
+### Límites de un scratchpad y de una nota
+<!-- capability: scratchpads; requirement: limits-of-a-scratchpad-and-of-a-note -->
 
-Cada scratchpad guarda como mucho 10 notas, y cada nota como mucho 4000 caracteres. Con 10 notas, el campo se desactiva y avisa de que está lleno. Si dos dispositivos añaden a la vez la nota que ocupa el último hueco, se guarda una y el otro dispositivo recibe un aviso de que el scratchpad está lleno. Una nota más larga de 4000 caracteres se rechaza con un aviso que lo explica, y el texto se queda en el campo para acortarlo.
+Cada scratchpad guarda como mucho 20 notas, y cada nota como mucho 4000 caracteres. Con 20 notas, el campo se desactiva y avisa de que está lleno. Si dos dispositivos añaden a la vez la nota que ocupa el último hueco, se guarda una y el otro dispositivo recibe un aviso de que el scratchpad está lleno. Una nota más larga de 4000 caracteres se rechaza con un aviso que lo explica, y el texto se queda en el campo para acortarlo.
 
 ### Editar una nota
 <!-- capability: scratchpads; requirement: editing-a-note -->
 
-Un clic en el texto de una nota la abre para editarla ahí mismo. Enter, o salir de la nota, guarda el cambio en todos los dispositivos; Mayús+Enter salta de línea y Escape deja la nota como estaba. Guardar una nota vacía la borra. Si el texto nuevo no se puede guardar (por ejemplo, porque pasa de 4000 caracteres), el panel dice por qué y la nota sigue abierta con lo escrito.
+Un clic en el texto de una nota la abre para editarla ahí mismo. Enter, o salir de la nota, guarda el cambio en todos los dispositivos; Mayús+Enter salta de línea y Escape deja la nota como estaba. Guardar una nota vacía la borra. Si el texto nuevo no se puede guardar (por ejemplo, porque pasa de 4000 caracteres), el panel dice por qué y la nota sigue abierta con lo escrito. Desde 3500 caracteres, la nota que se edita enseña el mismo contador que el campo de añadir.
 
 ### Fijar una nota
 <!-- capability: scratchpads; requirement: pinning-a-note -->
@@ -132,7 +132,7 @@ Cada nota tiene un botón que escribe su texto en el panel activo de la ventana 
 ### Columna lateral en pantallas anchas
 <!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->
 
-En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel, en todas las pantallas. La columna se pliega a una tira estrecha con los tres colores; un clic en un color la despliega en ese scratchpad. ⌘. en el Mac, y Ctrl+Mayús+. en los demás ordenadores, la pliega o la despliega. Cada dispositivo recuerda si la tenía plegada.
+En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel, en todas las pantallas. La columna se pliega a una tira estrecha con los cinco colores; un clic en un color la despliega en ese scratchpad. ⌘. en el Mac, y Ctrl+Mayús+. en los demás ordenadores, la pliega o la despliega. Cada dispositivo recuerda si la tenía plegada.
 
 ### Cajón en el móvil
 <!-- capability: scratchpads; requirement: scratchpads-drawer-on-phones -->

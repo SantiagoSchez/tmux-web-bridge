@@ -145,8 +145,8 @@ export const sheet = signal<'connections' | 'settings' | 'trello' | 'activity' |
 /** The activity of the last days, newest first (see ActivityEvent). */
 export const activity = signal<ActivityEvent[]>([]);
 
-/** The notes of the three scratchpads (from the hub). */
-export const scratchpads = signal<Scratchpads>([[], [], []]);
+/** The notes of the five scratchpads by storage position (from the hub). */
+export const scratchpads = signal<Scratchpads>([[], [], [], [], []]);
 
 export type SettingsTab = 'device' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */

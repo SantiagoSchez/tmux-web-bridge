@@ -1,0 +1,8 @@
+{
+  "type": "changed",
+  "scope": "web",
+  "description": "Ampliados los scratchpads a cinco, con amarillo y morado, y a 20 notas cada uno; el campo de una nota muestra ahora un contador de caracteres al acercarse al límite de 4000, también al editarla, y el número de notas queda en cada color",
+  "issue": "24",
+  "breaking": false,
+  "pr": "25"
+}

@@ -1,4 +1,4 @@
-// The scratchpads: three coloured lists of up to 10 short notes the owner jots down
+// The scratchpads: five coloured lists of up to 20 short notes the owner jots down
 // to tell Claude later, kept by the hub so every device shows the same notes. A note
 // is pasted into a pane by index.ts; here it is only marked while that happens, so two
 // devices pressing at once paste it once, and removed afterwards unless pinned.
@@ -22,12 +22,12 @@ export class ScratchpadError extends Error {
 const GONE = 'La nota ya no existe';
 
 /**
- * The notes of the three scratchpads, in dataDir/scratchpads.json.
+ * The notes of the five scratchpads, in dataDir/scratchpads.json.
  * Events: 'change' (Scratchpads).
  */
 export class ScratchpadStore extends EventEmitter {
   private readonly file: string;
-  private data: Scratchpads = [[], [], []];
+  private data: Scratchpads = [[], [], [], [], []];
   /** Notes being pasted right now: a second paste of one of them is refused. */
   private readonly pasting = new Set<string>();
 
@@ -47,7 +47,7 @@ export class ScratchpadStore extends EventEmitter {
     return this.data;
   }
 
-  /** Adds a note at the end of scratchpad `pad` (0..2) and returns its id. */
+  /** Adds a note at the end of scratchpad `pad` (0..4) and returns its id. */
   add(pad: number, text: unknown): string {
     if (!Number.isInteger(pad) || pad < 0 || pad >= SCRATCHPAD_COUNT) throw new ScratchpadError('Ese scratchpad no existe', 400);
     const checked = noteText(text);

@@ -232,7 +232,7 @@ h3 {
 .layout.desktop.folded {
   --list-w: 56px;
 }
-/* The scratchpads folded (Cmd+. / Ctrl+Shift+.): a strip with the button that unfolds them and the three colours. */
+/* The scratchpads folded (Cmd+. / Ctrl+Shift+.): a strip with the button that unfolds them and the five colours. */
 .layout.desktop.pads-folded {
   --pads-w: 56px;
 }
@@ -3473,27 +3473,26 @@ textarea.text-input {
   outline: 2px solid var(--pad, var(--blue));
   outline-offset: -1px;
 }
+/* A note open for editing, with its character counter under it like the add field's. */
 .pads-edit {
   flex: 1;
   min-width: 0;
   margin: 3px;
-  width: auto;
 }
 .pads-add {
-  position: relative;
   padding: 8px;
   border-top: 1px solid var(--surface0);
 }
 .pads-add .pads-input {
   min-height: calc(2lh + 18px);
-  padding-right: 48px;
 }
+/* The character counter, on its own line under the field. */
 .pads-total {
-  position: absolute;
-  right: 16px;
-  bottom: 14px;
+  display: block;
+  margin-top: 4px;
+  text-align: right;
 }
-.pads-total.full {
+.pads-total.over {
   color: var(--peach);
 }
 /* Folded: the strip on the right, as the list's on the left. */

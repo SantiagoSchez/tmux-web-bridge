@@ -26,7 +26,7 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   /** On a wide screen, the scratchpads folded into a narrow strip on the right. */
   scratchpadsCollapsed: boolean;
-  /** The scratchpad shown (0 blue, 1 green, 2 orange). */
+  /** The scratchpad shown, by storage position (0 blue, 1 green, 2 orange, 3 yellow, 4 purple). */
   scratchpad: number;
 }
 
