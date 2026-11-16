@@ -1,8 +1,8 @@
-# Publica la release de GitHub de cada tag, con la extensión de Trello construida y en un .zip.
-# Al subir el tag crea la release en borrador (si no existe) con la sección de esa versión de
-# CHANGELOG.md, le adjunta el .zip y solo entonces la publica: los kits que se actualizan al ver
-# la release nueva ya lo encuentran. A mano (workflow_dispatch), sobre un tag ya subido: por
-# ejemplo, si este workflow falló.
+# Publishes the GitHub release of each tag, with the Trello extension built and zipped. On a
+# tag push it creates the release as a draft (unless it exists) with the version's section of
+# CHANGELOG.md, attaches the .zip and only then publishes it: the kits that update when they see
+# the new release already find it. By hand (workflow_dispatch), on a tag already pushed: for
+# instance, after this workflow failed.
 name: release
 
 on:
@@ -21,6 +21,10 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Two runs of one tag would each create their own draft.
+    concurrency:
+      group: release-${{ inputs.tag || github.ref_name }}
+      cancel-in-progress: false
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
@@ -41,7 +45,12 @@ jobs:
       - run: cd trello-extension/dist && zip -qr "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" .
       - name: Crea la release en borrador si aún no existe
         run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then exit 0; fi
+          # Only "release not found" means it is missing: any other failure of gh stops here.
+          if out=$(gh release view "$TAG" 2>&1); then exit 0; fi
+          if ! grep -q 'release not found' <<<"$out"; then
+            echo "$out"
+            exit 1
+          fi
           # The tag's own section of CHANGELOG.md, without its "## X.Y.Z - date" heading.
           awk -v v="${TAG#v}" '
             index($0, "## " v " ") == 1 { found = 1; next }
@@ -55,8 +64,14 @@ jobs:
           gh release create "$TAG" --draft --verify-tag --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
       - run: gh release upload "$TAG" "$RUNNER_TEMP/twb-trello-extension-$TAG.zip" --clobber
       # Only a draft: editing a published release could mark an older one as the latest again.
+      # It is the latest only when no published release has a higher version: the hub takes the
+      # latest release as the version to update to.
       - name: Publica la release, ya con el .zip
         run: |
-          if [ "$(gh release view "$TAG" --json isDraft -q .isDraft)" = true ]; then
-            gh release edit "$TAG" --draft=false
-          fi
+          draft=$(gh release view "$TAG" --json isDraft -q .isDraft)
+          if [ "$draft" != true ]; then exit 0; fi
+          published=$(gh release list --exclude-drafts --limit 1000 --json tagName -q '.[].tagName')
+          highest=$(printf '%s\n%s\n' "$published" "$TAG" | grep -v '^$' | sort -V | tail -n 1)
+          latest=false
+          if [ "$highest" = "$TAG" ]; then latest=true; fi
+          gh release edit "$TAG" --draft=false --latest="$latest"
