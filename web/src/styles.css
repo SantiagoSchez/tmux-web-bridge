@@ -3360,7 +3360,8 @@ textarea.text-input {
   color: var(--overlay1);
 }
 
-.changes-search {
+.changes-search,
+.changes-base {
   margin-bottom: 8px;
 }
 .changes-found {

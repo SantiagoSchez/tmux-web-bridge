@@ -795,20 +795,33 @@ export interface GitChange {
 export interface GitStat {
   /** What it counts: the whole branch on any branch but the main one, else what has no commit yet. */
   mode: GitDiffMode;
-  /** The main branch it is compared with (branch mode). */
+  /**
+   * The branch it is compared with (branch mode): the one the current branch was created
+   * from, as git noted it, else the repo's main branch.
+   */
   base?: string;
   added: number;
   removed: number;
   files: number;
 }
 
-/** GET /api/git/changes: the repo a pane is in and its changed files. */
+/**
+ * GET /api/git/changes: the repo a pane is in and its changed files. Its optional `base`
+ * parameter names a branch of origin to compare with in branch mode, instead of `defaultBase`.
+ */
 export interface GitChanges {
   root: string;
   branch: string;
   mode: GitDiffMode;
-  /** The main branch it is compared with, and the commit where they part (branch mode). */
+  /** The branch it is compared with, and the commit where they part (branch mode). */
   base?: { ref: string; commit: string };
+  /**
+   * What branch mode compares with when no branch is asked: the branch the current one
+   * was created from, as git noted it, else the repo's main branch.
+   */
+  defaultBase?: string;
+  /** The branches of origin the machine knows, without `origin/`, to compare with instead. */
+  branches: string[];
   files: GitChange[];
 }
 

@@ -23,6 +23,10 @@ export function openFile(origin: FileOrigin, path: string, line?: number): void 
 
 /** What «Ficheros cambiados» is filtered by: kept going into a diff and back, cleared when it opens again. */
 const changesQuery = signal('');
+/** The tab chosen in «Ficheros cambiados» (until then the hub picks one), kept like the filter. */
+const changesMode = signal<GitDiffMode | undefined>(undefined);
+/** The branch of origin «Toda la rama» compares with ('': the one the branch started from), kept like the filter. */
+const changesBase = signal('');
 
 /** Lower case and without accents, to search. */
 const fold = (s: string) =>
@@ -34,7 +38,9 @@ const fold = (s: string) =>
 export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   leaveTerminal();
   changesQuery.value = '';
-  fileViewer.value = { origin, stack: [{ kind: 'changes', mode }] };
+  changesMode.value = mode;
+  changesBase.value = '';
+  fileViewer.value = { origin, stack: [{ kind: 'changes' }] };
 }
 
 const push = pushFileScreen;
@@ -94,7 +100,7 @@ export function FileViewerSheet() {
   const screen = v.stack[v.stack.length - 1];
   const close = () => (fileViewer.value = null);
   const back = v.stack.length > 1 ? { label: 'Atrás', onClick: pop } : undefined;
-  if (screen.kind === 'changes') return <ChangesView origin={v.origin} initial={screen.mode} close={close} back={back} />;
+  if (screen.kind === 'changes') return <ChangesView origin={v.origin} close={close} back={back} />;
   if (screen.kind === 'diff') return <DiffView origin={v.origin} changes={screen.changes} file={screen.file} close={close} back={back} />;
   return <FileView key={screen.path} origin={v.origin} path={screen.path} line={screen.line} close={close} back={back} />;
 }
@@ -241,21 +247,26 @@ function CodeLines({ text, line }: { text: string; line?: number }) {
 
 const STATUS: Record<GitChange['status'], string> = { M: 'Modificado', A: 'Nuevo', D: 'Borrado', R: 'Renombrado', '?': 'Sin seguimiento', U: 'En conflicto' };
 
-function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; initial?: GitDiffMode; close: () => void; back: Back }) {
+function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () => void; back: Back }) {
   /** The tab chosen; until then the hub picks one, and the answer says which. */
-  const [asked, setAsked] = useState<GitDiffMode | undefined>(initial);
+  const asked = changesMode.value;
+  const picked = changesBase.value;
   const [changes, setChanges] = useState<GitChanges | null>(null);
+  /** What the branch choice offers, from the last answer: kept when a picked branch is gone, to pick another. */
+  const [choice, setChoice] = useState<Pick<GitChanges, 'defaultBase' | 'branches'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const mode = asked ?? changes?.mode ?? 'head';
   const load = () => {
     setLoading(true);
     setError(null);
-    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode: asked })}`)
+    fetch(`/api/git/changes?${qs({ host: origin.host, window: origin.window, pane: origin.pane, mode: asked, base: asked === 'branch' ? picked : undefined })}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-        setChanges(data as GitChanges);
+        const c = data as GitChanges;
+        setChanges(c);
+        setChoice({ defaultBase: c.defaultBase, branches: c.branches });
       })
       .catch((err: Error) => {
         setChanges(null);
@@ -263,8 +274,14 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
       })
       .finally(() => setLoading(false));
   };
-  useEffect(load, [asked]);
+  useEffect(load, [asked, picked]);
 
+  // The branches to pick besides the one it started from; a picked one that is gone stays, selected.
+  const others = (choice?.branches ?? []).filter((b) => `origin/${b}` !== choice?.defaultBase);
+  if (picked && !others.includes(picked)) others.push(picked);
+  /** What the list should compare with now: a list of another one is not shown as this one's. */
+  const want = picked ? `origin/${picked}` : choice?.defaultBase;
+  const stale = !!changes && (changes.mode !== mode || (mode === 'branch' && changes.base?.ref !== want));
   const subtitle = changes ? `${changes.branch}${changes.base && mode === 'branch' ? ` · desde ${changes.base.ref}` : ''} · ${changes.root}` : undefined;
   // Every word has to be in the path (or the old one of a rename), in any order: «comp dial» finds components/Dialogs.tsx.
   const words = fold(changesQuery.value).split(/\s+/).filter(Boolean);
@@ -282,7 +299,7 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
               ['branch', 'Toda la rama'],
             ] as const
           ).map(([k, label]) => (
-            <button key={k} role="radio" aria-checked={mode === k} class={mode === k ? 'on' : ''} onClick={() => setAsked(k)}>
+            <button key={k} role="radio" aria-checked={mode === k} class={mode === k ? 'on' : ''} onClick={() => (changesMode.value = k)}>
               {label}
             </button>
           ))}
@@ -291,6 +308,25 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
           <IconReload />
         </button>
       </div>
+      {mode === 'branch' && choice?.defaultBase && others.length > 0 && (
+        <select
+          class="text-input changes-base"
+          aria-label="Comparar con la rama"
+          value={picked}
+          onChange={(e) => {
+            // The tab too: «auto» is the whole branch here, and has to stay so when the list comes back.
+            changesMode.value = 'branch';
+            changesBase.value = e.currentTarget.value;
+          }}
+        >
+          <option value="">{choice.defaultBase}</option>
+          {others.map((b) => (
+            <option key={b} value={b}>
+              origin/{b}
+            </option>
+          ))}
+        </select>
+      )}
       {!!changes?.files.length && (
         <input
           class="text-input changes-search"
@@ -305,10 +341,10 @@ function ChangesView({ origin, initial, close, back }: { origin: FileOrigin; ini
       )}
       {error ? (
         <p class="settings-state">{error}</p>
-      ) : !changes || (loading && changes.mode !== mode) ? (
+      ) : !changes || (loading && stale) ? (
         <p class="dim pad">Cargando…</p>
       ) : !changes.files.length ? (
-        <p class="dim pad">{mode === 'head' ? 'Nada sin commit.' : 'Esta rama no tiene cambios respecto a la principal.'}</p>
+        <p class="dim pad">{mode === 'head' ? 'Nada sin commit.' : `Esta rama no tiene cambios respecto a ${changes.base?.ref ?? 'la principal'}.`}</p>
       ) : !files.length ? (
         <p class="dim pad">Ningún fichero cambiado coincide.</p>
       ) : (

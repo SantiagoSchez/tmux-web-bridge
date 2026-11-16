@@ -12,7 +12,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 ## Índice
 
 - [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
-- [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo.
+- [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo y con qué rama se comparan sus cambios.
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 
@@ -69,6 +69,31 @@ Una automatización que se ejecuta en un worktree nuevo guarda su rama base y ca
 <!-- capability: worktree-base; requirement: an-existing-branch-with-the-worktree-s-name-is-reused -->
 
 Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el remoto aunque la máquina aún no la haya traído, el worktree usa esa rama tal cual (si la máquina no puede traerla, no se lanza nada y se avisa), sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre; si la carpeta de su worktree se borró a mano, el worktree se vuelve a crear. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.
+
+### Con qué rama se comparan los cambios
+<!-- capability: worktree-base; requirement: a-branch-s-changes-are-compared-with-the-branch-it-started-from -->
+
+«Toda la rama», en «Ficheros cambiados», compara la rama de la ventana con la rama de la que salió, tal y como lo apuntó git al crearla en esa máquina. Un worktree creado desde `release/2.0` (por el panel, por el hook de Claude Code o a mano con `git checkout -b`) enseña solo sus propios cambios desde que salió de `origin/release/2.0`. Si salió de una rama local, compara con su copia en `origin` cuando existe y, si no, con la local. Usa la copia de las ramas que ya tiene la máquina, sin actualizarlas desde el remoto, y el subtítulo dice con cuál compara («desde origin/release/2.0»).
+
+### Ramas sin nota de creación
+<!-- capability: worktree-base; requirement: without-a-usable-creation-note-the-main-branch-is-used -->
+
+Si git no apuntó de dónde salió la rama, o apuntó algo que no sirve para comparar, el panel compara con la rama principal, como antes: `origin/HEAD` o, si no, `origin/main`, `origin/master`, `main` o `master`. Pasa con una rama creada desde `HEAD` o desde un commit, con una que salió de otra rama que ya no existe, cuando git ya no guarda la nota y cuando la rama se creó desde su propia copia en `origin`, como hace el panel al reutilizar una rama que ya estaba en el remoto. En la rama principal, «Ficheros cambiados» sigue abriéndose en «Sin commit».
+
+### El contador +/− de la ventana
+<!-- capability: worktree-base; requirement: the-counter-compares-with-the-branch-it-started-from -->
+
+El botón **+12 −3** de la cabecera de la ventana cuenta las líneas y los ficheros cambiados desde que la rama salió de la rama de la que partió, con las mismas reglas que «Toda la rama», y su etiqueta la nombra («desde origin/release/2.0»). Elegir otra rama en «Ficheros cambiados» no lo cambia.
+
+### Comparar con otra rama
+<!-- capability: worktree-base; requirement: the-changes-modal-compares-with-the-branch-the-user-picks -->
+
+En «Toda la rama», un desplegable debajo de las pestañas lista la rama de la que salió, seleccionada al abrir, y las demás ramas de `origin` que conoce la máquina. Al elegir otra, la lista enseña los ficheros cambiados desde que la rama se separó de esa rama de `origin`, y el diff de cada fichero compara con el mismo punto. Si la rama elegida ya no está en `origin` (por ejemplo, porque se borró al actualizar las ramas), el modal lo dice y deja elegir otra.
+
+### La rama elegida dura lo que el modal
+<!-- capability: worktree-base; requirement: the-picked-branch-lasts-while-the-modal-is-open -->
+
+La rama elegida se mantiene mientras «Ficheros cambiados» está abierto, también al entrar en el diff de un fichero y volver. Al cerrarlo y abrirlo otra vez, vuelve a comparar con la rama de la que salió.
 
 ## Límites de uso
 

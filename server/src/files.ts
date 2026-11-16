@@ -145,19 +145,52 @@ export function parseRange(header: string | undefined, size: number): FilePiece 
 
 // ---------------------------------------------------------------- git
 
-/** The repo's main branch to compare a branch with: origin's HEAD, else main or master. */
-const BASE_SCRIPT =
-  `base=''; for r in "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)" origin/main origin/master main master; do ` +
-  `[ -n "$r" ] || continue; if git rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1; then base=$(git merge-base HEAD "$r" 2>/dev/null) && { printf 'M\\t%s\\t%s\\n' "$r" "$base"; break; }; fi; done`;
+/**
+ * The branch the current one was created from, in $start: what git noted when it created
+ * it, the oldest entry of its reflog («branch: Created from origin/develop»). A remote
+ * branch of origin stays one; a local branch is origin's when origin has it. Empty when
+ * there is no note or it names HEAD, a commit, the branch's own copy on origin (the hub
+ * reusing a remote branch) or a branch the machine no longer has.
+ */
+const START_SCRIPT =
+  `b=$(git symbolic-ref --short -q HEAD); start=''; ` +
+  `if [ -n "$b" ]; then n=$(git reflog show --format=%gs "refs/heads/$b" -- 2>/dev/null | tail -n 1 | sed -n 's/^branch: Created from //p'); ` +
+  `case $n in refs/remotes/origin/*) n=origin/\${n#refs/remotes/origin/} ;; refs/heads/*) n=\${n#refs/heads/} ;; esac; ` +
+  `case $n in ''|HEAD|"$b"|"origin/$b") ;; ` +
+  `origin/*) git show-ref --verify -q "refs/remotes/$n" && start=$n ;; ` +
+  `*) if git show-ref --verify -q "refs/remotes/origin/$n"; then start=origin/$n; elif git show-ref --verify -q "refs/heads/$n"; then start=$n; fi ;; esac; fi`;
 
 /**
- * After BASE_SCRIPT: what the mode «auto» means, printed as X<tab>mode. The whole branch
- * on any branch but the main one (a worktree, a feature branch, a detached HEAD); what
- * has no commit yet on the main one, or when there is no main one to compare with.
+ * What the whole branch is compared with, printed as D<tab>ref: the branch the current one
+ * was created from, else the repo's main branch (origin's HEAD, else main or master); and
+ * the ref compared with and the commit where they part, as M<tab>ref<tab>commit, in $base.
+ * With `asked`, a branch of origin (a valid branch name, see branchNameProblem), the ref
+ * compared with is origin's copy of it, or the script prints GONE and stops when the
+ * machine does not have it.
  */
-const MODE_SCRIPT =
-  `b=$(git symbolic-ref --short -q HEAD); mode=head; ` +
-  `if [ -n "$base" ] && [ "$b" != "\${r#origin/}" ]; then mode=branch; fi; printf 'X\\t%s\\n' "$mode"`;
+function baseScript(asked?: string): string {
+  const compared = asked
+    ? `a=${quote(asked)}; if git show-ref --verify -q "refs/remotes/origin/$a" && base=$(git merge-base HEAD "refs/remotes/origin/$a" 2>/dev/null); ` +
+      `then printf 'M\\t%s\\t%s\\n' "origin/$a" "$base"; else echo GONE; exit 0; fi`
+    : `base=$dbase; [ -n "$base" ] && printf 'M\\t%s\\t%s\\n' "$d" "$base"; true`;
+  return (
+    `${START_SCRIPT}; d=''; dbase=''; ` +
+    `for r in "$start" "$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null)" origin/main origin/master main master; do ` +
+    `[ -n "$r" ] || continue; if git rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1; then dbase=$(git merge-base HEAD "$r" 2>/dev/null) && { d=$r; break; }; fi; done; ` +
+    `[ -n "$d" ] && printf 'D\\t%s\\n' "$d"; ${compared}`
+  );
+}
+
+/** The branches of origin the machine knows, one O<tab>name line each, without origin's HEAD. */
+const ORIGIN_BRANCHES_SCRIPT =
+  `git for-each-ref --format='%(refname:lstrip=3)' refs/remotes/origin | while IFS= read -r o; do [ "$o" = HEAD ] || printf 'O\\t%s\\n' "$o"; done`;
+
+/**
+ * After baseScript: what the mode «auto» means, printed as X<tab>mode. The whole branch
+ * on any branch but the one it would be compared with (a worktree, a feature branch, a
+ * detached HEAD); what has no commit yet on that one, or when there is none to compare with.
+ */
+const MODE_SCRIPT = `mode=head; if [ -n "$dbase" ] && [ "$b" != "\${d#origin/}" ]; then mode=branch; fi; printf 'X\\t%s\\n' "$mode"`;
 
 /** NUL-separated porcelain v1: XY path (and, renamed, the old path next). */
 function parseStatus(z: string): GitChange[] {
@@ -192,11 +225,15 @@ function parseNameStatus(z: string): GitChange[] {
   return out;
 }
 
-/** The changed files of the repo a pane is in: since HEAD (with untracked ones), or since the branch left the main one. */
-export async function gitChanges(host: HostMonitor, cwd: string, asked: GitDiffMode | 'auto'): Promise<GitChanges> {
+/**
+ * The changed files of the repo a pane is in: since HEAD (with untracked ones), or since the
+ * branch left the one it started from, or `base`, a branch of origin (branch mode only).
+ */
+export async function gitChanges(host: HostMonitor, cwd: string, asked: GitDiffMode | 'auto', base?: string): Promise<GitChanges> {
   const head =
     `cd ${shPath(cwd)} 2>/dev/null || { echo NODIR; exit 0; }; root=$(git rev-parse --show-toplevel 2>/dev/null) || { echo NOREPO; exit 0; }; cd "$root"; ` +
-    `printf 'R\\t%s\\n' "$root"; printf 'B\\t%s\\n' "$(git symbolic-ref --short -q HEAD || git rev-parse --short HEAD)"; ${BASE_SCRIPT}; ` +
+    `printf 'R\\t%s\\n' "$root"; printf 'B\\t%s\\n' "$(git symbolic-ref --short -q HEAD || git rev-parse --short HEAD)"; ` +
+    `${baseScript(asked === 'branch' ? base : undefined)}; ${ORIGIN_BRANCHES_SCRIPT}; ` +
     (asked === 'auto' ? `${MODE_SCRIPT}; ` : `mode=${asked}; `) +
     `printf 'F\\n'; `;
   const files =
@@ -206,20 +243,24 @@ export async function gitChanges(host: HostMonitor, cwd: string, asked: GitDiffM
   const text = out.toString('utf8');
   if (text.startsWith('NODIR')) throw new FileError('Esa carpeta ya no está', 404);
   if (text.startsWith('NOREPO')) throw new FileError('Ese panel no está en un repo de git', 404);
-  const cut = text.indexOf('F\n');
+  if (/^GONE$/m.test(text)) throw new FileError(`La rama ${base} ya no está en origin`, 404);
+  // A line of its own: a branch name can end in F too.
+  const cut = text.indexOf('\nF\n');
   const header = text.slice(0, cut).split('\n');
-  const body = text.slice(cut + 2);
-  const res: GitChanges = { root: '', branch: '', mode: asked === 'auto' ? 'head' : asked, files: [] };
+  const body = text.slice(cut + 3);
+  const res: GitChanges = { root: '', branch: '', mode: asked === 'auto' ? 'head' : asked, branches: [], files: [] };
   for (const line of header) {
     const [k, a, b] = line.split('\t');
     if (k === 'X') res.mode = a === 'branch' ? 'branch' : 'head';
     else if (k === 'R') res.root = a;
     else if (k === 'B') res.branch = a;
     else if (k === 'M') res.base = { ref: a, commit: b };
+    else if (k === 'D') res.defaultBase = a;
+    else if (k === 'O') res.branches.push(a);
   }
   if (res.mode === 'head') res.files = parseStatus(body);
   else {
-    if (!res.base) throw new FileError('No encuentro la rama principal (origin/HEAD, main o master) para comparar', 404);
+    if (!res.base) throw new FileError('No encuentro con qué rama comparar: ni la de la que salió ni la principal (origin/HEAD, main o master)', 404);
     const [tracked, untracked = ''] = body.split('\x1e');
     const seen = new Set<string>();
     res.files = parseNameStatus(tracked);
@@ -239,7 +280,7 @@ export async function gitStat(host: HostMonitor, cwd: string): Promise<GitStat |
   // Portable to macOS (no head -z, no xargs -r). Untracked text files count all their lines; binary ones (grep -I), none.
   const script =
     `cd ${shPath(cwd)} 2>/dev/null || exit 0; root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0; cd "$root"; echo REPO; ` +
-    `${BASE_SCRIPT}; ${MODE_SCRIPT}; if [ "$mode" = branch ]; then git diff --numstat "$base" 2>/dev/null; else git diff --numstat HEAD 2>/dev/null; fi; ` +
+    `${baseScript()}; ${MODE_SCRIPT}; if [ "$mode" = branch ]; then git diff --numstat "$base" 2>/dev/null; else git diff --numstat HEAD 2>/dev/null; fi; ` +
     `printf 'U\\t%s\\t' "$(git ls-files --others --exclude-standard | wc -l | tr -d ' ')"; ` +
     `git ls-files --others --exclude-standard -z | xargs -0 grep -Ihc '' 2>/dev/null | awk '{ s += $1 } END { print s + 0 }'`;
   const out = await host.exec.shell(script, 15_000);
