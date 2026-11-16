@@ -18,7 +18,7 @@ import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
 import { dictationEnded } from '../dictation';
-import { clientId, findWindow, hubSettings, scratchpadPasted, toast } from '../state';
+import { clientId, findWindow, hubSettings, terminalFocus, toast } from '../state';
 import type { FileOrigin } from '../fileViewer';
 import { appearance, TERM_THEMES } from '../theme';
 import { CONNECT_TIMEOUT_MS, hub, PROBE_MS } from '../ws';
@@ -1173,11 +1173,12 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     if (ended?.pane === pane.id && !isTouch) termRef.current?.focus();
   }, [ended]);
 
-  // The same after a scratchpad note is pasted here: Enter sends it instead of pressing the paste button again.
-  const pasted = scratchpadPasted.value;
+  // The same after a scratchpad note is pasted here (Enter sends it instead of pressing the paste button
+  // again), or the quick note closes over it.
+  const refocus = terminalFocus.value;
   useEffect(() => {
-    if (pasted?.pane === pane.id && !isTouch) termRef.current?.focus();
-  }, [pasted]);
+    if (refocus?.pane === pane.id && !isTouch) termRef.current?.focus();
+  }, [refocus]);
 
   useEffect(() => {
     const term = termRef.current;

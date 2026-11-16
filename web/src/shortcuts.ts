@@ -1,8 +1,35 @@
-import { effect } from '@preact/signals';
+import { effect, signal } from '@preact/signals';
+import { formatShortcut, matchesShortcut, panelShortcut, type PanelShortcutId, type Shortcut } from '../../shared/shortcuts';
 import type { HostInfo } from '../../shared/types';
-import { isDesktop, toggleScratchpads, toggleSidebar } from './prefs';
+import { isDesktop, prefs, toggleScratchpads, toggleSidebar } from './prefs';
 import { openWindow, route } from './router';
-import { findWindow, hosts, paletteOpen, toast } from './state';
+import { dialog, findWindow, hosts, paletteOpen, toast } from './state';
+
+/** A Mac (or an iPad with a keyboard): its default shortcuts use ⌘, and they are written with its symbols. */
+export const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+
+/** The shortcut whose new combination Ajustes › Atajos is waiting for: no shortcut acts meanwhile. */
+export const recordingShortcut = signal<string | null>(null);
+
+/** A panel shortcut on this device: the one changed in the settings, else its default. */
+export function shortcutOf(id: PanelShortcutId): Shortcut {
+  return panelShortcut(id, prefs.value.shortcuts[id], isMac);
+}
+
+/** A combination as this device's keyboard names it: «⇧⌘B» on a Mac, «Ctrl+Shift+B» elsewhere. */
+export function shortcutText(sc: Shortcut): string {
+  return formatShortcut(sc, isMac);
+}
+
+/** A panel shortcut as this device's keyboard names it, for buttons' titles. */
+export function shortcutLabel(id: PanelShortcutId): string {
+  return shortcutText(shortcutOf(id));
+}
+
+/** The combination a key event makes. */
+export function shortcutFromEvent(e: KeyboardEvent): Shortcut {
+  return { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey, code: e.code };
+}
 
 /**
  * The last window opened on each host, and the host of the last one overall. Kept in
@@ -47,38 +74,48 @@ function hostWindow(host: HostInfo): string | null {
 }
 
 /**
- * The same shortcuts as in tmux (with Ghostty): Ctrl+1..9 goes to window N of the
- * current space and Ctrl+Shift+1..9 to space N (its @space_num, as tmux-spaces.sh
- * numbers them), on the machine you are on (from the list, the last one you were
- * on). Ctrl+Shift+Alt+1..9 goes to machine N, in the list's order. Cmd+K (Mac)
- * opens the search to jump to any window by name. On a wide screen, Cmd+B (Mac) or
- * Ctrl+Shift+B folds the list into a strip or unfolds it (not Ctrl+B: tmux's prefix),
- * and Cmd+. or Ctrl+Shift+. does the same with the scratchpads on the right.
+ * The panel's shortcuts. The configurable ones (Ajustes › Atajos): search (⌘K / Ctrl+Shift+K)
+ * opens the search to jump to any window by name; fold the list (⌘B / Ctrl+Shift+B, not
+ * Ctrl+B: tmux's prefix) and fold the scratchpads (⌘. / Ctrl+Shift+.) fold or unfold them
+ * on a wide screen; quick note (⌃⌥N / Ctrl+Alt+N) opens the quick note dialog, closing the
+ * search, unless another dialog is open. The fixed
+ * ones are tmux's own (with Ghostty): Ctrl+1..9 goes to window N of the current space and
+ * Ctrl+Shift+1..9 to space N (its @space_num, as tmux-spaces.sh numbers them), on the
+ * machine you are on (from the list, the last one you were on); Ctrl+Shift+Alt+1..9 goes
+ * to machine N, in the list's order.
  *
  * They move the app like a click in the list, so the web terminal never switches
  * by itself behind the app's back. Capture phase on window: they fire before the
- * terminal (xterm.js) sees the key.
+ * terminal (xterm.js) sees the key. None acts while the settings wait for a new
+ * combination: this listener runs before the settings' own.
  */
 export function bindShortcuts(): () => void {
+  const claim = (e: KeyboardEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
   const onKey = (e: KeyboardEvent) => {
-    if (e.metaKey && !e.ctrlKey && !e.altKey && e.code === 'KeyK') {
-      e.preventDefault();
-      e.stopPropagation();
+    if (recordingShortcut.value) return;
+    if (matchesShortcut(e, shortcutOf('search'))) {
+      claim(e);
       paletteOpen.value = !paletteOpen.value;
       return;
     }
-    const foldKey = e.code === 'KeyB' && !e.altKey && (e.metaKey ? !e.ctrlKey && !e.shiftKey : e.ctrlKey && e.shiftKey);
-    if (foldKey && isDesktop.value) {
-      e.preventDefault();
-      e.stopPropagation();
+    if (matchesShortcut(e, shortcutOf('quickNote'))) {
+      claim(e);
+      if (dialog.value) return;
+      // Over the search it would open hidden under it.
+      paletteOpen.value = false;
+      dialog.value = { kind: 'quickNote' };
+      return;
+    }
+    if (isDesktop.value && matchesShortcut(e, shortcutOf('foldList'))) {
+      claim(e);
       toggleSidebar();
       return;
     }
-    // By key position, so Shift+. still counts where it types another character.
-    const padsKey = e.code === 'Period' && !e.altKey && (e.metaKey ? !e.ctrlKey && !e.shiftKey : e.ctrlKey && e.shiftKey);
-    if (padsKey && isDesktop.value) {
-      e.preventDefault();
-      e.stopPropagation();
+    if (isDesktop.value && matchesShortcut(e, shortcutOf('foldPads'))) {
+      claim(e);
       toggleScratchpads();
       return;
     }

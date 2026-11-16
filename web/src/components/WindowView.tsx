@@ -32,7 +32,7 @@ export function WindowView({ host, session, window, paneId }: Props) {
   }, [host.id, session.id, window.id, pane?.id]);
   useEffect(() => () => hub.setView(null), []);
 
-  // The dictation shortcut (Ajustes → Dictado): held, talk and let go; pressed, again to send. Capture
+  // The dictation shortcut (Ajustes › Atajos): held, talk and let go; pressed, again to send. Capture
   // phase, before xterm sees the key.
   const dictation = !!hubSettings.value?.dictation;
   useEffect(() => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { openWindow, route } from '../router';
 import { ALERT_STATES, hosts, isSolo, multiHost, paletteOpen, PRIO } from '../state';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 
 interface Entry {
   host: HostInfo;
@@ -68,7 +68,7 @@ function search(all: Entry[], query: string): Entry[] {
     .sort((a, b) => alert(b) - alert(a) || rank(a) - rank(b) || a.order - b.order);
 }
 
-/** Cmd+K: jump to any window of any machine by typing part of its name. */
+/** The search (⌘K / Ctrl+Shift+K by default): jump to any window of any machine by typing part of its name. */
 export function Palette() {
   if (!paletteOpen.value) return null;
   return <PaletteSheet />;

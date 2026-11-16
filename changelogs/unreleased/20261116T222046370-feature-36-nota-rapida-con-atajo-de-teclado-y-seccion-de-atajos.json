@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadida la nota rápida: ⌃⌥N en el Mac (Ctrl+Alt+N en Windows y Linux) abre un diálogo para escribir una nota y elegir su color con Alt+1…5 o Tab y las flechas, y Enter la guarda sin tocar el ratón. Nueva sección «Atajos» en Ajustes para cambiar los atajos de búsqueda, plegar, nota rápida y dictado; fuera del Mac, la búsqueda pasa a Ctrl+Shift+K",
+  "issue": "36",
+  "breaking": false,
+  "pr": "37"
+}

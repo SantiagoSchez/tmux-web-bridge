@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
 import { toast } from '../state';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin } from '../fileViewer';
 
 export { fileViewer, type FileOrigin };

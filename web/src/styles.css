@@ -230,12 +230,12 @@ h3 {
   background: var(--mantle);
   border-right: 1px solid var(--surface0);
 }
-/* The list folded (Cmd+B / Ctrl+Shift+B): a strip with the button that unfolds it and the
+/* The list folded (⌘B / Ctrl+Shift+B by default): a strip with the button that unfolds it and the
    panes waiting for you, one icon each, edged with their state's colour. */
 .layout.desktop.folded {
   --list-w: 56px;
 }
-/* The scratchpads folded (Cmd+. / Ctrl+Shift+.): a strip with the button that unfolds them and the five colours. */
+/* The scratchpads folded (⌘. / Ctrl+Shift+. by default): a strip with the button that unfolds them and the five colours. */
 .layout.desktop.pads-folded {
   --pads-w: 56px;
 }
@@ -2637,7 +2637,16 @@ body.dragging-host * {
   animation: pulse 1.2s ease-in-out infinite;
   cursor: progress;
 }
-/* The dictation shortcut, as keys. */
+/* Ajustes › Atajos: the fixed number shortcuts, one per line. */
+.shortcut-fixed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* A shortcut, as keys. */
 kbd.shortcut {
   display: inline-flex;
   align-items: center;
@@ -3544,6 +3553,19 @@ button.pads-origin:hover {
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.4;
+}
+/* The quick note dialog: its text, edged in the chosen colour, and the five colours below. */
+.quick-note-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quick-note-body .pads-input {
+  border-left: 3px solid var(--pad);
+}
+.quick-note-colors {
+  display: flex;
+  gap: 4px;
 }
 .pads-input:focus {
   outline: 2px solid var(--pad, var(--blue));

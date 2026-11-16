@@ -9,7 +9,8 @@ import { prefs, setPref } from '../prefs';
 import { hubSettings, sheet, toast } from '../state';
 import { hub } from '../ws';
 import { BaseBranchSelect } from './BaseBranch';
-import { Sheet, SkipPermissions } from './Dialogs';
+import { SkipPermissions } from './Dialogs';
+import { Sheet } from './Sheet';
 import { IconReload } from './icons';
 
 /** Lower case and without accents, to search. */
