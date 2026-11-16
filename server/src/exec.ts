@@ -114,6 +114,11 @@ export class TmuxExec {
     return `PATH="$PATH:${EXTRA_PATH}"; export PATH; exec ${shq(this.host.tmux)} -u ${[...this.host.socketArgs, ...tmuxArgs].map(shq).join(' ')}`;
   }
 
+  /** The shell words that run the host's tmux on its server: `<words> <args>` in a script on the host. */
+  get tmuxCommand(): string {
+    return [this.host.tmux, '-u', ...this.host.socketArgs].map(shq).join(' ');
+  }
+
   /** Command line that runs `tmux <args>` on the host (for node-pty). */
   spawnable(tmuxArgs: string[], tty: boolean): Spawnable {
     if (this.host.local) {

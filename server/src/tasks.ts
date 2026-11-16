@@ -100,7 +100,7 @@ const BRANCHES_TIMEOUT = 25_000;
 
 /** The branches of origin of a target's repository, after a fetch, to pick a new worktree's base. */
 export async function listBranches(host: HostMonitor, machine: MachineFolders, target: unknown): Promise<BranchList> {
-  return parseBranches(await host.exec.shell(branchesScript(await targetFolder(host, machine, target)), BRANCHES_TIMEOUT));
+  return parseBranches(await host.exec.shell(branchesScript(await targetFolder(host, machine, target), host.exec.tmuxCommand), BRANCHES_TIMEOUT));
 }
 
 /**
@@ -149,7 +149,7 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
 
   let prepared: Prepared | undefined;
   if (worktree) {
-    const out = await host.exec.shell(prepareScript(await targetFolder(host, machine, target), worktree, base), PREPARE_TIMEOUT);
+    const out = await host.exec.shell(prepareScript(await targetFolder(host, machine, target), worktree, base, host.exec.tmuxCommand), PREPARE_TIMEOUT);
     prepared = parsePrepare(out, worktree, base);
   }
   const cd = prepared?.kind === 'created' || prepared?.kind === 'reused' ? prepared.path : undefined;

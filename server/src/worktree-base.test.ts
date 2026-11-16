@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import type { BranchList } from '../../shared/types.js';
 import { branchNameProblem, pickBase, worktreeNameProblem } from '../../shared/worktree.js';
+import { shQuote } from './exec.js';
 import { branchesScript, parseBranches, parsePrepare, prelude, prepareScript, type Prepared } from './worktree-base.js';
 
 // ---------------------------------------------------------------- fixtures
@@ -61,9 +63,13 @@ async function withHome(fn: (home: string) => Promise<void>): Promise<void> {
 const KOALARNES = JSON.stringify({ git: { baseBranch: 'release/2.0', hotfixBaseBranch: 'master' }, layers: [] }, null, 2);
 const HOOK_SETTINGS = JSON.stringify({ hooks: { WorktreeCreate: [{ hooks: [{ type: 'command', command: 'ka hook worktree-create' }] }] } }, null, 2);
 
-const branches = (home: string, path: string) => sh(branchesScript(path), home).then(parseBranches);
-const prepare = (home: string, path: string, worktree: string, base: string, extra: Record<string, string> = {}): Promise<Prepared> =>
-  sh(prepareScript(path, worktree, base), home, extra).then((out) => parsePrepare(out, worktree, base));
+/** The machine's tmux for the scripts: none (a command that fails), so no test reaches a real tmux server. */
+const NO_TMUX = 'false';
+
+const branches = (home: string, path: string, extra: Record<string, string> = {}, tmux = NO_TMUX) =>
+  sh(branchesScript(path, tmux), home, extra).then(parseBranches);
+const prepare = (home: string, path: string, worktree: string, base: string, extra: Record<string, string> = {}, tmux = NO_TMUX): Promise<Prepared> =>
+  sh(prepareScript(path, worktree, base, tmux), home, extra).then((out) => parsePrepare(out, worktree, base));
 const sha = (home: string, repo: string, ref: string) => git(home, repo, 'rev-parse', ref);
 
 // ---------------------------------------------------------------- names and the branch offered first
@@ -120,6 +126,76 @@ test('an origin that does not answer: the branches the machine knows, and why th
     assert.match(list.fetchError ?? '', /no-esta\.git/);
     git(home, repo, 'remote', 'remove', 'origin');
     assert.deepEqual(await branches(home, repo), { repo: true, branches: [], fetchError: 'El repositorio no tiene remoto origin' });
+  }));
+
+/** A unix socket at `path`, standing for an SSH agent. */
+const socketAt = (path: string) => new Promise<Server>((resolve) => { const s = createServer(); s.listen(path, () => resolve(s)); });
+const close = (s: Server) => new Promise<void>((resolve) => s.close(() => resolve()));
+
+/**
+ * The machine as the hub reaches it over ssh, for the fetch's agent: origin over ssh to a
+ * fake `ssh` that writes down the SSH_AUTH_SOCK it got and is refused; a fake `ssh-add`
+ * that answers «has keys» only for `keys`; and a fake tmux whose server has `global` as
+ * SSH_AUTH_SOCK and whose one session ($1) has `session`.
+ */
+function agents(home: string, repo: string, keys: string, global: string, session: string): { extra: Record<string, string>; tmux: string; seen: () => string } {
+  const bin = join(home, 'bin');
+  const seen = join(home, 'seen');
+  const script = (name: string, body: string) => {
+    write(join(bin, name), `#!/bin/sh\n${body}\n`);
+    chmodSync(join(bin, name), 0o755);
+  };
+  script('ssh', `printf '%s' "\${SSH_AUTH_SOCK:-}" > ${shQuote(seen)}; echo 'Permission denied (publickey).' >&2; exit 255`);
+  script('ssh-add', `[ "$1" = -l ] && [ "\${SSH_AUTH_SOCK:-}" = ${shQuote(keys)} ] && exit 0; exit 2`);
+  script(
+    'tmux',
+    `case "$*" in ` +
+      `'show-environment -g SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(global)} ;; ` +
+      `'list-sessions -F #{session_id}') echo '$1' ;; ` +
+      `'show-environment -t $1 SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(session)} ;; ` +
+      `*) exit 1 ;; esac`,
+  );
+  git(home, repo, 'remote', 'set-url', 'origin', 'ssh://git.example.invalid/repo.git');
+  return { extra: { PATH: `${bin}:${process.env.PATH}`, GIT_SSH_COMMAND: join(bin, 'ssh') }, tmux: shQuote(join(bin, 'tmux')), seen: () => readFileSync(seen, 'utf8') };
+}
+
+test("without an agent with keys, the fetch takes the first one of the machine's tmux that has them", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const empty = await socketAt(join(home, 'empty.sock'));
+    const full = await socketAt(join(home, 'full.sock'));
+    try {
+      // The server's agent is a socket with no keys; the session's has them.
+      const m = agents(home, repo, join(home, 'full.sock'), join(home, 'empty.sock'), join(home, 'full.sock'));
+      const list = await branches(home, repo, m.extra, m.tmux);
+      assert.equal(m.seen(), join(home, 'full.sock'));
+      assert.ok(list.repo);
+      assert.match(list.fetchError ?? '', /Permission denied/);
+      await prepare(home, repo, 'wt', 'master', m.extra, m.tmux);
+      assert.equal(m.seen(), join(home, 'full.sock'));
+    } finally {
+      await close(empty);
+      await close(full);
+    }
+  }));
+
+test('an agent of its own with keys is kept, and with no agent anywhere the fetch goes on without one', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const own = await socketAt(join(home, 'own.sock'));
+    const full = await socketAt(join(home, 'full.sock'));
+    try {
+      const m = agents(home, repo, join(home, 'own.sock'), join(home, 'full.sock'), join(home, 'full.sock'));
+      await branches(home, repo, { ...m.extra, SSH_AUTH_SOCK: join(home, 'own.sock') }, m.tmux);
+      assert.equal(m.seen(), join(home, 'own.sock'));
+      // No agent answers with keys, and a path that is no socket is never taken.
+      const none = agents(home, repo, join(home, 'nadie.sock'), join(home, 'no-es-un-socket'), join(home, 'full.sock'));
+      await branches(home, repo, none.extra, none.tmux);
+      assert.equal(none.seen(), '');
+    } finally {
+      await close(own);
+      await close(full);
+    }
   }));
 
 test('a folder outside git has no branches', () =>
@@ -353,7 +429,7 @@ test('a command that takes too long is killed, with the child that hangs on the 
   try {
     git(home, home, 'init', '-q');
     // `sh` stands for git, and its `sleep` for the ssh it starts.
-    const script = prelude(home, 'exit 9') + `bounded 1 sh -c 'sleep 30 & echo $! > child; wait'; echo "r=$?"`;
+    const script = prelude(home, 'exit 9', NO_TMUX) + `bounded 1 sh -c 'sleep 30 & echo $! > child; wait'; echo "r=$?"`;
     assert.equal((await sh(script, home)).trim(), 'r=143');
     const child = Number(readFileSync(join(home, 'child'), 'utf8'));
     await new Promise((r) => setTimeout(r, 100));
