@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'preact/hooks';
-import { DEFAULT_DICTATION_SHORTCUT } from '../../../shared/dictation';
-import { formatShortcut, PANEL_SHORTCUTS, panelDefault, parseShortcut, serializeShortcut, shortcutClash, shortcutProblem, type PanelShortcutId, type Shortcut } from '../../../shared/shortcuts';
-import { shortcutFromEvent } from '../dictation';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { DEFAULT_DICTATION_SHORTCUT, dictationShortcutOf } from '../../../shared/dictation';
+import { PANEL_SHORTCUT_IDS, PANEL_SHORTCUTS, panelDefault, parseShortcut, serializeShortcut, shortcutClash, shortcutRefusal, type PanelShortcutId, type Shortcut } from '../../../shared/shortcuts';
 import { prefs, setPref } from '../prefs';
-import { isMac, recordingShortcut, shortcutOf } from '../shortcuts';
+import { isMac, recordingShortcut, shortcutFromEvent, shortcutOf, shortcutText } from '../shortcuts';
 import { hubSettings } from '../state';
 import { hub } from '../ws';
 
@@ -11,21 +10,20 @@ type Taken = { label: string; shortcut: Shortcut };
 
 const DICTATION = 'Dictado';
 
-/** The dictation shortcut the hub keeps, or its default. */
-function dictationOf(raw: string | undefined): Shortcut {
-  return parseShortcut(raw ?? '') ?? parseShortcut(DEFAULT_DICTATION_SHORTCUT)!;
-}
-
 /**
  * One shortcut: its combination, changed by pressing «Cambiar» and then the new one
- * (Escape cancels), and «Restablecer» while it is not the default. A combination that
- * would type, that the terminal or the number shortcuts use, or that `taken` holds is
- * refused with the reason. While it listens, no shortcut of the panel acts.
+ * (Escape cancels), and «Restablecer» back to `fallback` while it is another. A
+ * combination, or a default, that would type, that the terminal, the number shortcuts or
+ * the quick note's colours use, or that `taken` holds is refused with the reason. While
+ * it listens, no shortcut of the panel acts.
  */
-function ShortcutRow(props: { id: string; label: string; desc?: string; value: Shortcut; byDefault: boolean; taken: Taken[]; onChange: (v: string | null) => void; note?: string | null }) {
-  const { id, label, value, taken, onChange } = props;
+function ShortcutRow(props: { id: string; label: string; desc?: string; value: Shortcut; fallback: Shortcut; taken: Taken[]; onChange: (v: string | null) => void; note?: string | null }) {
+  const { id, label, value, fallback } = props;
   const listening = recordingShortcut.value === id;
   const [problem, setProblem] = useState<string | null>(null);
+  // Read by the listener, so a re-render (a hub broadcast) does not restart it.
+  const latest = useRef(props);
+  latest.current = props;
   useEffect(() => {
     if (!listening) return;
     const onKey = (e: KeyboardEvent) => {
@@ -37,25 +35,35 @@ function ShortcutRow(props: { id: string; label: string; desc?: string; value: S
         return;
       }
       const sc = shortcutFromEvent(e);
-      const clash = shortcutClash(sc, taken);
-      const why = parseShortcut(serializeShortcut(sc)) ? (clash ? `ya es «${clash}».` : null) : (shortcutProblem(sc) ?? 'Esa tecla no se puede usar.');
-      setProblem(why ? `${formatShortcut(sc, isMac)}: ${why}` : null);
+      const why = shortcutRefusal(sc, latest.current.taken);
+      setProblem(why && `${shortcutText(sc)}: ${why}`);
       if (why) return;
-      onChange(serializeShortcut(sc));
+      latest.current.onChange(serializeShortcut(sc));
       recordingShortcut.value = null;
     };
     globalThis.addEventListener('keydown', onKey, { capture: true });
     return () => {
       globalThis.removeEventListener('keydown', onKey, { capture: true });
       if (recordingShortcut.value === id) recordingShortcut.value = null;
+      setProblem(null);
     };
-  }, [listening, taken]);
+  }, [listening]);
+  // A refused «Restablecer» is explained while the reason holds: once the other shortcut moves, it goes.
+  const [resetTried, setResetTried] = useState(false);
+  const resetWhy = shortcutRefusal(fallback, props.taken);
+  const reset = () => {
+    setProblem(null);
+    setResetTried(!!resetWhy);
+    if (!resetWhy) props.onChange(null);
+  };
+  const byDefault = serializeShortcut(value) === serializeShortcut(fallback);
+  const resetProblem = resetTried && !byDefault && resetWhy && `«Restablecer» no se puede: ${shortcutText(fallback)} ${resetWhy}`;
   return (
     <section class="setting shortcut-row">
       <h3>{label}</h3>
       {props.desc && <p class="dim small">{props.desc}</p>}
       <div class="row-btns">
-        <kbd class="shortcut">{listening ? 'Pulsa la combinación…' : formatShortcut(value, isMac)}</kbd>
+        <kbd class="shortcut">{listening ? 'Pulsa la combinación…' : shortcutText(value)}</kbd>
         {listening ? (
           <button class="btn" onClick={() => (recordingShortcut.value = null)}>
             Cancelar
@@ -65,25 +73,20 @@ function ShortcutRow(props: { id: string; label: string; desc?: string; value: S
             class="btn"
             onClick={() => {
               setProblem(null);
+              setResetTried(false);
               recordingShortcut.value = id;
             }}
           >
             Cambiar
           </button>
         )}
-        {!listening && !props.byDefault && (
-          <button
-            class="btn"
-            onClick={() => {
-              setProblem(null);
-              onChange(null);
-            }}
-          >
+        {!listening && !byDefault && (
+          <button class="btn" onClick={reset}>
             Restablecer
           </button>
         )}
       </div>
-      {listening && problem && <p class="settings-state small">{problem}</p>}
+      {(problem || resetProblem) && <p class="settings-state small">{problem || resetProblem}</p>}
       {props.note && <p class="settings-state small">{props.note}</p>}
     </section>
   );
@@ -103,9 +106,9 @@ const FIXED = [
 export function ShortcutSettings() {
   const s = hubSettings.value;
   const saved = prefs.value.shortcuts;
-  const panel = PANEL_SHORTCUTS.map((def) => ({ ...def, shortcut: shortcutOf(def.id) }));
-  const dictation = dictationOf(s?.dictationShortcut);
-  const all: (Taken & { id: string })[] = [...panel.map((p) => ({ id: p.id, label: p.label, shortcut: p.shortcut })), { id: 'dictation', label: DICTATION, shortcut: dictation }];
+  const panel = PANEL_SHORTCUT_IDS.map((id) => ({ id, label: PANEL_SHORTCUTS[id].label, shortcut: shortcutOf(id) }));
+  const dictation = dictationShortcutOf(s?.dictationShortcut);
+  const all: (Taken & { id: string })[] = [...panel, { id: 'dictation', label: DICTATION, shortcut: dictation }];
   const others = (id: string) => all.filter((t) => t.id !== id);
   const setPanel = (id: PanelShortcutId, v: string | null) => {
     const next = { ...saved };
@@ -113,10 +116,7 @@ export function ShortcutSettings() {
     else next[id] = v;
     setPref('shortcuts', next);
   };
-  const dictationClash = shortcutClash(
-    dictation,
-    panel.map((p) => ({ label: p.label, shortcut: p.shortcut })),
-  );
+  const dictationClash = shortcutClash(dictation, panel);
   return (
     <>
       <p class="settings-scope dim small">Se guardan en este dispositivo, salvo el del dictado, que vale para todos.</p>
@@ -126,7 +126,7 @@ export function ShortcutSettings() {
           id={p.id}
           label={p.label}
           value={p.shortcut}
-          byDefault={saved[p.id] === undefined || serializeShortcut(p.shortcut) === panelDefault(p.id, isMac)}
+          fallback={parseShortcut(panelDefault(p.id, isMac))!}
           taken={others(p.id)}
           onChange={(v) => setPanel(p.id, v)}
         />
@@ -137,7 +137,7 @@ export function ShortcutSettings() {
           label={DICTATION}
           desc={`Vale para todos tus dispositivos.${s.dictation ? '' : ' El dictado está desactivado (Ajustes › Dictado).'}`}
           value={dictation}
-          byDefault={serializeShortcut(dictation) === DEFAULT_DICTATION_SHORTCUT}
+          fallback={dictationShortcutOf(DEFAULT_DICTATION_SHORTCUT)}
           taken={others('dictation')}
           onChange={(v) => hub.send({ t: 'settings', settings: { dictationShortcut: v ?? DEFAULT_DICTATION_SHORTCUT } })}
           note={dictationClash && `En este dispositivo coincide con «${dictationClash}», que es el que actúa.`}

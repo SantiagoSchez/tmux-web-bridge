@@ -4,13 +4,13 @@ import { auth, logout } from '../auth';
 import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { currentSubscription } from '../push';
-import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, type DictationButton } from '../../../shared/dictation';
-import { parseShortcut } from '../../../shared/shortcuts';
-import { formatShortcut, notReady } from '../dictation';
+import { DICTATION_TIMEOUTS, type DictationButton } from '../../../shared/dictation';
+import { shortcutText } from '../shortcuts';
+import { dictationShortcut, notReady } from '../dictation';
 import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 import { ExtTokenSettings, TrelloMachines } from './ExtToken';
 import { TrelloAccountSettings } from './Trello';
 import { AutomationSettings } from './Automations';
@@ -375,7 +375,6 @@ const MIC_MODES: [DictationButton, string][] = [
   ['toggle', 'Tocar y volver a tocar'],
 ];
 
-
 const LLM_STATE = { unset: 'sin configurar en el servidor', ok: 'responde', down: 'no responde' } as const;
 
 /** Dictation, for the whole hub: on or off, how the transcript is cleaned up, and the glossary. */
@@ -425,7 +424,7 @@ function DictationSettings() {
           <section class="setting">
             <h3>Atajo de teclado</h3>
             <p class="dim small">
-              <kbd class="shortcut">{formatShortcut(parseShortcut(s.dictationShortcut) ?? parseShortcut(DEFAULT_DICTATION_SHORTCUT)!)}</kbd> Mantenlo pulsado mientras hablas y
+              <kbd class="shortcut">{shortcutText(dictationShortcut())}</kbd> Mantenlo pulsado mientras hablas y
               suéltalo para enviar, o púlsalo una vez para empezar y otra para enviar. Esc descarta lo grabado.
             </p>
             <div class="row-btns">

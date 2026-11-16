@@ -7,7 +7,7 @@ import { isDesktop, prefs, setPref, toggleScratchpads } from '../prefs';
 import { isMac, shortcutLabel } from '../shortcuts';
 import { openWindow, route } from '../router';
 import { findWindow, hosts, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
 /**
@@ -373,11 +373,17 @@ export function QuickNoteDialog({ close }: { close: () => void }) {
     before.current = document.activeElement;
     field.current?.focus();
   }, []);
+  const closed = useRef(false);
+  // Once: a note the hub answers after Escape closed the dialog must not close it again.
   const done = () => {
+    if (closed.current) return;
+    closed.current = true;
     close();
     // After the dialog goes, so the focus lands on what was under it.
+    // Opened from the search, what had the focus went with it: the terminal takes it.
     const back = before.current;
-    requestAnimationFrame(() => back instanceof HTMLElement && back.focus());
+    const target = back instanceof HTMLElement && back.isConnected && back !== document.body ? back : document.querySelector<HTMLElement>('.xterm-helper-textarea');
+    requestAnimationFrame(() => target?.focus());
   };
   const choose = (i: number, focus = false) => {
     setPad(PADS[i].at);
@@ -445,8 +451,10 @@ export function QuickNoteDialog({ close }: { close: () => void }) {
                 }
               }}
             >
-              <span class="pads-dot" />
-              <span class="pads-count">{i + 1}</span>
+              <span class="pads-dot" aria-hidden="true" />
+              <span class="pads-count" aria-hidden="true">
+                {i + 1}
+              </span>
             </button>
           ))}
         </div>

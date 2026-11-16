@@ -174,5 +174,5 @@ export const drawerOpen = signal(false);
 export const scratchpadsOpen = signal(false);
 /** The pane a scratchpad note was just pasted into: on a computer its terminal takes the keyboard back. */
 export const scratchpadPasted = signal<{ pane: string; at: number } | null>(null);
-/** The Cmd+K search, to jump to any window. */
+/** The search (⌘K / Ctrl+Shift+K, changed in Ajustes › Atajos), to jump to any window. */
 export const paletteOpen = signal(false);

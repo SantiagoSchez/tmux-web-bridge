@@ -4,13 +4,19 @@
 
 ### Requirement: A quick note from the keyboard
 
-The quick note shortcut SHALL open a dialog with the focus in its text field and the scratchpad shown on the device chosen. Alt+1 to Alt+5 SHALL choose a scratchpad in screen order (blue, green, yellow, orange, purple), and Tab SHALL reach the colours, which the arrow keys move between. Enter SHALL add the note and close the dialog, Shift+Enter SHALL start a new line and Escape SHALL close it without adding anything; the focus SHALL then return where it was.
+The quick note shortcut SHALL open a dialog, closing the search if it is open, with the focus in its text field and the scratchpad shown on the device chosen. Alt+1 to Alt+5 SHALL choose a scratchpad in screen order (blue, green, yellow, orange, purple), and Tab SHALL reach the colours, which the arrow keys move between. Enter SHALL add the note and close the dialog, Shift+Enter SHALL start a new line and Escape SHALL close it without adding anything; the focus SHALL then return where it was.
 
 #### Scenario: Writing a note without the mouse
 
 - **GIVEN** the panel showing window 1 «claude» of «Local · demo», the blue scratchpad shown and the terminal with the focus
 - **WHEN** the owner presses the quick note shortcut, types «Revisar el test de login», presses Alt+4 and Enter
 - **THEN** the dialog closes, the note is the last of the orange scratchpad with the line «Local · demo · 1 claude», the orange scratchpad is shown and the terminal has the focus again
+
+#### Scenario: From the search
+
+- **GIVEN** the search open
+- **WHEN** the owner presses the quick note shortcut
+- **THEN** the search closes and the quick note dialog opens with the focus in its text field
 
 #### Scenario: Choosing the colour with Tab
 

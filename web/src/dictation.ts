@@ -1,7 +1,7 @@
 import { signal } from '@preact/signals';
-import { DEFAULT_DICTATION_SHORTCUT } from '../../shared/dictation';
-import { formatShortcut as format, matchesShortcut, parseShortcut, type Shortcut } from '../../shared/shortcuts';
-import { isMac, recordingShortcut } from './shortcuts';
+import { dictationShortcutOf } from '../../shared/dictation';
+import { matchesShortcut, type Shortcut } from '../../shared/shortcuts';
+import { recordingShortcut } from './shortcuts';
 import type { DictateResult, DictationInfo } from '../../shared/types';
 import { isTouch } from './prefs';
 import { dictationInfo, hubSettings, toast } from './state';
@@ -141,18 +141,9 @@ async function finish(rec: MediaRecorder, host: string, pane: string): Promise<v
   }
 }
 
-/** The hub's shortcut (Ajustes → Dictado), or the default one. */
+/** The hub's shortcut (Ajustes › Atajos), or the default one. */
 export function dictationShortcut(): Shortcut {
-  return parseShortcut(hubSettings.value?.dictationShortcut ?? '') ?? parseShortcut(DEFAULT_DICTATION_SHORTCUT)!;
-}
-
-export function shortcutFromEvent(e: KeyboardEvent): Shortcut {
-  return { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey, code: e.code };
-}
-
-/** "⌃⇧Espacio" on a Mac, "Ctrl+Shift+Espacio" elsewhere. */
-export function formatShortcut(sc: Shortcut): string {
-  return format(sc, isMac);
+  return dictationShortcutOf(hubSettings.value?.dictationShortcut);
 }
 
 /** Held longer than this, the shortcut is push-to-talk (releasing sends); shorter, a press that starts and another that sends. */

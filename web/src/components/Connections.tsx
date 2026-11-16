@@ -2,7 +2,7 @@ import { auth } from '../auth';
 import { useEffect, useState } from 'preact/hooks';
 import type { ConnectionInfo } from '../../../shared/types';
 import { clientId, connections, findWindow, hosts, sheet } from '../state';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 
 function browser(ua = ''): string {
   const os = /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '';

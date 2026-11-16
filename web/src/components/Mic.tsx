@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { cancelDictation, dictating, dictationShortcut, formatShortcut, startDictation, stopDictation, toggleDictation } from '../dictation';
+import { cancelDictation, dictating, dictationShortcut, startDictation, stopDictation, toggleDictation } from '../dictation';
+import { shortcutText } from '../shortcuts';
 import { hubSettings, toast } from '../state';
 
 function clock(ms: number): string {
@@ -32,7 +33,7 @@ export function MicButton(props: Props) {
   }, [d?.phase]);
   const s = hubSettings.value;
   if (!s?.dictation) return null;
-  const shortcut = formatShortcut(dictationShortcut());
+  const shortcut = shortcutText(dictationShortcut());
 
   if (d?.phase === 'sending') {
     return (

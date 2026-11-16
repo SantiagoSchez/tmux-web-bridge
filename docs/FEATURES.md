@@ -133,7 +133,7 @@ Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Ent
 ### Nota rápida desde el teclado
 <!-- capability: scratchpads; requirement: a-quick-note-from-the-keyboard -->
 
-Sin tocar el ratón, el atajo de la nota rápida (⌃⌥N en el Mac y Ctrl+Alt+N en los demás ordenadores, salvo que se cambie en Ajustes › Atajos) abre un diálogo con el cursor en el texto y elegido el scratchpad que está a la vista. Alt+1 a Alt+5 eligen el color en el orden de la pantalla (azul, verde, amarillo, naranja y morado); Tab lleva a los colores y las flechas pasan de uno a otro. Enter añade la nota y cierra el diálogo, Mayús+Enter salta de línea y Escape lo cierra sin añadir nada. Al cerrarse, el teclado vuelve a donde estaba, por ejemplo al terminal.
+Sin tocar el ratón, el atajo de la nota rápida (⌃⌥N en el Mac y Ctrl+Alt+N en los demás ordenadores, salvo que se cambie en Ajustes › Atajos) abre un diálogo con el cursor en el texto y elegido el scratchpad que está a la vista. Si la búsqueda está abierta, se cierra para dejarle sitio. Alt+1 a Alt+5 eligen el color en el orden de la pantalla (azul, verde, amarillo, naranja y morado); Tab lleva a los colores y las flechas pasan de uno a otro. Enter añade la nota y cierra el diálogo, Mayús+Enter salta de línea y Escape lo cierra sin añadir nada. Al cerrarse, el teclado vuelve a donde estaba (al terminal si venía de la búsqueda).
 
 ### La nota rápida se añade como cualquier otra
 <!-- capability: scratchpads; requirement: a-quick-note-is-added-like-any-other -->
@@ -235,4 +235,7 @@ La sección rechaza una combinación, dice por qué y deja la anterior cuando:
 - escribiría en el terminal: no lleva Ctrl, Alt ni Cmd (F1–F12 sí valen solas);
 - es Ctrl con una letra y nada más, que es del terminal (Ctrl+C, Ctrl+R…);
 - es Ctrl con un número, reservado a los atajos de número;
+- es Alt con un número del 1 al 5 y nada más, que elige el color en la nota rápida;
 - otro atajo del panel ya la usa en ese dispositivo, incluido el del dictado.
+
+«Restablecer» se rechaza igual cuando otro atajo ya usa la combinación por defecto: el aviso dice cuál y desaparece cuando ese atajo cambia.

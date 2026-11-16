@@ -230,7 +230,7 @@ h3 {
   background: var(--mantle);
   border-right: 1px solid var(--surface0);
 }
-/* The list folded (Cmd+B / Ctrl+Shift+B): a strip with the button that unfolds it and the
+/* The list folded (⌘B / Ctrl+Shift+B by default): a strip with the button that unfolds it and the
    panes waiting for you, one icon each, edged with their state's colour. */
 .layout.desktop.folded {
   --list-w: 56px;

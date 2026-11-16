@@ -42,32 +42,33 @@ export function serializeShortcut(sc: Shortcut): string {
 /**
  * Why a combination cannot be a shortcut, or null when it can. Without Ctrl, Alt or Cmd
  * (F1–F12 aside) it would type into the pane; Ctrl+letter is the terminal's (Ctrl+C,
- * Ctrl+R…); Ctrl(+Shift)(+Alt)+1…9 are the panel's number shortcuts. A clash with another
- * configurable shortcut is `shortcutClash`'s.
+ * Ctrl+R…); Ctrl(+Shift)(+Alt)+1…9 are the panel's number shortcuts; Alt+1…5 choose the
+ * colour in the quick note. A clash with another configurable shortcut is `shortcutClash`'s.
  */
 export function shortcutProblem(sc: Shortcut): string | null {
   const fn = /^F\d+$/.test(sc.code);
   if (!sc.ctrl && !sc.alt && !sc.meta && !fn) return 'Necesita Ctrl, Alt o Cmd (o una tecla F1–F12): si no, se escribiría en el terminal.';
   if (sc.ctrl && !sc.alt && !sc.shift && !sc.meta && /^Key/.test(sc.code)) return 'Ctrl con una letra es del terminal (Ctrl+C, Ctrl+R…): añade Shift o Alt.';
   if (sc.ctrl && !sc.meta && /^Digit[1-9]$/.test(sc.code)) return 'Ctrl con un número ya es de la app (ir a una ventana, un espacio o una máquina).';
+  if (sc.alt && !sc.ctrl && !sc.shift && !sc.meta && /^Digit[1-5]$/.test(sc.code)) return 'Alt con un número del 1 al 5 elige el color en la nota rápida.';
   return null;
 }
 
-/** The shortcuts each device can change, kept in its preferences. */
-export type PanelShortcutId = 'search' | 'foldList' | 'foldPads' | 'quickNote';
+/** The shortcuts each device can change, kept in its preferences, in the order the settings list them. */
+export const PANEL_SHORTCUT_IDS = ['search', 'foldList', 'foldPads', 'quickNote'] as const;
+export type PanelShortcutId = (typeof PANEL_SHORTCUT_IDS)[number];
 
-/** Each configurable panel shortcut, in the order the settings list them, with its defaults on a Mac and elsewhere. */
-export const PANEL_SHORTCUTS: readonly { id: PanelShortcutId; label: string; mac: string; other: string }[] = [
-  { id: 'search', label: 'Buscar una ventana', mac: 'meta+KeyK', other: 'ctrl+shift+KeyK' },
-  { id: 'foldList', label: 'Plegar la lista', mac: 'meta+KeyB', other: 'ctrl+shift+KeyB' },
-  { id: 'foldPads', label: 'Plegar los scratchpads', mac: 'meta+Period', other: 'ctrl+shift+Period' },
-  { id: 'quickNote', label: 'Nota rápida', mac: 'ctrl+alt+KeyN', other: 'ctrl+alt+KeyN' },
-];
+/** Each configurable panel shortcut: its name in the settings and its defaults on a Mac and elsewhere. */
+export const PANEL_SHORTCUTS: Readonly<Record<PanelShortcutId, { label: string; mac: string; other: string }>> = {
+  search: { label: 'Buscar una ventana', mac: 'meta+KeyK', other: 'ctrl+shift+KeyK' },
+  foldList: { label: 'Plegar la lista', mac: 'meta+KeyB', other: 'ctrl+shift+KeyB' },
+  foldPads: { label: 'Plegar los scratchpads', mac: 'meta+Period', other: 'ctrl+shift+Period' },
+  quickNote: { label: 'Nota rápida', mac: 'ctrl+alt+KeyN', other: 'ctrl+alt+KeyN' },
+};
 
 /** The default combination of a panel shortcut on a Mac or another computer. */
 export function panelDefault(id: PanelShortcutId, mac: boolean): string {
-  const def = PANEL_SHORTCUTS.find((s) => s.id === id)!;
-  return mac ? def.mac : def.other;
+  return mac ? PANEL_SHORTCUTS[id].mac : PANEL_SHORTCUTS[id].other;
 }
 
 /** A panel shortcut: the saved combination when it is a valid one, else the default of the device's kind. */
@@ -84,6 +85,17 @@ export function matchesShortcut(e: { code: string; ctrlKey: boolean; altKey: boo
 export function shortcutClash(sc: Shortcut, taken: readonly { label: string; shortcut: Shortcut }[]): string | null {
   const key = serializeShortcut(sc);
   return taken.find((t) => serializeShortcut(t.shortcut) === key)?.label ?? null;
+}
+
+/**
+ * Why a combination cannot be set, as a new one or by «Restablecer»: a combination
+ * `parseShortcut` refuses (with `shortcutProblem`'s reason), or one `taken` already uses.
+ * Null when it can.
+ */
+export function shortcutRefusal(sc: Shortcut, taken: readonly { label: string; shortcut: Shortcut }[]): string | null {
+  if (!parseShortcut(serializeShortcut(sc))) return shortcutProblem(sc) ?? 'Esa tecla no se puede usar.';
+  const clash = shortcutClash(sc, taken);
+  return clash ? `ya es «${clash}».` : null;
 }
 
 const KEY_NAMES: Record<string, string> = {

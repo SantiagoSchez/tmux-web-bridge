@@ -54,7 +54,7 @@ The settings SHALL have an «Atajos» section that lists every shortcut of the p
 
 - **GIVEN** the «Atajos» section open on a Mac
 - **WHEN** the owner presses «Cambiar» next to the quick note and then ⌘⇧U
-- **THEN** the row shows ⌘⇧U, and from then on ⌘⇧U opens the quick note and ⌃⌥N does nothing
+- **THEN** the row shows ⇧⌘U, the Mac's order of the symbols, and from then on ⌘⇧U opens the quick note and ⌃⌥N does nothing
 
 #### Scenario: Back to the default
 
@@ -102,7 +102,7 @@ The search, fold and quick note shortcuts SHALL be kept on each device, so one c
 
 ### Requirement: Combinations that are refused
 
-A new combination SHALL be refused, with the reason shown in the section and the previous combination kept, when it would type into the terminal (no Ctrl, Alt or Cmd, F1–F12 aside), when it is Ctrl with a letter and nothing else (the terminal's own), when it is Ctrl with a number (the families of the panel), or when another shortcut of the panel already uses it on this device, the dictation shortcut included.
+A new combination SHALL be refused, with the reason shown and the previous one kept, when it would type into the terminal (no Ctrl, Alt or Cmd, F1–F12 aside), is Ctrl with only a letter (the terminal's) or with a number (the panel's families), is Alt with only 1 to 5 (the quick note's colours), or another shortcut of the panel uses it on this device, the dictation's included. «Restablecer» SHALL be refused the same way when another shortcut uses the default.
 
 #### Scenario: Clash with another shortcut
 
@@ -121,3 +121,15 @@ A new combination SHALL be refused, with the reason shown in the section and the
 - **GIVEN** the dictation shortcut Ctrl+Shift+Space
 - **WHEN** the owner sets the search to Ctrl+Shift+Space
 - **THEN** it is refused because the dictation already uses it
+
+#### Scenario: A quick note colour
+
+- **GIVEN** the «Atajos» section waiting for the search's new combination
+- **WHEN** the owner presses Alt+2
+- **THEN** it is refused because Alt+2 chooses the green scratchpad in the quick note
+
+#### Scenario: Restoring a default another shortcut took
+
+- **GIVEN** a Mac with fold the list changed to ⌘J and the quick note changed to ⌘B
+- **WHEN** the owner presses «Restablecer» on fold the list
+- **THEN** it is refused because ⌘B is the quick note's, and fold the list keeps ⌘J

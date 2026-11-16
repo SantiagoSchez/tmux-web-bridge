@@ -30,7 +30,7 @@ Adding a scratchpad note takes the mouse: click the field at the foot of the scr
 
 ## Impact
 
-- **Layers**: `web` (`web/src/shortcuts.ts`, `web/src/prefs.ts`, `web/src/dictation.ts`, `web/src/state.ts`, `web/src/components/Settings.tsx`, `Dialogs.tsx`, `Scratchpads.tsx`, `Header.tsx`, `Rail.tsx`, `web/src/styles.css`) and `server` (`shared/`, where the shortcut logic moves from `shared/dictation.ts` to a new `shared/shortcuts.ts`, `server/src/settings.ts` and its tests). The `trello-extension` and `host-kit` layers are untouched.
+- **Layers**: `web` (`web/src/shortcuts.ts`, `web/src/prefs.ts`, `web/src/dictation.ts`, `web/src/state.ts`, `web/src/components/Settings.tsx`, the new `ShortcutSettings.tsx` and `Sheet.tsx`, `Dialogs.tsx`, `Scratchpads.tsx`, `Mic.tsx`, the other users of `Sheet`, `Header.tsx`, `Rail.tsx`, `web/src/styles.css`) and `server` (`shared/`, where the shortcut logic moves from `shared/dictation.ts` to a new `shared/shortcuts.ts`, `server/src/settings.ts` and its tests). The `trello-extension` and `host-kit` layers are untouched.
 - **External services**: none.
 - **Data**: the browser's device preferences gain an optional field; a device without it uses the defaults. Nothing to migrate in the hub.
 

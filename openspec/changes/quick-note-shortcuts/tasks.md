@@ -80,6 +80,21 @@
 
 - [ ] 11.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
 
+## 12. Review round 1 (PR #37)
+
+- [x] 12.1 Write failing tests in `server/src/shortcut.test.ts`: `shortcutRefusal` refuses a «Restablecer» whose default another shortcut took, a combination that would type and Alt+1…5 with their reasons, and accepts a free one; the defaults of each kind of device clash neither with each other nor with the dictation's, and all are valid; `dictationShortcutOf` gives the saved combination, and the default for a missing or invalid one. See them fail.
+  - Seen failing (missing exports PANEL_SHORTCUT_IDS, shortcutRefusal, dictationShortcutOf).
+- [x] 12.2 `shared/shortcuts.ts`: `shortcutRefusal`, the Alt+1…5 rule in `shortcutProblem`, `PANEL_SHORTCUT_IDS` and `PANEL_SHORTCUTS` as a `Record`; `shared/dictation.ts`: `dictationShortcutOf`. Verify 12.1 passes.
+  - Done; shortcut.test.ts 12 of 12 pass.
+- [x] 12.3 `ShortcutSettings.tsx`: the recorder and «Restablecer» use `shortcutRefusal`, a refused «Restablecer» says why under its row, and the listener depends only on `listening`. Move `shortcutFromEvent` and the formatting wrapper (`shortcutText`) to `web/src/shortcuts.ts`, and use `dictationShortcutOf` in `web/src/dictation.ts`, `ShortcutSettings.tsx` and `Settings.tsx`.
+  - Done: ShortcutRow uses shortcutRefusal for both, a refused «Restablecer» says why under the row, the listener depends on listening only (taken and onChange from a ref); shortcutFromEvent and shortcutText live in web/src/shortcuts.ts; dictationShortcutOf in dictation.ts, ShortcutSettings.tsx and Settings.tsx.
+- [x] 12.4 The quick note shortcut closes the search before opening the dialog; the dialog closes and gives the focus back once; its colour dots and digits are `aria-hidden`; `Sheet` moves to `web/src/components/Sheet.tsx` and every importer follows; the comments that still say «Ajustes → Dictado» or a fixed Cmd+K/Cmd+B are corrected.
+  - Done: the quick note closes the search; done() runs once; colour dots and numbers aria-hidden; Sheet in web/src/components/Sheet.tsx with its eight importers; stale comments in WindowView.tsx, state.ts, Palette.tsx and styles.css corrected; double blank line in Settings.tsx removed. Web and server typecheck pass.
+- [x] 12.5 Run the step 4 commands and `openspec validate quick-note-shortcuts --strict`; check by hand against the isolated hub: a refused «Restablecer», the quick note over the search, Alt+2 refused, and a hub broadcast while a row waits.
+  - server test 300 pass; server and web typecheck pass; openspec validate --strict valid. By hand (Mac emulated, isolated hub, dark and light): «Restablecer» on fold the list refused while the quick note holds ⌘B, the reason goes once ⌘B is free; Alt+2 refused with its reason; a hub broadcast (dictationTimeout 20 from another connection) leaves the row waiting and ⇧⌘U is then taken; the quick note from the search closes it, focuses the text, and Escape gives the focus to the terminal.
+- [x] 12.6 Sync the corrected specs to `openspec/specs/` (the ⇧⌘U scenario, the refusals and the quick note from the search) and update the catalogue sections they change, with the owner's approval; `ka features-check` exits 0.
+  - Specs synced (⇧⌘U, Alt+1…5 and «Restablecer» refusals, the quick note from the search); owner approved the catalogue changes to «Nota rápida desde el teclado» and «Combinaciones que se rechazan»; ka features-check exit 0.
+
 ## Workflow follow-up
 
 - After approval: `/opsx:archive quick-note-shortcuts`, then `/koalarnes:commit` to push the archive into the same pull request.

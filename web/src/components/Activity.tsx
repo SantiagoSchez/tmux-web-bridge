@@ -3,7 +3,7 @@ import type { ActivityEvent } from '../../../shared/types';
 import { openWindow } from '../router';
 import { activity, findWindow, multiHost, sheet } from '../state';
 import { ago, clock, duration } from '../time';
-import { Sheet } from './Dialogs';
+import { Sheet } from './Sheet';
 
 // «Actividad»: what happened on every machine in the last days, newest first. A row
 // whose window is still open opens it.

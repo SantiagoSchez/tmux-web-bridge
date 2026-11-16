@@ -16,9 +16,19 @@ export function shortcutOf(id: PanelShortcutId): Shortcut {
   return panelShortcut(id, prefs.value.shortcuts[id], isMac);
 }
 
-/** A panel shortcut as this device's keyboard names it, for buttons' titles: «⌘B», «Ctrl+Shift+B». */
+/** A combination as this device's keyboard names it: «⇧⌘B» on a Mac, «Ctrl+Shift+B» elsewhere. */
+export function shortcutText(sc: Shortcut): string {
+  return formatShortcut(sc, isMac);
+}
+
+/** A panel shortcut as this device's keyboard names it, for buttons' titles. */
 export function shortcutLabel(id: PanelShortcutId): string {
-  return formatShortcut(shortcutOf(id), isMac);
+  return shortcutText(shortcutOf(id));
+}
+
+/** The combination a key event makes. */
+export function shortcutFromEvent(e: KeyboardEvent): Shortcut {
+  return { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey, code: e.code };
 }
 
 /**
@@ -67,7 +77,8 @@ function hostWindow(host: HostInfo): string | null {
  * The panel's shortcuts. The configurable ones (Ajustes › Atajos): search (⌘K / Ctrl+Shift+K)
  * opens the search to jump to any window by name; fold the list (⌘B / Ctrl+Shift+B, not
  * Ctrl+B: tmux's prefix) and fold the scratchpads (⌘. / Ctrl+Shift+.) fold or unfold them
- * on a wide screen; quick note (⌃⌥N / Ctrl+Alt+N) opens the quick note dialog. The fixed
+ * on a wide screen; quick note (⌃⌥N / Ctrl+Alt+N) opens the quick note dialog, closing the
+ * search, unless another dialog is open. The fixed
  * ones are tmux's own (with Ghostty): Ctrl+1..9 goes to window N of the current space and
  * Ctrl+Shift+1..9 to space N (its @space_num, as tmux-spaces.sh numbers them), on the
  * machine you are on (from the list, the last one you were on); Ctrl+Shift+Alt+1..9 goes
@@ -92,7 +103,10 @@ export function bindShortcuts(): () => void {
     }
     if (matchesShortcut(e, shortcutOf('quickNote'))) {
       claim(e);
-      if (!dialog.value) dialog.value = { kind: 'quickNote' };
+      if (dialog.value) return;
+      // Over the search it would open hidden under it.
+      paletteOpen.value = false;
+      dialog.value = { kind: 'quickNote' };
       return;
     }
     if (isDesktop.value && matchesShortcut(e, shortcutOf('foldList'))) {
