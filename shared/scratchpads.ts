@@ -6,7 +6,7 @@
 import type { ScratchpadNote, Scratchpads } from './types.js';
 
 /** How many scratchpads there are, by storage position: blue, green, orange, yellow, purple. */
-export const SCRATCHPAD_COUNT = 5;
+export const SCRATCHPAD_COUNT = 5 satisfies Scratchpads['length'];
 export const SCRATCHPAD_MAX_NOTES = 20;
 export const SCRATCHPAD_MAX_CHARS = 4000;
 /** From how many characters the panel shows a note's length against `SCRATCHPAD_MAX_CHARS`. */

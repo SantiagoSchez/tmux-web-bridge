@@ -46,7 +46,7 @@ The panel SHALL offer five scratchpads, told apart by a fixed colour each and wi
 
 ### Requirement: Adding a note
 
-Each scratchpad SHALL have a field at its foot that adds a plain-text note: Enter SHALL save it and Shift+Enter SHALL insert a new line. A new note SHALL be unpinned and go after the existing ones. From 3500 characters on, the field SHALL show how many characters it holds out of 4000, marked when it goes over. Text that is empty or only whitespace SHALL add nothing.
+Each scratchpad SHALL have a field at its foot that adds a plain-text note: Enter SHALL save it and Shift+Enter SHALL insert a new line. A new note SHALL be unpinned and go after the existing ones. From 3500 characters on, the field SHALL show how many characters it holds out of 4000, counted without trailing whitespace as the hub counts them, marked when it goes over. Text that is empty or only whitespace SHALL add nothing.
 
 #### Scenario: Enter adds the note
 
@@ -77,6 +77,12 @@ Each scratchpad SHALL have a field at its foot that adds a plain-text note: Ente
 - **GIVEN** the field holding 4100 characters
 - **WHEN** the owner looks at the counter
 - **THEN** it reads «4100/4000» and is marked as over the limit
+
+#### Scenario: Trailing whitespace does not count
+
+- **GIVEN** the field holding 3999 characters followed by two new lines
+- **WHEN** the owner looks at the counter
+- **THEN** it reads «3999/4000» and is not marked
 
 ### Requirement: Limits of a scratchpad and of a note
 

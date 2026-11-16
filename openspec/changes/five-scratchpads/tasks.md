@@ -13,8 +13,11 @@
 
 - [x] 3.1 Update the failing tests first in `server/src/scratchpads.test.ts`: `sanitizeScratchpads` returns five lists, reads a three-list file with its notes in positions 0 to 2 and empty 3 and 4, and keeps at most 20 notes per list; the store refuses the twenty-first note (409) and accepts index 4; empty stores read as five empty lists. See them fail.
   - Done: tests for five lists, a three-list file kept in place, 20 notes, the twenty-first refused, index 4 accepted; 8 seen failing.
-- [x] 3.2 Set `SCRATCHPAD_COUNT = 5`, `SCRATCHPAD_MAX_NOTES = 20` and add `SCRATCHPAD_COUNTER_FROM = 3500` in `shared/scratchpads.ts`; build the lists from `SCRATCHPAD_COUNT` in `sanitizeScratchpads`; make `Scratchpads` a five-element tuple in `shared/types.ts`; replace the literal `[[], [], []]` in `server/src/scratchpads.ts` and `web/src/state.ts`; verify the tests and `pnpm --filter server typecheck` pass.
+- [x] 3.2 Set `SCRATCHPAD_COUNT = 5`, `SCRATCHPAD_MAX_NOTES = 20` and add `SCRATCHPAD_COUNTER_FROM = 3500` in `shared/scratchpads.ts`; return five lists from `sanitizeScratchpads`, with `SCRATCHPAD_COUNT` declared `satisfies Scratchpads['length']` so it cannot drift from the tuple; make `Scratchpads` a five-element tuple in `shared/types.ts`; replace the literal `[[], [], []]` in `server/src/scratchpads.ts` and `web/src/state.ts`; verify the tests and `pnpm --filter server typecheck` pass.
   - Done: SCRATCHPAD_COUNT 5, SCRATCHPAD_MAX_NOTES 20, SCRATCHPAD_COUNTER_FROM 3500; five-element tuple; 272 server tests and typecheck pass.
+
+- [x] 3.3 Rewrite the comments the change makes false: the header of `server/src/scratchpads.ts` (three lists of 10 notes), `prefs.scratchpad` in `web/src/prefs.ts` (0 blue, 1 green, 2 orange), and every other mention of three scratchpads or `0..2`.
+  - Done: server/src/scratchpads.ts header and add() comment, prefs.scratchpad, shared/types.ts, state.ts and styles.css comments now say five and 0..4.
 
 ## 4. Panel
 
@@ -22,6 +25,8 @@
   - Done: PADS in screen order with storage positions (yellow 3, purple 4); selection, notes and strip by position.
 - [x] 4.2 Replace the `n/10` of the add field with a character counter shown from `SCRATCHPAD_COUNTER_FROM`, marked above `SCRATCHPAD_MAX_CHARS`; give the note editor a wrapper with the same counter; tooltips of the colours read `n/20`. Verify `pnpm --filter web typecheck`.
   - Done: CharCount under the add field and in the editor wrapper, from 3500, class over above 4000; colour tooltips n/20; web typecheck passes. The counter sits under the field (design.md updated: over the corner it covered text and scrollbar).
+- [x] 4.3 Count the text without trailing whitespace in the counter of the add field and of the editor (`trimEnd()`, as `noteText()` does), so 3999 characters and two new lines read «3999/4000», not marked. Verify `pnpm --filter web typecheck`.
+  - Done: CharCount takes the text and counts text.trimEnd().length in the add field and the editor; web typecheck passes.
 
 ## 5. Checks
 
@@ -29,6 +34,8 @@
   - Done: 272 server tests, server and web typecheck, ka features-check pass.
 - [x] 5.2 Check by hand against an isolated hub started with a three-list `scratchpads.json`: its notes stay blue, green and orange; five colours in order on a wide screen, in the folded strip and in the phone drawer; 20 notes fill a scratchpad; the counter appears at 3500, is marked above 4000, and shows while editing a long note; both themes.
   - Done: three-list seed keeps blue/green/orange; order Azul, Verde, Amarillo, Naranja, Morado on wide screen, folded strip and phone drawer (390px); 20 notes then 409 and field «Lleno…»; counter absent at 3499, 3500/4000 at 3500, marked at 4100; 3800/4000 while editing; dark and light themes.
+- [x] 5.3 Audit every producer and consumer of the `scratchpads` message and of `ScratchpadAddRequest.pad`, and confirm each handles five lists and positions 0 to 4.
+  - Done, clean: producers server/src/index.ts:300 (change broadcast) and :416 (on connect) send ScratchpadStore.pads (five lists); consumer web/src/ws.ts:175 assigns the five-tuple signal; route server/src/index.ts:785-787 passes pad to add(), which accepts 0 to SCRATCHPAD_COUNT-1; trello-extension uses neither.
 
 ## 6. Documentation and changelog
 

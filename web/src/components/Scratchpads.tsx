@@ -58,8 +58,12 @@ const notePath = (id: string) => `/api/scratchpads/notes/${encodeURIComponent(id
 /** «1 nota», «3 notas». */
 const notesLabel = (n: number) => `${n} ${n === 1 ? 'nota' : 'notas'}`;
 
-/** A note's length against the limit, under its field once it gets close: nothing below `SCRATCHPAD_COUNTER_FROM`. */
-function CharCount({ length }: { length: number }) {
+/**
+ * A note's length against the limit, under its field once it gets close: nothing below
+ * `SCRATCHPAD_COUNTER_FROM`. Trailing whitespace does not count, as the hub does not store it.
+ */
+function CharCount({ text }: { text: string }) {
+  const length = text.trimEnd().length;
   if (length < SCRATCHPAD_COUNTER_FROM) return null;
   return (
     <span class={`pads-total small ${length > SCRATCHPAD_MAX_CHARS ? 'over' : 'dim'}`}>
@@ -184,7 +188,7 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
 function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
-  const [length, setLength] = useState(note.text.length);
+  const [draft, setDraft] = useState(note.text);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -211,7 +215,7 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
         aria-label="Texto de la nota"
         rows={Math.min(8, note.text.split('\n').length + 1)}
         defaultValue={note.text}
-        onInput={(e) => setLength(e.currentTarget.value.length)}
+        onInput={(e) => setDraft(e.currentTarget.value)}
         onKeyDown={(e) => {
           if (isSave(e)) {
             e.preventDefault();
@@ -223,7 +227,7 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
         }}
         onBlur={() => void finish(true)}
       />
-      <CharCount length={length} />
+      <CharCount text={draft} />
     </div>
   );
 }
@@ -261,7 +265,7 @@ function AddField({ pad, count }: { pad: number; count: number }) {
           }
         }}
       />
-      <CharCount length={text.length} />
+      <CharCount text={text} />
     </div>
   );
 }

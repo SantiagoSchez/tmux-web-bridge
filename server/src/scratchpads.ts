@@ -1,4 +1,4 @@
-// The scratchpads: three coloured lists of up to 10 short notes the owner jots down
+// The scratchpads: five coloured lists of up to 20 short notes the owner jots down
 // to tell Claude later, kept by the hub so every device shows the same notes. A note
 // is pasted into a pane by index.ts; here it is only marked while that happens, so two
 // devices pressing at once paste it once, and removed afterwards unless pinned.
