@@ -123,9 +123,17 @@ export class Notifier {
     if (ctx) {
       await this.send(ctx, state, body, route.only);
     } else {
-      await this.push.send({ title: req.title || `${ALERT[state].icon} ${host.name}`, body, tag: key, url: '/' }, route.only);
+      await this.deliver({ title: req.title || `${ALERT[state].icon} ${host.name}`, body, tag: key, url: '/' }, route.only);
     }
     return { pushed: true };
+  }
+
+  /** Pushes to `only` those endpoints, or to every device when none of them took it (a subscription gone). */
+  private async deliver(payload: PushPayload, only?: readonly string[]): Promise<number> {
+    const n = await this.push.send(payload, only);
+    if (n > 0 || !only) return n;
+    console.log(`[push] ${payload.title}: no ha llegado al dispositivo donde estás, se envía a todos`);
+    return this.push.send(payload);
   }
 
   /**
@@ -180,7 +188,7 @@ export class Notifier {
         if (body === ALERT[state].label && prompt.question) payload.body = prompt.question;
       }
     }
-    const n = await this.push.send(payload, only);
+    const n = await this.deliver(payload, only);
     console.log(`[push] ${payload.title}: ${payload.body.slice(0, 60)} (${n} destinatarios)`);
   }
 }

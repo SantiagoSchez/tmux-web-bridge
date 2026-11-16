@@ -161,8 +161,12 @@ export class ConnectionRegistry extends EventEmitter {
     if (!present.length) return { to: 'all' };
     const onScreen = present.find((c) => c.visible);
     if (onScreen) return { to: 'none', at: onScreen };
-    const endpoints = [...new Set(present.map((c) => this.endpoints.get(c.id)))].filter((e): e is string => !!e && isSubscribed(e));
-    return endpoints.length ? { to: 'devices', endpoints, at: present[0] } : { to: 'all' };
+    const reachable = present.flatMap((c) => {
+      const endpoint = this.endpoints.get(c.id);
+      return endpoint && isSubscribed(endpoint) ? [{ c, endpoint }] : [];
+    });
+    if (!reachable.length) return { to: 'all' };
+    return { to: 'devices', endpoints: [...new Set(reachable.map((r) => r.endpoint))], at: reachable[0].c };
   }
 
   private changed(): void {

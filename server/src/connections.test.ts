@@ -42,10 +42,23 @@ test('another window of the app on screen at that device still silences the push
 test('when the device you are using cannot get pushes, they go to every device', () => {
   const conns = new ConnectionRegistry();
   connect(conns, { visible: false, present: true });
-  const unsubscribed = connect(conns, { visible: false, present: true, endpoint: 'https://push.example/forgotten' });
+  connect(conns, { visible: false, present: true, endpoint: 'https://push.example/forgotten' });
   assert.deepEqual(conns.pushRoute(subscribed([MAC])), { to: 'all' });
-  conns.setPushEndpoint(unsubscribed.id, null);
+});
+
+test('once a device turns its notifications off, pushes go to every device again', () => {
+  const conns = new ConnectionRegistry();
+  const mac = connect(conns, { visible: false, present: true, endpoint: MAC });
+  conns.setPushEndpoint(mac.id, null);
   assert.deepEqual(conns.pushRoute(subscribed([MAC])), { to: 'all' });
+});
+
+test('the device named is the one that gets the push', () => {
+  const conns = new ConnectionRegistry();
+  connect(conns, { visible: false, present: true });
+  const mac = connect(conns, { visible: false, present: true, endpoint: MAC });
+  const route = conns.pushRoute(subscribed([MAC]));
+  assert.equal(route.to === 'devices' && route.at.id, mac.id);
 });
 
 test('the push endpoint is not shown to the other devices', () => {

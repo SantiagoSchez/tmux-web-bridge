@@ -24,14 +24,17 @@ function fakeHost(): HostMonitor {
   return host as unknown as HostMonitor;
 }
 
-/** The push service at its network boundary: records what would be sent and to whom. */
-function fakePush(subscribed: string[]) {
+/**
+ * The push service at its network boundary: records what would be sent and to whom.
+ * Endpoints in `gone` are subscribed but the push service no longer takes them.
+ */
+function fakePush(subscribed: string[], gone: string[] = []) {
   const sent: { payload: PushPayload; only?: readonly string[] }[] = [];
   const push = {
     has: (e: string) => subscribed.includes(e),
     send: async (payload: PushPayload, only?: readonly string[]) => {
       sent.push({ payload, only });
-      return only ? only.length : subscribed.length;
+      return (only ?? subscribed).filter((e) => subscribed.includes(e) && !gone.includes(e)).length;
     },
   };
   return { push: push as unknown as PushService, sent };
@@ -64,6 +67,28 @@ test('a pane finishing while twb is on screen at the device you are using notifi
 
   assert.deepEqual(await notifier(conns, push).onScriptNotify(done), { pushed: false, reason: 'present' });
   assert.equal(sent.length, 0);
+});
+
+test('when the device you are at no longer takes pushes, every device is notified instead', async () => {
+  const conns = new ConnectionRegistry();
+  const mac = conns.add({});
+  conns.update(mac.id, { visible: false, present: true });
+  conns.setPushEndpoint(mac.id, MAC);
+  const { push, sent } = fakePush([MAC, 'https://push.example/phone'], [MAC]);
+
+  assert.deepEqual(await notifier(conns, push).onScriptNotify(done), { pushed: true });
+  assert.deepEqual(sent.map((s) => s.only), [[MAC], undefined]);
+});
+
+test('a notice for a pane the hub does not know also goes only to the device you are at', async () => {
+  const conns = new ConnectionRegistry();
+  const mac = conns.add({});
+  conns.update(mac.id, { visible: false, present: true });
+  conns.setPushEndpoint(mac.id, MAC);
+  const { push, sent } = fakePush([MAC, 'https://push.example/phone']);
+
+  assert.deepEqual(await notifier(conns, push).onScriptNotify({ ...done, pane: '%9' }), { pushed: true });
+  assert.deepEqual(sent.map((s) => s.only), [[MAC]]);
 });
 
 test('a pane finishing while you are at no device notifies every device', async () => {
