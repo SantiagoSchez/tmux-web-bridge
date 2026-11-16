@@ -30,24 +30,38 @@ test('a note text that is not a string is refused', () => {
   for (const raw of [undefined, null, 42, ['texto'], { text: 'x' }]) assert.equal(noteText(raw).ok, false, JSON.stringify(raw));
 });
 
-test('a saved file is read as exactly three scratchpads of valid notes', () => {
-  const note = (i: number) => ({ id: `n${i}`, text: `nota ${i}`, pinned: false });
+const note = (i: number) => ({ id: `n${i}`, text: `nota ${i}`, pinned: false });
+
+test('a saved file is read as exactly five scratchpads of valid notes, at most 20 each', () => {
   const raw = [
     [{ id: 'a', text: 'fijada', pinned: 1, extra: 'x' }, { id: 'b' }, { text: 'sin id' }, 'basura', { id: 'c', text: '   ' }],
-    Array.from({ length: 12 }, (_, i) => note(i)),
+    Array.from({ length: 22 }, (_, i) => note(i)),
     'no es una lista',
+    [note(97)],
+    [note(98)],
     [note(99)],
   ];
-  assert.deepEqual(sanitizeScratchpads(raw), [[{ id: 'a', text: 'fijada', pinned: true }], Array.from({ length: 10 }, (_, i) => note(i)), []]);
+  assert.deepEqual(sanitizeScratchpads(raw), [
+    [{ id: 'a', text: 'fijada', pinned: true }],
+    Array.from({ length: 20 }, (_, i) => note(i)),
+    [],
+    [note(97)],
+    [note(98)],
+  ]);
 });
 
-test('anything that is not a list of scratchpads reads as three empty ones', () => {
-  for (const raw of [undefined, null, {}, 'x', 7]) assert.deepEqual(sanitizeScratchpads(raw), [[], [], []]);
+test('a file saved with three scratchpads keeps each note in its place and adds two empty ones', () => {
+  const raw = [[note(1)], [note(2)], [note(3)]];
+  assert.deepEqual(sanitizeScratchpads(raw), [[note(1)], [note(2)], [note(3)], [], []]);
+});
+
+test('anything that is not a list of scratchpads reads as five empty ones', () => {
+  for (const raw of [undefined, null, {}, 'x', 7]) assert.deepEqual(sanitizeScratchpads(raw), [[], [], [], [], []]);
 });
 
 test('a note id repeated in the file is kept only the first time', () => {
   const dup = { id: 'a', text: 'uno', pinned: false };
-  assert.deepEqual(sanitizeScratchpads([[dup], [{ ...dup, text: 'dos' }]]), [[dup], [], []]);
+  assert.deepEqual(sanitizeScratchpads([[dup], [{ ...dup, text: 'dos' }]]), [[dup], [], [], [], []]);
 });
 
 // ---------------------------------------------------------------- the store
@@ -93,22 +107,32 @@ test(
 );
 
 test(
-  'an eleventh note is refused as the scratchpad is full',
+  'a twenty-first note is refused as the scratchpad is full',
   withStore((store) => {
-    for (let i = 0; i < 10; i++) store.add(2, `nota ${i}`);
+    for (let i = 0; i < 20; i++) store.add(2, `nota ${i}`);
     const f = failure(() => store.add(2, 'una más'));
     assert.equal(f.status, 409);
-    assert.match(f.message, /lleno/);
-    assert.equal(store.pads[2].length, 10);
+    assert.match(f.message, /lleno: admite 20 notas/);
+    assert.equal(store.pads[2].length, 20);
   }),
 );
 
 test(
   'a note for a scratchpad that does not exist, or with bad text, is refused',
   withStore((store) => {
-    for (const pad of [-1, 3, 1.5, Number.NaN]) assert.equal(failure(() => store.add(pad, 'x')).status, 400, String(pad));
+    for (const pad of [-1, 5, 1.5, Number.NaN]) assert.equal(failure(() => store.add(pad, 'x')).status, 400, String(pad));
     assert.deepEqual(failure(() => store.add(0, '   ')), { status: 400, message: 'La nota está vacía' });
     assert.equal(failure(() => store.add(0, 'a'.repeat(4001))).status, 400);
+  }),
+);
+
+test(
+  'the fourth and fifth scratchpads take notes like the others',
+  withStore((store) => {
+    const yellow = store.add(3, 'amarilla');
+    const purple = store.add(4, 'morada');
+    assert.deepEqual(store.pads[3], [{ id: yellow, text: 'amarilla', pinned: false }]);
+    assert.deepEqual(store.pads[4], [{ id: purple, text: 'morada', pinned: false }]);
   }),
 );
 
@@ -139,7 +163,7 @@ test(
   withStore((store) => {
     const id = store.add(0, 'nota');
     store.remove(id);
-    assert.deepEqual(store.pads, [[], [], []]);
+    assert.deepEqual(store.pads, [[], [], [], [], []]);
     assert.equal(failure(() => store.remove(id)).status, 404);
     assert.equal(failure(() => store.edit(id, { pinned: true })).status, 404);
   }),
@@ -159,7 +183,7 @@ test(
   'a broken file starts with empty scratchpads',
   withStore((_store, dir) => {
     writeFileSync(join(dir, 'scratchpads.json'), '{ roto');
-    assert.deepEqual(new ScratchpadStore(dir).pads, [[], [], []]);
+    assert.deepEqual(new ScratchpadStore(dir).pads, [[], [], [], [], []]);
   }),
 );
 

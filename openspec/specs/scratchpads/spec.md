@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Three coloured scratchpads where the owner jots down short notes to tell Claude later, shared by every device, and from which a note goes into a pane with one click.
+Five coloured scratchpads where the owner jots down short notes to tell Claude later, shared by every device, and from which a note goes into a pane with one click.
 
 ## Requirements
 
-### Requirement: Three scratchpads shared by every device
+### Requirement: Coloured scratchpads shared by every device
 
-The panel SHALL offer three scratchpads, told apart by a fixed colour each (blue, green and orange) and with no name. The hub SHALL keep their notes, so that every device shows the same notes, a change made on one device SHALL appear on every other open device without reloading, and the notes SHALL survive a restart of the hub.
+The panel SHALL offer five scratchpads, told apart by a fixed colour each and with no name, shown in this order: blue, green, yellow, orange and purple. The hub SHALL keep their notes, so that every device shows the same notes, a change made on one device SHALL appear on every other open device without reloading, and the notes SHALL survive a restart of the hub. Notes saved when there were three scratchpads (blue, green and orange) SHALL keep their colour, and the yellow and purple scratchpads SHALL start empty.
 
 #### Scenario: A note appears on another device
 
@@ -28,15 +28,27 @@ The panel SHALL offer three scratchpads, told apart by a fixed colour each (blue
 - **WHEN** the owner clicks the orange colour
 - **THEN** the orange scratchpad's notes are shown instead
 
+#### Scenario: Five colours in order
+
+- **GIVEN** the panel open
+- **WHEN** the owner looks at the scratchpads
+- **THEN** the colours read blue, green, yellow, orange and purple, each with the number of notes it holds
+
+#### Scenario: Notes from three scratchpads keep their colour
+
+- **GIVEN** notes saved in the blue, green and orange scratchpads before there were five
+- **WHEN** the hub starts with the new version
+- **THEN** each note is still in its colour, and the yellow and purple scratchpads are empty
+
 ### Requirement: Adding a note
 
-Each scratchpad SHALL have a field at its foot that adds a plain-text note: Enter SHALL save it and Shift+Enter SHALL insert a new line. A new note SHALL be unpinned and go after the existing ones. The field SHALL show how many notes the scratchpad holds out of 10. Text that is empty or only whitespace SHALL add nothing.
+Each scratchpad SHALL have a field at its foot that adds a plain-text note: Enter SHALL save it and Shift+Enter SHALL insert a new line. A new note SHALL be unpinned and go after the existing ones. From 3500 characters on, the field SHALL show how many characters it holds out of 4000, marked when it goes over. Text that is empty or only whitespace SHALL add nothing.
 
 #### Scenario: Enter adds the note
 
 - **GIVEN** the green scratchpad with 3 notes
 - **WHEN** the owner types «Revisar el test de login» in its field and presses Enter
-- **THEN** the note is added last, unpinned, the field empties and the count reads 4/10
+- **THEN** the note is added last, unpinned, the field empties and the green colour shows 4 notes
 
 #### Scenario: Shift+Enter keeps writing
 
@@ -50,19 +62,31 @@ Each scratchpad SHALL have a field at its foot that adds a plain-text note: Ente
 - **WHEN** the owner presses Enter
 - **THEN** no note is added
 
-### Requirement: A scratchpad holds at most 10 notes
+#### Scenario: Character counter near the limit
 
-A scratchpad SHALL hold at most 10 notes, and a note SHALL hold at most 4000 characters. The hub SHALL refuse a note beyond either limit with a message saying why, and the panel SHALL not let the owner add an eleventh note.
+- **GIVEN** the field holding 3499 characters
+- **WHEN** the owner types one more
+- **THEN** the field shows «3500/4000», and no counter was shown before
+
+#### Scenario: Character counter over the limit
+
+- **GIVEN** the field holding 4100 characters
+- **WHEN** the owner looks at the counter
+- **THEN** it reads «4100/4000» and is marked as over the limit
+
+### Requirement: Limits of a scratchpad and of a note
+
+A scratchpad SHALL hold at most 20 notes, and a note SHALL hold at most 4000 characters. The hub SHALL refuse a note beyond either limit with a message saying why, and the panel SHALL not let the owner add a twenty-first note.
 
 #### Scenario: Full scratchpad
 
-- **GIVEN** the orange scratchpad with 10 notes
+- **GIVEN** the orange scratchpad with 20 notes
 - **WHEN** the owner looks at its field
 - **THEN** the field is disabled and says the scratchpad is full
 
 #### Scenario: Two devices fill the last place
 
-- **GIVEN** a scratchpad with 9 notes open on two devices
+- **GIVEN** a scratchpad with 19 notes open on two devices
 - **WHEN** both add a note at the same time
 - **THEN** one note is added and the other device shows an error saying the scratchpad is full
 
@@ -74,7 +98,7 @@ A scratchpad SHALL hold at most 10 notes, and a note SHALL hold at most 4000 cha
 
 ### Requirement: Editing a note
 
-A click on a note's text SHALL open it for editing in place. Enter or leaving the note SHALL save the new text, Shift+Enter SHALL insert a new line and Escape SHALL cancel. Saving an empty text SHALL delete the note. If the hub refuses the new text, the note SHALL stay open with it and the panel SHALL say why.
+A click on a note's text SHALL open it for editing in place. Enter or leaving the note SHALL save the new text, Shift+Enter SHALL insert a new line and Escape SHALL cancel. Saving an empty text SHALL delete the note. If the hub refuses the new text, the note SHALL stay open with it and the panel SHALL say why. From 3500 characters on, the note being edited SHALL show the same character counter as the add field.
 
 #### Scenario: Editing in place
 
@@ -99,6 +123,12 @@ A click on a note's text SHALL open it for editing in place. Enter or leaving th
 - **GIVEN** a note being edited
 - **WHEN** the owner deletes all its text and presses Enter
 - **THEN** the note is removed
+
+#### Scenario: Counter while editing
+
+- **GIVEN** a note of 3800 characters
+- **WHEN** the owner opens it for editing
+- **THEN** it shows «3800/4000»
 
 ### Requirement: Pinning a note
 
@@ -168,13 +198,13 @@ Each note SHALL have a paste button that types its text into the active pane of 
 
 ### Requirement: Scratchpads sidebar on wide screens
 
-On a wide screen the scratchpads SHALL sit in a sidebar on the right of the panel, on every screen. The sidebar SHALL fold into a narrow strip that shows the three colours, from which a click unfolds it on that scratchpad. Whether it is folded SHALL be remembered on each device. ⌘. on a Mac, and Ctrl+Shift+. elsewhere, SHALL fold or unfold it.
+On a wide screen the scratchpads SHALL sit in a sidebar on the right of the panel, on every screen. The sidebar SHALL fold into a narrow strip that shows the five colours, from which a click unfolds it on that scratchpad. Whether it is folded SHALL be remembered on each device. ⌘. on a Mac, and Ctrl+Shift+. elsewhere, SHALL fold or unfold it.
 
 #### Scenario: Folding with the shortcut
 
 - **GIVEN** a wide screen on a Mac with the sidebar unfolded
 - **WHEN** the owner presses ⌘.
-- **THEN** the sidebar folds into the strip of three colours
+- **THEN** the sidebar folds into the strip of five colours
 
 #### Scenario: Unfolding from the strip
 

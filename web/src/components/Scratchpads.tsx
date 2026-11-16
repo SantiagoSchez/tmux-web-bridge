@@ -1,6 +1,6 @@
 import { computed } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
+import { SCRATCHPAD_COUNT, SCRATCHPAD_COUNTER_FROM, SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
 import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadPasteRequest } from '../../../shared/types';
 import { api } from '../api';
 import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
@@ -8,11 +8,17 @@ import { route } from '../router';
 import { findWindow, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
-/** The three scratchpads, by position: their colour and the name a screen reader says. */
+/**
+ * The scratchpads in screen order: their storage position (`at`, the index in `Scratchpads`
+ * and in `prefs.scratchpad`), colour and the name a screen reader says. Yellow and purple
+ * came later and are stored after orange, so older notes keep their colour.
+ */
 const PADS = [
-  { name: 'Azul', color: 'var(--blue)' },
-  { name: 'Verde', color: 'var(--green)' },
-  { name: 'Naranja', color: 'var(--peach)' },
+  { at: 0, name: 'Azul', color: 'var(--blue)' },
+  { at: 1, name: 'Verde', color: 'var(--green)' },
+  { at: 3, name: 'Amarillo', color: 'var(--yellow)' },
+  { at: 2, name: 'Naranja', color: 'var(--peach)' },
+  { at: 4, name: 'Morado', color: 'var(--mauve)' },
 ] as const;
 
 /** Where «Pegar» types a note: the pane the open window works on, or null outside a window. */
@@ -24,9 +30,10 @@ const target = computed<ScratchpadPasteRequest | null>(() => {
   return pane ? { host: r.host, pane: pane.id } : null;
 });
 
+/** The storage position of the scratchpad shown on this device. */
 function selected(): number {
   const n = prefs.value.scratchpad;
-  return n >= 0 && n < PADS.length ? n : 0;
+  return Number.isInteger(n) && n >= 0 && n < SCRATCHPAD_COUNT ? n : 0;
 }
 
 /** Shows scratchpad `n`, unfolding the sidebar if it was folded. */
@@ -51,6 +58,16 @@ const notePath = (id: string) => `/api/scratchpads/notes/${encodeURIComponent(id
 /** «1 nota», «3 notas». */
 const notesLabel = (n: number) => `${n} ${n === 1 ? 'nota' : 'notas'}`;
 
+/** A note's length against the limit, under its field once it gets close: nothing below `SCRATCHPAD_COUNTER_FROM`. */
+function CharCount({ length }: { length: number }) {
+  if (length < SCRATCHPAD_COUNTER_FROM) return null;
+  return (
+    <span class={`pads-total small ${length > SCRATCHPAD_MAX_CHARS ? 'over' : 'dim'}`}>
+      {length}/{SCRATCHPAD_MAX_CHARS}
+    </span>
+  );
+}
+
 /** Enter saves, Shift+Enter is a new line. */
 function isSave(e: KeyboardEvent): boolean {
   return e.key === 'Enter' && !e.shiftKey && !e.isComposing;
@@ -59,26 +76,27 @@ function isSave(e: KeyboardEvent): boolean {
 /** The colour tabs, the selected scratchpad's notes and the field that adds one. */
 export function Scratchpads() {
   const n = selected();
+  const pad = PADS.find((p) => p.at === n) ?? PADS[0];
   const notes = scratchpads.value[n];
   return (
-    <section class="pads" aria-label="Scratchpads" style={{ '--pad': PADS[n].color }}>
+    <section class="pads" aria-label="Scratchpads" style={{ '--pad': pad.color }}>
       <div class="pads-head">
         <div class="pads-tabs" role="tablist" aria-label="Scratchpad">
-          {PADS.map((p, i) => (
+          {PADS.map((p) => (
             <button
               key={p.name}
               role="tab"
-              aria-selected={i === n}
-              class={`pads-tab ${i === n ? 'on' : ''}`}
+              aria-selected={p.at === n}
+              class={`pads-tab ${p.at === n ? 'on' : ''}`}
               style={{ '--pad': p.color }}
-              aria-label={`${p.name}: ${notesLabel(scratchpads.value[i].length)}`}
-              title={`${p.name} (${scratchpads.value[i].length}/${SCRATCHPAD_MAX_NOTES})`}
-              onClick={() => setPref('scratchpad', i)}
+              aria-label={`${p.name}: ${notesLabel(scratchpads.value[p.at].length)}`}
+              title={`${p.name} (${scratchpads.value[p.at].length}/${SCRATCHPAD_MAX_NOTES})`}
+              onClick={() => setPref('scratchpad', p.at)}
             >
               <span class="pads-dot" aria-hidden="true" />
-              {scratchpads.value[i].length > 0 && (
+              {scratchpads.value[p.at].length > 0 && (
                 <span class="pads-count" aria-hidden="true">
-                  {scratchpads.value[i].length}
+                  {scratchpads.value[p.at].length}
                 </span>
               )}
             </button>
@@ -90,7 +108,7 @@ export function Scratchpads() {
           </button>
         )}
       </div>
-      <div class="pads-notes scroll" role="tabpanel" aria-label={`Scratchpad ${PADS[n].name.toLowerCase()}`}>
+      <div class="pads-notes scroll" role="tabpanel" aria-label={`Scratchpad ${pad.name.toLowerCase()}`}>
         {notes.length > 0 ? (
           <ul class="pads-list">
             {notes.map((note) => (
@@ -166,6 +184,7 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
 function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
+  const [length, setLength] = useState(note.text.length);
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -185,27 +204,31 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
   };
 
   return (
-    <textarea
-      ref={ref}
-      class="pads-input pads-edit"
-      aria-label="Texto de la nota"
-      rows={Math.min(8, note.text.split('\n').length + 1)}
-      defaultValue={note.text}
-      onKeyDown={(e) => {
-        if (isSave(e)) {
-          e.preventDefault();
-          void finish(true);
-        } else if (e.key === 'Escape') {
-          e.preventDefault();
-          void finish(false);
-        }
-      }}
-      onBlur={() => void finish(true)}
-    />
+    <div class="pads-edit">
+      <textarea
+        ref={ref}
+        class="pads-input"
+        aria-label="Texto de la nota"
+        rows={Math.min(8, note.text.split('\n').length + 1)}
+        defaultValue={note.text}
+        onInput={(e) => setLength(e.currentTarget.value.length)}
+        onKeyDown={(e) => {
+          if (isSave(e)) {
+            e.preventDefault();
+            void finish(true);
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            void finish(false);
+          }
+        }}
+        onBlur={() => void finish(true)}
+      />
+      <CharCount length={length} />
+    </div>
   );
 }
 
-/** The field at the foot of a scratchpad: Enter adds its text as a note. */
+/** The field at the foot of a scratchpad: Enter adds its text as a note. How many notes there are shows on the colour. */
 function AddField({ pad, count }: { pad: number; count: number }) {
   const [text, setText] = useState('');
   const full = count >= SCRATCHPAD_MAX_NOTES;
@@ -238,33 +261,31 @@ function AddField({ pad, count }: { pad: number; count: number }) {
           }
         }}
       />
-      <span class={`pads-total small ${full ? 'full' : 'dim'}`}>
-        {count}/{SCRATCHPAD_MAX_NOTES}
-      </span>
+      <CharCount length={text.length} />
     </div>
   );
 }
 
-/** The scratchpads folded on a wide screen: a strip with the button that unfolds them and the three colours. */
+/** The scratchpads folded on a wide screen: a strip with the button that unfolds them and the five colours. */
 export function ScratchpadsRail() {
   return (
     <nav class="rail-body pads-rail" aria-label="Scratchpads plegados">
       <button class="icon-btn" aria-label="Mostrar los scratchpads" aria-expanded={false} title={`Mostrar los scratchpads (${SCRATCHPADS_KEY})`} onClick={toggleScratchpads}>
         <IconSidebarRight />
       </button>
-      {PADS.map((p, i) => (
+      {PADS.map((p) => (
         <button
           key={p.name}
           class="pads-tab"
           style={{ '--pad': p.color }}
-          aria-label={`Scratchpad ${p.name.toLowerCase()}: ${notesLabel(scratchpads.value[i].length)}`}
-          title={`${p.name} (${scratchpads.value[i].length}/${SCRATCHPAD_MAX_NOTES})`}
-          onClick={() => show(i)}
+          aria-label={`Scratchpad ${p.name.toLowerCase()}: ${notesLabel(scratchpads.value[p.at].length)}`}
+          title={`${p.name} (${scratchpads.value[p.at].length}/${SCRATCHPAD_MAX_NOTES})`}
+          onClick={() => show(p.at)}
         >
           <span class="pads-dot" aria-hidden="true" />
-          {scratchpads.value[i].length > 0 && (
+          {scratchpads.value[p.at].length > 0 && (
             <span class="pads-count" aria-hidden="true">
-              {scratchpads.value[i].length}
+              {scratchpads.value[p.at].length}
             </span>
           )}
         </button>

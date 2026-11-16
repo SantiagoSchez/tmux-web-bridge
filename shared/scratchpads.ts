@@ -1,13 +1,16 @@
 /**
- * The scratchpads: three coloured lists of short notes to paste into a pane later.
+ * The scratchpads: five coloured lists of short notes to paste into a pane later.
  * Their limits and validation, shared by the hub (which enforces them) and the panel
  * (which shows them).
  */
 import type { ScratchpadNote, Scratchpads } from './types.js';
 
-export const SCRATCHPAD_COUNT = 3;
-export const SCRATCHPAD_MAX_NOTES = 10;
+/** How many scratchpads there are, by storage position: blue, green, orange, yellow, purple. */
+export const SCRATCHPAD_COUNT = 5;
+export const SCRATCHPAD_MAX_NOTES = 20;
 export const SCRATCHPAD_MAX_CHARS = 4000;
+/** From how many characters the panel shows a note's length against `SCRATCHPAD_MAX_CHARS`. */
+export const SCRATCHPAD_COUNTER_FROM = 3500;
 
 /** A note's text without its trailing whitespace, or why it cannot be one. */
 export function noteText(raw: unknown): { ok: true; text: string } | { ok: false; error: string } {
@@ -18,7 +21,11 @@ export function noteText(raw: unknown): { ok: true; text: string } | { ok: false
   return { ok: true, text };
 }
 
-/** Scratchpads read from storage: always three, each with at most 10 valid notes, every id once. */
+/**
+ * Scratchpads read from storage: always `SCRATCHPAD_COUNT`, each with at most
+ * `SCRATCHPAD_MAX_NOTES` valid notes, every id once. A missing position reads as empty,
+ * so a file saved with three scratchpads keeps its notes in place.
+ */
 export function sanitizeScratchpads(raw: unknown): Scratchpads {
   const seen = new Set<string>();
   const pad = (i: number): ScratchpadNote[] => {
@@ -35,5 +42,5 @@ export function sanitizeScratchpads(raw: unknown): Scratchpads {
     }
     return notes;
   };
-  return [pad(0), pad(1), pad(2)];
+  return [pad(0), pad(1), pad(2), pad(3), pad(4)];
 }

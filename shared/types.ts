@@ -678,7 +678,7 @@ export type ServerMessage =
   /** The activity of the last days, newest first (on connect), and each new event. */
   | { t: 'activity'; events: ActivityEvent[] }
   | { t: 'activityAdd'; event: ActivityEvent }
-  /** The notes of the three scratchpads (on connect, and after every change). */
+  /** The notes of the five scratchpads (on connect, and after every change). */
   | { t: 'scratchpads'; pads: Scratchpads }
   /** code: what kind of failure, when the panel can do something about it ('needsLogin'). */
   | { t: 'result'; id: number; ok: boolean; error?: string; code?: string; data?: unknown };
@@ -691,10 +691,10 @@ export interface ScratchpadNote {
   pinned: boolean;
 }
 
-/** The three scratchpads, in colour order (blue, green, orange), each with its notes in order. */
-export type Scratchpads = [ScratchpadNote[], ScratchpadNote[], ScratchpadNote[]];
+/** The five scratchpads by storage position (blue, green, orange, yellow, purple), each with its notes in order. */
+export type Scratchpads = [ScratchpadNote[], ScratchpadNote[], ScratchpadNote[], ScratchpadNote[], ScratchpadNote[]];
 
-/** Body of POST /api/scratchpads/notes: a new note at the end of scratchpad `pad` (0..2). Answers { id }. */
+/** Body of POST /api/scratchpads/notes: a new note at the end of scratchpad `pad` (its storage position, 0..4). Answers { id }. */
 export interface ScratchpadAddRequest {
   pad: number;
   text: string;
