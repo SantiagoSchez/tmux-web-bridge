@@ -4,6 +4,25 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.25.0 - 2026-11-17
+
+### Añadido
+
+- **Nota rápida desde el teclado**: ⌃⌥N en el Mac (Ctrl+Alt+N en Windows y Linux) abre un diálogo para escribir una nota sin tocar el ratón. Alt+1…5, o Tab y las flechas, eligen el color, y Enter la guarda.
+- **Ajustes › Atajos**: una sección nueva lista todos los atajos del panel y deja cambiar en cada dispositivo los de búsqueda, plegar la lista, plegar los scratchpads y nota rápida, además del de dictado, que vale para todos. Fuera del Mac, la búsqueda pasa a Ctrl+Shift+K.
+- **De qué ventana sale cada nota**: bajo cada nota del scratchpad aparece la ventana en la que la escribiste (máquina · sesión · ventana). Mientras sigue abierta, al pulsarla vuelves a ella; cerrada, se queda atenuada con sus nombres.
+- **Cambios de una rama frente a su base**: «Toda la rama» en «Ficheros cambiados» y el contador +/− de la ventana comparan con la rama de la que salió la actual (la base elegida al crear el worktree), no siempre con la principal. Un desplegable deja comparar con cualquier otra rama de `origin`.
+
+### Cambiado
+
+- **Cinco scratchpads de 20 notas**: se añaden el amarillo y el morado, y cada uno guarda hasta 20 notas. Al acercarte al límite de 4000 caracteres, el campo enseña cuántos llevas, también al editar una nota.
+
+### Corregido
+
+- **Ramas de una máquina con la clave en el agente SSH**: al crear un worktree en una máquina como el Mac, las ramas ya se actualizan en vez de fallar con «Permission denied (publickey)».
+- **Botón de fijar**: en una nota fijada se resalta al pasar el ratón y al pulsarlo, como los de pegar y borrar.
+- **Desplegables**: la flecha ya no queda pegada al borde y todos tienen el mismo aspecto. En el ordenador son más bajos y de la misma altura que los campos de texto; en el móvil siguen a tamaño de dedo.
+
 ## 1.24.0 - 2026-11-16
 
 ### Añadido

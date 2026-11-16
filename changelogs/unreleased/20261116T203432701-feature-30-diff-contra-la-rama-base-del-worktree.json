@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "web",
-  "description": "«Toda la rama» en «Ficheros cambiados» y el contador +/− de la ventana comparan ahora con la rama de la que salió la actual (por ejemplo, la base elegida al crear el worktree), no siempre con la principal; y un desplegable deja comparar con cualquier otra rama de origin mientras el modal está abierto",
-  "issue": "30",
-  "breaking": false,
-  "pr": "31"
-}
