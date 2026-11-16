@@ -1,5 +1,5 @@
 // Zips the built extension (dist/, from build.mjs) as twb-trello-extension-vX.Y.Z.zip, the file
-// attached to each GitHub release (.github/workflows/trello-extension.yml).
+// attached to each GitHub release (.github/workflows/release.yml).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
