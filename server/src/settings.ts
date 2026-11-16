@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut } from '../../shared/dictation.js';
+import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS } from '../../shared/dictation.js';
+import { parseShortcut, serializeShortcut } from '../../shared/shortcuts.js';
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
 import { DEFAULT_TEMPLATE } from '../../shared/trello.js';

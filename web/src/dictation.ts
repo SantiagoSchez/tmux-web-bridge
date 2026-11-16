@@ -1,5 +1,7 @@
 import { signal } from '@preact/signals';
-import { DEFAULT_DICTATION_SHORTCUT, parseShortcut, type Shortcut } from '../../shared/dictation';
+import { DEFAULT_DICTATION_SHORTCUT } from '../../shared/dictation';
+import { formatShortcut as format, matchesShortcut, parseShortcut, type Shortcut } from '../../shared/shortcuts';
+import { isMac, recordingShortcut } from './shortcuts';
 import type { DictateResult, DictationInfo } from '../../shared/types';
 import { isTouch } from './prefs';
 import { dictationInfo, hubSettings, toast } from './state';
@@ -14,8 +16,6 @@ const MIN_SECONDS = 0.4;
 export const dictating = signal<{ phase: 'recording' | 'sending'; host: string; pane: string; since: number } | null>(null);
 /** The pane a dictation just ended on (typed, discarded or failed): the terminal takes the focus back. */
 export const dictationEnded = signal<{ pane: string; at: number } | null>(null);
-/** The settings are listening for a new shortcut: the current one does not dictate meanwhile. */
-export const recordingShortcut = signal(false);
 
 /** Opening the microphone: stopping before it is open discards (nothing was said yet). */
 let starting = false;
@@ -150,22 +150,9 @@ export function shortcutFromEvent(e: KeyboardEvent): Shortcut {
   return { ctrl: e.ctrlKey, alt: e.altKey, shift: e.shiftKey, meta: e.metaKey, code: e.code };
 }
 
-function matches(e: KeyboardEvent, sc: Shortcut): boolean {
-  return e.code === sc.code && e.ctrlKey === sc.ctrl && e.altKey === sc.alt && e.shiftKey === sc.shift && e.metaKey === sc.meta;
-}
-
-const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
-const KEY_NAMES: Record<string, string> = {
-  Space: 'Espacio', Enter: 'Enter', Backspace: '⌫', Tab: 'Tab', Insert: 'Insert', Delete: 'Supr', Home: 'Inicio', End: 'Fin', PageUp: 'RePág', PageDown: 'AvPág',
-  ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→', Backquote: '`', Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']',
-  Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', IntlBackslash: '<',
-};
-
-/** "Ctrl+Shift+Espacio", "Cmd+Option+D". */
+/** "⌃⇧Espacio" on a Mac, "Ctrl+Shift+Espacio" elsewhere. */
 export function formatShortcut(sc: Shortcut): string {
-  const mods = [sc.ctrl && 'Ctrl', sc.alt && (MAC ? 'Option' : 'Alt'), sc.shift && 'Shift', sc.meta && (MAC ? 'Cmd' : 'Win')].filter(Boolean);
-  const key = KEY_NAMES[sc.code] ?? sc.code.replace(/^(Key|Digit)/, '');
-  return [...mods, key].join('+');
+  return format(sc, isMac);
 }
 
 /** Held longer than this, the shortcut is push-to-talk (releasing sends); shorter, a press that starts and another that sends. */
@@ -184,7 +171,7 @@ export function dictationKeyDown(e: KeyboardEvent, host: string, pane: string): 
     cancelDictation();
     return true;
   }
-  if (!matches(e, dictationShortcut())) return false;
+  if (!matchesShortcut(e, dictationShortcut())) return false;
   if (e.repeat) return true;
   if (dictating.value?.phase === 'recording' || starting) {
     keyHold = null;

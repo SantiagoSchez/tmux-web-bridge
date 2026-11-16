@@ -10,6 +10,7 @@ import { BaseBranchSelect } from './BaseBranch';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
 import { IconBranch, IconClose, IconWorktree } from './icons';
 import { hub } from '../ws';
+import { QuickNoteDialog } from './Scratchpads';
 
 /** How far down (px), or how fast (px/ms), a sheet has to be dragged for it to close. */
 const DISMISS_AT = 120;
@@ -150,6 +151,7 @@ export function Dialogs() {
   if (d.kind === 'confirm') return <ConfirmDialog d={d} close={close} />;
   if (d.kind === 'project') return <ProjectDialog d={d} close={close} />;
   if (d.kind === 'claudeLogin') return <ClaudeLoginDialog d={d} close={close} />;
+  if (d.kind === 'quickNote') return <QuickNoteDialog close={close} />;
   return <PromptDialog d={d} close={close} />;
 }
 

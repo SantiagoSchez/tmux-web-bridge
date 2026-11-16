@@ -15,6 +15,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo y con qué rama se comparan sus cambios.
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
+- [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
 
 ## Terminal
 
@@ -129,6 +130,16 @@ El panel tiene cinco scratchpads para apuntar lo que quieres decirle después a 
 
 Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar. Cuando el texto llega a 3500 caracteres, el campo enseña cuántos lleva de los 4000 posibles (por ejemplo, «3600/4000»), sin contar los espacios ni los saltos de línea del final, que no se guardan, y lo marca si se pasa. Un texto vacío o solo con espacios no añade nada.
 
+### Nota rápida desde el teclado
+<!-- capability: scratchpads; requirement: a-quick-note-from-the-keyboard -->
+
+Sin tocar el ratón, el atajo de la nota rápida (⌃⌥N en el Mac y Ctrl+Alt+N en los demás ordenadores, salvo que se cambie en Ajustes › Atajos) abre un diálogo con el cursor en el texto y elegido el scratchpad que está a la vista. Alt+1 a Alt+5 eligen el color en el orden de la pantalla (azul, verde, amarillo, naranja y morado); Tab lleva a los colores y las flechas pasan de uno a otro. Enter añade la nota y cierra el diálogo, Mayús+Enter salta de línea y Escape lo cierra sin añadir nada. Al cerrarse, el teclado vuelve a donde estaba, por ejemplo al terminal.
+
+### La nota rápida se añade como cualquier otra
+<!-- capability: scratchpads; requirement: a-quick-note-is-added-like-any-other -->
+
+La nota rápida va la última del scratchpad elegido, igual que una escrita al pie: con los mismos límites, el mismo contador de caracteres y la ventana que estaba abierta. Después, el dispositivo pasa a enseñar ese scratchpad. Si no se puede añadir (por ejemplo, porque el scratchpad tiene 20 notas), el diálogo sigue abierto con el texto y explica por qué, para elegir otro color. Un texto vacío no añade nada.
+
 ### Límites de un scratchpad y de una nota
 <!-- capability: scratchpads; requirement: limits-of-a-scratchpad-and-of-a-note -->
 
@@ -172,9 +183,56 @@ Cuando la ventana de una nota se cierra, o su máquina deja de responder, su lí
 ### Columna lateral en pantallas anchas
 <!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->
 
-En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel, en todas las pantallas. La columna se pliega a una tira estrecha con los cinco colores; un clic en un color la despliega en ese scratchpad. ⌘. en el Mac, y Ctrl+Mayús+. en los demás ordenadores, la pliega o la despliega. Cada dispositivo recuerda si la tenía plegada.
+En una pantalla ancha, los scratchpads ocupan una columna a la derecha del panel, en todas las pantallas. La columna se pliega a una tira estrecha con los cinco colores; un clic en un color la despliega en ese scratchpad. El atajo de plegar los scratchpads (⌘. en el Mac y Ctrl+Shift+. en los demás ordenadores, salvo que se cambie en Ajustes › Atajos) la pliega o la despliega, y la descripción emergente de sus botones dice el atajo que tiene ese dispositivo. Cada dispositivo recuerda si la tenía plegada.
 
 ### Cajón en el móvil
 <!-- capability: scratchpads; requirement: scratchpads-drawer-on-phones -->
 
 En el móvil, los scratchpads se abren en un cajón deslizando desde el borde derecho de la pantalla, igual que la lista se abre desde el izquierdo. Sobre una tira que se desplaza de lado, como la barra de teclas, el gesto la desplaza mientras le quede recorrido, y abre el cajón cuando llega al final. Se cierra deslizándolo de vuelta, tocando fuera o con el botón atrás del móvil, sin salir de la página. Al pegar una nota desde el cajón, este se cierra y deja a la vista el terminal con el texto pegado.
+
+## Atajos
+
+### Los atajos del panel
+<!-- capability: keyboard-shortcuts; requirement: the-panel-s-shortcuts-and-their-defaults -->
+
+El panel atiende estos atajos antes de que la tecla llegue al terminal, así que no escriben nada en él:
+
+| Atajo | Mac | Windows y Linux |
+|---|---|---|
+| Buscar una ventana | ⌘K | Ctrl+Shift+K |
+| Plegar la lista | ⌘B | Ctrl+Shift+B |
+| Plegar los scratchpads | ⌘. | Ctrl+Shift+. |
+| Nota rápida | ⌃⌥N | Ctrl+Alt+N |
+| Dictado | ⌃⇧Espacio | Ctrl+Shift+Espacio |
+
+La nota rápida no usa ⌥N en el Mac porque esa combinación escribe la «ñ».
+
+### Los atajos de número no cambian
+<!-- capability: keyboard-shortcuts; requirement: the-number-shortcuts-stay-fixed -->
+
+Ctrl+1…9 (la ventana N del espacio), Ctrl+Shift+1…9 (el espacio N) y Ctrl+Alt+Shift+1…9 (la máquina N) son los de tmux y no se cambian: Ajustes › Atajos los lista sin botón para cambiarlos.
+
+### La sección «Atajos» de Ajustes
+<!-- capability: keyboard-shortcuts; requirement: the-atajos-settings-section -->
+
+Ajustes › Atajos lista todos los atajos del panel con su combinación, escrita como la nombra el teclado del dispositivo. Búsqueda, plegar la lista, plegar los scratchpads, nota rápida y dictado se cambian con «Cambiar» y pulsando la combinación nueva; «Restablecer» devuelve la combinación por defecto. Ajustes › Dictado nombra su atajo y lleva a «Atajos» para cambiarlo.
+
+### Esperando la combinación nueva
+<!-- capability: keyboard-shortcuts; requirement: waiting-for-a-new-combination -->
+
+Mientras la sección espera una combinación, ningún atajo del panel actúa: pulsar el de la nota rápida no abre el diálogo, sino que se toma como la combinación nueva, o se rechaza si ya la usa otro. Escape deja de esperar sin cambiar nada.
+
+### Dónde se guarda cada atajo
+<!-- capability: keyboard-shortcuts; requirement: where-each-shortcut-is-kept -->
+
+Los atajos de búsqueda, plegar y nota rápida se guardan en cada dispositivo, así que un ordenador puede usar teclas distintas de otro; uno que nunca los cambió usa los de su tipo (Mac o no). El del dictado lo guarda el servidor central y es el mismo en todos los dispositivos.
+
+### Combinaciones que se rechazan
+<!-- capability: keyboard-shortcuts; requirement: combinations-that-are-refused -->
+
+La sección rechaza una combinación, dice por qué y deja la anterior cuando:
+
+- escribiría en el terminal: no lleva Ctrl, Alt ni Cmd (F1–F12 sí valen solas);
+- es Ctrl con una letra y nada más, que es del terminal (Ctrl+C, Ctrl+R…);
+- es Ctrl con un número, reservado a los atajos de número;
+- otro atajo del panel ya la usa en ese dispositivo, incluido el del dictado.

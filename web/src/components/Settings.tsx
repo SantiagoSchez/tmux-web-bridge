@@ -4,8 +4,9 @@ import { auth, logout } from '../auth';
 import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { currentSubscription } from '../push';
-import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, parseShortcut, serializeShortcut, shortcutProblem, type DictationButton } from '../../../shared/dictation';
-import { formatShortcut, notReady, recordingShortcut, shortcutFromEvent } from '../dictation';
+import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS, type DictationButton } from '../../../shared/dictation';
+import { parseShortcut } from '../../../shared/shortcuts';
+import { formatShortcut, notReady } from '../dictation';
 import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
@@ -15,6 +16,7 @@ import { TrelloAccountSettings } from './Trello';
 import { AutomationSettings } from './Automations';
 import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
+import { ShortcutSettings } from './ShortcutSettings';
 import { HubConnection, machineEditing, MachinesList } from './Machines';
 import { TwoFactorSettings } from './TwoFactor';
 
@@ -96,6 +98,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
+  { id: 'shortcuts', label: 'Atajos', hint: 'Búsqueda, plegar, nota rápida y dictado' },
   { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; lista de espacios, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
@@ -172,6 +175,8 @@ function SettingsSection({ id }: { id: SettingsTab }) {
   switch (id) {
     case 'device':
       return <DeviceSettings />;
+    case 'shortcuts':
+      return <ShortcutSettings />;
     case 'machines':
       return <MachineSettings />;
     case 'folders':
@@ -370,65 +375,6 @@ const MIC_MODES: [DictationButton, string][] = [
   ['toggle', 'Tocar y volver a tocar'],
 ];
 
-/** The dictation shortcut: shown, and changed by pressing the new combination. */
-function ShortcutSetting({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const listening = recordingShortcut.value;
-  const [problem, setProblem] = useState<string | null>(null);
-  useEffect(() => {
-    if (!listening) return;
-    const onKey = (e: KeyboardEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.repeat || ['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'CapsLock'].includes(e.key)) return;
-      if (e.key === 'Escape' && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
-        recordingShortcut.value = false;
-        return;
-      }
-      const sc = shortcutFromEvent(e);
-      const why = parseShortcut(serializeShortcut(sc)) ? null : (shortcutProblem(sc) ?? 'Esa tecla no se puede usar.');
-      setProblem(why ? `${formatShortcut(sc)}: ${why}` : null);
-      if (why) return;
-      onChange(serializeShortcut(sc));
-      recordingShortcut.value = false;
-    };
-    globalThis.addEventListener('keydown', onKey, { capture: true });
-    return () => {
-      globalThis.removeEventListener('keydown', onKey, { capture: true });
-      recordingShortcut.value = false;
-    };
-  }, [listening]);
-  const current = parseShortcut(value);
-  return (
-    <section class="setting">
-      <h3>Atajo de teclado</h3>
-      <p class="dim small">Mantenlo pulsado mientras hablas y suéltalo para enviar, o púlsalo una vez para empezar y otra para enviar. Esc descarta lo grabado.</p>
-      <div class="row-btns">
-        <kbd class="shortcut">{listening ? 'Pulsa la combinación…' : current ? formatShortcut(current) : value}</kbd>
-        {listening ? (
-          <button class="btn" onClick={() => (recordingShortcut.value = false)}>
-            Cancelar
-          </button>
-        ) : (
-          <button
-            class="btn"
-            onClick={() => {
-              setProblem(null);
-              recordingShortcut.value = true;
-            }}
-          >
-            Cambiar
-          </button>
-        )}
-        {!listening && value !== DEFAULT_DICTATION_SHORTCUT && (
-          <button class="btn" onClick={() => onChange(DEFAULT_DICTATION_SHORTCUT)}>
-            Restablecer
-          </button>
-        )}
-      </div>
-      {problem && <p class="settings-state small">{problem}</p>}
-    </section>
-  );
-}
 
 const LLM_STATE = { unset: 'sin configurar en el servidor', ok: 'responde', down: 'no responde' } as const;
 
@@ -476,7 +422,18 @@ function DictationSettings() {
               ))}
             </div>
           </section>
-          <ShortcutSetting value={s.dictationShortcut} onChange={(v) => set({ dictationShortcut: v })} />
+          <section class="setting">
+            <h3>Atajo de teclado</h3>
+            <p class="dim small">
+              <kbd class="shortcut">{formatShortcut(parseShortcut(s.dictationShortcut) ?? parseShortcut(DEFAULT_DICTATION_SHORTCUT)!)}</kbd> Mantenlo pulsado mientras hablas y
+              suéltalo para enviar, o púlsalo una vez para empezar y otra para enviar. Esc descarta lo grabado.
+            </p>
+            <div class="row-btns">
+              <button class="btn" onClick={() => (settingsTab.value = 'shortcuts')}>
+                Cambiarlo en Atajos
+              </button>
+            </div>
+          </section>
           <section class="setting">
             <h3>Limpieza</h3>
             <p class="dim small">

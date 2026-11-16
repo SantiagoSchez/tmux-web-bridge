@@ -1,6 +1,7 @@
 import { route, toggleGrid } from '../router';
 import { connections, openSettings, pending, sheet, wsStatus } from '../state';
-import { isDesktop, SIDEBAR_KEY, toggleSidebar } from '../prefs';
+import { isDesktop, toggleSidebar } from '../prefs';
+import { shortcutLabel } from '../shortcuts';
 import { IconActivity, IconBoard, IconGear, IconGrid, IconSidebar, IconUsers } from './icons';
 import { trelloInfo } from './Trello';
 
@@ -15,7 +16,7 @@ export function Header() {
     <header class="topbar">
       <div class="brand">
         {isDesktop.value && (
-          <button class="icon-btn sidebar-btn" aria-label="Ocultar la lista" title={`Ocultar la lista (${SIDEBAR_KEY})`} onClick={toggleSidebar}>
+          <button class="icon-btn sidebar-btn" aria-label="Ocultar la lista" title={`Ocultar la lista (${shortcutLabel('foldList')})`} onClick={toggleSidebar}>
             <IconSidebar />
           </button>
         )}

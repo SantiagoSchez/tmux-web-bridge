@@ -1,4 +1,5 @@
-import { prefs, SIDEBAR_KEY, toggleSidebar } from '../prefs';
+import { prefs, toggleSidebar } from '../prefs';
+import { shortcutLabel } from '../shortcuts';
 import { openWindow, route } from '../router';
 import { multiHost, pending, STATE_LABEL, wsStatus } from '../state';
 import { ago } from '../time';
@@ -16,7 +17,7 @@ export function Rail() {
   const items = pending.value;
   return (
     <nav class="rail-body" aria-label="Lista plegada">
-      <button class="icon-btn" aria-label="Mostrar la lista" aria-expanded={!prefs.value.sidebarCollapsed} title={`Mostrar la lista (${SIDEBAR_KEY})`} onClick={toggleSidebar}>
+      <button class="icon-btn" aria-label="Mostrar la lista" aria-expanded={!prefs.value.sidebarCollapsed} title={`Mostrar la lista (${shortcutLabel('foldList')})`} onClick={toggleSidebar}>
         <IconSidebar />
       </button>
       <span class={`dot dot-${status}`} title={STATUS_LABEL[status]} />

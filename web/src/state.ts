@@ -121,7 +121,9 @@ export type Dialog =
    * A Claude login from the panel. host: the machine to switch to it right after;
    * account: the account it is meant for (re-login), if any.
    */
-  | { kind: 'claudeLogin'; host?: string; account?: string };
+  | { kind: 'claudeLogin'; host?: string; account?: string }
+  /** A note written and placed from the keyboard (the quick note shortcut). */
+  | { kind: 'quickNote' };
 
 /** A Claude about to be closed, and the command that resumes its conversation later. */
 export interface ClaudeResume {
@@ -148,7 +150,7 @@ export const activity = signal<ActivityEvent[]>([]);
 /** The notes of the five scratchpads by storage position (from the hub). */
 export const scratchpads = signal<Scratchpads>([[], [], [], [], []]);
 
-export type SettingsTab = 'device' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
+export type SettingsTab = 'device' | 'shortcuts' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */
 export const settingsTab = signal<SettingsTab | null>(null);
 

@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { noteLength, SCRATCHPAD_COUNT, SCRATCHPAD_COUNTER_FROM, SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
 import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadNoteOrigin, ScratchpadPasteRequest } from '../../../shared/types';
 import { api } from '../api';
-import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
+import { isDesktop, prefs, setPref, toggleScratchpads } from '../prefs';
+import { isMac, shortcutLabel } from '../shortcuts';
 import { openWindow, route } from '../router';
 import { findWindow, hosts, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
+import { Sheet } from './Dialogs';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
 /**
@@ -107,7 +109,7 @@ export function Scratchpads() {
           ))}
         </div>
         {isDesktop.value && (
-          <button class="icon-btn" aria-label="Ocultar los scratchpads" title={`Ocultar los scratchpads (${SCRATCHPADS_KEY})`} onClick={toggleScratchpads}>
+          <button class="icon-btn" aria-label="Ocultar los scratchpads" title={`Ocultar los scratchpads (${shortcutLabel('foldPads')})`} onClick={toggleScratchpads}>
             <IconSidebarRight />
           </button>
         )}
@@ -263,6 +265,21 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
   );
 }
 
+/**
+ * Adds a note at the end of scratchpad `pad`, remembering the window shown now (by its ids:
+ * the hub stores its names with the note). Null when the hub took it, else why not.
+ */
+async function addNote(pad: number, text: string): Promise<string | null> {
+  const r = route.value;
+  const origin = r.name === 'window' ? { host: r.host, window: r.window } : undefined;
+  try {
+    await api('/api/scratchpads/notes', { pad, text, origin } satisfies ScratchpadAddRequest);
+    return null;
+  } catch (err) {
+    return (err as Error).message;
+  }
+}
+
 /** The field at the foot of a scratchpad: Enter adds its text as a note. How many notes there are shows on the colour. */
 function AddField({ pad, count }: { pad: number; count: number }) {
   const [text, setText] = useState('');
@@ -275,10 +292,9 @@ function AddField({ pad, count }: { pad: number; count: number }) {
     const sent = text;
     if (!sent.trim()) return;
     setText('');
-    // The window shown now, by its ids: the hub stores its names with the note.
-    const r = route.value;
-    const origin = r.name === 'window' ? { host: r.host, window: r.window } : undefined;
-    if (!(await call('/api/scratchpads/notes', { pad, text: sent, origin } satisfies ScratchpadAddRequest))) {
+    const error = await addNote(pad, sent);
+    if (error) {
+      toast(error, 'error');
       setText((now) => (now ? `${sent}\n${now}` : sent));
     }
   };
@@ -308,7 +324,7 @@ function AddField({ pad, count }: { pad: number; count: number }) {
 export function ScratchpadsRail() {
   return (
     <nav class="rail-body pads-rail" aria-label="Scratchpads plegados">
-      <button class="icon-btn" aria-label="Mostrar los scratchpads" aria-expanded={false} title={`Mostrar los scratchpads (${SCRATCHPADS_KEY})`} onClick={toggleScratchpads}>
+      <button class="icon-btn" aria-label="Mostrar los scratchpads" aria-expanded={false} title={`Mostrar los scratchpads (${shortcutLabel('foldPads')})`} onClick={toggleScratchpads}>
         <IconSidebarRight />
       </button>
       {PADS.map((p) => (
@@ -329,5 +345,113 @@ export function ScratchpadsRail() {
         </button>
       ))}
     </nav>
+  );
+}
+
+/** How Alt is written in the colours' hints: ⌥ on a Mac. */
+const altKey = isMac ? '⌥' : 'Alt+';
+
+/**
+ * The quick note: a note written and placed without the mouse. The text has the focus and
+ * the scratchpad shown is chosen; Alt+1…5 chooses another in screen order, and Tab reaches
+ * the colours, which the arrows move between. Enter adds the note and closes, Shift+Enter
+ * is a new line, Escape closes; the focus then goes back where it was (the terminal).
+ * A full scratchpad or a refusal keeps it open with the text and the reason.
+ */
+export function QuickNoteDialog({ close }: { close: () => void }) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
+  const before = useRef<Element | null>(null);
+  const [pad, setPad] = useState(selected);
+  const [text, setText] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const at = PADS.findIndex((p) => p.at === pad);
+  const count = scratchpads.value[pad]?.length ?? 0;
+
+  useEffect(() => {
+    before.current = document.activeElement;
+    field.current?.focus();
+  }, []);
+  const done = () => {
+    close();
+    // After the dialog goes, so the focus lands on what was under it.
+    const back = before.current;
+    requestAnimationFrame(() => back instanceof HTMLElement && back.focus());
+  };
+  const choose = (i: number, focus = false) => {
+    setPad(PADS[i].at);
+    setProblem(null);
+    if (focus) radios.current[i]?.focus();
+  };
+  const save = async () => {
+    if (busy || !text.trim()) return;
+    if (count >= SCRATCHPAD_MAX_NOTES) return setProblem(`El scratchpad ${PADS[at].name.toLowerCase()} está lleno: elige otro color o borra una nota.`);
+    setBusy(true);
+    const error = await addNote(pad, text);
+    setBusy(false);
+    if (error) return setProblem(error);
+    setPref('scratchpad', pad);
+    done();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    const digit = /^Digit([1-5])$/.exec(e.code);
+    if (digit && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+      // By key position: ⌥1 on a Mac would type «¡».
+      e.preventDefault();
+      choose(Number(digit[1]) - 1);
+    } else if (isSave(e)) {
+      e.preventDefault();
+      void save();
+    }
+  };
+
+  return (
+    <Sheet title="Nota rápida" subtitle="Enter guarda, Mayús+Enter salto de línea, Esc cierra" class="quick-note" onClose={done}>
+      <div class="quick-note-body" style={{ '--pad': PADS[at].color }} onKeyDown={onKey}>
+        <textarea
+          ref={field}
+          class="pads-input"
+          aria-label="Texto de la nota"
+          rows={3}
+          value={text}
+          onInput={(e) => {
+            setText(e.currentTarget.value);
+            setProblem(null);
+          }}
+        />
+        <CharCount text={text} />
+        <div class="quick-note-colors" role="radiogroup" aria-label="Scratchpad">
+          {PADS.map((p, i) => (
+            <button
+              key={p.at}
+              ref={(el) => {
+                radios.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={p.at === pad}
+              aria-label={`${p.name} (${altKey}${i + 1})`}
+              title={`${p.name} · ${notesLabel(scratchpads.value[p.at]?.length ?? 0)} (${altKey}${i + 1})`}
+              tabIndex={p.at === pad ? 0 : -1}
+              class={`pads-tab ${p.at === pad ? 'on' : ''}`}
+              style={{ '--pad': p.color }}
+              onClick={() => choose(i)}
+              onKeyDown={(e) => {
+                const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+                if (step) {
+                  e.preventDefault();
+                  choose((i + step + PADS.length) % PADS.length, true);
+                }
+              }}
+            >
+              <span class="pads-dot" />
+              <span class="pads-count">{i + 1}</span>
+            </button>
+          ))}
+        </div>
+        {problem && <p class="settings-state small">{problem}</p>}
+      </div>
+    </Sheet>
   );
 }
