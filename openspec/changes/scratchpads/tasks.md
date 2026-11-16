@@ -56,7 +56,7 @@
 ## 7. Checks
 
 - [x] 7.1 Run the step 4 commands of every touched layer: `pnpm --filter server test`, `pnpm --filter server typecheck`, `pnpm --filter web typecheck`; and `ka features-check`; verify each passes.
-  - Done: server test 254 pass, server and web typecheck pass, `ka features-check` exit 0.
+  - Done: server test 254 pass (268 after rebasing onto `master`, which brought PR #22's tests), server and web typecheck pass, `ka features-check` exit 0.
 - [x] 7.2 Check the panel by hand against the isolated hub (vite dev server proxying to it), on a wide viewport and a phone-sized one: add, edit, Escape, empty-deletes, pin, delete, the 10-note limit, paste into a pane (text in the input without Enter, unpinned note gone on a second open tab), paste disabled on the home screen, fold and unfold with the button, the strip dots and the shortcut (state kept after a reload), the right-edge drawer opening and closing while the left one still works, and both themes.
   - Done against the isolated hub (port 7693, own tmux socket) and vite: wide 1440x900 in dark and light; phone 390x844 with CDP touch emulation. Add (Shift+Enter keeps the new line), edit with Enter, Escape cancels without leaving the window, empty deletes, pin, 10-note limit (field disabled, «Lleno», 10/10), paste typed without Enter (pinned kept, unpinned gone), live sync (notes added from another client with curl showed up without a reload), paste disabled on home, fold by button, by dot (unfolds on that colour) and by Ctrl+Shift+. with the terminal focused (nothing typed), kept after reload; phone: right-edge swipe opens, paste closes it, the right swipe does nothing while the list is open, tap outside, swipe back and the back button close it. Found and fixed: notes took two rows each, the resize grip overlapped the counter.
 
@@ -80,6 +80,15 @@
 
 - [x] 10.1 The project has no E2E suite; this step does not apply. Record it here.
   - Not applicable: the project has no E2E suite (step 7 of the mandatory steps).
+
+## 13. Review round 1 (PR #23)
+
+- [x] 13.1 Write failing tests in `server/src/scratchpads.test.ts` for `ScratchpadStore.paste(id, send)`: success removes an unpinned note and keeps a pinned one; a second `paste` while the first awaits gets 409, pinned or not; a rejecting `send` keeps the note, lets it be pasted again and passes the error up; a note deleted while `send` awaits is not brought back; and for `edit` with a text over 4000 characters or not a string (400). Replace `startPaste`/`finishPaste` with `paste` in `server/src/scratchpads.ts` and make the route call it with a `send` that turns a `pasteText` failure into a 502 naming the machine; verify the tests pass.
+  - Done: five paste tests rewritten against `paste(id, send)` and seen failing before it existed; the `edit` test with a too-long or non-string text seen failing under a mutation that saved it; `startPaste`/`finishPaste` replaced by `paste`, the route passes a `send` that turns a `pasteText` failure into a 502 naming the machine; 270 server tests and typecheck pass.
+- [x] 13.2 Web: remove `maxLength` from both fields; keep a note open with its text when saving it fails; ignore Enter in the add field while adding; set `scratchpadPasted` after a paste and focus that pane's terminal on a computer; 44 px note buttons under `pointer: coarse`; `EdgeDrawer` does not start while a sheet, dialog, palette or file viewer is open; `role="tabpanel"` on a wrapper of the `<ul>`; «1 nota» in the labels. Verify `pnpm --filter web typecheck`.
+  - Done: no `maxLength`; the editor stays open with its text when the save fails; the add field ignores Enter while adding; `scratchpadPasted` focuses the pane terminal on a computer; 44 px note buttons under `pointer: coarse`; `EdgeDrawer` skips a touch while a sheet, dialog, palette or file viewer is open; `role="tabpanel"` on a div around the `<ul>`; «1 nota». `pnpm --filter web typecheck` passes.
+- [x] 13.3 Re-run the step 4 commands and `ka features-check`; update the «Pegar una nota en el panel», «Editar una nota» and «Límite de 10 notas» sections of `docs/FEATURES.md` to the amended spec; check the panel by hand against the isolated hub (5000-character note in the field and in an edit, focus after paste, 44 px buttons on the phone viewport, drawer not opening under a sheet).
+  - Done: 270 server tests, both typechecks and `ka features-check` pass; three catalogue sections updated. By hand on the isolated hub: a 5000-character note shows «Una nota admite como mucho 4000 caracteres» and stays in the field; a 5000-character edit stays open and Escape then cancels it; after a paste, typed keys and Enter reach the pane without clicking it; on 390x844 with touch emulation the note buttons measure 44x44 and the right-edge swipe does nothing while Ajustes is open.
 
 ## 11. Human review
 

@@ -79,18 +79,21 @@ export class ScratchpadStore extends EventEmitter {
     this.change(pad, this.data[pad].filter((n) => n.id !== id));
   }
 
-  /** Marks a note as being pasted and returns it; refused if it is gone or already being pasted. */
-  startPaste(id: string): ScratchpadNote {
-    if (this.pasting.has(id)) throw new ScratchpadError(GONE, 404);
+  /**
+   * Pastes a note with `send(text)` (the route's paste into a pane). The note is marked
+   * while `send` runs, so a second paste of it gets 409 instead of typing it twice. When
+   * `send` resolves the note goes, unless it is pinned; when it rejects the note stays
+   * and the error goes up.
+   */
+  async paste(id: string, send: (text: string) => Promise<void>): Promise<void> {
+    if (this.pasting.has(id)) throw new ScratchpadError('Esa nota ya se está pegando', 409);
     const [, note] = this.find(id);
     this.pasting.add(id);
-    return note;
-  }
-
-  /** The paste ended: if it worked, the note goes unless it is pinned. */
-  finishPaste(id: string, ok: boolean): void {
-    this.pasting.delete(id);
-    if (!ok) return;
+    try {
+      await send(note.text);
+    } finally {
+      this.pasting.delete(id);
+    }
     const found = this.data.findIndex((notes) => notes.some((n) => n.id === id && !n.pinned));
     if (found >= 0) this.change(found, this.data[found].filter((n) => n.id !== id));
   }

@@ -125,6 +125,16 @@ test(
 );
 
 test(
+  'an edit with a text too long, or that is not a string, is refused and keeps the note',
+  withStore((store) => {
+    const id = store.add(0, 'nota');
+    assert.equal(failure(() => store.edit(id, { text: 'a'.repeat(4001) })).status, 400);
+    assert.equal(failure(() => store.edit(id, { text: 42 })).status, 400);
+    assert.deepEqual(store.pads[0], [{ id, text: 'nota', pinned: false }]);
+  }),
+);
+
+test(
   'editing or deleting a note that is gone fails with 404',
   withStore((store) => {
     const id = store.add(0, 'nota');
@@ -155,49 +165,98 @@ test(
 
 // ---------------------------------------------------------------- pasting
 
+/** A failed async store call: its status and message. */
+async function rejection(promise: Promise<unknown>): Promise<{ status: number; message: string }> {
+  try {
+    await promise;
+  } catch (err) {
+    assert.ok(err instanceof ScratchpadError, String(err));
+    return { status: err.status, message: err.message };
+  }
+  assert.fail('expected the call to fail');
+}
+
+/** A `send` that waits until `release()` is called, recording what it was given. */
+function heldSend() {
+  const sent: string[] = [];
+  let release!: (err?: Error) => void;
+  const done = new Promise<void>((resolve, reject) => (release = (err) => (err ? reject(err) : resolve())));
+  return { sent, release, send: (text: string) => (sent.push(text), done) };
+}
+
 test(
-  'a note being pasted cannot be pasted again until the first paste ends',
-  withStore((store) => {
-    const id = store.add(0, 'Revisar el test de login');
-    assert.equal(store.startPaste(id).text, 'Revisar el test de login');
-    assert.equal(failure(() => store.startPaste(id)).status, 404);
+  'a pasted note is sent once and removed unless it is pinned',
+  withStore(async (store) => {
+    const loose = store.add(0, 'suelta');
+    const pinned = store.add(0, 'fijada');
+    store.edit(pinned, { pinned: true });
+    const sent: string[] = [];
+    const send = async (text: string) => void sent.push(text);
+    await store.paste(loose, send);
+    await store.paste(pinned, send);
+    assert.deepEqual(sent, ['suelta', 'fijada']);
+    assert.deepEqual(store.pads[0], [{ id: pinned, text: 'fijada', pinned: true }]);
   }),
 );
 
 test(
-  'a pasted note is removed unless it is pinned',
-  withStore((store) => {
+  'a note being pasted cannot be pasted again until the first paste ends, pinned or not',
+  withStore(async (store) => {
     const loose = store.add(0, 'suelta');
     const pinned = store.add(0, 'fijada');
     store.edit(pinned, { pinned: true });
     for (const id of [loose, pinned]) {
-      store.startPaste(id);
-      store.finishPaste(id, true);
+      const held = heldSend();
+      const first = store.paste(id, held.send);
+      const second = await rejection(store.paste(id, held.send));
+      assert.equal(second.status, 409);
+      assert.match(second.message, /se está pegando/);
+      held.release();
+      await first;
+      assert.equal(held.sent.length, 1);
     }
-    assert.deepEqual(store.pads[0], [{ id: pinned, text: 'fijada', pinned: true }]);
-    assert.equal(store.startPaste(pinned).id, pinned);
+    assert.deepEqual(store.pads[0].map((n) => n.id), [pinned]);
+    await store.paste(pinned, async () => {});
   }),
 );
 
 test(
-  'a failed paste keeps the note, ready to be pasted again',
-  withStore((store) => {
+  'a failed paste keeps the note, passes the error up and lets it be pasted again',
+  withStore(async (store) => {
     const id = store.add(1, 'nota');
-    store.startPaste(id);
-    store.finishPaste(id, false);
+    const machine = new ScratchpadError('No se pudo pegar en Mac: sin conexión', 502);
+    const f = await rejection(
+      store.paste(id, async () => {
+        throw machine;
+      }),
+    );
+    assert.deepEqual(f, { status: 502, message: 'No se pudo pegar en Mac: sin conexión' });
     assert.equal(store.pads[1].length, 1);
-    assert.equal(store.startPaste(id).id, id);
+    await store.paste(id, async () => {});
+    assert.deepEqual(store.pads[1], []);
+  }),
+);
+
+test(
+  'pasting a note that is gone fails with 404 and sends nothing',
+  withStore(async (store) => {
+    const id = store.add(1, 'nota');
+    store.remove(id);
+    let sent = false;
+    assert.equal((await rejection(store.paste(id, async () => void (sent = true)))).status, 404);
+    assert.equal(sent, false);
   }),
 );
 
 test(
   'a note deleted while it was being pasted does not come back',
-  withStore((store) => {
+  withStore(async (store) => {
     const id = store.add(1, 'nota');
-    store.startPaste(id);
+    const held = heldSend();
+    const pasting = store.paste(id, held.send);
     store.remove(id);
-    store.finishPaste(id, false);
+    held.release();
+    await pasting;
     assert.deepEqual(store.pads[1], []);
-    assert.equal(failure(() => store.startPaste(id)).status, 404);
   }),
 );

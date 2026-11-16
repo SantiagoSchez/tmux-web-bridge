@@ -68,13 +68,13 @@ A scratchpad SHALL hold at most 10 notes, and a note SHALL hold at most 4000 cha
 
 #### Scenario: Note too long
 
-- **GIVEN** a text of 5000 characters
-- **WHEN** the owner tries to save it as a note
-- **THEN** the hub refuses it and the panel says notes hold at most 4000 characters
+- **GIVEN** a text of 5000 characters pasted into the field
+- **WHEN** the owner presses Enter
+- **THEN** the hub refuses it, the panel says notes hold at most 4000 characters and the text stays in the field
 
 ### Requirement: Editing a note
 
-A click on a note's text SHALL open it for editing in place. Enter or leaving the note SHALL save the new text, Shift+Enter SHALL insert a new line and Escape SHALL cancel. Saving an empty text SHALL delete the note.
+A click on a note's text SHALL open it for editing in place. Enter or leaving the note SHALL save the new text, Shift+Enter SHALL insert a new line and Escape SHALL cancel. Saving an empty text SHALL delete the note. If the hub refuses the new text, the note SHALL stay open with it and the panel SHALL say why.
 
 #### Scenario: Editing in place
 
@@ -87,6 +87,12 @@ A click on a note's text SHALL open it for editing in place. Enter or leaving th
 - **GIVEN** a note being edited with changed text
 - **WHEN** the owner presses Escape
 - **THEN** the note keeps its previous text
+
+#### Scenario: A refused edit keeps the text
+
+- **GIVEN** a note being edited
+- **WHEN** the owner pastes a text of 5000 characters into it and presses Enter
+- **THEN** the panel says notes hold at most 4000 characters and the note stays open with that text
 
 #### Scenario: Emptying deletes
 
@@ -116,7 +122,7 @@ Each note SHALL have a delete button that removes it from its scratchpad on ever
 
 ### Requirement: Pasting a note into the active pane
 
-Each note SHALL have a paste button that types its text into the active pane of the window open in the panel as a paste, without pressing Enter. After a successful paste the hub SHALL remove the note unless it is pinned. With no window open the button SHALL be disabled. If the paste fails the note SHALL stay and the panel SHALL show the error.
+Each note SHALL have a paste button that types its text into the active pane of the window open in the panel as a paste, without pressing Enter. After a successful paste the hub SHALL remove the note unless it is pinned, and on a computer the terminal SHALL take the keyboard back, ready for Enter. With no window open the button SHALL be disabled. If the paste fails the note SHALL stay and the panel SHALL show the error.
 
 #### Scenario: Pasting an unpinned note
 
@@ -136,6 +142,12 @@ Each note SHALL have a paste button that types its text into the active pane of 
 - **WHEN** the owner pastes it
 - **THEN** both lines appear in Claude Code's input and nothing is sent
 
+#### Scenario: Ready to send
+
+- **GIVEN** a wide screen with a window open on Claude Code
+- **WHEN** the owner pastes a note and presses Enter
+- **THEN** Enter reaches Claude Code and sends the pasted text
+
 #### Scenario: No window open
 
 - **GIVEN** the panel on its home screen, with no window open
@@ -152,7 +164,7 @@ Each note SHALL have a paste button that types its text into the active pane of 
 
 - **GIVEN** an unpinned note shown on two devices, each with a window open
 - **WHEN** both press its paste button at the same time
-- **THEN** the text is pasted once and the other device is told the note no longer exists
+- **THEN** the text is pasted once and the other device is told the note is already being pasted
 
 ### Requirement: Scratchpads sidebar on wide screens
 

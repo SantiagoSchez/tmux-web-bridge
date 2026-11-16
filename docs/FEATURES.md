@@ -107,12 +107,12 @@ Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Ent
 ### Límite de 10 notas
 <!-- capability: scratchpads; requirement: a-scratchpad-holds-at-most-10-notes -->
 
-Cada scratchpad guarda como mucho 10 notas, y cada nota como mucho 4000 caracteres. Con 10 notas, el campo se desactiva y avisa de que está lleno. Si dos dispositivos añaden a la vez la nota que ocupa el último hueco, se guarda una y el otro dispositivo recibe un aviso de que el scratchpad está lleno. Una nota más larga de 4000 caracteres se rechaza con un aviso que lo explica.
+Cada scratchpad guarda como mucho 10 notas, y cada nota como mucho 4000 caracteres. Con 10 notas, el campo se desactiva y avisa de que está lleno. Si dos dispositivos añaden a la vez la nota que ocupa el último hueco, se guarda una y el otro dispositivo recibe un aviso de que el scratchpad está lleno. Una nota más larga de 4000 caracteres se rechaza con un aviso que lo explica, y el texto se queda en el campo para acortarlo.
 
 ### Editar una nota
 <!-- capability: scratchpads; requirement: editing-a-note -->
 
-Un clic en el texto de una nota la abre para editarla ahí mismo. Enter, o salir de la nota, guarda el cambio en todos los dispositivos; Mayús+Enter salta de línea y Escape deja la nota como estaba. Guardar una nota vacía la borra.
+Un clic en el texto de una nota la abre para editarla ahí mismo. Enter, o salir de la nota, guarda el cambio en todos los dispositivos; Mayús+Enter salta de línea y Escape deja la nota como estaba. Guardar una nota vacía la borra. Si el texto nuevo no se puede guardar (por ejemplo, porque pasa de 4000 caracteres), el panel dice por qué y la nota sigue abierta con lo escrito.
 
 ### Fijar una nota
 <!-- capability: scratchpads; requirement: pinning-a-note -->
@@ -127,7 +127,7 @@ Cada nota tiene un botón para borrarla, esté fijada o no. Desaparece de todos 
 ### Pegar una nota en el panel
 <!-- capability: scratchpads; requirement: pasting-a-note-into-the-active-pane -->
 
-Cada nota tiene un botón que escribe su texto en el panel activo de la ventana abierta, como un pegado y sin pulsar Enter, para repasarlo antes de enviarlo. Una nota de varias líneas llega entera a la entrada de Claude Code sin enviarse. Después de pegarla, la nota desaparece de todos los dispositivos, salvo que esté fijada. Sin una ventana abierta, como en la pantalla de inicio, el botón está desactivado. Si la máquina no responde, el panel avisa del error y la nota se queda. Si dos dispositivos pegan la misma nota a la vez, se pega una sola vez y el otro recibe un aviso de que la nota ya no existe.
+Cada nota tiene un botón que escribe su texto en el panel activo de la ventana abierta, como un pegado y sin pulsar Enter, para repasarlo antes de enviarlo. Una nota de varias líneas llega entera a la entrada de Claude Code sin enviarse. Después de pegarla, la nota desaparece de todos los dispositivos, salvo que esté fijada, y en el ordenador el terminal recupera el teclado, así que Enter envía el texto. Sin una ventana abierta, como en la pantalla de inicio, el botón está desactivado. Si la máquina no responde, el panel avisa del error y la nota se queda. Si dos dispositivos pegan la misma nota a la vez, se pega una sola vez y el otro recibe un aviso de que ya se está pegando.
 
 ### Columna lateral en pantallas anchas
 <!-- capability: scratchpads; requirement: scratchpads-sidebar-on-wide-screens -->

@@ -2,7 +2,8 @@ import { useSignal, type Signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef } from 'preact/hooks';
 import { route } from '../router';
-import { drawerOpen, scratchpadsOpen } from '../state';
+import { fileViewer } from '../fileViewer';
+import { dialog, drawerOpen, paletteOpen, scratchpadsOpen, sheet } from '../state';
 import { Header } from './Header';
 import { Scratchpads } from './Scratchpads';
 import { Tree } from './Tree';
@@ -41,6 +42,8 @@ function EdgeDrawer({ side, open, other, class: cls, children }: EdgeDrawerProps
     const onStart = (e: TouchEvent) => {
       const t = e.touches[0];
       if (e.touches.length !== 1 || other.value) return;
+      // What sits above the drawers (a sheet, a dialog, the palette, the file viewer) keeps its touches.
+      if (sheet.value || dialog.value || paletteOpen.value || fileViewer.value) return;
       // Dragging a terminal selection handle near the edge.
       if ((e.target as Element | null)?.closest?.('.sel-handle')) return;
       if (!open.value && fromEdge(t.clientX) > EDGE) return;

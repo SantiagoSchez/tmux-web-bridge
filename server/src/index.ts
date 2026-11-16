@@ -813,14 +813,13 @@ app.post('/api/scratchpads/notes/:id/paste', async (req, reply) => {
   if (!host.findPane(body.pane)) return reply.code(404).send({ error: 'El panel ya no existe' });
   const pane = body.pane;
   return scratchpadRoute(reply, async () => {
-    const note = scratchpads.startPaste(id);
-    try {
-      await pasteText(host, pane, note.text);
-    } catch (err) {
-      scratchpads.finishPaste(id, false);
-      return reply.code(502).send({ error: `No se pudo pegar en ${host.name}: ${(err as Error).message}` });
-    }
-    scratchpads.finishPaste(id, true);
+    await scratchpads.paste(id, async (text) => {
+      try {
+        await pasteText(host, pane, text);
+      } catch (err) {
+        throw new ScratchpadError(`No se pudo pegar en ${host.name}: ${(err as Error).message}`, 502);
+      }
+    });
     console.log(`[scratchpads] nota ${id} pegada en ${host.id} ${pane}`);
     return { ok: true };
   });

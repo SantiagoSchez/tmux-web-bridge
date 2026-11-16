@@ -170,5 +170,7 @@ export function openFolderSettings(hostId: string): void {
 export const drawerOpen = signal(false);
 /** The scratchpads as a drawer from the right edge, on phones. */
 export const scratchpadsOpen = signal(false);
+/** The pane a scratchpad note was just pasted into: on a computer its terminal takes the keyboard back. */
+export const scratchpadPasted = signal<{ pane: string; at: number } | null>(null);
 /** The Cmd+K search, to jump to any window. */
 export const paletteOpen = signal(false);

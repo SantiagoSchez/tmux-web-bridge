@@ -1,11 +1,11 @@
 import { computed } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
+import { SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
 import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadPasteRequest } from '../../../shared/types';
 import { api } from '../api';
 import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
 import { route } from '../router';
-import { findWindow, paneOf, scratchpads, scratchpadsOpen, toast } from '../state';
+import { findWindow, paneOf, scratchpadPasted, scratchpads, scratchpadsOpen, toast } from '../state';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
 /** The three scratchpads, by position: their colour and the name a screen reader says. */
@@ -48,6 +48,9 @@ async function call(path: string, body: unknown): Promise<boolean> {
 
 const notePath = (id: string) => `/api/scratchpads/notes/${encodeURIComponent(id)}`;
 
+/** «1 nota», «3 notas». */
+const notesLabel = (n: number) => `${n} ${n === 1 ? 'nota' : 'notas'}`;
+
 /** Enter saves, Shift+Enter is a new line. */
 function isSave(e: KeyboardEvent): boolean {
   return e.key === 'Enter' && !e.shiftKey && !e.isComposing;
@@ -68,7 +71,7 @@ export function Scratchpads() {
               aria-selected={i === n}
               class={`pads-tab ${i === n ? 'on' : ''}`}
               style={{ '--pad': p.color }}
-              aria-label={`${p.name}: ${scratchpads.value[i].length} notas`}
+              aria-label={`${p.name}: ${notesLabel(scratchpads.value[i].length)}`}
               title={`${p.name} (${scratchpads.value[i].length}/${SCRATCHPAD_MAX_NOTES})`}
               onClick={() => setPref('scratchpad', i)}
             >
@@ -87,12 +90,17 @@ export function Scratchpads() {
           </button>
         )}
       </div>
-      <ul class="pads-notes scroll" role="tabpanel" aria-label={`Scratchpad ${PADS[n].name.toLowerCase()}`}>
-        {notes.map((note) => (
-          <NoteRow key={note.id} note={note} />
-        ))}
-        {notes.length === 0 && <li class="pads-empty dim small">Sin notas. Apunta abajo lo que quieras decirle después a Claude.</li>}
-      </ul>
+      <div class="pads-notes scroll" role="tabpanel" aria-label={`Scratchpad ${PADS[n].name.toLowerCase()}`}>
+        {notes.length > 0 ? (
+          <ul class="pads-list">
+            {notes.map((note) => (
+              <NoteRow key={note.id} note={note} />
+            ))}
+          </ul>
+        ) : (
+          <p class="pads-empty dim small">Sin notas. Apunta abajo lo que quieras decirle después a Claude.</p>
+        )}
+      </div>
       <AddField pad={n} count={notes.length} />
     </section>
   );
@@ -109,8 +117,10 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
     setBusy(true);
     const ok = await call(`${notePath(note.id)}/paste`, to);
     setBusy(false);
-    // On a phone, back to the terminal to see it.
-    if (ok && !isDesktop.value) scratchpadsOpen.value = false;
+    if (!ok) return;
+    // Back to the terminal: on a phone to see it, on a computer to send it with Enter.
+    scratchpadPasted.value = { pane: to.pane, at: Date.now() };
+    if (!isDesktop.value) scratchpadsOpen.value = false;
   };
 
   return (
@@ -149,7 +159,10 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
   );
 }
 
-/** A note open for editing: Enter or leaving it saves (empty deletes it), Escape cancels. */
+/**
+ * A note open for editing: Enter or leaving it saves (empty deletes it), Escape cancels.
+ * A save the hub refuses leaves it open with the text, so nothing typed is lost.
+ */
 function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const done = useRef(false);
@@ -160,11 +173,14 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
     el.setSelectionRange(el.value.length, el.value.length);
   }, []);
 
-  const finish = (save: boolean) => {
+  const finish = async (save: boolean) => {
     if (done.current) return;
     done.current = true;
     const text = ref.current?.value ?? note.text;
-    if (save && text !== note.text) void call(notePath(note.id), { text } satisfies ScratchpadEditRequest);
+    if (save && text !== note.text && !(await call(notePath(note.id), { text } satisfies ScratchpadEditRequest))) {
+      done.current = false;
+      return;
+    }
     onDone();
   };
 
@@ -174,18 +190,17 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
       class="pads-input pads-edit"
       aria-label="Texto de la nota"
       rows={Math.min(8, note.text.split('\n').length + 1)}
-      maxLength={SCRATCHPAD_MAX_CHARS}
       defaultValue={note.text}
       onKeyDown={(e) => {
         if (isSave(e)) {
           e.preventDefault();
-          finish(true);
+          void finish(true);
         } else if (e.key === 'Escape') {
           e.preventDefault();
-          finish(false);
+          void finish(false);
         }
       }}
-      onBlur={() => finish(true)}
+      onBlur={() => void finish(true)}
     />
   );
 }
@@ -193,10 +208,14 @@ function NoteEditor({ note, onDone }: { note: ScratchpadNote; onDone: () => void
 /** The field at the foot of a scratchpad: Enter adds its text as a note. */
 function AddField({ pad, count }: { pad: number; count: number }) {
   const [text, setText] = useState('');
+  /** A note on its way to the hub: a second Enter meanwhile would add it twice. */
+  const adding = useRef(false);
   const full = count >= SCRATCHPAD_MAX_NOTES;
   const add = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || adding.current) return;
+    adding.current = true;
     if (await call('/api/scratchpads/notes', { pad, text } satisfies ScratchpadAddRequest)) setText('');
+    adding.current = false;
   };
   return (
     <div class="pads-add">
@@ -204,7 +223,6 @@ function AddField({ pad, count }: { pad: number; count: number }) {
         class="pads-input"
         aria-label="Nueva nota"
         rows={2}
-        maxLength={SCRATCHPAD_MAX_CHARS}
         disabled={full}
         placeholder={full ? 'Lleno: borra o pega una nota para añadir otra' : 'Nueva nota… (Enter guarda, Mayús+Enter salto de línea)'}
         value={text}
@@ -235,7 +253,7 @@ export function ScratchpadsRail() {
           key={p.name}
           class="pads-tab"
           style={{ '--pad': p.color }}
-          aria-label={`Scratchpad ${p.name.toLowerCase()}: ${scratchpads.value[i].length} notas`}
+          aria-label={`Scratchpad ${p.name.toLowerCase()}: ${notesLabel(scratchpads.value[i].length)}`}
           title={`${p.name} (${scratchpads.value[i].length}/${SCRATCHPAD_MAX_NOTES})`}
           onClick={() => show(i)}
         >

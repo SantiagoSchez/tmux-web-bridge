@@ -42,7 +42,7 @@ Ids are `randomUUID()` from the hub. The colour of each scratchpad is its positi
 
 ### Store
 
-`server/src/scratchpads.ts`, class `ScratchpadStore` (Events: `'change' (Scratchpads)`), file `dataDir/scratchpads.json`, written through a temporary file and `renameSync` (same as `automations.ts`; mode `0o600` because notes may hold private text). Methods: `add(pad, text)`, `edit(id, { text?, pinned? })` (empty text deletes), `remove(id)`, and `startPaste(id)` / `finishPaste(id, ok)` for the paste (see «Paste flow»). Errors are `ScratchpadError` with an HTTP `status` (400 bad input, 404 gone, 409 full), like `FileError`.
+`server/src/scratchpads.ts`, class `ScratchpadStore` (Events: `'change' (Scratchpads)`), file `dataDir/scratchpads.json`, written through a temporary file and `renameSync` (same as `automations.ts`; mode `0o600` because notes may hold private text). Methods: `add(pad, text)`, `edit(id, { text?, pinned? })` (empty text deletes), `remove(id)`, and `paste(id, send)` for the paste (see «Paste flow»). Errors are `ScratchpadError` with an HTTP `status` (400 bad input, 404 gone, 409 full or already being pasted, 502 the machine failed), like `FileError`.
 
 Alternative considered: keep the notes inside `HubSettings`. Rejected: settings are configuration, are sanitised and broadcast as a whole on every change, and notes change far more often.
 
@@ -74,7 +74,7 @@ POST …/notes/:id/paste ───▶  check host, pane (^%\d+$, findPane)
 ◀── { ok: true }
 ```
 
-To paste a note once when two devices press at the same time, the route marks the note as being pasted before awaiting `pasteText` (an in-memory set in the store: `startPaste(id)` throws 404 if the note is gone or already being pasted, `finishPaste(id, ok)` removes it if unpinned and the paste worked, else just releases it). Node runs the route's synchronous part without interleaving, so the second request finds the mark and gets 404 «La nota ya no existe».
+The store owns the whole sequence in `paste(id, send)`, where `send(text)` is the route's call to `pasteText` (it turns a machine failure into a 502 `ScratchpadError` naming the machine). To paste a note once when two devices press at the same time, `paste` marks the note as being pasted (an in-memory set) before awaiting `send`: a second call finds the mark and gets 409 «Esa nota ya se está pegando», pinned or not; a note that is gone gets 404. When `send` resolves, the note goes unless it is pinned (a note deleted meanwhile is not brought back); when it rejects, the mark is released, the note stays and the error goes up. Node runs the synchronous part without interleaving, so the mark is in place before the second request reads it.
 
 The note's text reaches tmux through stdin only, never on a command line. Logs name the note id and where it was pasted, never its text.
 
@@ -88,11 +88,15 @@ The desktop grid gets a third column for `<aside class="pads-side">`: `340px min
 
 ### Drawer on phones
 
-The edge-swipe logic of `Drawer.tsx` becomes a component `EdgeDrawer` (`side`, `open`, `other`) used by the list's drawer (left) and a new scratchpads drawer (right). Each drawer listens only to touches starting on its own edge and does not start while the other is open, so they never compete; the window header's swipe between windows ignores touches that start on either edge. The phone's back button closes the scratchpads drawer like the list's (`backButton.ts` counts `scratchpadsOpen` as a layer). A successful paste from the drawer closes it, so the terminal with the pasted text is in view. The scratchpads drawer is mounted on every phone screen; `drawerOpen` keeps its meaning for the list and a new signal `scratchpadsOpen` is added for the right one.
+The edge-swipe logic of `Drawer.tsx` becomes a component `EdgeDrawer` (`side`, `open`, `other`) used by the list's drawer (left) and a new scratchpads drawer (right). Each drawer listens only to touches starting on its own edge and does not start while the other is open, so they never compete; the window header's swipe between windows ignores touches that start on either edge. The phone's back button closes the scratchpads drawer like the list's (`backButton.ts` counts `scratchpadsOpen` as a layer). A successful paste from the drawer closes it, so the terminal with the pasted text is in view. Neither drawer starts while a sheet, a dialog, the palette or the file viewer is open, since those sit above the drawers. The scratchpads drawer is mounted on every phone screen; `drawerOpen` keeps its meaning for the list and a new signal `scratchpadsOpen` is added for the right one.
+
+### Fields, buttons and focus
+
+The fields never cut the text (no `maxLength`): a note over 4000 characters reaches the hub, which refuses it with a message, and the text stays in the field (or the note stays open) for the owner to shorten. The add field ignores Enter while its request is in flight, so a repeated Enter cannot add the note twice. The note buttons are 30 px on a mouse and `--tap` (44 px) under `pointer: coarse`, as the web standards ask. After a paste on a computer the terminal of that pane takes the keyboard back (a `scratchpadPasted` signal in `state.ts`, read by `TerminalView` like `dictationEnded`), so Enter sends the text instead of pressing the paste button again.
 
 ### Components
 
-`web/src/components/Scratchpads.tsx`: `Scratchpads` (the three colour tabs, the selected scratchpad's notes and the add field), `NoteRow` (text that turns into a `textarea` on click, and the paste, pin and delete buttons with `aria-label`s), `ScratchpadsRail` (the folded strip); `ScratchpadsDrawer` sits in `Drawer.tsx` beside the list's drawer. The selected scratchpad is per device (`prefs.scratchpad: 0 | 1 | 2`). Colours come from `--blue`, `--green` and `--peach` in `:root`, both themes.
+`web/src/components/Scratchpads.tsx`: `Scratchpads` (the three colour tabs, the selected scratchpad's notes and the add field), `NoteRow` (text that turns into a `textarea` on click, and the paste, pin and delete buttons with `aria-label`s), `ScratchpadsRail` (the folded strip); `ScratchpadsDrawer` sits in `Drawer.tsx` beside the list's drawer. The selected scratchpad is per device (`prefs.scratchpad`, a `number` read as 0 to 2, anything else showing the first). Colours come from `--blue`, `--green` and `--peach` in `:root`, both themes.
 
 ## Risks / Trade-offs
 
