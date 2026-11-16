@@ -64,8 +64,8 @@
 
 ## 9. Feature catalogue
 
-- [ ] 9.1 Run `/koalarnes:update-features fix-foreign-statusline-limits`, review and apply the draft of `docs/FEATURES.md`, run `ka features-check` (exit code 0) and commit it with `/koalarnes:commit`.
-  - Applied with the owner's approval: a new area «Límites de uso» with one section per requirement and its index entry. The spec was synced to `openspec/specs/usage-limits/spec.md` with `/opsx:sync`, as PR #15 did, because `ka features-check` only reads the main specs; it exits 0. Pending: the commit.
+- [x] 9.1 Run `/koalarnes:update-features fix-foreign-statusline-limits`, review and apply the draft of `docs/FEATURES.md`, run `ka features-check` (exit code 0) and commit it with `/koalarnes:commit`.
+  - Applied with the owner's approval: a new area «Límites de uso» with one section per requirement and its index entry. The spec was synced to `openspec/specs/usage-limits/spec.md` with `/opsx:sync`, as PR #15 did, because `ka features-check` only reads the main specs; it exits 0. Committed in «docs: add the usage limits checks to the feature catalogue» (PR #17).
 
 ## 10. E2E pipeline
 
