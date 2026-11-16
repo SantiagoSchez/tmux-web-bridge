@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { findPaths, findPathsInRows } from '../../shared/paths.js';
 import { execFile, execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { findInReposScript, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
+import type { GitChanges } from '../../shared/types.js';
+import { findInReposScript, gitChanges, gitStat, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import type { HostMonitor } from './host.js';
 
 const paths = (line: string) => findPaths(line).map((h) => (h.line ? `${h.path}:${h.line}` : h.path));
@@ -149,3 +150,169 @@ test('a path that ends at the edge, before an unrelated word, stays as it is', (
   // A short row does not go on in the next one.
   assert.deepEqual(findPathsInRows([{ text: 'ver a.ts', full: false }, { text: 'b.md', full: false }], 1).map((h) => h.text), ['b.md']);
 });
+
+// ---------------------------------------------------------------- what a branch is compared with
+
+/**
+ * A clone of a repository with `master` and `develop` (one commit ahead), and a worktree per
+ * way of creating a branch, each with one commit of its own (`<name>.txt`). The environment
+ * drops every inherited GIT_* variable, and HOME holds the only git configuration.
+ */
+async function withBranches(run: (h: { repo: string; wt: (name: string) => string; git: (cwd: string, ...args: string[]) => string; host: HostMonitor }) => Promise<void>) {
+  if (process.platform !== 'linux') return;
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-base-')));
+  const env = { PATH: process.env.PATH, HOME: home, GIT_CONFIG_NOSYSTEM: '1' };
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', ['-C', cwd, ...args], { env, stdio: 'pipe' }).toString().trim();
+  const commit = (cwd: string, file: string) => {
+    writeFileSync(join(cwd, file), `${file}\n`);
+    git(cwd, 'add', file);
+    git(cwd, 'commit', '-qm', file);
+  };
+  try {
+    writeFileSync(join(home, '.gitconfig'), '[user]\n\tname = t\n\temail = t@example.org\n[init]\n\tdefaultBranch = master\n');
+    const seed = join(home, 'seed');
+    mkdirSync(seed);
+    git(seed, 'init', '-q');
+    commit(seed, 'one.txt');
+    git(seed, 'checkout', '-qb', 'develop');
+    commit(seed, 'dev.txt');
+    // A branch of origin that the clone checks out as its own.
+    git(seed, 'branch', 'own');
+    // A branch with no commit in common with the others, as gh-pages.
+    git(seed, 'checkout', '-q', '--orphan', 'pages');
+    git(seed, 'rm', '-rqf', '.');
+    commit(seed, 'page.txt');
+    git(seed, 'checkout', '-q', 'master');
+    const repo = join(home, 'repo');
+    git(home, 'clone', '-q', seed, repo);
+    const wt = (name: string) => join(home, 'wt', name);
+    const host = {
+      name: 'test',
+      exec: {
+        shell: (script: string) =>
+          new Promise<string>((ok, ko) => execFile('/bin/sh', ['-c', script], { env, encoding: 'utf8' }, (e, out, err) => (e ? ko(new Error(err)) : ok(out)))),
+        spawnShell: (script: string) => spawn('/bin/sh', ['-c', script], { env, stdio: ['ignore', 'pipe', 'pipe'] }),
+      },
+    } as unknown as HostMonitor;
+    const made = (name: string, ...add: string[]) => {
+      git(repo, 'worktree', 'add', '--quiet', ...add);
+      commit(wt(name), `${name}.txt`);
+    };
+    // The hub's way, and a worktree added with -b from origin/develop (as git checkout -b).
+    git(repo, 'branch', '--no-track', '--', 'hub', 'refs/remotes/origin/develop');
+    made('hub', wt('hub'), 'hub');
+    made('dashb', '--no-track', '-b', 'dashb', wt('dashb'), 'origin/develop');
+    // A name that ends in F, as the line that closes the script's header.
+    git(repo, 'branch', '--no-track', '--', 'tipF', 'refs/remotes/origin/develop');
+    made('tipF', wt('tipF'), 'tipF');
+    // From a local develop that origin has, and from a local prueba that origin lacks.
+    git(repo, 'branch', 'develop', 'origin/develop');
+    git(repo, 'branch', 'fromlocal', 'develop');
+    made('fromlocal', wt('fromlocal'), 'fromlocal');
+    git(repo, 'branch', 'prueba', 'origin/master');
+    git(repo, 'branch', 'fromprueba', 'prueba');
+    made('fromprueba', wt('fromprueba'), 'fromprueba');
+    // No usable note: HEAD, a hash, a branch that is gone, a reflog removed.
+    made('fromhead', '-b', 'fromhead', wt('fromhead'));
+    git(repo, 'branch', 'fromhash', git(repo, 'rev-parse', 'origin/develop'));
+    made('fromhash', wt('fromhash'), 'fromhash');
+    git(repo, 'branch', 'tmp', 'origin/develop');
+    git(repo, 'branch', 'fromgone', 'tmp');
+    git(repo, 'branch', '-D', 'tmp');
+    made('fromgone', wt('fromgone'), 'fromgone');
+    git(repo, 'branch', 'nolog', 'origin/develop');
+    rmSync(join(repo, '.git', 'logs', 'refs', 'heads', 'nolog'));
+    made('nolog', wt('nolog'), 'nolog');
+    // The branch's own copy on origin, as the hub does when the branch is already there.
+    made('own', '--track', '-b', 'own', wt('own'), 'refs/remotes/origin/own');
+    await run({ repo, wt, git, host });
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+}
+
+const changed = (c: GitChanges) => c.files.map((f) => f.path);
+
+test('the whole branch is compared with the branch it was created from', () =>
+  withBranches(async ({ wt, host }) => {
+    for (const [name, ref] of [
+      ['hub', 'origin/develop'],
+      ['dashb', 'origin/develop'],
+      ['tipF', 'origin/develop'],
+      ['fromlocal', 'origin/develop'],
+      ['fromprueba', 'prueba'],
+    ] as const) {
+      const c = await gitChanges(host, wt(name), 'auto');
+      assert.equal(c.mode, 'branch', name);
+      assert.equal(c.base?.ref, ref, name);
+      assert.equal(c.defaultBase, ref, name);
+      assert.deepEqual(changed(c), [`${name}.txt`], name);
+      const s = await gitStat(host, wt(name));
+      assert.deepEqual(s, { mode: 'branch', base: ref, added: 1, removed: 0, files: 1 }, name);
+    }
+  }));
+
+test('without a usable creation note, the whole branch is compared with the main branch', () =>
+  withBranches(async ({ wt, host }) => {
+    for (const [name, files] of [
+      ['fromhead', ['fromhead.txt']],
+      ['fromhash', ['dev.txt', 'fromhash.txt']],
+      ['fromgone', ['dev.txt', 'fromgone.txt']],
+      ['nolog', ['dev.txt', 'nolog.txt']],
+      ['own', ['dev.txt', 'own.txt']],
+    ] as const) {
+      const c = await gitChanges(host, wt(name), 'auto');
+      assert.equal(c.mode, 'branch', name);
+      assert.equal(c.base?.ref, 'origin/master', name);
+      assert.equal(c.defaultBase, 'origin/master', name);
+      assert.deepEqual(changed(c), files, name);
+      assert.equal((await gitStat(host, wt(name)))?.base, 'origin/master', name);
+    }
+  }));
+
+test('on the main branch the changes open on what has no commit yet', () =>
+  withBranches(async ({ repo, host }) => {
+    writeFileSync(join(repo, 'one.txt'), 'changed\n');
+    const c = await gitChanges(host, repo, 'auto');
+    assert.equal(c.mode, 'head');
+    assert.equal(c.defaultBase, 'origin/master');
+    assert.deepEqual(changed(c), ['one.txt']);
+    assert.equal((await gitStat(host, repo))?.mode, 'head');
+  }));
+
+test('the whole branch can be compared with another branch of origin', () =>
+  withBranches(async ({ wt, host }) => {
+    const c = await gitChanges(host, wt('hub'), 'branch', 'master');
+    assert.equal(c.mode, 'branch');
+    assert.equal(c.base?.ref, 'origin/master');
+    assert.equal(c.defaultBase, 'origin/develop');
+    assert.deepEqual(changed(c), ['dev.txt', 'hub.txt']);
+    // origin's branches, without its HEAD.
+    assert.deepEqual(c.branches, ['develop', 'master', 'own', 'pages']);
+    assert.deepEqual((await gitChanges(host, wt('hub'), 'auto')).branches, ['develop', 'master', 'own', 'pages']);
+    // A branch origin does not have, even when the machine has it locally.
+    await assert.rejects(gitChanges(host, wt('hub'), 'branch', 'prueba'), (err: Error & { status?: number }) => {
+      assert.match(err.message, /prueba ya no está en origin/);
+      assert.equal(err.status, 404);
+      return true;
+    });
+    // A branch origin has, but with no commit in common: not «gone».
+    await assert.rejects(gitChanges(host, wt('hub'), 'branch', 'pages'), (err: Error & { status?: number }) => {
+      assert.match(err.message, /pages no tiene historia en común con esta/);
+      assert.equal(err.status, 409);
+      return true;
+    });
+    // What has no commit yet does not depend on any branch.
+    const head = await gitChanges(host, wt('hub'), 'head', 'master');
+    assert.equal(head.mode, 'head');
+    assert.equal(head.base?.ref, 'origin/develop');
+    assert.deepEqual(changed(head), []);
+  }));
+
+test('a file name with a line of the script\'s labels in it is only a file', () =>
+  withBranches(async ({ wt, host }) => {
+    const name = 'a\nGONE\nNOBASE\nb.txt';
+    writeFileSync(join(wt('hub'), name), 'x\n');
+    assert.deepEqual(changed(await gitChanges(host, wt('hub'), 'branch')), [name, 'hub.txt']);
+    assert.deepEqual(changed(await gitChanges(host, wt('hub'), 'head')), [name]);
+  }));

@@ -1,5 +1,5 @@
 import { signal } from '@preact/signals';
-import type { GitChange, GitChanges, GitDiffMode } from '../../shared/types';
+import type { GitChange, GitChanges } from '../../shared/types';
 
 // What the file viewer shows (components/Files.tsx), apart from it: the back button
 // (backButton.ts) counts and closes its screens, and must not import the components.
@@ -13,8 +13,8 @@ export interface FileOrigin {
 
 export type FileScreen =
   | { kind: 'file'; path: string; line?: number }
-  /** mode: the one asked for; missing, the hub picks (the whole branch on any branch but the main one). */
-  | { kind: 'changes'; mode?: GitDiffMode }
+  /** What it compares with lives in Files.tsx, kept going into a diff and back. */
+  | { kind: 'changes' }
   | { kind: 'diff'; changes: GitChanges; file: GitChange };
 
 /** What the viewer shows, and from where; null when closed. Each screen is a layer of the back button. */

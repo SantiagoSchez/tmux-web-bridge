@@ -8,6 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
+import { branchNameProblem } from '../../shared/worktree.js';
 import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
@@ -1028,13 +1029,17 @@ app.get('/api/files', async (req, reply) => {
 });
 
 app.get('/api/git/changes', async (req, reply) => {
-  const q = req.query as { host?: string; window?: string; pane?: string; mode?: string };
+  const q = req.query as { host?: string; window?: string; pane?: string; mode?: string; base?: string };
   const host = q.host ? hosts.get(q.host) : undefined;
   if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  // A branch of origin to compare with: checked here, as it goes into a script on the machine.
+  const base = typeof q.base === 'string' && q.base !== '' ? q.base : undefined;
+  const bad = base && branchNameProblem(base);
+  if (bad) return reply.code(400).send({ error: bad });
   const cwd = paneFolders(host, q.window, q.pane)[0];
   if (!cwd) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
   try {
-    return await gitChanges(host, cwd, q.mode === 'branch' || q.mode === 'head' ? q.mode : 'auto');
+    return await gitChanges(host, cwd, q.mode === 'branch' || q.mode === 'head' ? q.mode : 'auto', base);
   } catch (err) {
     return fileError(reply, err);
   }
