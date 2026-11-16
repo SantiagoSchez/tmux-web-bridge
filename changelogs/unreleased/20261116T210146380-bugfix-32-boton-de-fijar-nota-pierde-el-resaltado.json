@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "web",
+  "description": "Corregido el botón de fijar de una nota fijada en los scratchpads: ahora se resalta al pasar el ratón y al pulsarlo, como los botones de pegar y borrar",
+  "issue": "32",
+  "breaking": false
+}
