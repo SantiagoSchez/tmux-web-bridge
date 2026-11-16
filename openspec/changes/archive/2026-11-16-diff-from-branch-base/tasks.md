@@ -88,11 +88,13 @@
 
 ## 11. Human review
 
-- [ ] 11.1 Another developer (the owner) reviews the pull request after `/koalarnes:review-pr` comes back clean; findings go through the change-request steps until approval.
+- [x] 11.1 Another developer (the owner) reviews the pull request after `/koalarnes:review-pr` comes back clean; findings go through the change-request steps until approval.
+  - Done: `/koalarnes:review-pr` approved in round 2; the owner approved PR #31 in the chat on 2026-11-16.
 
 ## 12. Before the archive
 
-- [ ] 12.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [x] 12.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+  - Done: `ka features-check` exit 0 (28 sections verified).
 
 ## Workflow follow-up
 
