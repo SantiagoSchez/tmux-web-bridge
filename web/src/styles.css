@@ -3518,9 +3518,14 @@ button.pads-origin:hover {
     height: var(--tap);
   }
 }
-.pads-note.pinned .pads-actions .icon-btn.on {
+/* Pinned: the scratchpad's colour, and the same hover as the other buttons. */
+.pads-actions .icon-btn.on {
   color: var(--pad);
   background: none;
+}
+.pads-actions .icon-btn.on:hover,
+.pads-actions .icon-btn.on:active {
+  background: var(--surface0);
 }
 .pads-actions .icon-btn:disabled {
   opacity: 0.35;

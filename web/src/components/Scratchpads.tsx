@@ -174,7 +174,7 @@ function NoteRow({ note }: { note: ScratchpadNote }) {
   };
 
   return (
-    <li class={`pads-note ${note.pinned ? 'pinned' : ''}`}>
+    <li class="pads-note">
       <div class="pads-body">
         {editing ? (
           <NoteEditor note={note} onDone={() => setEditing(false)} />
