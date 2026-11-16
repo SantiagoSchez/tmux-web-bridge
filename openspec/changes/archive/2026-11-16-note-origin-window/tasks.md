@@ -70,11 +70,13 @@
 
 ## 10. Human review
 
-- [ ] 10.1 Another developer (the owner) reviews the pull request after `/koalarnes:review-pr` comes back clean; findings go through the change-request steps until approval.
+- [x] 10.1 Another developer (the owner) reviews the pull request after `/koalarnes:review-pr` comes back clean; findings go through the change-request steps until approval.
+  - The owner approved the merge in the chat (2026-11-16) after round 2 of `/koalarnes:review-pr` came back approved; they chose to keep the lines closed after a tmux-resurrect restore (scenario added).
 
 ## 11. Before the archive
 
-- [ ] 11.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [x] 11.1 Run `ka features-check` as the last task before `/opsx:archive`; verify the exit code is 0.
+  - `ka features-check` exit 0 (31 sections).
 
 ## 12. Review round 1 (PR #35)
 

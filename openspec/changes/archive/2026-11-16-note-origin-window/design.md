@@ -42,6 +42,7 @@ See proposal.md for the motivation. Notes live in `ScratchpadStore` (`server/src
 
 ## Risks / Trade-offs
 
+- [The machine's tmux restarts and tmux-resurrect restores the sessions] → the restored sessions are new to tmux (another creation time), so the earlier notes' lines read as closed for good. Accepted by the owner (2026-11-16) over re-linking them by session name and window number, which could open a window that is no longer the same.
 - [A window is moved to another session] → its notes' lines read as closed. Accepted (proposal Non-goals): moving windows between sessions is rare.
 - [A session id and creation second repeat after a tmux restart] → the line would open the new window. Accepted: it needs a restart within the same second and the same ids.
 - [The window closes between the panel sending the note and the hub adding it] → `originOf` finds nothing and the note is added without a line, as the spec says.

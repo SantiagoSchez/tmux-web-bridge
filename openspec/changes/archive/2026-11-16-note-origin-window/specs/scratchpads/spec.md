@@ -85,3 +85,9 @@ When the window a note remembers is no longer open, or its machine is not answer
 - **GIVEN** a note added in a window of machine «Local», and «Local» not answering the hub
 - **WHEN** the panel shows the note
 - **THEN** its line reads as it was, dimmed, and its tooltip says the machine has no connection
+
+#### Scenario: The machine's tmux restarted
+
+- **GIVEN** a note added in window «Local · demo · 1 claude», and the machine's tmux server restarted since, with its sessions restored (as tmux-resurrect does)
+- **WHEN** the panel shows the note
+- **THEN** its line reads «Local · demo · 1 claude», dimmed, as a closed window, even where a restored window has the same session, number and name
