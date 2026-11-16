@@ -102,8 +102,10 @@ Second PR #17 review:
 
 ## 11. Human review and archive
 
-- [ ] 11.1 After `/koalarnes:review-pr` comes back clean, the owner reviews the pull request; their findings are handled by editing these artifacts, re-applying, verifying and committing.
-- [ ] 11.2 Run `ka features-check` as the last task before `/opsx:archive` (exit code 0).
+- [x] 11.1 After `/koalarnes:review-pr` comes back clean, the owner reviews the pull request; their findings are handled by editing these artifacts, re-applying, verifying and committing.
+  - Three review rounds, all approved; the owner checked the deployed hub's usage answers, accepted the two risks recorded in design.md and approved the pull request on 16/11.
+- [x] 11.2 Run `ka features-check` as the last task before `/opsx:archive` (exit code 0).
+  - Exit code 0: 14 sections verified.
 
 ## Workflow follow-up
 
