@@ -51,6 +51,8 @@
   --surface2: #626880;
   --overlay0: #737994;
   --overlay1: #838ba7;
+  /* The drop-downs' chevron, in --overlay1: an image cannot read a variable. */
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23838ba7' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --subtext0: #a5adce;
   --subtext1: #b5bfe2;
   --text: #c6d0f5;
@@ -90,6 +92,7 @@
   --surface2: #acb0be;
   --overlay0: #9ca0b0;
   --overlay1: #686b7f;
+  --select-arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23686b7f' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --subtext0: #6c6f85;
   --subtext1: #5c5f77;
   --text: #4c4f69;
@@ -2120,20 +2123,6 @@ body.dragging-host * {
   gap: 4px;
   margin: 12px 4px 0;
 }
-.folder-host select {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 12px;
-  border-radius: 10px;
-  border: 1px solid var(--surface1);
-  background: var(--base);
-  color: var(--text);
-  font-size: 15px;
-  outline: none;
-}
-.folder-host select:focus {
-  border-color: var(--mauve);
-}
 .folder-list {
   list-style: none;
   margin: 0 0 12px;
@@ -2814,18 +2803,54 @@ kbd.shortcut {
 .kb-field input,
 .kb-field select {
   width: 100%;
-  min-height: 42px;
+  min-height: 48px;
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--surface1);
   background: var(--base);
   color: var(--text);
-  font: 15px var(--mono);
+  font: 16px var(--mono);
   outline: none;
 }
 .kb-field input:focus,
 .kb-field select:focus {
   border-color: var(--mauve);
+}
+
+/*
+ * Every drop-down draws its own chevron instead of the system's arrow, whose place and
+ * size depend on the browser: it sits as far from the right edge as the text is from the
+ * left. After `.text-input` and `.kb-field select`, whose `background` and `padding`
+ * shorthands would reset it.
+ */
+select.text-input,
+.kb-field select {
+  appearance: none;
+  padding-right: 38px;
+  background-image: var(--select-arrow);
+  background-position: right 14px center;
+  background-size: 12px 8px;
+  background-repeat: no-repeat;
+  text-overflow: ellipsis;
+}
+.kb-field select {
+  background-position: right 12px center;
+}
+/*
+ * With a mouse, form fields need no finger-sized height. On touch they keep it, and 16px
+ * text, which also keeps iOS from zooming in on focus. A textarea keeps its own height.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .text-input {
+    height: 38px;
+    font-size: 14px;
+  }
+  .kb-field input,
+  .kb-field select {
+    min-height: 38px;
+    padding-block: 6px;
+    font-size: 14px;
+  }
 }
 .kb-keyfields {
   display: flex;
@@ -2853,6 +2878,15 @@ kbd.shortcut {
   width: 18px;
   height: 18px;
   accent-color: var(--mauve);
+}
+/* «Ctrl» and «Alt» beside the key's field: as tall as it, on touch and with a mouse (see the form fields' rule above). */
+.kb-keyfields .kb-check {
+  min-height: 48px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kb-keyfields .kb-check {
+    min-height: 38px;
+  }
 }
 .kb-presets {
   margin-top: 12px;
@@ -2894,6 +2928,7 @@ textarea.text-input {
 
 .trello-top {
   display: flex;
+  align-items: center;
   gap: 8px;
   margin-bottom: 10px;
 }
