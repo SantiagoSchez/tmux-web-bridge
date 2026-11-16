@@ -2803,13 +2803,13 @@ kbd.shortcut {
 .kb-field input,
 .kb-field select {
   width: 100%;
-  min-height: 42px;
+  min-height: 48px;
   padding: 8px 12px;
   border-radius: 10px;
   border: 1px solid var(--surface1);
   background: var(--base);
   color: var(--text);
-  font: 15px var(--mono);
+  font: 16px var(--mono);
   outline: none;
 }
 .kb-field input:focus,
@@ -2879,9 +2879,12 @@ select.text-input,
   height: 18px;
   accent-color: var(--mauve);
 }
-/* With a mouse, as tall as the fields beside it (see the form fields' rule above). */
+/* «Ctrl» and «Alt» beside the key's field: as tall as it, on touch and with a mouse (see the form fields' rule above). */
+.kb-keyfields .kb-check {
+  min-height: 48px;
+}
 @media (hover: hover) and (pointer: fine) {
-  .kb-check {
+  .kb-keyfields .kb-check {
     min-height: 38px;
   }
 }
