@@ -6,7 +6,7 @@
 // the change worktree-base-branch.
 
 import type { BranchList } from '../../shared/types.js';
-import { shPath, shQuote } from './exec.js';
+import { EXTRA_PATH, shPath, shQuote } from './exec.js';
 
 /** Seconds a fetch may take before the scripts go on with what the machine knows. */
 const FETCH_SECONDS = 12;
@@ -14,22 +14,48 @@ const FETCH_SECONDS = 12;
 const LS_REMOTE_SECONDS = 6;
 /**
  * Seconds to ask the remote for a branch named like the worktree, and to fetch it: with the
- * base's fetch (12 s), a launch stays under the hub's 25 s.
+ * base's fetch (12 s), a launch stays under the hub's 25 s, unless several SSH agents do not
+ * answer (AGENT_SECONDS each, asked once, before the fetch).
  */
 const BRANCH_SECONDS = 4;
 const BRANCH_FETCH_SECONDS = 6;
 /** koalarnes.json is small; more than this is not one. */
 const MAX_CONFIG = 65_536;
 
+/** Seconds an SSH agent may take to say whether it has keys. */
+const AGENT_SECONDS = 2;
+
+/**
+ * The hub reaches a machine over `ssh … sh -c`, a session without the SSH agent of the
+ * owner's terminals, so a key that lives only in that agent never reaches `git fetch` over
+ * ssh. Without an agent that has keys, this takes the first one that does: the machine's tmux
+ * server's, then each tmux session's (what a terminal brings on attach), then macOS's own
+ * (launchd's socket). Only sockets of the user's own are asked, each once and bounded, and
+ * the paths are read one per line, so a path with spaces stays one. `tmux` is the command line that reaches the
+ * machine's tmux server. Needs `bounded`.
+ */
+function sshAgent(tmux: string): string {
+  return (
+    `t() { ( PATH="$PATH:${EXTRA_PATH}"; export PATH; exec ${tmux} "$@" ) 2>/dev/null </dev/null; }; ` +
+    `keys() { [ -S "$1" ] && [ -O "$1" ] && bounded ${AGENT_SECONDS} env SSH_AUTH_SOCK="$1" ssh-add -l; }; ` +
+    `if ! keys "\${SSH_AUTH_SOCK:-}"; then ` +
+    `nl=$(printf '\\nx'); nl=\${nl%x}; ifs=$IFS; IFS=$nl; tried="$nl\${SSH_AUTH_SOCK:-}$nl"; ` +
+    `for a in $( { t show-environment -g SSH_AUTH_SOCK; for s in $(t list-sessions -F '#{session_id}'); do t show-environment -t "$s" SSH_AUTH_SOCK; done; } | sed -n 's/^SSH_AUTH_SOCK=//p' ) /private/tmp/com.apple.launchd.*/Listeners; do ` +
+    `case "$tried" in *"$nl$a$nl"*) continue ;; esac; tried="$tried$a$nl"; ` +
+    `keys "$a" && { SSH_AUTH_SOCK=$a; export SSH_AUTH_SOCK; break; }; done; IFS=$ifs; fi; `
+  );
+}
+
 /**
  * Enters the folder's repository (`top` is its top level) or runs `outside`. Then the
- * helpers both scripts use: no credential prompts, `oneline` to fit text in one tagged line,
- * `has` for a branch of origin, and `bounded <seconds> <command…>`, which runs a command with
- * its errors in `$tmp` and kills it when it takes longer (`timeout` is not on a stock macOS),
- * with its direct children: the ssh or git-remote-https that hangs on the network. Errors go
- * to a file, not a pipe, so a process left behind cannot hold the script open.
+ * helpers both scripts use: no credential prompts, an SSH agent with keys (see `sshAgent`),
+ * `oneline` to fit text in one tagged line, `has` for a branch of origin, and
+ * `bounded <seconds> <command…>`, which runs a command with its errors in `$tmp` and kills it
+ * when it takes longer (`timeout` is not on a stock macOS), with its direct children: the ssh
+ * or git-remote-https that hangs on the network. Errors go to a file, not a pipe, so a
+ * process left behind cannot hold the script open.
  */
-export function prelude(path: string, outside: string): string {
+export function prelude(path: string, outside: string, tmux: string): string {
   return (
     `cd ${shPath(path)} 2>/dev/null && top=$(git rev-parse --show-toplevel 2>/dev/null) || { ${outside}; }; ` +
     `export GIT_TERMINAL_PROMPT=0; ` +
@@ -38,7 +64,8 @@ export function prelude(path: string, outside: string): string {
     `tmp=$(mktemp 2>/dev/null || echo "/tmp/twb-git-$$"); trap 'rm -f "$tmp"' EXIT; ` +
     `bounded() { s=$1; shift; "$@" >/dev/null 2>"$tmp" </dev/null & p=$!; ` +
     `( sleep "$s"; c=$(pgrep -P "$p" 2>/dev/null); kill "$p" 2>/dev/null; [ -n "$c" ] && kill $c 2>/dev/null ) >/dev/null 2>&1 </dev/null & k=$!; ` +
-    `wait "$p"; r=$?; kill "$k" 2>/dev/null; return $r; }; `
+    `wait "$p"; r=$?; kill "$k" 2>/dev/null; return $r; }; ` +
+    sshAgent(tmux)
   );
 }
 
@@ -73,10 +100,11 @@ const HOOK =
 /**
  * The branches of origin of the folder's repository, after a fetch: R (a repository), F and
  * why the fetch failed, B and each branch, D and the project's base. Nothing outside git.
+ * `tmux` reaches the machine's tmux server, for its SSH agent.
  */
-export function branchesScript(path: string): string {
+export function branchesScript(path: string, tmux: string): string {
   return (
-    prelude(path, 'exit 0') +
+    prelude(path, 'exit 0', tmux) +
     `printf 'R\\t1\\n'; ` +
     `if git remote get-url origin >/dev/null 2>&1; then ` +
     `if ! bounded ${FETCH_SECONDS} git fetch --prune --quiet origin; then err=$(oneline < "$tmp"); printf 'F\\t%s\\n' "\${err:-sin respuesta en ${FETCH_SECONDS} s}"; fi; ` +
@@ -113,11 +141,12 @@ export function parseBranches(out: string): BranchList {
  * exists, locally, in origin or on the remote (with the path to start in when there is no hook,
  * and 1 when it is at origin/<base>);
  * N, nothing to do; H, the branch was made for the hook; W and the worktree made.
+ * `tmux` reaches the machine's tmux server, for its SSH agent.
  */
-export function prepareScript(path: string, worktree: string, base: string): string {
+export function prepareScript(path: string, worktree: string, base: string, tmux: string): string {
   return (
     `w=${shQuote(worktree)}; b=${shQuote(base)}; ` +
-    prelude(path, `printf 'E\\trepo\\n'; exit 0`) +
+    prelude(path, `printf 'E\\trepo\\n'; exit 0`, tmux) +
     `fail() { printf 'E\\tgit\\t%s\\n' "$(printf %s "$1" | oneline)"; exit 0; }; ` +
     // New worktrees go under the main checkout, never inside a linked worktree the target is in.
     `main=$(git worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p'); [ -n "$main" ] || main=$top; ` +
