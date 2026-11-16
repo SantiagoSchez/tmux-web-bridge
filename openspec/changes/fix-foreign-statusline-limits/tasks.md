@@ -25,6 +25,11 @@
 - [x] 3.4 Write failing tests for `checkLimits(hosts, accounts, now)`: a foreign reading is dropped from its host and its host id is listed under the account; a matching reading is kept; readings of an email two accounts share and of an email no account has are kept and list nothing; two hosts with foreign readings under one account list both; see them fail, implement until they pass.
   - Four tests (a reading without an email added to the shared and unknown ones); the two about foreign readings failed against a stub that kept everything. Three mutations (any account of a shared email, foreign readings kept, only the last host listed) each make one fail; a fourth showed a redundant guard on the email, removed.
 
+PR #17 review (design: The check is a pure module of the hub, as revised):
+
+- [x] 3.5 Write failing tests for `isForeign` for the requirement «A window that started before the hub saw it closed is not shown»: with no hub window (none, or a reset of 0), a reading whose window started before the hub's reading is foreign and one that started after is not, for both windows; the margin of one reset step either side (5-hour: 9 and 11 minutes; 7-day: 59 and 61 minutes); with a hub window that has ended, a reading whose window started before its reset is foreign and one of the next window is not; and two resets exactly 300 seconds apart are the same window. See them fail, implement until they pass, and check each new branch with a mutation.
+- [x] 3.6 Write failing tests for `SentLimits` in `server/src/limits-check.test.ts`: a fresh one reports no change for a check with no foreign reading and no readings (no re-send after a start); a host whose kept readings differ from what was recorded is reported, and not once recorded; a host never recorded with no readings is not; the accounts are reported when their machines change and not once recorded; a forgotten host's readings are no longer compared. See them fail, implement until they pass.
+
 ## 4. Wiring in the hub
 
 - [x] 4.1 In `server/src/index.ts`, add `hostView(info)` and `accountsView()` over `checkLimits` and send every `host`, `tree` and `accounts` message, and the initial snapshot of `/ws`, through them; re-broadcast the accounts after a host change that changes any account's `mislabelledOn`, and every host whose kept readings change after an accounts change; pass only kept readings to `UsageHistory.add` (design: The hub sends filtered views). Verify `pnpm --filter server typecheck` passes.
@@ -35,6 +40,8 @@
   - Consumers: `web/src/ws.ts` stores both as they come (`accounts`, `host`, `tree`); `rows()` of `LimitsBar.tsx` reads `host.limits` (already filtered, unchanged); `AccountRow` and `accountMenu()` read `mislabelledOn` (5.1, 5.2); `UsageHistory.add` gets only `check.kept` from the host handler.
 - [x] 4.3 Boot smoke test: start a dev hub with an isolated `TMUX_TMPDIR`, no `TMUX`/`TMUX_PANE` and a scratch `dataDir`, wait for its ready log line and `/api/health`, then stop it.
   - The hub of the worktree started with a scratch `HOME`, `dataDir` and config, `TMUX_TMPDIR=/tmp/twbt-tmux` and a `local` machine on the socket `twbtest`: it logged «tmux-web-bridge escuchando en http://127.0.0.1:7799 (1 máquinas…)» and `/api/health` answered `{"ok":true,"hosts":[{"id":"claude","status":"ok"}]}`. It was stopped after 6.2.
+
+- [x] 4.4 Replace `sentLimits` and `sentMislabelled` in `server/src/index.ts` with a `SentLimits` (design: What the panel last got is a small class of the same module); verify `pnpm --filter server typecheck` passes and repeat the boot smoke test of 4.3.
 
 ## 5. The warning in the panel
 
@@ -50,10 +57,14 @@
 - [x] 6.2 Check in headless Chrome against that hub, at a wide viewport and on an emulated phone: the row's ⚠ and tooltip, the account menu's text, and that both disappear after the matching reading. Record what was checked here.
   - At 1600×900, with the foreign reading: s2's row showed the hub's 40 % and 96 % with their resets (13:10, 19/11), and its tooltip ended with the warning naming `drangleic-claude`. On an emulated Pixel 7, s2's menu showed the warning in peach under «Sin usar en ninguna máquina». After the matching reading (42 %), without reloading: the row showed 42 %, and the warning left the tooltip and the menu. Both rows keep a ⚠ for «Hace falta iniciar sesión otra vez», since the test accounts have no logins. Headless Chrome has no font for ⚠ in the menu, as for its other glyphs (↻, ✎).
 
+- [x] 6.3 Repeat 6.1 with s2 read by the hub without a 7-day window and with a 5-hour window that has ended: s1's reading under s2's email is dropped and lists the machine; a reading of a window opened after the hub's reading is kept.
+
 ## 7. Tests, typecheck and lint
 
 - [x] 7.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck`, `pnpm --filter web typecheck` and `ka features-check`; all pass. The trello-extension and host-kit layers are not touched.
   - `pnpm --filter server test`: 226 pass, 0 fail. Both typechecks exit 0. `ka features-check` exits 0 (the new capability enters the catalogue in 9.1).
+
+- [x] 7.2 After the PR #17 review fixes, run the same commands again; all pass.
 
 ## 8. Documentation and changelog
 
@@ -66,6 +77,8 @@
 
 - [x] 9.1 Run `/koalarnes:update-features fix-foreign-statusline-limits`, review and apply the draft of `docs/FEATURES.md`, run `ka features-check` (exit code 0) and commit it with `/koalarnes:commit`.
   - Applied with the owner's approval: a new area «Límites de uso» with one section per requirement and its index entry. The spec was synced to `openspec/specs/usage-limits/spec.md` with `/opsx:sync`, as PR #15 did, because `ka features-check` only reads the main specs; it exits 0. Committed in «docs: add the usage limits checks to the feature catalogue» (PR #17).
+
+- [x] 9.2 After the PR #17 review: sync the revised spec to `openspec/specs/usage-limits/spec.md`, add the new requirement to the catalogue with `/koalarnes:update-features` (and revise «Lecturas de otra cuenta», whose last sentence no longer holds), run `ka features-check` (exit code 0) and commit with `/koalarnes:commit`.
 
 ## 10. E2E pipeline
 

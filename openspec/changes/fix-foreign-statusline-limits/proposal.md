@@ -10,7 +10,7 @@ The cause is the statusline's label. `host-kit/statusline.sh` publishes the `rat
 
 ## What Changes
 
-- The hub checks every statusline reading against its own reading of the account with that email (`/api/oauth/usage`). A reading whose 5-hour or weekly reset disagrees with the hub's, while both windows are still current, is of another account: the hub keeps it out of the hosts it sends to the panel and out of the usage history.
+- The hub checks every statusline reading against its own reading of the account with that email (`/api/oauth/usage`). A reading whose 5-hour or weekly reset disagrees with the hub's, while both windows are still current, is of another account; so is one whose window was already open when the hub saw that window closed or ended. The hub keeps it out of the hosts it sends to the panel and out of the usage history.
 - The hub tells the panel, per account, on which machines a statusline published another account's limits under that account's email.
 - The panel marks that account's row with a ⚠ and explains it, both in the row's tooltip and in the account's menu: a Claude on that machine published another account's limits under this one, so it is probably still on the previous account.
 - The warning lasts while the foreign reading stays on the machine and its window is current. A correct reading from that machine for the same account replaces it, and the warning goes away.

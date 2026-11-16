@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { AccountsInfo, ActivityEvent, HostInfo, RateLimits, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -27,7 +27,7 @@ import { ActivityLog } from './activity.js';
 import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
-import { checkLimits, type LimitsCheck } from './limits-check.js';
+import { checkLimits, type LimitsCheck, SentLimits } from './limits-check.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
 import { imageScript, isImageRef, parseImage } from './claude-image.js';
@@ -224,9 +224,8 @@ function broadcast(msg: ServerMessage): void {
 // on the machines and on the hub's readings of the accounts, so a change on either
 // side re-sends the other when what the panel last got of it moved.
 
-/** What every browser last got: each host's kept readings and every account's machines, as JSON. */
-const sentLimits = new Map<string, string>();
-let sentMislabelled = '';
+/** What every browser last got: each host's kept readings and every account's machines. */
+const sent = new SentLimits();
 
 function checkNow(): LimitsCheck {
   return checkLimits([...hosts.values()].map((h) => h.snapshot), accounts.info.list, Math.floor(Date.now() / 1000));
@@ -245,28 +244,20 @@ function accountsView(check: LimitsCheck, info: AccountsInfo = accounts.info): A
   return { ...info, list: info.list.map((a) => ({ ...a, mislabelledOn: check.mislabelledOn.get(a.id) ?? [] })) };
 }
 
-function limitsKey(limits: RateLimits[] | undefined): string {
-  return JSON.stringify(limits ?? []);
-}
-
-function mislabelledKey(check: LimitsCheck): string {
-  return JSON.stringify([...check.mislabelledOn]);
-}
-
 function broadcastHost(info: HostInfo, check: LimitsCheck): void {
   const view = hostView(info, check);
-  sentLimits.set(view.id, limitsKey(view.limits));
+  sent.sentHost(view.id, view.limits);
   broadcast({ t: 'host', host: view });
 }
 
 function broadcastTree(check: LimitsCheck): void {
   const list = treeView(check);
-  for (const h of list) sentLimits.set(h.id, limitsKey(h.limits));
+  for (const h of list) sent.sentHost(h.id, h.limits);
   broadcast({ t: 'tree', hosts: list });
 }
 
 function broadcastAccounts(check: LimitsCheck, info?: AccountsInfo): void {
-  sentMislabelled = mislabelledKey(check);
+  sent.sentAccounts(check);
   broadcast({ t: 'accounts', info: accountsView(check, info) });
 }
 
@@ -278,7 +269,7 @@ function attachHost(saved: SavedHost): HostMonitor {
   host.on('change', (info: HostInfo) => {
     const check = checkNow();
     broadcastHost(info, check);
-    if (mislabelledKey(check) !== sentMislabelled) broadcastAccounts(check);
+    if (sent.accountsChanged(check)) broadcastAccounts(check);
     let added = false;
     for (const l of check.kept.get(info.id) ?? []) added = usage.add(l) || added;
     if (added) broadcast({ t: 'usage', samples: usage.list });
@@ -299,7 +290,7 @@ function detachHost(id: string): void {
   host.removeAllListeners();
   host.exec.closeMaster();
   hosts.delete(id);
-  sentLimits.delete(id);
+  sent.forget(id);
 }
 
 for (const saved of machines.list) attachHost(saved);
@@ -307,9 +298,7 @@ activity.on('add', (event: ActivityEvent) => broadcast({ t: 'activityAdd', event
 accounts.on('change', (info: AccountsInfo) => {
   const check = checkNow();
   broadcastAccounts(check, info);
-  for (const host of hosts.values()) {
-    if (limitsKey(check.kept.get(host.id)) !== (sentLimits.get(host.id) ?? limitsKey(undefined))) broadcastHost(host.snapshot, check);
-  }
+  for (const id of sent.hostsChanged(check)) broadcastHost(hosts.get(id)!.snapshot, check);
   // The hub's readings feed the forecast too, keyed like the statusline's: by email,
   // so only when no other account shares it.
   let added = false;
@@ -786,7 +775,7 @@ function machinesChanged(): void {
   const check = checkNow();
   broadcastTree(check);
   // A machine removed takes its readings, and with them its place in an account's warning.
-  if (mislabelledKey(check) !== sentMislabelled) broadcastAccounts(check);
+  if (sent.accountsChanged(check)) broadcastAccounts(check);
 }
 
 /** A machine as the panel sent it, checked; a new one gets the hub's key. */

@@ -27,12 +27,19 @@ Which Claude published a foreign reading is unknown. `server/src/host-creds.ts` 
 
 ### The check is a pure module of the hub
 
-`server/src/limits-check.ts` holds the logic, with no state and no I/O:
+`server/src/limits-check.ts` holds the logic, with no I/O:
 
-- `isForeign(reading, usage, now)`: true when, for the 5-hour or the 7-day window, the reading's reset and the hub's reset are both greater than `now` and differ by more than 300 seconds. A window either side lacks (no hub window, or a reset of 0) is not compared.
-- `checkLimits(hosts, accounts, now)`: for every host, the readings to keep, and for every account id, the hosts that published a foreign reading under it. It only compares a reading whose email belongs to exactly one account with a hub reading.
+- `isForeign(reading, usage, now)`: whether, for the 5-hour or the 7-day window, the reading cannot be of the account the hub read. Only a reading's window still current (reset greater than `now`) is looked at, and only when the hub has read the account at all (`usage`). Then, by what the hub saw of that window:
+  - **Current** (reset greater than `now`): the two resets differ by more than 300 seconds.
+  - **Ended** (`0 < reset <= now`): the reading's window started before the hub's reset, minus one reset step. The account's next window cannot open before the previous one ends.
+  - **None** (no window, or a reset of 0): the reading's window started before the hub's reading (`usage.t`), minus one reset step. The window would have been open when the hub saw none. This is the case of an account not used since its reset (PR #17 review).
+- `checkLimits(hosts, accounts, now)`: for every host, the readings to keep, and for every account id, the hosts that published a foreign reading under it. It only compares a reading whose email belongs to exactly one account.
 
-300 seconds is below the 10-minute grid of the 5-hour reset and far above any rounding between the two sources.
+A window starts at its reset minus its length (18 000 s or 604 800 s). Anthropic rounds resets to a grid, 10 minutes for 5 hours and the hour for 7 days, so the start computed that way can be off by one step in either direction: a step is the margin of the comparisons with a start. 300 seconds, the margin between two resets, is below the 10-minute grid and far above any rounding between the two sources, which carry the same value.
+
+### What the panel last got is a small class of the same module
+
+`SentLimits` in `limits-check.ts` records what the last `host`, `tree` and `accounts` messages carried (a key per host for its kept readings, one for the accounts' machines) and says what a new check changes: the hosts whose readings differ and whether the accounts' machines do. Its starting state is an empty check, so the first host change after a start does not re-send the accounts for nothing. It moved out of `index.ts` after the PR #17 review, to be tested: `/opsx:verify` had already found a case it missed there.
 
 Alternative considered: the check in `shared/`, run by the panel. The owner chose the hub, so the usage history is filtered by the same code and the panel stays a consumer.
 
@@ -43,7 +50,7 @@ Alternative considered: the check in `shared/`, run by the panel. The owner chos
 - `hostView(info)`: the host with `limits` replaced by the kept readings. Every `host` and `tree` message, and the initial snapshot of `/ws`, go through it.
 - `accountsView()`: `accounts.info` with `mislabelledOn` filled for each account. Every `accounts` message and the initial snapshot go through it.
 
-The hub remembers the last result of `checkLimits` as a key per host (the kept readings) and per account (the hosts). After a host change it broadcasts that host and, if any account's hosts changed, the accounts. After an accounts change it broadcasts the accounts and every host whose kept readings changed. After a machine is added, edited or removed (`machinesChanged()`), it broadcasts the tree and, if any account's hosts changed, the accounts: a removed machine leaves the warnings that named it. `UsageHistory.add` only receives kept readings.
+The hub remembers what it sent in a `SentLimits`. After a host change it broadcasts that host and, if any account's hosts changed, the accounts. After an accounts change it broadcasts the accounts and every host whose kept readings changed. After a machine is added, edited or removed (`machinesChanged()`), it broadcasts the tree and, if any account's hosts changed, the accounts: a removed machine leaves the warnings that named it. `UsageHistory.add` only receives kept readings.
 
 This rewires the composition root, so the tasks include a boot smoke test.
 
@@ -64,7 +71,9 @@ With several machines, their names are joined with ` · `, as `hostNames()` alre
 ## Risks / Trade-offs
 
 - [Two accounts with the same 5-hour and 7-day resets] → A foreign reading goes undetected and the row shows wrong numbers, as today. It needs both windows on the same grid mark; accepted.
-- [The hub's reading is from before a new 5-hour window and the statusline's from after it] → The hub's reset is then in the past, so the window is not compared. The 7-day window still is.
+- [The hub's reading is from before a new 5-hour window and the statusline's from after it] → The hub's window has ended, and the reading's window started after it: not foreign.
+- [A foreign window that started less than one reset step before the hub's reading] → Not detected through that window: the margin absorbs it. A switch right after the previous account opened its window is the case; the other window usually still differs.
+- [A machine with a Claude still on the previous account and another on the new one] → Both publish under the new account's email into one entry of `@claude_rate_limits`, by turns. The numbers stay right (the foreign reading is dropped, the right one is shown), but the warning comes and goes at every repaint while both run. The owner accepted it (PR #17 review).
 - [The warning outlives the Claude that caused it] → The owner chose that it lasts until corrected. Once that Claude is closed and no other publishes under the account on that machine, the warning stays until the reading's windows end, a week at most.
 - [A foreign reading published before this change sits in `usage.json`] → It ages out within 7 hours (`KEEP_SECONDS`).
 

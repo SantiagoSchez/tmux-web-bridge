@@ -74,7 +74,12 @@ Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el re
 ### Lecturas de otra cuenta
 <!-- capability: usage-limits; requirement: a-statusline-reading-that-contradicts-the-hub-s-is-not-shown -->
 
-Los límites de 5 horas y semanales de cada cuenta salen de dos sitios: la lectura que el servidor central hace de la cuenta cada pocos minutos y la que publica la status line de Claude Code en cada máquina, que suele ser más reciente. Tras cambiar de cuenta en una máquina, un Claude que siga con la anterior puede publicar los límites de la anterior a nombre de la nueva. El servidor central lo detecta porque las horas de reinicio no coinciden con las que él leyó de esa cuenta, con un margen de 5 minutos, y entonces la fila muestra su propia lectura. No compara una ventana que ya se ha reiniciado, ni las lecturas de un email que comparten dos cuentas o de una cuenta que no ha leído.
+Los límites de 5 horas y semanales de cada cuenta salen de dos sitios: la lectura que el servidor central hace de la cuenta cada pocos minutos y la que publica la status line de Claude Code en cada máquina, que suele ser más reciente. Tras cambiar de cuenta en una máquina, un Claude que siga con la anterior puede publicar los límites de la anterior a nombre de la nueva. El servidor central lo detecta porque las horas de reinicio no coinciden con las que él leyó de esa cuenta, con un margen de 5 minutos, y entonces la fila muestra su propia lectura. No se fija en una ventana de la lectura que ya ha terminado, ni compara las lecturas de un email que comparten dos cuentas o de una cuenta que el servidor central no ha leído nunca.
+
+### Ventanas que el servidor vio cerradas
+<!-- capability: usage-limits; requirement: a-window-that-started-before-the-hub-saw-it-closed-is-not-shown -->
+
+Cuando el servidor central leyó una cuenta sin ventana abierta de 5 horas o semanal, porque no se ha usado desde su reinicio o porque la anterior ya terminó, no hay hora de reinicio con la que comparar. Entonces mira cuándo empezó la ventana de la lectura: si empezó antes de esa lectura del servidor, o antes de que terminara su ventana anterior, no puede ser de esa cuenta, y la fila muestra la lectura del servidor. Es el caso de una cuenta sin usar desde su reinicio semanal. El inicio se calcula restando a la hora de reinicio la duración de la ventana, con un margen de 10 minutos en la de 5 horas y de una hora en la semanal. Una ventana que empezó después de la lectura del servidor sí es de la cuenta.
 
 ### La previsión no mezcla cuentas
 <!-- capability: usage-limits; requirement: a-foreign-reading-does-not-feed-the-forecast -->

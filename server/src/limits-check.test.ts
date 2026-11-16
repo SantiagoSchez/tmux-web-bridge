@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import type { AccountUsage, ClaudeAccount, HostInfo, RateLimits } from '../../shared/types.js';
-import { checkLimits, isForeign } from './limits-check.js';
+import { checkLimits, isForeign, type LimitsCheck, SentLimits } from './limits-check.js';
 
 const H = 3600;
 const NOW = Date.parse('2026-11-16T09:40:00Z') / 1000;
@@ -39,8 +39,8 @@ test("a reading whose resets match the hub's is the account's own", () => {
   assert.equal(isForeign(reading(S2_FIVE, S2_SEVEN), hub(S2_FIVE, S2_SEVEN), NOW), false);
 });
 
-test('resets within 5 minutes of each other are the same window', () => {
-  assert.equal(isForeign(reading(S2_FIVE + 299, S2_SEVEN - 299), hub(S2_FIVE, S2_SEVEN), NOW), false);
+test('resets up to 5 minutes apart are the same window', () => {
+  assert.equal(isForeign(reading(S2_FIVE + 300, S2_SEVEN - 300), hub(S2_FIVE, S2_SEVEN), NOW), false);
   assert.equal(isForeign(reading(S2_FIVE, S2_SEVEN + 301), hub(S2_FIVE, S2_SEVEN), NOW), true);
 });
 
@@ -53,14 +53,52 @@ test('a reading whose own windows have ended is not foreign', () => {
   assert.equal(isForeign(reading(NOW - 2 * H, NOW - H), hub(S2_FIVE, S2_SEVEN), NOW), false);
 });
 
-test('a window the hub has no reading of is not compared', () => {
-  assert.equal(isForeign(reading(S1_FIVE, S1_SEVEN), hub(undefined, undefined), NOW), false);
+test('an account the hub has never read is not compared', () => {
   assert.equal(isForeign(reading(S1_FIVE, S1_SEVEN), undefined, NOW), false);
-  assert.equal(isForeign(reading(S1_FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), false);
 });
 
-test('a reset of 0 (unknown) is not compared', () => {
-  assert.equal(isForeign(reading(0, S1_SEVEN), hub(S2_FIVE, 0), NOW), false);
+test('a window the reading lacks (a reset of 0) is not looked at', () => {
+  assert.equal(isForeign(reading(0, S2_SEVEN), hub(S2_FIVE, S2_SEVEN), NOW), false);
+  assert.equal(isForeign(reading(S2_FIVE, 0), hub(S2_FIVE, S2_SEVEN), NOW), false);
+});
+
+// ---------------------------------------------------------------- windows the hub saw closed
+
+/** When the hub read the account (see `hub()`). */
+const READ_AT = NOW - 60;
+const FIVE = 5 * H;
+const WEEK = 7 * 24 * H;
+
+test('with no hub window, a reading whose window started before the hub read the account is foreign', () => {
+  // An account not used since its weekly reset: the hub sees no 7-day window, and s1's started two hours before.
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT - 2 * H + WEEK), hub(S2_FIVE, undefined), NOW), true);
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT - 2 * H + WEEK), hub(S2_FIVE, 0), NOW), true);
+  assert.equal(isForeign(reading(READ_AT - 2 * H + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), true);
+  assert.equal(isForeign(reading(READ_AT - 2 * H + FIVE, S2_SEVEN), hub(0, S2_SEVEN), NOW), true);
+});
+
+test("with no hub window, a window opened after the hub's reading is the account's own", () => {
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT + 2 * H + WEEK), hub(S2_FIVE, undefined), NOW), false);
+  assert.equal(isForeign(reading(READ_AT + 20 * 60 + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), false);
+});
+
+test("a window's start is compared with one reset step of margin: 10 minutes for 5 hours, 1 hour for 7 days", () => {
+  assert.equal(isForeign(reading(READ_AT - 9 * 60 + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), false);
+  assert.equal(isForeign(reading(READ_AT - 11 * 60 + FIVE, S2_SEVEN), hub(undefined, S2_SEVEN), NOW), true);
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT - 59 * 60 + WEEK), hub(S2_FIVE, undefined), NOW), false);
+  assert.equal(isForeign(reading(S2_FIVE, READ_AT - 61 * 60 + WEEK), hub(S2_FIVE, undefined), NOW), true);
+});
+
+test("a reading whose window started before the hub's ended window reset is foreign", () => {
+  const ended = NOW - H;
+  // 7 days: s1's week started three hours ago, before s2's week ended an hour ago.
+  assert.equal(isForeign(reading(S2_FIVE, NOW - 3 * H + WEEK), hub(S2_FIVE, ended), NOW), true);
+  // 5 hours: a window that started two hours ago, before the hub's ended an hour ago.
+  assert.equal(isForeign(reading(NOW - 2 * H + FIVE, S2_SEVEN), hub(ended, S2_SEVEN), NOW), true);
+  // The next 5-hour window, opened after the hub's ended.
+  assert.equal(isForeign(reading(NOW - 30 * 60 + FIVE, S2_SEVEN), hub(ended, S2_SEVEN), NOW), false);
+  // A hub window that ends right now has ended: the next one, opening now, is the account's.
+  assert.equal(isForeign(reading(NOW + FIVE, S2_SEVEN), hub(NOW, S2_SEVEN), NOW), false);
 });
 
 // ---------------------------------------------------------------- every host and account
@@ -113,4 +151,52 @@ test('two hosts with a foreign reading under one account are both listed, in hos
   assert.deepEqual(r.kept.get('dev'), []);
   assert.deepEqual(r.kept.get('mac'), []);
   assert.deepEqual(r.kept.get('claude'), []);
+});
+
+// ---------------------------------------------------------------- what the panel last got
+
+function checked(kept: [string, RateLimits[]][], mislabelledOn: [string, string[]][] = []): LimitsCheck {
+  return { kept: new Map(kept), mislabelledOn: new Map(mislabelledOn) };
+}
+
+const OWN = under('s2@example.com', reading(S2_FIVE, S2_SEVEN));
+
+test('before anything is sent, a check with no readings and no warnings changes nothing', () => {
+  const sent = new SentLimits();
+  const empty = checked([['claude', []], ['mac', []]]);
+  assert.deepEqual(sent.hostsChanged(empty), []);
+  assert.equal(sent.accountsChanged(empty), false);
+});
+
+test('a host whose kept readings differ from what was sent of it has changed, until they are sent', () => {
+  const sent = new SentLimits();
+  const check = checked([['claude', [OWN]], ['mac', []]]);
+  assert.deepEqual(sent.hostsChanged(check), ['claude']);
+  sent.sentHost('claude', [OWN]);
+  assert.deepEqual(sent.hostsChanged(check), []);
+  assert.deepEqual(sent.hostsChanged(checked([['claude', []], ['mac', []]])), ['claude']);
+});
+
+test('a host sent without readings (none in its statusline) matches one with none kept', () => {
+  const sent = new SentLimits();
+  sent.sentHost('claude', [OWN]);
+  sent.sentHost('claude', undefined);
+  assert.deepEqual(sent.hostsChanged(checked([['claude', []]])), []);
+});
+
+test("a forgotten host's readings count as never sent", () => {
+  const sent = new SentLimits();
+  sent.sentHost('claude', [OWN]);
+  sent.forget('claude');
+  assert.deepEqual(sent.hostsChanged(checked([['claude', [OWN]]])), ['claude']);
+});
+
+test("the accounts have changed when a check's warnings differ from the ones last sent", () => {
+  const sent = new SentLimits();
+  const warned = checked([['claude', []]], [['acc-s2:org', ['claude']]]);
+  assert.equal(sent.accountsChanged(warned), true);
+  sent.sentAccounts(warned);
+  assert.equal(sent.accountsChanged(warned), false);
+  assert.equal(sent.accountsChanged(checked([['claude', []]], [['acc-s2:org', ['claude', 'mac']]])), true);
+  assert.equal(sent.accountsChanged(checked([['claude', []]])), true);
 });
