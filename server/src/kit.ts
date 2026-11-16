@@ -382,8 +382,7 @@ const KIT_HOOKS = ['pane-focus-in', 'pane-exited', 'after-kill-pane', 'window-un
 async function unloadKit(host: HostMonitor): Promise<void> {
   const keys = await host.exec.run(['list-keys']).catch(() => '');
   const lines = [...unbindKitKeys(keys), ...KIT_HOOKS.map((h) => `set-hook -gu ${h}`), 'set-option -gu @twb_kit_dir', 'set-option -gu @twb_kit_version'];
-  const h = host.hostConfig;
-  const tmux = [h.tmux, '-u', ...h.socketArgs].map(shq).join(' ');
+  const tmux = host.exec.tmuxCommand;
   await host.exec
     .shell(
       `PATH="$PATH:${EXTRA_PATH}"; export PATH; ${tmux} info >/dev/null 2>&1 || exit 0; f=$(mktemp); cat > "$f"; ${tmux} source-file "$f"; rm -f "$f"; ` +

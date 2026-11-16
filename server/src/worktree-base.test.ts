@@ -129,73 +129,121 @@ test('an origin that does not answer: the branches the machine knows, and why th
   }));
 
 /** A unix socket at `path`, standing for an SSH agent. */
-const socketAt = (path: string) => new Promise<Server>((resolve) => { const s = createServer(); s.listen(path, () => resolve(s)); });
+const socketAt = (path: string) =>
+  new Promise<Server>((resolve) => {
+    mkdirSync(dirname(path), { recursive: true });
+    const s = createServer();
+    s.listen(path, () => resolve(s));
+  });
 const close = (s: Server) => new Promise<void>((resolve) => s.close(() => resolve()));
+
+/** What the machine's SSH agents answer: which sockets have keys, which one never answers, and what tmux says. */
+interface Agents {
+  keys: string[];
+  slow?: string;
+  global: string;
+  session: string;
+}
 
 /**
  * The machine as the hub reaches it over ssh, for the fetch's agent: origin over ssh to a
- * fake `ssh` that writes down the SSH_AUTH_SOCK it got and is refused; a fake `ssh-add`
- * that answers «has keys» only for `keys`; and a fake tmux whose server has `global` as
- * SSH_AUTH_SOCK and whose one session ($1) has `session`.
+ * fake `ssh` that writes down the SSH_AUTH_SOCK it got and is refused; a fake `ssh-add -l`
+ * that answers «has keys» for `keys` and hangs on `slow`; and a fake tmux whose server has
+ * `global` as SSH_AUTH_SOCK and whose one session ($1) has `session`.
  */
-function agents(home: string, repo: string, keys: string, global: string, session: string): { extra: Record<string, string>; tmux: string; seen: () => string } {
+function agents(home: string, repo: string, a: Agents): { extra: Record<string, string>; tmux: string; seen: () => string } {
   const bin = join(home, 'bin');
   const seen = join(home, 'seen');
+  rmSync(seen, { force: true });
   const script = (name: string, body: string) => {
     write(join(bin, name), `#!/bin/sh\n${body}\n`);
     chmodSync(join(bin, name), 0o755);
   };
   script('ssh', `printf '%s' "\${SSH_AUTH_SOCK:-}" > ${shQuote(seen)}; echo 'Permission denied (publickey).' >&2; exit 255`);
-  script('ssh-add', `[ "$1" = -l ] && [ "\${SSH_AUTH_SOCK:-}" = ${shQuote(keys)} ] && exit 0; exit 2`);
+  script(
+    'ssh-add',
+    `[ "$1" = -l ] || exit 2; case "\${SSH_AUTH_SOCK:-}" in ` +
+      (a.slow ? `${shQuote(a.slow)}) sleep 30; exit 0 ;; ` : '') +
+      a.keys.map((k) => `${shQuote(k)}) exit 0 ;; `).join('') +
+      `esac; exit 2`,
+  );
   script(
     'tmux',
     `case "$*" in ` +
-      `'show-environment -g SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(global)} ;; ` +
+      `'show-environment -g SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(a.global)} ;; ` +
       `'list-sessions -F #{session_id}') echo '$1' ;; ` +
-      `'show-environment -t $1 SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(session)} ;; ` +
+      `'show-environment -t $1 SSH_AUTH_SOCK') echo SSH_AUTH_SOCK=${shQuote(a.session)} ;; ` +
       `*) exit 1 ;; esac`,
   );
   git(home, repo, 'remote', 'set-url', 'origin', 'ssh://git.example.invalid/repo.git');
-  return { extra: { PATH: `${bin}:${process.env.PATH}`, GIT_SSH_COMMAND: join(bin, 'ssh') }, tmux: shQuote(join(bin, 'tmux')), seen: () => readFileSync(seen, 'utf8') };
+  return { extra: { PATH: `${join(home, 'bin')}:${process.env.PATH}`, GIT_SSH_COMMAND: join(bin, 'ssh') }, tmux: shQuote(join(bin, 'tmux')), seen: () => readFileSync(seen, 'utf8') };
 }
 
-test("without an agent with keys, the fetch takes the first one of the machine's tmux that has them", () =>
+/** Runs `fn` with an agent socket at each path, closed afterwards. */
+async function withSockets(paths: string[], fn: () => Promise<void>): Promise<void> {
+  const servers = await Promise.all(paths.map(socketAt));
+  try {
+    await fn();
+  } finally {
+    await Promise.all(servers.map(close));
+  }
+}
+
+test("without an agent with keys, the fetch takes the first one of the machine's tmux that has them, to list and to prepare", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
-    const empty = await socketAt(join(home, 'empty.sock'));
-    const full = await socketAt(join(home, 'full.sock'));
-    try {
+    const [empty, full] = [join(home, 'empty.sock'), join(home, 'full.sock')];
+    await withSockets([empty, full], async () => {
       // The server's agent is a socket with no keys; the session's has them.
-      const m = agents(home, repo, join(home, 'full.sock'), join(home, 'empty.sock'), join(home, 'full.sock'));
+      const m = agents(home, repo, { keys: [full], global: empty, session: full });
       const list = await branches(home, repo, m.extra, m.tmux);
-      assert.equal(m.seen(), join(home, 'full.sock'));
+      assert.equal(m.seen(), full);
       assert.ok(list.repo);
       assert.match(list.fetchError ?? '', /Permission denied/);
-      await prepare(home, repo, 'wt', 'master', m.extra, m.tmux);
-      assert.equal(m.seen(), join(home, 'full.sock'));
-    } finally {
-      await close(empty);
-      await close(full);
-    }
+      // A fresh record for the worktree's own fetch.
+      const p = agents(home, repo, { keys: [full], global: empty, session: full });
+      await prepare(home, repo, 'wt', 'master', p.extra, p.tmux);
+      assert.equal(p.seen(), full);
+    });
   }));
 
-test('an agent of its own with keys is kept, and with no agent anywhere the fetch goes on without one', () =>
+test('an agent of its own with keys is kept, though tmux has another one with keys', () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
-    const own = await socketAt(join(home, 'own.sock'));
-    const full = await socketAt(join(home, 'full.sock'));
-    try {
-      const m = agents(home, repo, join(home, 'own.sock'), join(home, 'full.sock'), join(home, 'full.sock'));
-      await branches(home, repo, { ...m.extra, SSH_AUTH_SOCK: join(home, 'own.sock') }, m.tmux);
-      assert.equal(m.seen(), join(home, 'own.sock'));
-      // No agent answers with keys, and a path that is no socket is never taken.
-      const none = agents(home, repo, join(home, 'nadie.sock'), join(home, 'no-es-un-socket'), join(home, 'full.sock'));
+    const [own, other] = [join(home, 'own.sock'), join(home, 'other.sock')];
+    await withSockets([own, other], async () => {
+      const m = agents(home, repo, { keys: [own, other], global: other, session: other });
+      await branches(home, repo, { ...m.extra, SSH_AUTH_SOCK: own }, m.tmux);
+      assert.equal(m.seen(), own);
+    });
+  }));
+
+test('a path that is no socket is never taken, and with no agent that has keys the fetch goes on without one', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const [file, full] = [join(home, 'not-a-socket'), join(home, 'full.sock')];
+    writeFileSync(file, '');
+    await withSockets([full], async () => {
+      const m = agents(home, repo, { keys: [file, full], global: file, session: full });
+      await branches(home, repo, m.extra, m.tmux);
+      assert.equal(m.seen(), full);
+      const none = agents(home, repo, { keys: [], global: file, session: full });
       await branches(home, repo, none.extra, none.tmux);
       assert.equal(none.seen(), '');
-    } finally {
-      await close(own);
-      await close(full);
-    }
+    });
+  }));
+
+test('an agent that does not answer is given up for the next one, and a path with spaces is one path', () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const [hung, spaced] = [join(home, 'hung.sock'), join(home, 'Group Containers', 'agent.sock')];
+    await withSockets([hung, spaced], async () => {
+      const m = agents(home, repo, { keys: [spaced], slow: hung, global: hung, session: spaced });
+      const started = Date.now();
+      await branches(home, repo, m.extra, m.tmux);
+      assert.equal(m.seen(), spaced);
+      assert.ok(Date.now() - started < 10_000, `took ${Date.now() - started} ms`);
+    });
   }));
 
 test('a folder outside git has no branches', () =>
