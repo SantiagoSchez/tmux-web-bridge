@@ -12,10 +12,15 @@ export const SCRATCHPAD_MAX_CHARS = 4000;
 /** From how many characters the panel shows a note's length against `SCRATCHPAD_MAX_CHARS`. */
 export const SCRATCHPAD_COUNTER_FROM = 3500;
 
+/** A note's length as the hub stores it: without its trailing whitespace. The panel's counter shows it. */
+export function noteLength(raw: string): number {
+  return raw.trimEnd().length;
+}
+
 /** A note's text without its trailing whitespace, or why it cannot be one. */
 export function noteText(raw: unknown): { ok: true; text: string } | { ok: false; error: string } {
   if (typeof raw !== 'string') return { ok: false, error: 'Falta el texto de la nota' };
-  const text = raw.trimEnd();
+  const text = raw.slice(0, noteLength(raw));
   if (!text.trim()) return { ok: false, error: 'La nota está vacía' };
   if (text.length > SCRATCHPAD_MAX_CHARS) return { ok: false, error: `Una nota admite como mucho ${SCRATCHPAD_MAX_CHARS} caracteres` };
   return { ok: true, text };

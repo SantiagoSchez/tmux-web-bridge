@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { noteText, sanitizeScratchpads } from '../../shared/scratchpads.js';
+import { noteLength, noteText, sanitizeScratchpads } from '../../shared/scratchpads.js';
 import type { Scratchpads } from '../../shared/types.js';
 import { ScratchpadError, ScratchpadStore } from './scratchpads.js';
 
@@ -24,6 +24,14 @@ test('a note holds up to 4000 characters', () => {
   const r = noteText('a'.repeat(4001));
   assert.equal(r.ok, false);
   assert.match(r.ok ? '' : r.error, /4000 caracteres/);
+});
+
+test("the panel's counter measures a note as the hub stores it, without trailing whitespace", () => {
+  assert.equal(noteLength('a'.repeat(3999) + '\n\n'), 3999);
+  assert.equal(noteLength('a'.repeat(4000) + '  \n'), 4000);
+  assert.equal(noteText('a'.repeat(4000) + '  \n').ok, true);
+  assert.equal(noteLength('a'.repeat(4001) + ' '), 4001);
+  assert.equal(noteText('a'.repeat(4001) + ' ').ok, false);
 });
 
 test('a note text that is not a string is refused', () => {

@@ -1,6 +1,6 @@
 import { computed } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { SCRATCHPAD_COUNT, SCRATCHPAD_COUNTER_FROM, SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
+import { noteLength, SCRATCHPAD_COUNT, SCRATCHPAD_COUNTER_FROM, SCRATCHPAD_MAX_CHARS, SCRATCHPAD_MAX_NOTES } from '../../../shared/scratchpads';
 import type { ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadNote, ScratchpadPasteRequest } from '../../../shared/types';
 import { api } from '../api';
 import { isDesktop, prefs, SCRATCHPADS_KEY, setPref, toggleScratchpads } from '../prefs';
@@ -63,7 +63,7 @@ const notesLabel = (n: number) => `${n} ${n === 1 ? 'nota' : 'notas'}`;
  * `SCRATCHPAD_COUNTER_FROM`. Trailing whitespace does not count, as the hub does not store it.
  */
 function CharCount({ text }: { text: string }) {
-  const length = text.trimEnd().length;
+  const length = noteLength(text);
   if (length < SCRATCHPAD_COUNTER_FROM) return null;
   return (
     <span class={`pads-total small ${length > SCRATCHPAD_MAX_CHARS ? 'over' : 'dim'}`}>

@@ -27,7 +27,7 @@ Alternative considered: store in screen order and migrate the file on load (move
 
 ### Reading a three-scratchpad file
 
-`sanitizeScratchpads()` builds `SCRATCHPAD_COUNT` lists from the stored array, taking a missing position as empty, as it already does for anything malformed. No version field or migration: the file is rewritten with five lists at its next change.
+`sanitizeScratchpads()` returns five lists (the `Scratchpads` tuple, which `SCRATCHPAD_COUNT` is checked against) from the stored array, taking a missing position as empty, as it already does for anything malformed. No version field or migration: the file is rewritten with five lists at its next change.
 
 ### Limits and type
 
@@ -35,7 +35,7 @@ Alternative considered: store in screen order and migrate the file on load (move
 
 ### Character counter
 
-A constant `SCRATCHPAD_COUNTER_FROM = 3500` in `shared/scratchpads.ts`, next to the 4000 it relates to. The add field and the note editor show `length/4000`, where `length` is the text without trailing whitespace (what `noteText()` measures and the hub stores), on a line of its own under the field, right-aligned, once the text reaches 3500 characters, in the warning colour (`--peach`) above 4000, and nothing below 3500. The counter sits under the field and not over its corner because, over the corner, it covered the last line of text and the scrollbar of a long note. The editor, a `textarea` without a wrapper today, gets one so the counter can sit under it, as in the add field. The note count leaves the field: it stays on each colour (the badge, and `n/20` in its tooltip).
+A constant `SCRATCHPAD_COUNTER_FROM = 3500` in `shared/scratchpads.ts`, next to the 4000 it relates to. The add field and the note editor show `length/4000`, where `length` is `noteLength()` of `shared/scratchpads.ts`: the text without trailing whitespace, what `noteText()` measures and the hub stores, so the counter and the hub cannot disagree, on a line of its own under the field, right-aligned, once the text reaches 3500 characters, in the warning colour (`--peach`) above 4000, and nothing below 3500. The counter sits under the field and not over its corner because, over the corner, it covered the last line of text and the scrollbar of a long note. The editor, a `textarea` without a wrapper today, gets one so the counter can sit under it, as in the add field. The note count leaves the field: it stays on each colour (the badge, and `n/20` in its tooltip).
 
 ### Five tabs in the header
 

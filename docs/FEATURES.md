@@ -102,7 +102,7 @@ El panel tiene cinco scratchpads para apuntar lo que quieres decirle después a 
 ### Añadir una nota
 <!-- capability: scratchpads; requirement: adding-a-note -->
 
-Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar. Cuando el texto llega a 3500 caracteres, el campo enseña cuántos lleva de los 4000 posibles (por ejemplo, «3600/4000»), y lo marca si se pasa. Un texto vacío o solo con espacios no añade nada.
+Cada scratchpad tiene al pie un campo para escribir una nota de texto plano. Enter la guarda y Mayús+Enter salta de línea. La nota nueva va la última y sin fijar. Cuando el texto llega a 3500 caracteres, el campo enseña cuántos lleva de los 4000 posibles (por ejemplo, «3600/4000»), sin contar los espacios ni los saltos de línea del final, que no se guardan, y lo marca si se pasa. Un texto vacío o solo con espacios no añade nada.
 
 ### Límites de un scratchpad y de una nota
 <!-- capability: scratchpads; requirement: limits-of-a-scratchpad-and-of-a-note -->

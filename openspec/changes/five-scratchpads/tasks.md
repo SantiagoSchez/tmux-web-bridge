@@ -27,6 +27,8 @@
   - Done: CharCount under the add field and in the editor wrapper, from 3500, class over above 4000; colour tooltips n/20; web typecheck passes. The counter sits under the field (design.md updated: over the corner it covered text and scrollbar).
 - [x] 4.3 Count the text without trailing whitespace in the counter of the add field and of the editor (`trimEnd()`, as `noteText()` does), so 3999 characters and two new lines read «3999/4000», not marked. Verify `pnpm --filter web typecheck`.
   - Done: CharCount takes the text and counts text.trimEnd().length in the add field and the editor; web typecheck passes.
+- [x] 4.4 Move the counter's measure to `noteLength()` in `shared/scratchpads.ts`, used by `noteText()` and by the counter: first a failing test in `server/src/scratchpads.test.ts` (3999 characters and two new lines measure 3999, and a text over 4000 by that measure is the one `noteText()` refuses), then the function. Verify the server tests and both typechecks.
+  - Done: noteLength() in shared/scratchpads.ts, used by noteText() and CharCount; test seen failing (missing export), then 273 server tests and both typechecks pass. docs/FEATURES.md «Añadir una nota» now says trailing whitespace does not count.
 
 ## 5. Checks
 
