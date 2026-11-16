@@ -13,6 +13,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 
 - [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
 - [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo.
+- [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 
 ## Terminal
 
@@ -67,3 +68,20 @@ Una automatización que se ejecuta en un worktree nuevo guarda su rama base y ca
 <!-- capability: worktree-base; requirement: an-existing-branch-with-the-worktree-s-name-is-reused -->
 
 Si el repositorio ya tiene una rama con el nombre del worktree, o la tiene el remoto aunque la máquina aún no la haya traído, el worktree usa esa rama tal cual (si la máquina no puede traerla, no se lanza nada y se avisa), sin aplicar la base elegida, y el panel o la extensión lo avisan después de lanzar. Si esa rama está abierta en otra carpeta, no se lanza nada y se avisa de dónde está, para que elijas otro nombre; si la carpeta de su worktree se borró a mano, el worktree se vuelve a crear. Si la rama base pedida no existe en el remoto, aunque la máquina aún guarde una copia antigua, no se lanza nada y se avisa de que esa rama no existe.
+
+## Límites de uso
+
+### Lecturas de otra cuenta
+<!-- capability: usage-limits; requirement: a-statusline-reading-that-contradicts-the-hub-s-is-not-shown -->
+
+Los límites de 5 horas y semanales de cada cuenta salen de dos sitios: la lectura que el servidor central hace de la cuenta cada pocos minutos y la que publica la status line de Claude Code en cada máquina, que suele ser más reciente. Tras cambiar de cuenta en una máquina, un Claude que siga con la anterior puede publicar los límites de la anterior a nombre de la nueva. El servidor central lo detecta porque las horas de reinicio no coinciden con las que él leyó de esa cuenta, con un margen de 5 minutos, y entonces la fila muestra su propia lectura. No compara una ventana que ya se ha reiniciado, ni las lecturas de un email que comparten dos cuentas o de una cuenta que no ha leído.
+
+### La previsión no mezcla cuentas
+<!-- capability: usage-limits; requirement: a-foreign-reading-does-not-feed-the-forecast -->
+
+La previsión de cuándo se agota un límite se calcula solo con lecturas de la propia cuenta: las que el servidor central descarta por ser de otra cuenta no entran en el historial.
+
+### Aviso en la fila de la cuenta
+<!-- capability: usage-limits; requirement: the-account-s-row-warns-about-a-foreign-reading -->
+
+Mientras una máquina tenga una lectura de otra cuenta a nombre de una cuenta, su fila muestra ⚠ y el aviso dice qué máquina la publicó y que ese Claude seguramente sigue con la cuenta anterior: si no se corrige con su próximo mensaje, hay que reiniciarlo. El aviso está en el tooltip de la fila y en el menú de la cuenta, para verlo también en el móvil. Desaparece cuando un Claude de esa máquina publica una lectura que coincide con la del servidor central; si no publica ninguna, sigue mientras dure la ventana de la lectura, una semana como mucho.
