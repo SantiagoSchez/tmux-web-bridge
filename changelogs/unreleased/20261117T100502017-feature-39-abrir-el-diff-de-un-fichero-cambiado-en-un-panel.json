@@ -1,8 +1,0 @@
-{
-  "type": "changed",
-  "scope": "web",
-  "description": "Cambiado el visor de «Ficheros cambiados»: el diff de un fichero (y «Ver el fichero» desde el diff) se abre en un panel encima de la lista, que conserva su scroll y su filtro sin volver a cargarse; cerrar el panel de arriba, también con Esc, un toque fuera o el botón atrás, vuelve al anterior en lugar de cerrar el visor",
-  "issue": "39",
-  "breaking": false,
-  "pr": "40"
-}
