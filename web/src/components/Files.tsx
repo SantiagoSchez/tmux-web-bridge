@@ -100,22 +100,38 @@ export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown
 export const isBinary = (text: string) => text.includes('\0');
 export { fileUrl };
 
+/**
+ * Every screen of the stack, each in a sheet over the one it was opened from: the ones
+ * below stay mounted (their content, filter and scroll kept, nothing asked again) and
+ * inert, and closing the one on top by any means goes back one screen.
+ */
 export function FileViewerSheet() {
   const v = fileViewer.value;
   if (!v) return null;
-  const screen = v.stack[v.stack.length - 1];
-  const close = () => (fileViewer.value = null);
-  const back = v.stack.length > 1 ? { label: 'Atrás', onClick: pop } : undefined;
-  if (screen.kind === 'changes') return <ChangesView origin={v.origin} close={close} back={back} />;
-  if (screen.kind === 'diff') return <DiffView origin={v.origin} changes={screen.changes} file={screen.file} close={close} back={back} />;
-  return <FileView key={screen.path} origin={v.origin} path={screen.path} line={screen.line} close={close} back={back} />;
+  const top = v.stack.length - 1;
+  return (
+    <>
+      {v.stack.map((screen, i) => {
+        const layer: Layer = { back: i > 0 ? { label: 'Atrás', onClick: pop } : undefined, stacked: i > 0, inert: i < top, onClose: pop };
+        if (screen.kind === 'changes') return <ChangesView key={`${i}:changes`} origin={v.origin} layer={layer} />;
+        if (screen.kind === 'diff') return <DiffView key={`${i}:diff:${screen.file.path}`} origin={v.origin} changes={screen.changes} file={screen.file} layer={layer} />;
+        return <FileView key={`${i}:file:${screen.path}`} origin={v.origin} path={screen.path} line={screen.line} layer={layer} />;
+      })}
+    </>
+  );
 }
 
-type Back = { label: string; onClick: () => void } | undefined;
+/** How a screen's sheet sits in the stack, passed on to its `Sheet` as is. */
+interface Layer {
+  back?: { label: string; onClick: () => void };
+  stacked: boolean;
+  inert: boolean;
+  onClose: () => void;
+}
 
 // ---------------------------------------------------------------- a file
 
-function FileView({ origin, path, line, close, back }: { origin: FileOrigin; path: string; line?: number; close: () => void; back: Back }) {
+function FileView({ origin, path, line, layer }: { origin: FileOrigin; path: string; line?: number; layer: Layer }) {
   const url = fileUrl(origin, path);
   const name = path.split('/').pop() ?? path;
   const kind = fileKind(path);
@@ -152,7 +168,7 @@ function FileView({ origin, path, line, close, back }: { origin: FileOrigin; pat
   }, [url]);
 
   return (
-    <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} back={back} class="file-sheet" onClose={close}>
+    <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} {...layer} class="file-sheet">
       <div class="file-actions">
         {kind === 'markdown' && text !== null && !binary && (
           <button class="btn" onClick={() => setRaw(!raw)}>
@@ -253,7 +269,7 @@ function CodeLines({ text, line }: { text: string; line?: number }) {
 
 const STATUS: Record<GitChange['status'], string> = { M: 'Modificado', A: 'Nuevo', D: 'Borrado', R: 'Renombrado', '?': 'Sin seguimiento', U: 'En conflicto' };
 
-function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () => void; back: Back }) {
+function ChangesView({ origin, layer }: { origin: FileOrigin; layer: Layer }) {
   /** The tab chosen; until then the hub picks one, and the answer says which. */
   const asked = changesMode.value;
   const picked = changesBase.value;
@@ -306,7 +322,7 @@ function ChangesView({ origin, close, back }: { origin: FileOrigin; close: () =>
     return words.every((w) => hay.includes(w));
   });
   return (
-    <Sheet title="Ficheros cambiados" subtitle={subtitle} back={back} class="file-sheet" onClose={close}>
+    <Sheet title="Ficheros cambiados" subtitle={subtitle} {...layer} class="file-sheet">
       <div class="file-actions">
         <div class="seg" role="radiogroup" aria-label="Comparar con">
           {(
@@ -427,7 +443,7 @@ function parseDiff(diff: string): DiffRow[] {
   return rows;
 }
 
-function DiffView({ origin, changes, file, close, back }: { origin: FileOrigin; changes: GitChanges; file: GitChange; close: () => void; back: Back }) {
+function DiffView({ origin, changes, file, layer }: { origin: FileOrigin; changes: GitChanges; file: GitChange; layer: Layer }) {
   const [rows, setRows] = useState<DiffRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -440,7 +456,7 @@ function DiffView({ origin, changes, file, close, back }: { origin: FileOrigin; 
   const dels = rows?.filter((r) => r.kind === 'del').length ?? 0;
   const full = `${changes.root}/${file.path}`;
   return (
-    <Sheet title={file.path.split('/').pop() ?? file.path} subtitle={`${file.path} · ${STATUS[file.status]}${rows ? ` · +${adds} −${dels}` : ''}`} back={back} class="file-sheet" onClose={close}>
+    <Sheet title={file.path.split('/').pop() ?? file.path} subtitle={`${file.path} · ${STATUS[file.status]}${rows ? ` · +${adds} −${dels}` : ''}`} {...layer} class="file-sheet">
       <div class="file-actions">
         {file.status !== 'D' && (
           <button class="btn" onClick={() => push({ kind: 'file', path: full })}>

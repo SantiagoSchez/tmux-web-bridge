@@ -1876,6 +1876,10 @@ body.dragging-host * {
   justify-content: center;
   animation: fade 0.15s ease-out;
 }
+/* Over another sheet (the file viewer's screens): the one below already dims the page. */
+.sheet-backdrop.stacked {
+  background: transparent;
+}
 .sheet {
   width: 100%;
   max-height: 88dvh;

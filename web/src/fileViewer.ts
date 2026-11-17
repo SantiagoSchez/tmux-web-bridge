@@ -17,7 +17,10 @@ export type FileScreen =
   | { kind: 'changes' }
   | { kind: 'diff'; changes: GitChanges; file: GitChange };
 
-/** What the viewer shows, and from where; null when closed. Each screen is a layer of the back button. */
+/**
+ * What the viewer shows, and from where; null when closed. Each screen is a sheet over the
+ * one below, which stays as it was, and a layer of the back button.
+ */
 export const fileViewer = signal<{ origin: FileOrigin; stack: FileScreen[] } | null>(null);
 
 export function pushFileScreen(screen: FileScreen): void {
@@ -25,7 +28,7 @@ export function pushFileScreen(screen: FileScreen): void {
   if (v) fileViewer.value = { ...v, stack: [...v.stack, screen] };
 }
 
-/** Back one screen, or closed from the first one (its «Atrás», and the phone's back button). */
+/** Back one screen, or closed from the first one: every way of closing the sheet on top, and the phone's back button. */
 export function fileViewerBack(): void {
   const v = fileViewer.value;
   if (v) fileViewer.value = v.stack.length > 1 ? { ...v, stack: v.stack.slice(0, -1) } : null;
