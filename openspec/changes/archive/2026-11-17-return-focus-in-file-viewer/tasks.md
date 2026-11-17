@@ -48,11 +48,13 @@
 
 ## 8. Human review
 
-- [ ] 8.1 Once `ka review-rounds gate` passes, ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; findings go through the fix path of the review loop until approval.
+- [x] 8.1 Once `ka review-rounds gate` passes, ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; findings go through the fix path of the review loop until approval.
+  - The owner took PR #42 as good without a manual review (answer in the chat, 2026-11-17), after one automated round (approved, gate passed on 1ffe8a8). The only suggestion (R1-01, score 2) was dropped.
 
 ## 9. Before the archive
 
-- [ ] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; verify the exit code is 0.
+- [x] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; verify the exit code is 0.
+  - 44 sections verified, exit 0, right before the archive.
 
 ## Workflow follow-up
 
