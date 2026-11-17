@@ -50,11 +50,12 @@
 
 ## 9. Human review (mandatory step 8)
 
-- [ ] 9.1 After the gate passes and the catalogue is committed, ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here.
+- [x] 9.1 After the gate passes and the catalogue is committed, ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here.
+  - 2026-11-17: the owner takes PR #44 as good, without a manual review.
 
 ## 10. features-check before the archive (mandatory step 9)
 
-- [ ] 10.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0.
+- [x] 10.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0.
 
 ## Workflow follow-up
 
