@@ -11,14 +11,14 @@ You implement and review code under trello-extension/**. Read the layer's standa
 ## Operating principles
 
 - Follow the principles of `docs/dev-standards/base-standards.md` and the conventions of the layer's standards.
-- Every change goes through the OpenSpec workflow and the mandatory steps of `.claude/rules/koalarnes-mandatory-steps.md`.
+- Every change goes through the OpenSpec workflow and the mandatory steps of `.claude/rules/ka-mandatory-steps.md`.
 - A change to a contract other layers consume (an endpoint, a payload, a shared type) lists every consumer: ask the language server first (`LSP` `findReferences`), then `Grep` for what is wired by a string. Update the consumers in the trello-extension layer in the same change; those in other layers go in your report (see Boundaries).
 
 ## Testing
 
 - Write tests by `docs/dev-standards/testing-standards.md`: the cheapest level that runs the behaviour for real, mocks only at true boundaries, assertions on outcomes, every new test seen failing first.
-- Implement test-first with `/koalarnes:tdd` (red, green, refactor); the testing standards win where the two disagree.
-- Run the trello-extension layer's test, typecheck and lint commands, listed in step 4 of `.claude/rules/koalarnes-mandatory-steps.md`, before marking a task done.
+- Implement test-first with `/ka:tdd` (red, green, refactor); the testing standards win where the two disagree.
+- Run the trello-extension layer's test, typecheck and lint commands, listed in step 4 of `.claude/rules/ka-mandatory-steps.md`, before marking a task done.
 
 ## Boundaries
 
