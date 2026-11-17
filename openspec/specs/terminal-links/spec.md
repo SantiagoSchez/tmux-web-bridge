@@ -47,23 +47,35 @@ The terminal SHALL link `PR #N` and `Issue #N`, and on Bitbucket `pipeline #N`, 
 
 ### Requirement: The pane's project decides the repository
 
-The panel SHALL take the repository of a reference from the `.claude/koalarnes.json` of the project of the pane the reference is written in (`platform.host` and `platform.repository`) and, when that file is missing or names no repository, from the `origin` remote of the pane's folder. The panel SHALL NOT underline a repository reference it cannot resolve.
+The panel SHALL take the repository of a reference from the harness configuration of the project of the pane the reference is written in (`platform.host` and `platform.repository`) and, when the project has none or it names no repository, from the `origin` remote of the pane's folder. The harness configuration is `.claude/ka.json` or, when that file does not exist, `.claude/koalarnes.json`. The panel SHALL NOT underline a repository reference it cannot resolve.
 
-#### Scenario: koalarnes.json wins over the remote
+#### Scenario: ka.json wins over the remote
 
-- **GIVEN** a pane whose project's `.claude/koalarnes.json` names the GitHub repository `owner/repo` and whose `origin` points elsewhere
+- **GIVEN** a pane whose project's `.claude/ka.json` names the GitHub repository `owner/repo` and whose `origin` points elsewhere
 - **WHEN** the user taps `PR #5`
 - **THEN** the page opened is `https://github.com/owner/repo/pull/5`
 
+#### Scenario: koalarnes.json wins over the remote
+
+- **GIVEN** a pane whose project has no `.claude/ka.json` and whose `.claude/koalarnes.json` names the GitHub repository `owner/repo`, and whose `origin` points elsewhere
+- **WHEN** the user taps `PR #5`
+- **THEN** the page opened is `https://github.com/owner/repo/pull/5`
+
+#### Scenario: ka.json wins over koalarnes.json
+
+- **GIVEN** a pane whose project's `.claude/ka.json` names the GitHub repository `owner/new` and whose `.claude/koalarnes.json` names `owner/old`
+- **WHEN** the user taps `PR #5`
+- **THEN** the page opened is `https://github.com/owner/new/pull/5`
+
 #### Scenario: Fallback to the origin remote
 
-- **GIVEN** a pane in a repository without `.claude/koalarnes.json` whose `origin` is `git@bitbucket.org:workspace/repo.git`
+- **GIVEN** a pane in a repository without `.claude/ka.json` or `.claude/koalarnes.json` whose `origin` is `git@bitbucket.org:workspace/repo.git`
 - **WHEN** the user taps `PR #7`
 - **THEN** the page opened is `https://bitbucket.org/workspace/repo/pull-requests/7`
 
 #### Scenario: Pane outside a known repository
 
-- **GIVEN** a pane whose folder is not a git repository, or whose `origin` is neither GitHub nor Bitbucket, and has no `.claude/koalarnes.json`
+- **GIVEN** a pane whose folder is not a git repository, or whose `origin` is neither GitHub nor Bitbucket, and has no harness configuration
 - **WHEN** the terminal shows `PR #7`
 - **THEN** the text is not underlined
 
@@ -81,18 +93,25 @@ The panel SHALL take the repository of a reference from the `.claude/koalarnes.j
 
 ### Requirement: Trello references open the card
 
-The terminal SHALL link `Trello #N` to the card whose short number is N on the board named by `tracker.board` in the pane project's `.claude/koalarnes.json`, opening the card's page in a new tab. Without that board the text SHALL NOT be underlined.
+The terminal SHALL link `Trello #N` to the card whose short number is N on the board named by `tracker.board` in the pane project's harness configuration (`.claude/ka.json`, else `.claude/koalarnes.json`), opening the card's page in a new tab. Without that board the text SHALL NOT be underlined.
 
 #### Scenario: Card on the project's board
 
-- **GIVEN** a pane whose project's `.claude/koalarnes.json` has `tracker.board` set to a board that holds card number 470
+- **GIVEN** a pane whose project's `.claude/ka.json` has `tracker.board` set to a board that holds card number 470
+- **AND** a Trello account configured in Ajustes › Trello
+- **WHEN** the user taps `Trello #470`
+- **THEN** a new tab opens that card's Trello page
+
+#### Scenario: Board of a project still on koalarnes.json
+
+- **GIVEN** a pane whose project has no `.claude/ka.json` and whose `.claude/koalarnes.json` has `tracker.board` set to a board that holds card number 470
 - **AND** a Trello account configured in Ajustes › Trello
 - **WHEN** the user taps `Trello #470`
 - **THEN** a new tab opens that card's Trello page
 
 #### Scenario: Project without a board
 
-- **GIVEN** a pane whose project has no `.claude/koalarnes.json`, or one without `tracker.board`
+- **GIVEN** a pane whose project has no harness configuration, or one without `tracker.board`
 - **WHEN** the terminal shows `Trello #470`
 - **THEN** the text is not underlined
 

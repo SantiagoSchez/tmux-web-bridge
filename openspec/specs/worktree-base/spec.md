@@ -48,7 +48,7 @@ Every place that creates a worktree SHALL let the user pick the branch it starts
 
 ### Requirement: The base branch offered first is the last one used
 
-The base branch offered first SHALL be the last one used for the same Trello board, in the extension and in the panel's Trello drawer, and for the same folder, in «Nuevo worktree». With nothing remembered, or when the remembered branch is no longer on the remote, it SHALL be the project's base: `git.baseBranch` of the repository's `.claude/koalarnes.json`, else the remote's default branch.
+The base branch offered first SHALL be the last one used for the same Trello board, in the extension and in the panel's Trello drawer, and for the same folder, in «Nuevo worktree». With nothing remembered, or when the remembered branch is no longer on the remote, it SHALL be the project's base: `git.baseBranch` of the repository's harness configuration (`.claude/ka.json`, else `.claude/koalarnes.json`), else the remote's default branch.
 
 #### Scenario: Remembered per Trello board
 
@@ -58,8 +58,20 @@ The base branch offered first SHALL be the last one used for the same Trello boa
 
 #### Scenario: Another board starts from the project's base
 
-- **GIVEN** a project whose `.claude/koalarnes.json` sets `git.baseBranch` to `develop`, and nothing remembered for board B
+- **GIVEN** a project whose `.claude/ka.json` sets `git.baseBranch` to `develop`, and nothing remembered for board B
 - **WHEN** the user opens the extension's dialog on a card of board B for that project
+- **THEN** `develop` is the base branch offered first
+
+#### Scenario: Project still on koalarnes.json
+
+- **GIVEN** a project without `.claude/ka.json` whose `.claude/koalarnes.json` sets `git.baseBranch` to `develop`, and nothing remembered
+- **WHEN** the user opens «Nuevo worktree» on it
+- **THEN** `develop` is the base branch offered first
+
+#### Scenario: ka.json wins over koalarnes.json
+
+- **GIVEN** a project whose `.claude/ka.json` sets `git.baseBranch` to `develop` and whose `.claude/koalarnes.json` sets it to `release/2.0`, and nothing remembered
+- **WHEN** the user opens «Nuevo worktree» on it
 - **THEN** `develop` is the base branch offered first
 
 #### Scenario: Remembered per folder in «Nuevo worktree»
@@ -76,7 +88,7 @@ The base branch offered first SHALL be the last one used for the same Trello boa
 
 #### Scenario: Project without koalarnes.json
 
-- **GIVEN** a repository without `.claude/koalarnes.json` whose remote's default branch is `main`, and nothing remembered
+- **GIVEN** a repository without `.claude/ka.json` or `.claude/koalarnes.json` whose remote's default branch is `main`, and nothing remembered
 - **WHEN** the user opens «Nuevo worktree» on it
 - **THEN** `main` is the base branch offered first
 
