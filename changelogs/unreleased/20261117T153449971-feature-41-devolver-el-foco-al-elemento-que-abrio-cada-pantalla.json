@@ -3,5 +3,6 @@
   "scope": "web",
   "description": "Cambiado el visor de ficheros para que, al cerrar un diff, el foco vuelva al fichero de «Ficheros cambiados» que lo abrió, y al cerrar un fichero, a «Ver el fichero»: con el teclado o un lector de pantalla se sigue desde donde ibas",
   "issue": "41",
-  "breaking": false
+  "breaking": false,
+  "pr": "42"
 }
