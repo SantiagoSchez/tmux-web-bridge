@@ -16,7 +16,7 @@ Loose bug fixes and touch-ups do not call for a release of their own; they go in
 
 ## Cutting a release
 
-A release is cut with `/koalarnes:release` from the main checkout, on `master`. It makes the commit `chore(release): X.Y.Z` and its tag `vX.Y.Z`, and pushes both: `git push origin master vX.Y.Z`.
+A release is cut with `/ka:release` from the main checkout, on `master`. It makes the commit `chore(release): X.Y.Z` and its tag `vX.Y.Z`, and pushes both: `git push origin master vX.Y.Z`.
 
 The tag starts `.github/workflows/release.yml` (a GitHub runner), which publishes the GitHub release; follow it with `gh run watch`. It builds the Trello extension, creates the release as a draft with the version's section of `CHANGELOG.md` as its notes, attaches `twb-trello-extension-vX.Y.Z.zip` and only then publishes it: machines with the extension turned on (Ajustes › Trello) download it when they update the kit. Meanwhile `master` deploys the hub, which looks for the release of its version every 2 minutes and then warns about the kits to update.
 

@@ -30,7 +30,7 @@ context: |
   - docs/dev-standards/base-standards.md           principles, languages, workflow.
   - docs/dev-standards/testing-standards.md        test levels, mocks, refused patterns.
   - docs/dev-standards/documentation-standards.md  comments, ADRs, changelog, catalogue.
-  - .claude/rules/koalarnes-mandatory-steps.md        mandatory tasks.md steps (always applied).
+  - .claude/rules/ka-mandatory-steps.md        mandatory tasks.md steps (always applied).
   - server (server/**, shared/**): docs/dev-standards/server-standards.md
   - web (web/**): docs/dev-standards/web-standards.md
   - trello-extension (trello-extension/**): docs/dev-standards/trello-extension-standards.md
@@ -50,7 +50,7 @@ context: |
   - Before creating an artifact, read docs/dev-standards/base-standards.md and
     the standards of every layer the change touches.
   - Every tasks.md includes the mandatory steps of
-    .claude/rules/koalarnes-mandatory-steps.md (branch from master,
+    .claude/rules/ka-mandatory-steps.md (branch from master,
     review and run the tests, update the docs and the changelog, the feature
     catalogue, the human review, features-check before the archive).
 
@@ -59,7 +59,7 @@ context: |
 # ignored, so global rules live in the context block above.
 rules:
   proposal:
-    - Name the layers the change affects (the layers of .claude/koalarnes.json) and the external services it touches.
+    - Name the layers the change affects (the layers of .claude/ka.json) and the external services it touches.
     - Call out contract changes explicitly (API payloads, message or job payloads, schema migrations, new environment variables).
     - Include a Non-goals section.
     - Link the GitHub issue.

@@ -9,12 +9,13 @@
     }
   },
   "enabledPlugins": {
-    "koalarnes@koalarnes": true
+    "ka@koalarnes": true,
+    "typescript-lsp@claude-plugins-official": true
   },
   "model": "opus",
   "effortLevel": "high",
   "autoCompactWindow": 400000,
-  "outputStyle": "koalarnes:Readable ISO",
+  "outputStyle": "ka:Readable ISO",
   "attribution": {
     "commit": "",
     "pr": ""
@@ -36,7 +37,8 @@
       "Bash(ka review-rounds gate *)",
       "Bash(ka scope *)",
       "Bash(ka openspec-check *)",
-      "Bash(ka features-check)"
+      "Bash(ka features-check)",
+      "Bash(ka docs-check)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 # Funcionalidades
 
-Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de producto. Cada sección sale de un requisito de las specs de OpenSpec de `openspec/specs/`, la redacta `/koalarnes:update-features` y lleva su ancla justo después del título:
+Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de producto. Cada sección sale de un requisito de las specs de OpenSpec de `openspec/specs/`, la redacta `/ka:update-features` y lleva su ancla justo después del título:
 
 ```markdown
 ### <título>

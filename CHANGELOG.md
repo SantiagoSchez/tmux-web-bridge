@@ -2,7 +2,7 @@
 
 Todos los cambios relevantes del proyecto, del más reciente al más antiguo. Las versiones siguen [Semantic Versioning](https://semver.org/lang/es/).
 
-No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
+No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
 ## 1.26.0 - 2026-11-17
 
