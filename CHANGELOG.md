@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.25.2 - 2026-11-17
+
+### Cambiado
+
+- En el visor de ficheros, al cerrar un diff el foco vuelve al fichero de «Ficheros cambiados» que lo abrió, y al cerrar un fichero vuelve a «Ver el fichero», sin mover la lista: con el teclado o un lector de pantalla sigues desde donde ibas.
+
 ## 1.25.1 - 2026-11-17
 
 ### Cambiado
