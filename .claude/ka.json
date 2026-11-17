@@ -44,6 +44,9 @@
   },
   "release": { "versionFiles": ["VERSION"] },
   "checks": [
-    { "name": "feature catalogue", "command": "ka features-check", "gate": true }
-  ]
+    { "name": "feature catalogue", "command": "ka features-check", "gate": true },
+    { "name": "standards documents", "command": "ka docs-check", "gate": true }
+  ],
+  "claude": { "lspPlugins": ["typescript-lsp"] },
+  "hooks": { "checkOnStop": true }
 }

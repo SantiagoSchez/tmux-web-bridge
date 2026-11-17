@@ -61,18 +61,18 @@ Each decision is a `### ` heading under the `## Decisions` section, and the head
 
 `CHANGELOG.md` is generated: **never edit it by hand**. Each change adds one JSON entry under `changelogs/unreleased/`, so two branches never conflict on it, and a release compiles the pending entries into a new version section. A purely internal change adds none: a refactor with no visible effect, tests, tooling, the development harness (`.claude/`, the standards documents, OpenSpec artifacts). Whatever the branch prefix, what decides is whether anything changes for whoever uses, deploys or operates the product.
 
-- Add an entry with `/koalarnes:changelog`, which reads the branch diff and picks the type, scope and description. Without the skill, run `ka changelog add -t <type> -s <scope> -d "<description>"` (`-n` for a dry run).
-- The entry is usually written before the pull request exists. Its number is added once it is opened, with `ka changelog ref --pr <id>`: `/koalarnes:commit` does it when it opens the pull request.
+- Add an entry with `/ka:changelog`, which reads the branch diff and picks the type, scope and description. Without the skill, run `ka changelog add -t <type> -s <scope> -d "<description>"` (`-n` for a dry run).
+- The entry is usually written before the pull request exists. Its number is added once it is opened, with `ka changelog ref --pr <id>`: `/ka:commit` does it when it opens the pull request.
 - Types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
 - Scopes: server, web, trello-extension, host-kit.
 - Descriptions are in `es-ES`.
 - **`-b` (breaking) means a MAJOR release.** A release bumps MAJOR for any breaking entry, MINOR for any `added`, PATCH otherwise. Set it only when the team decides on a MAJOR release; a format or API break inside a normal release is explained in the description instead.
 
-`/koalarnes:release` compiles the entries, rewrites the new section for its readers, writes the version into the project's files and commits. The changelog is the public release notes: every line reads for the person using the product, related small fixes are grouped, entries with no effect on the product (tests, tooling, pipelines) are dropped, operational notes (deploy order, maintenance commands, environment variables) go to the deployment's work item instead, and security entries read as hardening without exploitation details.
+`/ka:release` compiles the entries, rewrites the new section for its readers, writes the version into the project's files and commits. The changelog is the public release notes: every line reads for the person using the product, related small fixes are grouped, entries with no effect on the product (tests, tooling, pipelines) are dropped, operational notes (deploy order, maintenance commands, environment variables) go to the deployment's work item instead, and security entries read as hardening without exploitation details.
 
 ## Standards updates
 
-These documents describe how the team works. A change that breaks an existing standard or establishes a new one updates the standard in the same change; `/koalarnes:update-docs` reads the branch diff and drafts the patch.
+These documents describe how the team works. A change that breaks an existing standard or establishes a new one updates the standard in the same change; `/ka:update-docs` reads the branch diff and drafts the patch.
 
 An agent reads these documents in full before it works, and follows a line that went stale as readily as a current one. So a standards document holds only what the code cannot show:
 
@@ -81,7 +81,7 @@ An agent reads these documents in full before it works, and follows a line that 
 - the recipe of a recurring change;
 - the reason behind a decision.
 
-Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/koalarnes.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. `AGENTS.md` is loaded into every turn (`CLAUDE.md` imports it), so it holds the index of these documents, each with the paths or the kind of task that call for opening it, and the few instructions that must always be in view: what to do at a moment no task announces, and the prohibitions any task can break at a high cost, in one or two lines that link the standard with the detail. A procedure followed only when its task comes up (a release, a deployment, how a layer is tested) goes in a standard. `CLAUDE.md` adds only what is specific to Claude Code. Each thing is said once, in the most specific document it fits. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/koalarnes:audit-docs` reads every document against the code and proposes what to remove.
+Leave out what the repository already says: directory trees and architecture overviews, the versions the manifests pin, the rules the linter or the type checker enforces, and the commands configured in `.claude/ka.json`. A standard that stops being true is deleted in the change that made it false; removing a line is as much an update as adding one. `AGENTS.md` is loaded into every turn (`CLAUDE.md` imports it), so it holds the index of these documents, each with the paths or the kind of task that call for opening it, and the few instructions that must always be in view: what to do at a moment no task announces, and the prohibitions any task can break at a high cost, in one or two lines that link the standard with the detail. A procedure followed only when its task comes up (a release, a deployment, how a layer is tested) goes in a standard. `CLAUDE.md` adds only what is specific to Claude Code. Each thing is said once, in the most specific document it fits. What slips through is caught later: `ka docs-check` reports the dead references and how much each document grew, and `/ka:audit-docs` reads every document against the code and proposes what to remove.
 
 ## Feature catalogue
 
@@ -96,5 +96,5 @@ Leave out what the repository already says: directory trees and architecture ove
   ```
 
   `<cap-slug>` is the capability's directory name; `<req-slug>` is the kebab-case of the requirement's name. An H2 that is only an introduction or an index is listed in `features.nonFeatureAreas` and needs no anchors.
-- When a requirement is added, changed or removed, the spec changes first; then `/koalarnes:update-features <change>` regenerates the affected sections, and `ka features-check --strict` must exit 0. It runs once more right before `/opsx:archive`. Plain `ka features-check`, which the review loop runs, lists as pending the requirements a change adds and the catalogue lacks, and the sections for requirements it removes or renames, and still exits 0.
+- When a requirement is added, changed or removed, the spec changes first; then `/ka:update-features <change>` regenerates the affected sections, and `ka features-check --strict` must exit 0. It runs once more right before `/opsx:archive`. Plain `ka features-check`, which the review loop runs, lists as pending the requirements a change adds and the catalogue lacks, and the sections for requirements it removes or renames, and still exits 0.
 - Describe capabilities, not figures that drift: no prices, rates or quotas of external services. Describe them qualitatively (tiers, speed against quality) and point at the place in the product where the live value is configured.

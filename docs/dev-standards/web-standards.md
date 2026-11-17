@@ -56,7 +56,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 ## Testing
 
 - The levels this layer tests at and where each kind of test lives, following [testing-standards.md](testing-standards.md).
-- The test, typecheck and lint commands are configured in `.claude/koalarnes.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md); never copy them here, where they would go stale.
+- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
 - `web` has no test runner and no tests: the typecheck is its only automated check, and `pnpm typecheck` and `pnpm test` (for the logic it shares) pass before every push.
 - Pure logic the panel needs and that deserves a test lives in `shared/` and is tested from `server/src/<module>.test.ts` (`copy.ts`, `typing.ts`, `keybar.ts`, `paths.ts`, `refs.ts`, `panes.ts`, `stale-cache.ts`, `shortcuts.ts` (the panel's configurable shortcuts and the dictation's)).
 - A UI change is checked by hand in a browser against a running hub (`vite` dev server proxying to `HUB_URL`), on a phone-sized viewport as well as a wide one. A hub started for that with a `local` machine runs tmux on this machine: give it its own `TMUX_TMPDIR` and no `TMUX`/`TMUX_PANE`, or it drives the user's real tmux server.

@@ -2,7 +2,7 @@
 
 Pre-requisite reading: [`base-standards.md`](./base-standards.md).
 
-A test earns its place only if it **would fail when the behaviour it names breaks**. A test that passes whatever the code does is not a weak test, it is a cost: it slows every change, it reads as coverage in review, and it hides that nothing guards the behaviour. This document is the rule set the review skills (`/koalarnes:review-pr`, `/koalarnes:adversarial-review`) and the [mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md) hold every test to.
+A test earns its place only if it **would fail when the behaviour it names breaks**. A test that passes whatever the code does is not a weak test, it is a cost: it slows every change, it reads as coverage in review, and it hides that nothing guards the behaviour. This document is the rule set the review skills (`/ka:review-pr`, `/ka:adversarial-review`) and the [mandatory task steps](../../.claude/rules/ka-mandatory-steps.md) hold every test to.
 
 ## Pick the level first
 

@@ -55,7 +55,7 @@ The conventions of the `host-kit` layer (host-kit/**, server/src/kit.ts, scripts
 ## Testing
 
 - The levels this layer tests at and where each kind of test lives, following [testing-standards.md](testing-standards.md).
-- The test, typecheck and lint commands are configured in `.claude/koalarnes.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md); never copy them here, where they would go stale.
+- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
 - **Unit:** `server/src/kit.test.ts` (`node:test`) checks the builders' output (the order of the guards, the flags, quoting), `kitTag`, `kitDir` and how a machine that does not answer is explained, with a fake `HostMonitor` that only fails.
 - **End to end:** `scripts/test-kit-update.sh` builds a bare fake origin whose newest tag is the working tree (last tag plus one patch), a clone at the previous tag in a temporary `HOME`, runs `install.sh`, starts the machine's tmux on `-L twbkit`, and calls `installKit`, `updateKit`, `setTrelloExtension` and `uninstallKit` through a `tsx` driver with a local host. It checks the refusals, the update, that a re-install leaves `~/.tmux.conf` unchanged, the Trello extension download (`TWB_RELEASES_URL=file://…`), the uninstall and a fresh install, and that a sentinel tmux on the default socket was not touched. Each check is an `expect` line; `KEEP=1` keeps the temporary folder.
 - It runs whenever `server/src/kit.ts`, `host-kit/install.sh` or `host-kit/tmux.conf` change, and a new behaviour of install, update or uninstall gets its `expect` there.
