@@ -119,6 +119,11 @@ Cualquier forma de cerrar el panel de arriba cierra solo ese y deja ver el de de
 
 Con varios paneles abiertos, solo el de arriba oscurece la página y responde: la página se ve igual de oscura que con un único panel, y ni el teclado, ni el ratón, ni un lector de pantalla llegan a los paneles de debajo hasta que vuelven a quedar arriba.
 
+### El foco vuelve a donde estaba
+<!-- capability: file-viewer; requirement: going-back-gives-the-focus-back-to-what-opened-the-screen -->
+
+Al cerrar una pantalla del visor, el foco vuelve a lo que la abrió: al fichero de «Ficheros cambiados» al cerrar su diff, y a «Ver el fichero» al cerrar el fichero. Con el teclado o un lector de pantalla se sigue desde ahí, y la lista no se mueve. Si al abrir la pantalla nada tenía el foco, como pasa en Safari al hacer clic en un botón, al cerrarla tampoco se enfoca nada.
+
 ## Límites de uso
 
 ### Lecturas de otra cuenta
