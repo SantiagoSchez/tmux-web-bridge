@@ -23,6 +23,8 @@
 
 - [x] 4.1 In `server/src/notifications.test.ts`, add two tests that capture `console.log`: a notice with `viewed: true` pushes nothing and logs `[push] … no se envía, ya lo has visto en la terminal` with the pane's window title; a notice for a pane watched in a visible web tab pushes nothing and logs `[push] … no se envía, lo tienes abierto en la web`. Run `pnpm --filter server test` and verify both fail.
 - [x] 4.2 In `Notifier.onScriptNotify`, write those lines before returning `viewed` and `watched in web` (design D2), with the title from the tree when the pane is found and the icon plus the host name otherwise. Verify `pnpm --filter server test` passes.
+- [x] 4.3 Review round 1 (R1-01): add a test that a notice from a host id the hub does not have pushes nothing and logs `[push] ✅ <id>: no se envía, la máquina <id> no está en el panel`, and make the unknown-pane `viewed` test also assert nothing was pushed; run `pnpm --filter server test` and verify the new test fails.
+- [x] 4.4 Write that line before returning `unknown host` in `onScriptNotify` (design D2); verify `pnpm --filter server test` passes.
 
 ## 5. Tests, typecheck and lint (mandatory step 4)
 

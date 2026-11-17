@@ -145,9 +145,19 @@ test('a notice for a pane open in a visible web tab is not pushed and says so in
 });
 
 test('a notice seen at the terminal for a pane the hub does not know names its machine in the log', async (t) => {
-  const { push } = fakePush([MAC]);
+  const { push, sent } = fakePush([MAC]);
   const n = notifier(new ConnectionRegistry(), push);
 
   const lines = await pushLog(t, () => n.onScriptNotify({ ...done, pane: '%9', viewed: true, title: '', message: '' }));
+  assert.equal(sent.length, 0);
   assert.deepEqual(lines, ['[push] ✅ Mac: no se envía, ya lo has visto en la terminal']);
+});
+
+test('a notice from a machine the panel does not have is not pushed and says so in the log', async (t) => {
+  const { push, sent } = fakePush([MAC]);
+  const n = notifier(new ConnectionRegistry(), push);
+
+  const lines = await pushLog(t, () => n.onScriptNotify({ ...done, host: 'portatil-viejo' }));
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ portatil-viejo: no se envía, la máquina portatil-viejo no está en el panel']);
 });

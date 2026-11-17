@@ -9,7 +9,7 @@ Push notifications from Linux machines are lost when the pane is open in the pan
 - The host kit decides whether you are in front of a pane only from real terminal clients: tmux clients whose session is not a web session (`_tw-…`) and whose current pane is the one notifying. Whether the web app shows the pane stays the hub's call, which knows if the tab is visible.
 - On Linux, the existing rule stays for real clients: one of them must have had activity in the last 120 s. On macOS, the Ghostty-visible check stays.
 - The same check drives the ✅ → 🤖 icon rule: a finished pane shown only in the web terminal keeps its ✅.
-- The hub logs a `[push]` line when it drops a notice because the kit reports it viewed or because the pane is open in the web app, as it already does when the app is on screen at a device.
+- The hub logs a `[push]` line when it drops a notice because the kit reports it viewed, because the pane is open in the web app or because the machine is not one of the panel's, as it already does when the app is on screen at a device.
 - A new integration test runs the real `tmux-window-title.sh` against an isolated tmux with a web client and a real client, and captures what it posts to a fake hub.
 
 ## Capabilities
@@ -24,7 +24,7 @@ None.
 
 ## Impact
 
-- **Layers:** `host-kit` (`host-kit/tmux-window-title.sh`, the new `scripts/test-window-title.sh`, the host-kit test command in `.claude/koalarnes.json`, `docs/dev-standards/host-kit-standards.md`) and `server` (`server/src/notifications.ts` and its test).
+- **Layers:** `host-kit` (`host-kit/tmux-window-title.sh`, the new `scripts/test-window-title.sh`, the host-kit test command in `.claude/koalarnes.json`, `docs/dev-standards/host-kit-standards.md`) and `server` (`server/src/notifications.ts` and its test, the comment on `WEB_SESSION_PREFIX` in `server/src/host.ts`). `README.md` points to the hub's `[push]` lines in «Solución de problemas».
 - **Contracts:** none. The `/api/notify` body (`NotifyRequest`) keeps its shape; only how the kit computes `viewed` changes.
 - **Rollout:** the hub's log lines deploy with the merge into `master`. The kit fix reaches each machine only at the next release, through «Actualizar» or the checkout of its tag.
 - **External services:** none.

@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "pr": 44,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T19:05:39.656Z",
+      "counts": {
+        "critical": 0,
+        "required": 2,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 2
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/fix-web-terminal-hides-notifications/specs/push-notifications/spec.md",
+      "symbol": "Notifier.onScriptNotify",
+      "title": "Log requirement promises a [push] line for every held-back notice, but unknown-host drops are still silent",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/fix-web-terminal-hides-notifications/design.md",
+      "symbol": "terminals_on_pane",
+      "title": "Design D1 and context give a list-clients format the code does not use",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "host-kit/tmux-window-title.sh",
+      "symbol": "terminals_on_pane",
+      "title": "A web client moved to a real space with the kit's space shortcuts counts as a machine terminal again",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "server/src/notifications.test.ts",
+      "symbol": null,
+      "title": "Unknown-pane viewed test does not assert nothing was pushed",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-05",
+      "severity": "NITPICK",
+      "path": "openspec/changes/fix-web-terminal-hides-notifications/proposal.md",
+      "symbol": null,
+      "title": "Impact omits README.md and server/src/host.ts",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

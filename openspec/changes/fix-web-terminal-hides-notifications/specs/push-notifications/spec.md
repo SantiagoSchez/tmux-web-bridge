@@ -57,7 +57,7 @@ When Claude Code finishes its turn in a pane, the pane SHALL show the finished m
 
 ### Requirement: A notice the hub holds back leaves a log line
 
-When the hub receives a notice from a machine and sends no push notification for it, it SHALL write one `[push]` log line that names the notice and the reason in Spanish: the machine reported it as seen, the pane is open in the web app, or the web app is on screen at the device where the owner is working.
+When the hub receives a notice from a machine and sends no push notification for it, it SHALL write one `[push]` log line that names the notice and the reason in Spanish: the machine is not one of the hub's machines, the machine reported it as seen, the pane is open in the web app, or the web app is on screen at the device where the owner is working.
 
 #### Scenario: The machine reports the notice as seen
 
@@ -72,3 +72,10 @@ When the hub receives a notice from a machine and sends no push notification for
 - **WHEN** the hub receives a notice for that pane reported as not seen
 - **THEN** the hub sends no push notification
 - **AND** its log has a `[push]` line naming the pane's window and saying it is open in the web app
+
+#### Scenario: The notice comes from a machine the hub does not have
+
+- **GIVEN** a machine whose id is not among the hub's machines (renamed or removed from the panel) still has the notify token
+- **WHEN** the hub receives a notice from it
+- **THEN** the hub sends no push notification
+- **AND** its log has a `[push]` line naming that machine id and saying it is not one of the panel's machines

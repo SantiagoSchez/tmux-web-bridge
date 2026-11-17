@@ -106,7 +106,11 @@ export class Notifier {
   /** POST /api/notify from a host. */
   async onScriptNotify(req: NotifyRequest): Promise<{ pushed: boolean; reason?: string }> {
     const host = this.hosts.get(req.host);
-    if (!host) return { pushed: false, reason: 'unknown host' };
+    if (!host) {
+      // A machine renamed or removed from the panel still holds the hub's notify token.
+      console.log(`[push] ${ALERT[req.state].icon} ${req.host}: no se envía, la máquina ${req.host} no está en el panel`);
+      return { pushed: false, reason: 'unknown host' };
+    }
     const key = `${host.id}:${req.pane}`;
     this.scriptAt.set(key, Date.now());
     const pending = this.timers.get(key);
