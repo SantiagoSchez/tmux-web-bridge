@@ -1,6 +1,6 @@
 # Base standards
 
-The single source of truth for how AI agents and humans work on this codebase. `AGENTS.md` and `openspec/config.yaml` point back here. This file was generated once by the koalarnes plugin; the project owns it now, so edit it freely.
+The single source of truth for how AI agents and humans work on this codebase. `AGENTS.md`, `CLAUDE.md` and `openspec/config.yaml` point back here. This file was generated once by the koalarnes plugin; the project owns it now, so edit it freely.
 
 ## The principles
 
@@ -11,6 +11,18 @@ The single source of truth for how AI agents and humans work on this codebase. `
 5. **Reuse before invention.** Before adding a helper, look for one in the shared packages, then in the layer's own utilities. A second copy of a helper is a future divergence.
 6. **Cross-layer awareness.** A contract shared by several layers (an HTTP payload, a message or job payload, a shared type) has producers and consumers that drift apart. A change to one audits every call site. A change to dependency wiring or bootstrap needs a boot smoke test: typecheck and unit tests miss it.
 7. **Docs co-evolve with code.** A behaviour change updates its capability spec under `openspec/specs/` (through a change under `openspec/changes/`). A change to an API contract, the data model, a payload, an environment variable or a user-visible flow updates the standards documents here and adds a changelog entry. See the [documentation standards](./documentation-standards.md).
+
+## Standards index
+
+The index of every standards document, with when to open each, is in [`AGENTS.md`](../../AGENTS.md), which every agent has in view in every turn. A new standards document gets its row there.
+
+## Where to find what
+
+- OpenSpec changes, capability specs and archived changes: `openspec/`.
+- Standards documents (this file and its siblings): `docs/dev-standards/`.
+- The product feature catalogue: `docs/FEATURES.md`, derived from the capability specs with `/koalarnes:update-features`, never edited first.
+- The changelog: `CHANGELOG.md`, compiled from the entries under `changelogs/unreleased/`.
+- The harness configuration: `.claude/koalarnes.json` (`ka config` prints it merged with the defaults).
 
 ## Languages
 
@@ -37,16 +49,16 @@ From there the path is shared:
 /opsx:apply                          implement the tasks in order, marking [x] as you go
 /opsx:verify                         completeness, correctness, coherence
 /koalarnes:adversarial-review   opt-in, when the scope is broad: red-team the change before pushing
-/koalarnes:commit               commit, push, open the pull request
+/koalarnes:commit               commit and push; open the pull request when asked
 /koalarnes:review-pr            automated review of the pull request, in a fresh context
   findings?                          the agent edits the artifacts, then apply → verify → commit → review-pr again
 /koalarnes:update-features      if user-visible, then commit
-human review                         the repository's owner reviews; findings reopen the loop above
-/opsx:archive                        after the owner approves, then commit the archive moves
-agent squash-merges                  into master, once the owner said yes (the merge deploys the hub)
+human review                         a person reviews (findings reopen the loop above), or the user takes it as good
+/opsx:archive                        after the approval, then commit the archive moves
+the agent merges                     into master
 ```
 
-This repository has a single developer, its owner: the human review of step 8 of the mandatory task steps is theirs, and once they approve in the chat the agent merges with `gh pr merge <n> --squash --delete-branch`, giving the squash commit an English Conventional Commits subject (the pull request itself is in Spanish). Bug fixes and small touch-ups skip OpenSpec: a `bugfix/` or `chore/` branch in its own worktree, a changelog entry unless the change is purely internal (the harness, tooling, the standards), and a pull request, reviewed and merged the same way. The [release standards](./release-standards.md) hold the deployment and release steps.
+This repository has a single developer, its owner: when step 8 of the mandatory task steps asks who reviews the pull request, the reviewer is the owner, or the owner takes it as good. The agent then merges with `gh pr merge <n> --squash --delete-branch`, giving the squash commit an English Conventional Commits subject (the pull request itself is in Spanish). Bug fixes and small touch-ups skip OpenSpec: a `bugfix/` or `chore/` branch in its own worktree, a changelog entry unless the change is purely internal (the harness, tooling, the standards), and a pull request, reviewed and merged the same way. The [release standards](./release-standards.md) hold the deployment and release steps.
 
 `/opsx:explore` only thinks: it reads code and compares approaches, and never writes application code. `/opsx:continue` creates the next artifact of a new change; it never amends existing artifacts. Review findings and late change requests are applied by editing the artifacts directly, then re-implementing, so the archived spec always matches the code. The detail of each gate lives in the [mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md).
 

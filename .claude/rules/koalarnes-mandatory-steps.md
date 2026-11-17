@@ -7,7 +7,7 @@ alwaysApply: true
 
 Every `tasks.md` under `openspec/changes/<change>/` must include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
-The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 6 and step 7.
+The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 5 and step 6: the feature catalogue of step 6 is updated once `/koalarnes:review-pr` comes back clean.
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/koalarnes:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
 
@@ -24,7 +24,7 @@ Branch names, commit messages and the text written into the tracker keep their o
 
 **The code says what exists.** When a document describes the code (a path, a command, a name, a structure) and the code says otherwise, follow the existing code and report the mismatch so the document gets fixed. A rule or a prohibition is different: code that breaks one is a finding to raise, not a precedent to copy.
 
-**The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. Open an archived `design.md` only to learn why a decision was made. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
+**The archive is history.** `openspec/changes/archive/` records what past changes did; the current behaviour is under `openspec/specs/`. Do not search or read the archive to learn how the system works: its proposals and spec deltas describe intentions that later changes may have replaced. To learn why something is the way it is, run `ka decisions <terms>`: it lists the decisions of the archived `design.md` files whose title or change name holds the terms, with file and line. Open the one that answers, at that line, and do not browse the archive beyond it. A later change may have replaced it, so check it against `openspec/specs/` and the code. `ka archive-prune` deletes the spec deltas of the archived changes already on `master`; `/koalarnes:release` offers it.
 
 **Size is not a reason to hold back.** Do not turn down, shrink or postpone a change because it is large, and never estimate work in human time (days, weeks, months): with agents, writing and rewriting code is cheap. Weigh a change by what stays costly: the risk of breaking behaviour, the data to migrate, what cannot be undone, what has to be verified. When the right design replaces an existing flow, convention or internal interface, replace it in the same change and update everything that used it. Do not keep the old one alive beside the new one (a compatibility layer, an alias, a deprecated path, a flag) for backward compatibility. The exception is what others already depend on outside the repository: a public API or a payload they consume, stored data, a format in production. Breaking one of those is still an option, with its migration, and only after telling the user what breaks and getting their go-ahead. Nothing else needs permission on account of its size.
 
@@ -102,16 +102,24 @@ Each section of the catalogue carries the anchor of the requirement it describes
 
 The project has no E2E suite; this step does not apply. Record that in the task.
 
-## Step 8 — Human peer review (mandatory before archive)
+## Step 8 — Human review (mandatory before archive)
 
-After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is committed and step 7 is green, **another developer must review the pull request** before the author archives.
+After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is committed and step 7 is green, only the human review is left. Ask the user, with `AskUserQuestion`, who reviews the pull request:
 
-- The author does not run `/opsx:archive` until the reviewer approves.
-- Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
-- When the reviewer approves, the author runs `/opsx:archive`, then `/koalarnes:commit` to push the archive moves into the same pull request.
-- The reviewer who approved merges the pull request.
-- After the archive, once the pull request is merged (check its state on the platform; never assume it), look at the issue: when the merge left it open, propose closing the GitHub issue. Close it only on the user's go-ahead, asked with `AskUserQuestion`.
-- After the archive, once the pull request is merged (check its state on the platform; never assume it), propose removing the branch's worktree with `/koalarnes:git-worktree remove`, as a second question in the same call as the proposal above: both go in one `AskUserQuestion` call. Remove it only on the user's go-ahead, asked with `AskUserQuestion`.
+- **A person reviews it.** Wait for the approval. Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
+- **The user takes it as good** without a manual review. Record that in the step's task in `tasks.md`.
+
+Never choose for the user, and never reuse the answer given for another pull request. Do not run `/opsx:archive` before the approval or that answer.
+
+Once the pull request is approved, or taken as good, the agent closes it without asking again:
+
+1. Run step 9, then `/opsx:archive`, then `/koalarnes:commit` to push the archive moves into the same pull request.
+2. Merge the pull request with the `squash` strategy (`gh pr merge`: `--squash` for `squash`, `--merge` for `merge_commit`, `--rebase` for `fast_forward`). When the platform refuses the merge (a pending or failing check, a conflict, a missing approval), report why and stop: never bypass a restriction.
+
+After the merge, check the pull request's state on the platform; never assume it is merged. Then propose what is left, each on the user's go-ahead, both questions in one `AskUserQuestion` call:
+
+- Leave a comment on the GitHub issue with the link to the pull request, written in es-ES, and close the issue when the merge left it open.
+- Remove the branch's worktree and its local branch with `/koalarnes:git-worktree remove`. The removal deletes the branch once its changes are in `origin/master`. Afterwards run `git branch --list <branch>`: when the branch is still there, it holds commits the pull request did not merge; say so and leave it.
 
 ## Step 9 — features-check before the archive (mandatory)
 
