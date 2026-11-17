@@ -4,6 +4,16 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/koalarnes:changelog`), y `/koalarnes:release` compila las entradas pendientes en una sección nueva.
 
+## 1.26.0 - 2026-11-17
+
+### Añadido
+
+- Añadida al log del servidor central una línea `[push]` por cada aviso que no se envía, con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web o la máquina que avisa no está en el panel.
+
+### Corregido
+
+- Corregidas las notificaciones de las máquinas Linux que no llegaban si dejabas de mirar la terminal web (móvil bloqueado o pestaña en segundo plano) poco después de escribir en ella. La terminal web ya no cuenta como que estás delante, y un panel terminado conserva su ✅ aunque lo tengas abierto en ella. Llega a cada máquina al actualizar su kit.
+
 ## 1.25.2 - 2026-11-17
 
 ### Cambiado
