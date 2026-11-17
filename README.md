@@ -290,7 +290,7 @@ scripts/test-kit-update.sh   # «Actualizar el kit» de punta a punta, aislado (
 | Síntoma | Causa probable |
 | --- | --- |
 | Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. Sus espacios dejan de mostrarse al minuto sin respuesta, porque ya no se sabe qué tiene abierto. |
-| No llegan notificaciones | ⚙️ Ajustes › Dispositivo › Enviar prueba; `host-kit/install.sh --check` en la máquina. |
+| No llegan notificaciones | ⚙️ Ajustes › Dispositivo › Enviar prueba; `host-kit/install.sh --check` en la máquina. Cada aviso deja en el log del servidor central una línea `[push]`: a cuántos dispositivos se envió o por qué no se envió. |
 | 401 al abrir el panel | Con `auth.method: tailscale`, estás entrando sin `tailscale serve`. |
 | «Código incorrecto» en la verificación en dos pasos | La hora del móvil o del servidor va desfasada más de 30 s. |
 | `posix_spawnp failed` | Permisos del `spawn-helper` de node-pty: `node scripts/fix-node-pty.mjs`. |

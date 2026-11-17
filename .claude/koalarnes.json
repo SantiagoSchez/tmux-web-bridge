@@ -32,9 +32,9 @@
     },
     {
       "name": "host-kit",
-      "paths": ["host-kit/**", "server/src/kit.ts", "scripts/test-kit-update.sh"],
+      "paths": ["host-kit/**", "server/src/kit.ts", "scripts/test-kit-update.sh", "scripts/test-window-title.sh"],
       "standards": "docs/dev-standards/host-kit-standards.md",
-      "commands": { "test": "scripts/test-kit-update.sh" }
+      "commands": { "test": "scripts/test-kit-update.sh && scripts/test-window-title.sh" }
     }
   ],
   "changelog": {

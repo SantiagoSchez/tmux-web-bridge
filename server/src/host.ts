@@ -5,7 +5,12 @@ import { TmuxError, TmuxExec } from './exec.js';
 import { GitScanner } from './git.js';
 import { kitVersionScript } from './kit.js';
 
-/** Prefix of the grouped sessions opened by web terminals (hidden from the tree). */
+/**
+ * Prefix of the grouped sessions opened by web terminals (hidden from the tree).
+ * The host kit matches it too: host-kit/tmux-spaces.sh leaves these sessions out of the
+ * spaces, and host-kit/tmux-window-title.sh does not count their clients as you looking
+ * at a pane. Changing it needs both scripts changed and a kit release.
+ */
 export const WEB_SESSION_PREFIX = '_tw-';
 
 /**

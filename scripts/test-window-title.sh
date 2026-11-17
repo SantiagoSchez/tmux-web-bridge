@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# Prueba de host-kit/tmux-window-title.sh: cuándo le dice al hub que ya estás viendo un
+# panel (viewed) y cuándo deja ✅ en un panel terminado. Ejecuta el script de verdad contra
+# un tmux propio (socket y TMUX_TMPDIR de una carpeta temporal) y un hub falso en un puerto
+# de loopback que guarda lo que recibe en /api/notify. KEEP=1 conserva la carpeta.
+#
+# La terminal web del panel es un cliente de tmux en una sesión agrupada _tw-…, como la
+# abre server/src/terminal.ts; una terminal de la máquina es un cliente con attach. Los dos
+# se conectan con script(1), que les da un pty.
+#
+# Solo en Linux: en macOS el script mira si Ghostty está a la vista, y script(1) es otro.
+#
+# Uso: scripts/test-window-title.sh
+
+set -euo pipefail
+
+if [ "$(uname -s)" != Linux ]; then
+    echo "scripts/test-window-title.sh: solo se ejecuta en Linux; aquí no aplica."
+    exit 0
+fi
+for tool in node script jq curl tmux; do
+    command -v "$tool" >/dev/null || { echo "Falta $tool" >&2; exit 1; }
+done
+
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+KIT_SCRIPT="$REPO/host-kit/tmux-window-title.sh"
+REAL_DATE="$(command -v date)"
+
+# En /tmp y no en $TMPDIR: la ruta del socket de tmux tiene un límite de ~100 caracteres.
+T="$(mktemp -d /tmp/twbwt.XXXXXX)"
+
+# ------------------------------------------------------------ aislamiento
+export HOME="$T/home" TMUX_TMPDIR="$T/tmux" XDG_CONFIG_HOME="$T/config"
+unset TMUX TMUX_PANE
+SOCKET=twbwt
+tm() { tmux -L "$SOCKET" -f /dev/null "$@"; }
+PIDS=()
+# Después del aislamiento, y solo con él: un kill-server sin él cerraría el tmux de verdad.
+cleanup() {
+    if [ "${TMUX_TMPDIR:-}" = "$T/tmux" ]; then
+        tm kill-server 2>/dev/null || true
+        tmux kill-server 2>/dev/null || true
+    fi
+    for pid in "${PIDS[@]}"; do kill "$pid" 2>/dev/null || true; done
+    # Los sleep que mantenían abierta la entrada de cada cliente (hijos de este script).
+    pkill -P $$ -x sleep 2>/dev/null || true
+    rm -rf /tmp/tmux-window-state-"$(id -u)"-"${SERVER_PID:-none}"
+    if [ "${KEEP:-0}" = 1 ]; then echo "Conservado: $T"; else rm -rf "$T"; fi
+}
+trap cleanup EXIT
+mkdir -p "$HOME" "$TMUX_TMPDIR" "$XDG_CONFIG_HOME/tmux-web-bridge" "$T/bin"
+: > "$T/hub.log"
+
+# Un tmux en el socket por defecto (también aislado): el script no debe tocarlo.
+tmux -f /dev/null new-session -d -s centinela
+
+# ------------------------------------------------------------ hub falso
+node -e '
+const http = require("http"), fs = require("fs");
+const [log, portFile] = process.argv.slice(1);
+const server = http.createServer((req, res) => {
+  let body = "";
+  req.on("data", (c) => (body += c));
+  req.on("end", () => {
+    fs.appendFileSync(log, body.replace(/\n/g, " ") + "\n");
+    res.setHeader("Content-Type", "application/json");
+    res.end("{\"pushed\":false}");
+  });
+});
+server.listen(0, "127.0.0.1", () => fs.writeFileSync(portFile, String(server.address().port)));
+' "$T/hub.log" "$T/hub.port" >/dev/null 2>&1 &
+PIDS+=("$!")
+for _ in $(seq 50); do [ -s "$T/hub.port" ] && break; sleep 0.1; done
+[ -s "$T/hub.port" ] || { echo "El hub falso no arrancó" >&2; exit 1; }
+printf 'HUB_URL=http://127.0.0.1:%s\nHOST_ID=prueba\nNOTIFY_TOKEN=TOKEN-PRUEBA\n' "$(cat "$T/hub.port")" \
+    > "$XDG_CONFIG_HOME/tmux-web-bridge/notify.env"
+
+# El reloj del script 150 s por delante: un cliente que acaba de conectarse lleva 150 s
+# sin actividad. tmux solo cambia client_activity con pulsaciones de verdad.
+cat > "$T/bin/date" <<EOF
+#!/bin/sh
+if [ "\$#" = 1 ] && [ "\$1" = "+%s" ]; then
+    echo \$(( \$("$REAL_DATE" +%s) + 150 ))
+else
+    exec "$REAL_DATE" "\$@"
+fi
+EOF
+chmod +x "$T/bin/date"
+
+FAILS=0
+ok() { printf '\033[32m✓\033[0m %s\n' "$1"; }
+ko() { printf '\033[31m✗\033[0m %s\n' "$1"; FAILS=$((FAILS + 1)); }
+expect() {  # descripción salida patrón
+    if printf '%s' "$2" | grep -qE "$3"; then ok "$1"; else ko "$1 — salió: $2"; fi
+}
+
+# ------------------------------------------------------------ escenario
+# Un tmux nuevo por caso: la sesión main con dos ventanas; el panel que avisa es el de la 0.
+new_server() {
+    tm kill-server 2>/dev/null || true
+    rm -rf /tmp/tmux-window-state-"$(id -u)"-"${SERVER_PID:-none}"
+    tm new-session -d -s main -x 80 -y 24 -c "$HOME"
+    tm new-window -d -t main
+    tm select-window -t main:0
+    PANE="$(tm display-message -p -t main:0 '#{pane_id}')"
+    SERVER_PID="$(tm display-message -p '#{pid}')"
+    TMUX_VALUE="$(tm display-message -p '#{socket_path}'),$SERVER_PID,0"
+}
+
+# Un cliente de tmux con su propio pty que se queda conectado. Uso: client <órdenes de tmux>
+client() {
+    sleep 3600 2>/dev/null | script -qfc "tmux -L $SOCKET -f /dev/null $*" /dev/null >/dev/null 2>&1 &
+    PIDS+=("$!")
+}
+
+# Espera a que haya $1 clientes conectados.
+wait_clients() {
+    for _ in $(seq 50); do
+        [ "$(tm list-clients 2>/dev/null | wc -l)" -ge "$1" ] && return 0
+        sleep 0.1
+    done
+    echo "No se conectaron $1 clientes de tmux" >&2
+    exit 1
+}
+
+# Claude termina en el panel: el hook Stop, con el reloj de $1 (real o adelantado).
+# Deja en VIEWED lo que recibió el hub y en ICON el icono del panel.
+finish() {
+    local path="$PATH" before
+    [ "${1:-real}" = adelantado ] && path="$T/bin:$PATH"
+    before="$(wc -l < "$T/hub.log")"
+    printf '{"last_assistant_message":"Listo"}' |
+        env TMUX="$TMUX_VALUE" TMUX_PANE="$PANE" PATH="$path" "$KIT_SCRIPT" state done prueba
+    for _ in $(seq 50); do
+        [ "$(wc -l < "$T/hub.log")" -gt "$before" ] && break
+        sleep 0.1
+    done
+    if [ "$(wc -l < "$T/hub.log")" -gt "$before" ]; then
+        VIEWED="$(tail -n 1 "$T/hub.log" | jq -r '"\(.host) \(.pane) viewed=\(.viewed)"' 2>/dev/null || echo 'aviso ilegible')"
+    else
+        VIEWED='sin aviso'
+    fi
+    ICON="$(tm show-options -p -t "$PANE" -qv @pane_icon)"
+}
+
+# ------------------------------------------------------------ casos
+echo "La terminal web del panel tiene delante el panel y acabas de escribir en ella"
+new_server
+client "new-session -t main -s _tw-prueba \\; select-window -t :0"
+wait_clients 1
+finish
+expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel se queda con ✅" "$ICON" '^✅$'
+
+echo "Una terminal de la máquina tiene delante el panel y acabas de usarla"
+new_server
+client "attach -t main"
+wait_clients 1
+finish
+expect "…el aviso va como visto" "$VIEWED" "^prueba $PANE viewed=true\$"
+expect "…y el panel pasa a 🤖" "$ICON" '^🤖$'
+
+echo "Una terminal de la máquina tiene delante otra ventana de la misma sesión"
+new_server
+client "attach -t main \\; select-window -t :1"
+wait_clients 1
+finish
+expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel se queda con ✅" "$ICON" '^✅$'
+
+echo "Una terminal de la máquina tiene delante el panel, pero lleva 150 s sin usarse"
+new_server
+client "attach -t main"
+wait_clients 1
+finish adelantado
+expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+
+echo "El tmux del socket por defecto"
+expect "…sigue con su sesión y sin iconos del kit" \
+    "$(tmux list-sessions -F '#{session_name}' 2>/dev/null)|$(tmux show-options -p -t centinela -qv @pane_icon 2>/dev/null)" '^centinela[|]$'
+
+echo
+if [ "$FAILS" = 0 ]; then echo "Todo bien."; else echo "$FAILS comprobaciones fallidas (KEEP=1 para conservar $T)."; exit 1; fi

@@ -12,7 +12,7 @@ Every technical standard, convention and workflow rule lives under [`docs/dev-st
 | [server standards](./docs/dev-standards/server-standards.md) | Before reading or changing the `server` layer (`server/**, shared/**`). |
 | [web standards](./docs/dev-standards/web-standards.md) | Before reading or changing the `web` layer (`web/**`). |
 | [trello-extension standards](./docs/dev-standards/trello-extension-standards.md) | Before reading or changing the `trello-extension` layer (`trello-extension/**`). |
-| [host-kit standards](./docs/dev-standards/host-kit-standards.md) | Before reading or changing the `host-kit` layer (`host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh`). |
+| [host-kit standards](./docs/dev-standards/host-kit-standards.md) | Before reading or changing the `host-kit` layer (`host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh, scripts/test-window-title.sh`). |
 | [Testing standards](./docs/dev-standards/testing-standards.md) | Before writing or changing a test, or deciding which level one belongs at. |
 | [Documentation standards](./docs/dev-standards/documentation-standards.md) | Before writing a comment, a docstring, an ADR, a standards document, a changelog entry or the feature catalogue. |
 | [Release standards](./docs/dev-standards/release-standards.md) | Before cutting a release, and to know what a merge into `master` deploys. |

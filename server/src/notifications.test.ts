@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test, type TestContext } from 'node:test';
 import type { PushPayload } from '../../shared/types.js';
 import type { Config } from './config.js';
 import { ConnectionRegistry } from './connections.js';
@@ -114,4 +114,40 @@ test('a pane finishing while you are at no device notifies every device', async 
   assert.deepEqual(await notifier(conns, push).onScriptNotify(done), { pushed: true });
   assert.equal(sent.length, 1);
   assert.equal(sent[0].only, undefined);
+});
+
+/** The `[push]` lines the hub writes while `run` runs: the log is the only trace of a notice held back. */
+async function pushLog(t: TestContext, run: () => Promise<unknown>): Promise<string[]> {
+  const log = t.mock.method(console, 'log', () => {});
+  await run();
+  return log.mock.calls.map((c) => String(c.arguments[0])).filter((l) => l.startsWith('[push]'));
+}
+
+test('a notice the machine reports as seen is not pushed and says so in the log', async (t) => {
+  const { push, sent } = fakePush([MAC]);
+  const n = notifier(new ConnectionRegistry(), push);
+
+  const lines = await pushLog(t, () => n.onScriptNotify({ ...done, viewed: true, title: '', message: '' }));
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, ya lo has visto en la terminal']);
+});
+
+test('a notice for a pane open in a visible web tab is not pushed and says so in the log', async (t) => {
+  const conns = new ConnectionRegistry();
+  const phone = conns.add({});
+  conns.update(phone.id, { visible: true, view: { host: 'mac', window: '@1', pane: '%1' } });
+  const { push, sent } = fakePush([MAC]);
+  const n = notifier(conns, push);
+
+  const lines = await pushLog(t, () => n.onScriptNotify(done));
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, lo tienes abierto en la web']);
+});
+
+test('a notice seen at the terminal for a pane the hub does not know names its machine in the log', async (t) => {
+  const { push } = fakePush([MAC]);
+  const n = notifier(new ConnectionRegistry(), push);
+
+  const lines = await pushLog(t, () => n.onScriptNotify({ ...done, pane: '%9', viewed: true, title: '', message: '' }));
+  assert.deepEqual(lines, ['[push] ✅ Mac: no se envía, ya lo has visto en la terminal']);
 });

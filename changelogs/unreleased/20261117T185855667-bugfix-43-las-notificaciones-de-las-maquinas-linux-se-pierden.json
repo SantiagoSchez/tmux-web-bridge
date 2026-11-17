@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "server",
+  "description": "Añadida al log del servidor central una línea [push] por cada aviso que no se envía porque ya lo has visto en la terminal o porque tienes el panel abierto en la web, para saber por qué no llegó una notificación",
+  "issue": "43",
+  "breaking": false
+}

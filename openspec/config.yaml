@@ -34,7 +34,7 @@ context: |
   - server (server/**, shared/**): docs/dev-standards/server-standards.md
   - web (web/**): docs/dev-standards/web-standards.md
   - trello-extension (trello-extension/**): docs/dev-standards/trello-extension-standards.md
-  - host-kit (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh): docs/dev-standards/host-kit-standards.md
+  - host-kit (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh, scripts/test-window-title.sh): docs/dev-standards/host-kit-standards.md
 
   Workflow: Route A (refine, opsx:propose) or Route B (refine, opsx:explore,
   opsx:new, opsx:continue per artifact), then opsx:apply, opsx:verify,
