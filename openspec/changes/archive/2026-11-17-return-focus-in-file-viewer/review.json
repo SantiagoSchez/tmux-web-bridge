@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "pr": 42,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "1ffe8a8b3e557ca622252c38af5b233133616e17",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T15:38:36.169Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Files.tsx",
+      "symbol": "openers",
+      "title": "Clear stale openers when the stack goes down so detached screens are not retained",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1ffe8a8b3e557ca622252c38af5b233133616e17",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 2,
+      "scoreReason": "The openers array keeps at most two detached buttons after the viewer closes, the next push at the same depth overwrites them, and isConnected already stops any wrong focus: a tiny bounded retention.",
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}
