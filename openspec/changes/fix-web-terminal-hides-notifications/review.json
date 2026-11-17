@@ -22,6 +22,22 @@
         "question": 0,
         "nitpick": 2
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "5bd393725c4334e4069ea7eb19929d7291e13b25",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T19:08:48.967Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -51,8 +67,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -68,12 +84,12 @@
       "origin": "introduced",
       "round": 1,
       "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 3,
+      "scoreReason": "The reviewer has the mechanism right: the kit's space shortcuts move the web client onto a real session that the filter no longer skips. But using them in the web terminal already breaks that terminal in other ways (its _tw- session is destroyed when left unattached, the server's window switching then fails, and window changes reach the computer's client), so this is a rare, unsupported path with a small notification cost, not worth its own work item.",
       "followUp": null
     },
     {
@@ -85,8 +101,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -102,8 +118,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "f1e0ef4ea7129338d046f7c584139a1c2c60e8a7",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,

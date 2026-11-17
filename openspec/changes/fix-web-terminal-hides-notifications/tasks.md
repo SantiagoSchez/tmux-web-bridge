@@ -39,9 +39,9 @@
 
 ## 7. Feature catalogue (mandatory step 6)
 
-- [ ] 7.1 After `ka review-rounds gate` passes, run `/koalarnes:update-features fix-web-terminal-hides-notifications` to add the «Notificaciones» area with one section per `push-notifications` requirement, and apply it.
-- [ ] 7.2 Run `ka features-check --strict`; exit code 0.
-- [ ] 7.3 Commit the catalogue with `/koalarnes:commit`.
+- [x] 7.1 After `ka review-rounds gate` passes, run `/koalarnes:update-features fix-web-terminal-hides-notifications` to add the «Notificaciones» area with one section per `push-notifications` requirement, and apply it.
+- [x] 7.2 Run `ka features-check --strict`; exit code 0.
+- [x] 7.3 Commit the catalogue with `/koalarnes:commit`.
 
 ## 8. E2E pipeline (mandatory step 7)
 
