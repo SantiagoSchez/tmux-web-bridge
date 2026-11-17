@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "pr": 47,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "7a33e8a9370942d971be2a423e24ea63912e0fa5",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T19:43:05.202Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "README.md",
+      "symbol": null,
+      "title": "README still names the WorktreeCreate hook's plugin as koalarnes instead of ka",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "7a33e8a9370942d971be2a423e24ea63912e0fa5",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 4,
+      "scoreReason": "Correct: README line 70 still says 'el de koalarnes' while naming ka.json, but a stale plugin name in a parenthetical misleads no one and is a one-word edit to do in this PR or not at all.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "openspec/changes/read-ka-config/tasks.md",
+      "symbol": null,
+      "title": "Task 4.1 does not record the ka docs-check run that step 4 now requires",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "7a33e8a9370942d971be2a423e24ea63912e0fa5",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 2,
+      "scoreReason": "Correct that task 4.1 does not record the ka docs-check run, but the check exits 0, so only an evidence line in a tasks.md archived with this PR is missing; not worth a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "openspec/changes/read-ka-config/specs/worktree-base/spec.md",
+      "symbol": null,
+      "title": "Scenario name 'Project without koalarnes.json' no longer matches its GIVEN",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "7a33e8a9370942d971be2a423e24ea63912e0fa5",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

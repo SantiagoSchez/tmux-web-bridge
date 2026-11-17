@@ -28,6 +28,7 @@
 
 - [x] 4.1 Run the step 4 commands of the touched layers: `pnpm --filter server test`, `pnpm --filter server typecheck`, `pnpm --filter web typecheck`; and the project checks `ka scope` says apply (`ka features-check`). Run `openspec validate read-ka-config --strict`. Verify each passes.
   - Server tests 307/307 pass; server and web typecheck exit 0; `ka scope`: the feature catalogue check applies, `ka features-check` exit 0 (47 sections); `openspec validate --strict` valid.
+  - After merging `master` (PR #45, which adds the `ka docs-check` gate): server tests 307/307 again, `ka features-check` and `ka docs-check` exit 0 (review R1-02).
 
 ## 5. Documentation and changelog
 
@@ -38,9 +39,12 @@
 
 ## 6. Feature catalogue
 
-- [ ] 6.1 Run `/ka:update-features read-ka-config`, review and apply: the sections of `terminal-links` (repository, Trello) and `worktree-base` (base branch offered first) name `.claude/ka.json` and the fallback.
-- [ ] 6.2 Run `ka features-check --strict`; verify the exit code is 0.
-- [ ] 6.3 Commit the catalogue sync with `/ka:commit` before the human review.
+- [x] 6.1 Run `/ka:update-features read-ka-config`, review and apply: the sections of `terminal-links` (repository, Trello) and `worktree-base` (base branch offered first) name `.claude/ka.json` and the fallback.
+  - «De qué repositorio sale cada enlace» (docs/FEATURES.md:32), «Enlaces a tarjetas de Trello» (:37) and «Qué rama propone primero» (:59) name `.claude/ka.json`, the fallback and which one wins.
+- [x] 6.2 Run `ka features-check --strict`; verify the exit code is 0.
+  - 47 sections verified, exit 0.
+- [x] 6.3 Commit the catalogue sync with `/ka:commit` before the human review.
+  - Committed `docs(features)` with tasks.md and review.json, after gate passed on round 1.
 
 ## 7. E2E pipeline
 

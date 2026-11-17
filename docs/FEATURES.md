@@ -29,12 +29,12 @@ Cuando un agente escribe «PR #123», «Issue #42» o «pipeline #1987» en el t
 ### De qué repositorio sale cada enlace
 <!-- capability: terminal-links; requirement: the-pane-s-project-decides-the-repository -->
 
-El panel toma el repositorio del `.claude/koalarnes.json` del proyecto en el que está el panel. Si el proyecto no tiene ese fichero, o el fichero no indica repositorio, usa el remoto `origin` de la carpeta. Una referencia que no se puede resolver, como una carpeta fuera de git o un remoto que no es de GitHub ni de Bitbucket, se queda como texto normal, sin subrayar. En una ventana partida, cada enlace usa el proyecto del panel en el que está escrito, no el del panel seleccionado.
+El panel toma el repositorio de la configuración del harness del proyecto en el que está el panel: `.claude/ka.json` o, en un proyecto que aún no ha pasado al nombre nuevo, `.claude/koalarnes.json`. Si existen los dos, manda `.claude/ka.json`. Si el proyecto no tiene ninguno, o el que tiene no indica repositorio, usa el remoto `origin` de la carpeta. Una referencia que no se puede resolver, como una carpeta fuera de git o un remoto que no es de GitHub ni de Bitbucket, se queda como texto normal, sin subrayar. En una ventana partida, cada enlace usa el proyecto del panel en el que está escrito, no el del panel seleccionado.
 
 ### Enlaces a tarjetas de Trello
 <!-- capability: terminal-links; requirement: trello-references-open-the-card -->
 
-«Trello #470» abre la tarjeta número 470 del tablero que indica el `.claude/koalarnes.json` del proyecto. El panel busca la tarjeta con la cuenta de Ajustes › Trello. Si el proyecto no indica tablero, el texto no se subraya. Si la tarjeta no existe, o falta la cuenta de Trello o Trello la rechaza, la pestaña se cierra y el panel avisa del motivo; en el segundo caso, remite a Ajustes › Trello. Si el navegador bloquea la pestaña nueva, el panel también lo avisa.
+«Trello #470» abre la tarjeta número 470 del tablero que indica la configuración del harness del proyecto (`.claude/ka.json` o, si no lo tiene, `.claude/koalarnes.json`). El panel busca la tarjeta con la cuenta de Ajustes › Trello. Si el proyecto no indica tablero, el texto no se subraya. Si la tarjeta no existe, o falta la cuenta de Trello o Trello la rechaza, la pestaña se cierra y el panel avisa del motivo; en el segundo caso, remite a Ajustes › Trello. Si el navegador bloquea la pestaña nueva, el panel también lo avisa.
 
 ### Rutas de fichero en una ventana partida
 <!-- capability: terminal-links; requirement: file-paths-open-from-the-pane-they-are-written-in -->
@@ -56,7 +56,7 @@ Al crear un worktree, el panel pregunta de qué rama parte: en el paso «Nuevo w
 ### Qué rama propone primero
 <!-- capability: worktree-base; requirement: the-base-branch-offered-first-is-the-last-one-used -->
 
-La rama propuesta es la última que usaste: por tablero de Trello en la extensión y en el cajón de Trello, y por carpeta en «Nuevo worktree» (en cada dispositivo). Si no hay ninguna recordada, o la recordada ya no está en el remoto, propone la base del proyecto: `git.baseBranch` del `.claude/koalarnes.json` del repositorio o, si no lo tiene, la rama por defecto del remoto. Así, otro tablero empieza desde la base del proyecto aunque en el primero usaras `release/2.0`.
+La rama propuesta es la última que usaste: por tablero de Trello en la extensión y en el cajón de Trello, y por carpeta en «Nuevo worktree» (en cada dispositivo). Si no hay ninguna recordada, o la recordada ya no está en el remoto, propone la base del proyecto: `git.baseBranch` de la configuración del harness del repositorio (`.claude/ka.json` o, si no lo tiene, `.claude/koalarnes.json`) o, si no indica ninguna, la rama por defecto del remoto. Así, otro tablero empieza desde la base del proyecto aunque en el primero usaras `release/2.0`.
 
 ### El worktree parte de la rama elegida
 <!-- capability: worktree-base; requirement: the-worktree-starts-from-the-chosen-base -->
