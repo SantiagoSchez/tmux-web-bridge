@@ -37,13 +37,17 @@
 
 ## 6. Feature catalogue
 
-- [ ] 6.1 Run `/koalarnes:update-features stack-file-viewer-screens`, review and apply: a new area for the `file-viewer` capability with one section per requirement, each with its anchor.
-- [ ] 6.2 Run `ka features-check --strict`; verify the exit code is 0.
-- [ ] 6.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+- [x] 6.1 Run `/koalarnes:update-features stack-file-viewer-screens`, review and apply: a new area for the `file-viewer` capability with one section per requirement, each with its anchor.
+  - Owner approved: new area «Visor de ficheros» after «Worktrees» (docs/FEATURES.md:100-120) with four sections and their anchors, and its index line.
+- [x] 6.2 Run `ka features-check --strict`; verify the exit code is 0.
+  - 43 sections verified, exit 0.
+- [x] 6.3 Commit the catalogue sync with `/koalarnes:commit` before the human review.
+  - Committed `docs(features)`, with tasks.md and review.json, before the human review.
 
 ## 7. E2E pipeline
 
-- [ ] 7.1 The project has no E2E suite; this step does not apply. Record it here.
+- [x] 7.1 The project has no E2E suite; this step does not apply. Record it here.
+  - The project has no E2E suite; this step does not apply.
 
 ## 8. Human review
 
