@@ -58,6 +58,11 @@ export class Notifier {
     return `${ALERT[state].icon} ${ctx.window.name} [${ctx.session.name}]${hostSuffix}`;
   }
 
+  /** How a log line names a notice: its window title, or its icon and machine when the pane is not in the tree. */
+  private what(host: HostMonitor, ctx: PaneContext | null, state: AlertState): string {
+    return ctx ? this.title(ctx, state) : `${ALERT[state].icon} ${host.name}`;
+  }
+
   onTransition(t: PaneTransition): void {
     const key = `${t.host.id}:${t.pane.id}`;
     const pending = this.timers.get(key);
@@ -101,7 +106,11 @@ export class Notifier {
   /** POST /api/notify from a host. */
   async onScriptNotify(req: NotifyRequest): Promise<{ pushed: boolean; reason?: string }> {
     const host = this.hosts.get(req.host);
-    if (!host) return { pushed: false, reason: 'unknown host' };
+    if (!host) {
+      // A machine renamed or removed from the panel still holds the hub's notify token.
+      console.log(`[push] ${ALERT[req.state].icon} ${req.host}: no se envía, la máquina ${req.host} no está en el panel`);
+      return { pushed: false, reason: 'unknown host' };
+    }
     const key = `${host.id}:${req.pane}`;
     this.scriptAt.set(key, Date.now());
     const pending = this.timers.get(key);
@@ -109,12 +118,19 @@ export class Notifier {
       clearTimeout(pending);
       this.timers.delete(key);
     }
-    if (req.viewed) return { pushed: false, reason: 'viewed' };
+    if (req.viewed) {
+      // The tree the hub already holds is enough to name the window in the log.
+      console.log(`[push] ${this.what(host, host.findPane(req.pane), req.state)}: no se envía, ya lo has visto en la terminal`);
+      return { pushed: false, reason: 'viewed' };
+    }
 
     // The script runs right after setting the icon; poll so the tree has the new state and names.
     await host.refresh().catch(() => {});
     const ctx = host.findPane(req.pane);
-    if (ctx && this.conns.isWatched(host.id, req.pane, ctx.window.id)) return { pushed: false, reason: 'watched in web' };
+    if (ctx && this.conns.isWatched(host.id, req.pane, ctx.window.id)) {
+      console.log(`[push] ${this.title(ctx, req.state)}: no se envía, lo tienes abierto en la web`);
+      return { pushed: false, reason: 'watched in web' };
+    }
     const route = this.route(ctx, req.state);
     if (!route) return { pushed: false, reason: 'present' };
 

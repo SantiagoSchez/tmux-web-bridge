@@ -1,6 +1,6 @@
 # host-kit standards
 
-The conventions of the `host-kit` layer (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check, and something the code does not already show. What the manifests, the directory tree or the linter say is left out, where it cannot go stale.
+The conventions of the `host-kit` layer (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh, scripts/test-window-title.sh). The principles in [base-standards.md](base-standards.md) apply first; this document adds what is specific to this layer. Keep it short and concrete: a rule here is something a reviewer can check, and something the code does not already show. What the manifests, the directory tree or the linter say is left out, where it cannot go stale.
 
 ## Stack
 
@@ -8,7 +8,8 @@ The conventions of the `host-kit` layer (host-kit/**, server/src/kit.ts, scripts
 - tmux 3.2 or later (`install.sh` refuses older), configured by `host-kit/tmux.conf` with tmux formats (`#{q:@twb_kit_dir}`, `#{d:current_file}`).
 - `jq`, `curl` and `git` on the machine (`install.sh` requires `jq` and `curl`; `unzip` only for the Trello extension). Targets: macOS, Linux and WSL.
 - The hub side, `server/src/kit.ts` (TypeScript, server layer toolchain), builds POSIX `sh` scripts and runs them on the machine with `host.exec.shell()` (`sh -c` over SSH, `/bin/sh -c` for the local host).
-- The integration test, `scripts/test-kit-update.sh`, is Bash and drives `kit.ts` through the `tsx` of `server/node_modules`.
+- The integration tests are Bash: `scripts/test-kit-update.sh` drives `kit.ts` through the `tsx` of `server/node_modules`; `scripts/test-window-title.sh` runs `tmux-window-title.sh` with `node` (its fake hub) and util-linux `script`.
+- The kit and the hub share one name: web terminals are tmux sessions named `_tw-…` (`WEB_SESSION_PREFIX` in `server/src/host.ts`), which `tmux-spaces.sh` leaves out of the spaces and `tmux-window-title.sh` does not count as you looking at a pane.
 
 ## Structure
 
@@ -61,7 +62,8 @@ The conventions of the `host-kit` layer (host-kit/**, server/src/kit.ts, scripts
 - **Any test that starts tmux is isolated:** unset `TMUX` and `TMUX_PANE`, its own `TMUX_TMPDIR` (under `/tmp`: socket paths are limited to about 100 characters), and its own socket with `-L` or `-S`. `test-kit-update.sh` also fakes `HOME`, `GIT_CONFIG_GLOBAL` (with `GIT_CONFIG_NOSYSTEM=1`), unsets `XDG_CONFIG_HOME` and `CLAUDE_CONFIG_DIR`, redirects the GitHub URL to the fake origin with `url.<origin>.insteadOf`, and kills tmux servers in its cleanup only after checking `TMUX_TMPDIR` is its own.
 - Never test `install.sh` by hand against a makeshift clone or tmux: use, or extend, `scripts/test-kit-update.sh`.
 - `test-kit-update.sh` does not strip git's repository-local variables (`git rev-parse --local-env-vars`) as testing-standards asks for tests that run git (to confirm whether it should).
-- `tmux-window-title.sh`, `tmux-spaces.sh` and `statusline.sh` have no automated tests (to confirm the expected level for them).
+- **Integration, the scripts tmux and Claude Code's hooks run:** run the real script against a tmux of its own and inspect what it leaves: tmux options, and what it posts to a fake hub. `scripts/test-window-title.sh` (Linux only; it exits 0 on macOS) drives `tmux-window-title.sh state done` on `-L twbwt` with a fake hub on a loopback port (`XDG_CONFIG_HOME` holds its `notify.env`), and attaches tmux clients through `script -qfc`: a web terminal is a client of a grouped `_tw-…` session, a terminal of the machine a plain `attach`. It checks the `viewed` flag of `/api/notify` and the pane's `@pane_icon` for each kind of client, and an idle client by putting a `date` wrapper first on the script's `PATH` (tmux moves `client_activity` only on real input). A new behaviour of `tmux-window-title.sh` gets its case there.
+- `tmux-spaces.sh` and `statusline.sh` have no automated tests yet; a test for them follows the integration pattern above.
 
 ## Common workflows
 

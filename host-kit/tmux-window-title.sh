@@ -201,9 +201,22 @@ cmd_refresh_all() {
     done < <(tmux list-sessions -F '#{session_id}' 2>/dev/null)
 }
 
-# ¿Tienes delante este panel? (activo, en la ventana activa, de una sesión con cliente)
+# Última actividad (una por línea) de cada terminal conectada a tmux que tiene
+# delante el panel $1. No cuentan las terminales del panel web (sesiones _tw-*,
+# las de server/src/terminal.ts): siguen conectadas con la pestaña oculta o el
+# móvil bloqueado, y si las estás mirando ya lo sabe el hub.
+# La sesión va al final porque su nombre puede llevar espacios.
+terminals_on_pane() {
+    local pane act sess
+    while read -r pane act sess; do
+        [[ "$sess" == _tw-* ]] && continue
+        [ "$pane" = "$1" ] && [ -n "$act" ] && printf '%s\n' "$act"
+    done < <(tmux list-clients -F '#{pane_id} #{client_activity} #{session_name}' 2>/dev/null)
+}
+
+# ¿Tiene delante este panel alguna terminal conectada a tmux (no la web)?
 pane_is_viewed() {
-    [ "$(tmux display-message -p -t "$1" '#{&&:#{pane_active},#{&&:#{window_active},#{session_attached}}}' 2>/dev/null)" = "1" ]
+    [ -n "$(terminals_on_pane "$1")" ]
 }
 
 # ¿Está Ghostty en primer plano?
@@ -218,9 +231,9 @@ ghostty_is_visible() {
             .some(w => w.kCGWindowOwnerName === "Ghostty" && w.kCGWindowLayer > 0)' 2>/dev/null)" = "true" ]
 }
 
-# ¿Estás delante de la terminal? En macOS, Ghostty a la vista. En Linux/WSL no
-# hay forma de saberlo: cuenta como "sí" si algún cliente de tmux conectado a
-# esa sesión (incluido el panel web) ha tenido actividad en los últimos 2 minutos.
+# ¿Estás delante de la terminal que tiene el panel? En macOS, Ghostty a la vista.
+# En Linux/WSL no hay forma de saberlo: cuenta como "sí" si alguna de las
+# terminales de terminals_on_pane ha tenido actividad en los últimos 2 minutos.
 user_is_looking() {
     local pane="$1" now act
     if [ "$IS_MAC" = 1 ]; then
@@ -229,8 +242,8 @@ user_is_looking() {
     fi
     now="$(date +%s)"
     while read -r act; do
-        [ -n "$act" ] && [ $((now - act)) -lt 120 ] && return 0
-    done < <(tmux list-clients -t "$(tmux display-message -p -t "$pane" '#{session_id}' 2>/dev/null)" -F '#{client_activity}' 2>/dev/null)
+        [ $((now - act)) -lt 120 ] && return 0
+    done < <(terminals_on_pane "$pane")
     return 1
 }
 

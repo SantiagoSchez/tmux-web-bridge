@@ -17,6 +17,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
+- [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo.
 
 ## Terminal
 
@@ -267,3 +268,20 @@ La sección rechaza una combinación, dice por qué y deja la anterior cuando:
 - otro atajo del panel ya la usa en ese dispositivo, incluido el del dictado.
 
 «Restablecer» se rechaza igual cuando otro atajo ya usa la combinación por defecto: el aviso dice cuál y desaparece cuando ese atajo cambia.
+
+## Notificaciones
+
+### Cuándo cuentas como que estás mirando
+<!-- capability: push-notifications; requirement: only-a-terminal-showing-the-pane-counts-as-looking-at-it -->
+
+Cuando Claude Code pregunta, pide permiso o termina en un panel, la máquina le dice al servidor central si ya lo estás viendo, y entonces no llega notificación. Solo cuenta una terminal conectada a la máquina que tenga ese panel delante: en el Mac, con Ghostty a la vista; en Linux, si se ha usado en los últimos 2 minutos. Una terminal que muestra otra ventana, o que lleva más de 2 minutos sin usarse, no cuenta. La terminal web del panel nunca cuenta, aunque siga abierta con el móvil bloqueado o la pestaña en segundo plano: si la estás mirando, ya lo sabe el panel y no avisa.
+
+### El ✅ de un panel terminado
+<!-- capability: push-notifications; requirement: a-finished-pane-keeps-its-mark-unless-a-terminal-shows-it -->
+
+Cuando Claude Code termina en un panel, su ventana muestra ✅ hasta que lo ves. Si en ese momento una terminal conectada a la máquina tiene el panel delante, se entiende que ya lo has visto y la ventana pasa directamente a 🤖. Tenerlo abierto solo en la terminal web no basta: el ✅ se queda.
+
+### Por qué no llegó una notificación
+<!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->
+
+Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, o la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste). Así se puede saber por qué no llegó una notificación concreta.

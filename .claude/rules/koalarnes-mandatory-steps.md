@@ -65,7 +65,7 @@ The agent must run these for every layer the change touches and verify they pass
   - test: `pnpm --filter trello-extension test`
   - typecheck: `pnpm --filter trello-extension typecheck`
 - **host-kit**:
-  - test: `scripts/test-kit-update.sh`
+  - test: `scripts/test-kit-update.sh && scripts/test-window-title.sh`
 
 Also run the project checks. A check with paths runs only when the branch changes one of them; `ka scope` says which apply, and one that does not is reported as not applicable:
 

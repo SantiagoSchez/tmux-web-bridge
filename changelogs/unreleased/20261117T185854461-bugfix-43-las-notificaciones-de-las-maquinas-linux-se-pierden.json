@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "host-kit",
+  "description": "Corregidas las notificaciones que no llegaban de las máquinas Linux cuando tenías el panel abierto en la terminal web y dejabas de mirarla (el móvil bloqueado o la pestaña en segundo plano) menos de 2 minutos después de escribir: la terminal web ya no cuenta como que estás delante, y un panel terminado conserva su ✅ aunque lo tengas abierto en ella",
+  "issue": "43",
+  "breaking": false,
+  "pr": "44"
+}
