@@ -13,6 +13,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 
 - [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
 - [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo y con qué rama se comparan sus cambios.
+- [Visor de ficheros](#visor-de-ficheros): cómo se abren el diff y el fichero encima de «Ficheros cambiados» y cómo se vuelve atrás.
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
@@ -95,6 +96,28 @@ En «Toda la rama», un desplegable debajo de las pestañas lista la rama de la 
 <!-- capability: worktree-base; requirement: the-picked-branch-lasts-while-the-modal-is-open -->
 
 La rama elegida se mantiene mientras «Ficheros cambiados» está abierto, también al entrar en el diff de un fichero y volver. Al cerrarlo y abrirlo otra vez, vuelve a comparar con la rama de la que salió.
+
+## Visor de ficheros
+
+### El diff se abre encima de la lista
+<!-- capability: file-viewer; requirement: a-file-s-diff-opens-over-the-changed-files -->
+
+Al tocar un fichero en «Ficheros cambiados», su diff se abre en un panel nuevo encima de la lista. La lista se queda debajo tal y como estaba: los mismos ficheros, el texto del buscador, la pestaña, la rama elegida y el punto por el que ibas. Al cerrar el diff vuelves a ella sin «Cargando…» y sin que el panel vuelva a pedir los cambios a la máquina, así que no enseña lo que haya cambiado entretanto: para eso está «Volver a mirar».
+
+### El fichero se abre encima de su diff
+<!-- capability: file-viewer; requirement: a-file-opens-over-its-diff -->
+
+«Ver el fichero», en un diff, abre el fichero entero en otro panel encima del diff. Al cerrarlo, el diff sigue en el mismo punto, sin volver a cargarse.
+
+### Cerrar vuelve a la pantalla anterior
+<!-- capability: file-viewer; requirement: closing-the-sheet-on-top-goes-back-one-screen -->
+
+Cualquier forma de cerrar el panel de arriba cierra solo ese y deja ver el de debajo: «Atrás», Esc, un toque fuera del panel, arrastrarlo hacia abajo en el móvil o el botón atrás del móvil. Desde un fichero abierto desde un diff, el botón atrás enseña primero el diff, luego la lista y, a la tercera, cierra el visor. Cerrar el único panel que queda cierra el visor.
+
+### Solo se usa el panel de arriba
+<!-- capability: file-viewer; requirement: only-the-sheet-on-top-can-be-used -->
+
+Con varios paneles abiertos, solo el de arriba oscurece la página y responde: la página se ve igual de oscura que con un único panel, y ni el teclado, ni el ratón, ni un lector de pantalla llegan a los paneles de debajo hasta que vuelven a quedar arriba.
 
 ## Límites de uso
 

@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "pr": 40,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "ff17dda87a6623574be7f547492bc08c1e539093",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T10:31:00.006Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 3,
+        "question": 0,
+        "nitpick": 0
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "2e71f2744c06056f878eb298589db3dff6a11588",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-17T11:17:55.125Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Files.tsx",
+      "symbol": "FileViewerSheet",
+      "title": "Delayed drag-to-close pop is not idempotent: a tap or Escape within 200 ms closes two screens",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "ff17dda87a6623574be7f547492bc08c1e539093",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": 7,
+      "scoreReason": "The stacked backdrop is a transparent full-screen layer, and the delayed setTimeout(onClose, 200) calls the now non-idempotent fileViewerBack a second time, so a tap or Escape inside the window closes the list too; the window is only 200 ms after a drag, and the guard is one line.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Sheet.tsx",
+      "symbol": "Sheet",
+      "title": "Pass inert as a JSX attribute instead of a ref effect (Preact 11 types declare it)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "ff17dda87a6623574be7f547492bc08c1e539093",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "Preact's dom.d.ts declares inert, but the effect only leaves the covered sheet non-inert for one frame: a one-line simplification with no defect for a user.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Files.tsx",
+      "symbol": "FileViewerSheet",
+      "title": "Return focus to the list item that opened the diff when going back",
+      "origin": "pre-existing",
+      "round": 1,
+      "sha": "ff17dda87a6623574be7f547492bc08c1e539093",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "A real gap for keyboard users that was there before this change, and now cheap to fix because the list stays mounted; worth a line in the review comment, not a regression or a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R2-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Sheet.tsx",
+      "symbol": "dragToClose",
+      "title": "Delayed drag close checks the sheet is mounted but pops whatever is on top; also require it to still be the top sheet",
+      "origin": "introduced",
+      "round": 2,
+      "sha": "2e71f2744c06056f878eb298589db3dff6a11588",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 4,
+      "scoreReason": "The race is real but narrow: a tap on the list below lands on the diff's backdrop and closes it, so the only way in is tapping a still-visible button inside the sliding top sheet in the 200 ms after the swallowed first click; the result is a screen that flashes and an invisible layer the next tap clears.",
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

@@ -11,11 +11,12 @@ const dim = (k: number) => `color-mix(in srgb, var(--backdrop-soft) ${Math.round
 
 /**
  * Dragging a sheet down by its grip or its title, on the phone: it follows the
- * finger and, let go, closes if dragged far or fast enough, or goes back up.
+ * finger and, let go, closes if dragged far or fast enough, or goes back up. The
+ * backdrop fades with it, unless it is null (a stacked sheet's, which has no shade).
  * Pointer events captured by the sheet, with touch-action off on the handle, so
  * the browser neither scrolls the sheet nor cancels the drag.
  */
-function dragToClose(down: PointerEvent, sheet: HTMLElement, backdrop: HTMLElement, onClose: () => void): void {
+function dragToClose(down: PointerEvent, sheet: HTMLElement, backdrop: HTMLElement | null, onClose: () => void): void {
   if (isDesktop.value || !down.isPrimary || (down.pointerType === 'mouse' && down.button !== 0)) return;
   const y0 = down.clientY;
   let dragging = false;
@@ -28,14 +29,14 @@ function dragToClose(down: PointerEvent, sheet: HTMLElement, backdrop: HTMLEleme
       dragging = true;
       sheet.setPointerCapture(down.pointerId);
       sheet.style.transition = 'none';
-      backdrop.style.transition = 'none';
+      if (backdrop) backdrop.style.transition = 'none';
     }
     if (e.timeStamp > last.t) speed = (e.clientY - last.y) / (e.timeStamp - last.t);
     last = { y: e.clientY, t: e.timeStamp };
     const off = Math.max(0, dy);
     sheet.style.transform = `translateY(${off}px)`;
     // Its colour, not its opacity, which would fade the sheet inside it too.
-    backdrop.style.backgroundColor = dim(Math.max(0, 1 - off / sheet.offsetHeight));
+    if (backdrop) backdrop.style.backgroundColor = dim(Math.max(0, 1 - off / sheet.offsetHeight));
   };
   const up = (e: PointerEvent) => {
     sheet.removeEventListener('pointermove', move);
@@ -52,14 +53,16 @@ function dragToClose(down: PointerEvent, sheet: HTMLElement, backdrop: HTMLEleme
     const dy = e.clientY - y0;
     const close = e.type === 'pointerup' && (dy > DISMISS_AT || (dy > 20 && speed > DISMISS_SPEED));
     sheet.style.transition = 'transform 0.2s ease-out';
-    backdrop.style.transition = 'background-color 0.2s ease-out';
+    if (backdrop) backdrop.style.transition = 'background-color 0.2s ease-out';
     if (close) {
       sheet.style.transform = 'translateY(100%)';
-      backdrop.style.backgroundColor = dim(0);
-      setTimeout(onClose, 200);
+      if (backdrop) backdrop.style.backgroundColor = dim(0);
+      // Unless it was closed meanwhile (a tap or Escape while it slid away): going back
+      // again would close the sheet below it too.
+      setTimeout(() => sheet.isConnected && onClose(), 200);
     } else {
       sheet.style.transform = '';
-      backdrop.style.backgroundColor = '';
+      if (backdrop) backdrop.style.backgroundColor = '';
     }
   };
   sheet.addEventListener('pointermove', move);
@@ -77,12 +80,19 @@ export function Sheet(props: {
   /** A way back above the title (a section of the settings on the phone). */
   back?: { label: string; onClick: () => void };
   class?: string;
+  /** Over another sheet: its backdrop adds no shade, the one below already dims the page. */
+  stacked?: boolean;
+  /** Covered by another sheet: out of the focus order, the pointer and the accessibility tree, its scroll kept. */
+  inert?: boolean;
   onClose: () => void;
   children: ComponentChildren;
 }) {
-  const { title, subtitle, back, onClose, children } = props;
+  const { title, subtitle, back, stacked, inert, onClose, children } = props;
   const backdrop = useRef<HTMLDivElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (backdrop.current) backdrop.current.inert = !!inert;
+  }, [inert]);
   useEffect(() => {
     // Only the one on top (the last one) closes: a dialog over the settings leaves them open.
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && [...document.querySelectorAll('.sheet-backdrop')].pop() === backdrop.current && onClose();
@@ -90,9 +100,9 @@ export function Sheet(props: {
     return () => removeEventListener('keydown', onKey);
   }, [onClose]);
   return (
-    <div class="sheet-backdrop" ref={backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div class={`sheet-backdrop ${stacked ? 'stacked' : ''}`} ref={backdrop} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div class={`sheet ${props.class ?? ''}`} ref={panel} role="dialog" aria-modal="true" aria-label={title}>
-        <div class="sheet-top" onPointerDown={(e) => dragToClose(e, panel.current!, backdrop.current!, onClose)}>
+        <div class="sheet-top" onPointerDown={(e) => dragToClose(e, panel.current!, stacked ? null : backdrop.current!, onClose)}>
           <div class="sheet-grip" />
           <div class="sheet-head">
             {back && (
