@@ -57,7 +57,9 @@ function dragToClose(down: PointerEvent, sheet: HTMLElement, backdrop: HTMLEleme
     if (close) {
       sheet.style.transform = 'translateY(100%)';
       if (backdrop) backdrop.style.backgroundColor = dim(0);
-      setTimeout(onClose, 200);
+      // Unless it was closed meanwhile (a tap or Escape while it slid away): going back
+      // again would close the sheet below it too.
+      setTimeout(() => sheet.isConnected && onClose(), 200);
     } else {
       sheet.style.transform = '';
       if (backdrop) backdrop.style.backgroundColor = '';

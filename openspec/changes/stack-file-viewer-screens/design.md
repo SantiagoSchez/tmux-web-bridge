@@ -35,6 +35,8 @@ Alternative considered: keep rendering only the top screen and lift the list's d
 
 Each screen gets `fileViewerBack` as its `onClose`, the same function as its «Atrás» and the back button's `closeTop`. On the only screen left, `fileViewerBack` closes the viewer, which is today's behaviour for a single sheet. The «Atrás» button stays on stacked sheets, with its label, for a visible way back.
 
+Going back is not idempotent: a second call closes the screen below. A sheet dragged down far enough calls `onClose` 200 ms later, once it has slid away, and in that time a tap on the stacked backdrop or Escape may already have closed it. So `dragToClose` calls `onClose` only while the sheet is still in the document (`isConnected`), and a drag never closes more than its own sheet.
+
 ### D3. A stacked sheet has a transparent backdrop and the ones below are inert
 
 `Sheet` gets an optional `stacked` flag. A stacked sheet's backdrop gets the class `stacked`, whose background is transparent, and its drag-to-close leaves the backdrop's colour alone, so the shade stays the one of the bottom sheet's backdrop. The stacked backdrop still covers the page, so a tap outside the top sheet lands on it and closes that sheet only.

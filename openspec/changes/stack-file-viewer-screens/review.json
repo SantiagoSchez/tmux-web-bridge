@@ -38,8 +38,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 7,
+      "scoreReason": "The stacked backdrop is a transparent full-screen layer, and the delayed setTimeout(onClose, 200) calls the now non-idempotent fileViewerBack a second time, so a tap or Escape inside the window closes the list too; the window is only 200 ms after a drag, and the guard is one line.",
       "followUp": null
     },
     {
@@ -51,12 +51,12 @@
       "origin": "introduced",
       "round": 1,
       "sha": "ff17dda87a6623574be7f547492bc08c1e539093",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 3,
+      "scoreReason": "Preact's dom.d.ts declares inert, but the effect only leaves the covered sheet non-inert for one frame: a one-line simplification with no defect for a user.",
       "followUp": null
     },
     {
@@ -72,8 +72,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "A real gap for keyboard users that was there before this change, and now cheap to fix because the list stays mounted; worth a line in the review comment, not a regression or a work item.",
       "followUp": null
     }
   ],

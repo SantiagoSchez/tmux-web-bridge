@@ -66,6 +66,12 @@ Every way of closing the file viewer's sheet on top SHALL close only that sheet 
 - **WHEN** the user drags the diff down by its top far enough to close it
 - **THEN** the diff closes and «Ficheros cambiados» stays open
 
+#### Scenario: A drag closes one screen only
+
+- **GIVEN** a diff opened from «Ficheros cambiados» on the phone, dragged down far enough to close it
+- **WHEN** the user taps the list or presses Escape while the diff is still sliding away
+- **THEN** only the diff closes and «Ficheros cambiados» stays open
+
 #### Scenario: The phone's back button goes back one screen at a time
 
 - **GIVEN** a file opened from a diff opened from «Ficheros cambiados»

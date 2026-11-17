@@ -57,6 +57,13 @@
 
 - [ ] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; verify the exit code is 0.
 
+## 10. Review round 1 (PR #40)
+
+- [x] 10.1 R1-01: in `dragToClose` (`web/src/components/Sheet.tsx`), call `onClose` after the slide only while the sheet is still in the document (`sheet.isConnected`), so a tap or Escape during the 200 ms slide does not make the drag close a second screen (design D2, scenario «A drag closes one screen only»). Verify `pnpm --filter web typecheck` passes.
+  - Done: `setTimeout(() => sheet.isConnected && onClose(), 200)` with a comment; web typecheck passes.
+- [x] 10.2 Check by hand at phone width against the isolated hub: drag a diff down and press Escape (and, separately, tap the list) within the 200 ms; only the diff closes and the list stays open. Check that a plain drag still closes the diff, and that a drag on «Ficheros cambiados» alone still closes the viewer. Run `openspec validate stack-file-viewer-screens --strict`.
+  - Isolated hub, 390×844, Escape or a click on the stacked backdrop fired by the page 50 ms after the drag's pointerup. Without the guard (seen failing): both closed the list too (no sheet left). With it: only the diff closes and the list stays open, no new request; a plain drag still closes the diff, and a drag on the list alone closes the viewer. `openspec validate --strict` valid; `ka features-check --strict` exit 0.
+
 ## Workflow follow-up
 
 - After approval: `/opsx:archive stack-file-viewer-screens`, then `/koalarnes:commit` to push the archive into the same pull request.
