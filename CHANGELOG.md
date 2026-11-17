@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.26.1 - 2026-11-17
+
+### Corregido
+
+- Corregidos los enlaces a «PR #N», «Issue #N» y «Trello #N» y la rama base que propone «Nuevo worktree» en los proyectos que ya guardan su configuración en `.claude/ka.json`, el nuevo nombre del harness. Los proyectos que siguen con `.claude/koalarnes.json` funcionan como antes.
+
 ## 1.26.0 - 2026-11-17
 
 ### Añadido
