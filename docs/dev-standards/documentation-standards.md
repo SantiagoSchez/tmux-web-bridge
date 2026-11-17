@@ -96,5 +96,5 @@ Leave out what the repository already says: directory trees and architecture ove
   ```
 
   `<cap-slug>` is the capability's directory name; `<req-slug>` is the kebab-case of the requirement's name. An H2 that is only an introduction or an index is listed in `features.nonFeatureAreas` and needs no anchors.
-- When a requirement is added, changed or removed, the spec changes first; then `/koalarnes:update-features <change>` regenerates the affected sections, and `ka features-check` must exit 0. It runs once more right before `/opsx:archive`.
+- When a requirement is added, changed or removed, the spec changes first; then `/koalarnes:update-features <change>` regenerates the affected sections, and `ka features-check --strict` must exit 0. It runs once more right before `/opsx:archive`. Plain `ka features-check`, which the review loop runs, lists as pending the requirements a change adds and the catalogue lacks, and the sections for requirements it removes or renames, and still exits 0.
 - Describe capabilities, not figures that drift: no prices, rates or quotas of external services. Describe them qualitatively (tiers, speed against quality) and point at the place in the product where the live value is configured.

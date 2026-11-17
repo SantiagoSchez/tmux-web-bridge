@@ -7,9 +7,11 @@ alwaysApply: true
 
 Every `tasks.md` under `openspec/changes/<change>/` must include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
-The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`) runs between step 5 and step 6: the feature catalogue of step 6 is updated once `/koalarnes:review-pr` comes back clean.
+The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/koalarnes:adversarial-review` when the scope warrants it, `/koalarnes:commit`, the pull request and `/koalarnes:review-pr`, bounded as described at the end of this rule) runs between step 5 and step 6: the feature catalogue of step 6 is updated once `ka review-rounds gate` passes.
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/koalarnes:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
+
+**Every change goes through OpenSpec.** Features, bug fixes, hotfixes, chores and documentation alike start with an OpenSpec change and follow the steps below. A change with no behaviour change (a typo, a refactor) still has one, with `skip_specs: true` in its `.openspec.yaml` and no spec delta. Only three changes skip it: the release commit of `/koalarnes:release`, the harness's own setup or update (`/koalarnes:harness-init`, `ka sync`), and a dependency bump that changes no code. A project document that exempts other changes (bug fixes, small touch-ups) is out of date: follow this rule, and tell the user which document says otherwise.
 
 **Never write a bare `#<number>` to the user.** Every number you mention in chat, summaries, status updates and questions says what it refers to:
 
@@ -48,6 +50,8 @@ Output: one line per inspected module saying "tests up to date" or "tests update
 
 The change's own task groups, written by `/opsx:propose` (or the last `/opsx:continue`) from the proposal, design and specs, and executed by `/opsx:apply`, each behaviour test-first (`/koalarnes:tdd`).
 
+**Wiring and payload changes carry their checks.** When the change touches dependency-injection wiring or application bootstrap, the task groups must include a boot smoke test: start the application, wait for its ready log line, stop it, because wiring errors do not surface in typecheck or unit tests. When it changes a message or job payload, they must include an audit that lists every producer and consumer of that payload and confirms each was updated. `/koalarnes:review-pr` flags a missing one as a required change.
+
 ## Step 4 — Run tests, typecheck and lint (mandatory)
 
 The agent must run these for every layer the change touches and verify they pass. Never delegate to the human.
@@ -63,7 +67,7 @@ The agent must run these for every layer the change touches and verify they pass
 - **host-kit**:
   - test: `scripts/test-kit-update.sh`
 
-Also run the project checks:
+Also run the project checks. A check with paths runs only when the branch changes one of them; `ka scope` says which apply, and one that does not is reported as not applicable:
 
 - feature catalogue: `ka features-check` (must pass)
 
@@ -81,12 +85,12 @@ When any of these changed, update the relevant standards document (`/koalarnes:u
 
 When the change introduces a pattern future contributors should follow, add it to the relevant standards document.
 
-## Step 6 — Update the feature catalogue (mandatory if user-visible)
+## Step 6 — Update the feature catalogue (mandatory when a requirement changes)
 
-If the change adds, modifies or removes a feature visible to end users or to the product team:
+If the change adds, renames or removes a requirement, whether its behaviour is visible to end users or internal, or modifies a feature the product team sees:
 
 1. Run `/koalarnes:update-features <change-name>` to draft the update of `docs/FEATURES.md` from the capability spec, review it and apply it.
-2. Run `ka features-check`. The exit code must be 0.
+2. Run `ka features-check --strict`. The exit code must be 0. Without `--strict` it lists as `pending:` a requirement your change adds and the catalogue lacks, and a section for a requirement your change removes or renames, and exits 0, so the checks of the review loop pass before this step.
 3. Commit it immediately with `/koalarnes:commit`. The catalogue sync must land in the pull request before the human review (step 8).
 
 Each section of the catalogue carries the anchor of the requirement it describes, right after its heading:
@@ -104,7 +108,7 @@ The project has no E2E suite; this step does not apply. Record that in the task.
 
 ## Step 8 — Human review (mandatory before archive)
 
-After `/koalarnes:review-pr` comes back clean, the catalogue sync of step 6 is committed and step 7 is green, only the human review is left. Ask the user, with `AskUserQuestion`, who reviews the pull request:
+After `ka review-rounds gate` passes, the catalogue sync of step 6 is committed and step 7 is green (or recorded as not applicable), only the human review is left. Ask the user, with `AskUserQuestion`, who reviews the pull request:
 
 - **A person reviews it.** Wait for the approval. Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
 - **The user takes it as good** without a manual review. Record that in the step's task in `tasks.md`.
@@ -114,7 +118,8 @@ Never choose for the user, and never reuse the answer given for another pull req
 Once the pull request is approved, or taken as good, the agent closes it without asking again:
 
 1. Run step 9, then `/opsx:archive`, then `/koalarnes:commit` to push the archive moves into the same pull request.
-2. Merge the pull request with the `squash` strategy (`gh pr merge`: `--squash` for `squash`, `--merge` for `merge_commit`, `--rebase` for `fast_forward`). When the platform refuses the merge (a pending or failing check, a conflict, a missing approval), report why and stop: never bypass a restriction.
+2. Check that the platform shows the commit you pushed last: compare `git rev-parse HEAD` with the pull request's latest commit (`gh pr view <n> --json headRefOid`; merge with `--match-head-commit <that commit>` too, so GitHub refuses an older head). When they differ, the platform has not caught up with the push yet: wait a few seconds and read it again. Never merge an earlier head: the merge would leave the later commits out of `master`.
+3. Merge the pull request with the `squash` strategy (`gh pr merge`: `--squash` for `squash`, `--merge` for `merge_commit`, `--rebase` for `fast_forward`). When the platform refuses the merge (a pending or failing check, a conflict, a missing approval), report why and stop: never bypass a restriction.
 
 After the merge, check the pull request's state on the platform; never assume it is merged. Then propose what is left, each on the user's go-ahead, both questions in one `AskUserQuestion` call:
 
@@ -126,27 +131,35 @@ After the merge, check the pull request's state on the platform; never assume it
 `/opsx:archive` does not run the catalogue linter. The agent must run it as the last task before archiving:
 
 ```bash
-ka features-check
+ka features-check --strict
 ```
 
-The exit code must be 0; fix any drift before archiving.
+The exit code must be 0; fix any drift before archiving. It reads the change's spec deltas, so no sync of the specs is needed first.
 
 ## Opt-in steps
 
 Not mandatory; add them when the scope warrants:
 
 - **Manual endpoint testing** with `curl` for new or changed HTTP endpoints: the main methods plus the obvious error cases (400, 401, 404, 422); restore the data after each mutating call.
-- **Adversarial review** (`/koalarnes:adversarial-review <change>`) for changes with a broad blast radius: message or job payloads, dependency wiring, migrations on large tables.
-- **Boot smoke test** for changes to dependency-injection wiring or application bootstrap: start the app, wait for its ready log line, stop it. Wiring errors do not surface in typecheck or unit tests.
-- **Payload call-site audit** for a change to a message or job payload: list every producer and consumer and confirm each was updated.
+- **Adversarial review** (`/koalarnes:adversarial-review <change>`) for changes with a broad blast radius: message or job payloads, dependency wiring, migrations on large tables. Its CRITICAL, HIGH and MEDIUM findings block like REQUIRED ones and go back through the artifacts; LOW ones do not. It is not part of the review budget below, and after a fix round it runs again only when the fix touches a payload, the wiring or a migration.
 
-## After `/opsx:apply` and before `/opsx:archive`: change requests
+## After `/opsx:apply` and before `/opsx:archive`: the bounded review loop
 
-Findings of `/koalarnes:review-pr`, of the human reviewer, or requests arriving from elsewhere (chat, stakeholders, design feedback) follow the same steps. **Do not patch the code directly.**
+The automated review runs in rounds recorded in `openspec/changes/<change>/review.json` with `ka review-rounds`, which enforces the rules below whatever the session decides. A budget holds 3 counted rounds: the first is a full review, the next ones review the commits since the last reviewed one, the open blockers and the callers of what the fix touched, and the round that spends the budget only verifies the open findings and accepts a new blocker only inside the last fix.
 
-1. The agent edits the affected artifacts (`proposal.md`, `design.md`, `tasks.md`, `specs/**`) directly so they describe the corrected behaviour. The user may hand-edit typos only.
-2. The agent re-implements against them with `/opsx:apply`.
-3. The agent re-verifies with `/opsx:verify` (and `/koalarnes:adversarial-review` if the scope warrants).
-4. The agent commits with `/koalarnes:commit` and re-runs `/koalarnes:review-pr` on the same pull request.
+1. Run `/koalarnes:review-pr`. It reads `ka review-rounds status` and reviews in the mode it prints. Save the JSON block that ends its report to a temporary file and run `ka review-rounds record <file> --pr <number>`; the reviewer itself writes no project file.
+2. Ask the round's QUESTION findings in one `AskUserQuestion`. An answer that reveals a problem makes the question a blocker (`ka review-rounds escalate <id> --reason "<answer>"`); an answer that reveals none closes it (`ka review-rounds withdraw <id> --reason "<answer>"`).
+3. Run `ka review-rounds gate`.
+   - **It passes**: go on to step 6. Suggestions and nitpicks never start a fix round by themselves.
+   - **`blockers open`**: fix every open CRITICAL and REQUIRED finding, process findings included, in one coordinated fix, and **do not patch the code directly**. Edit the affected artifacts (`proposal.md`, `design.md`, `tasks.md`, `specs/**`) so they describe the corrected behaviour (the user may hand-edit typos only), re-implement with `/opsx:apply`, re-verify with `/opsx:verify`, commit with `/koalarnes:commit`, and go back to 1. Never lower a finding's severity and never mark one fixed yourself: only a later review or the user's withdrawal closes a blocker.
+   - **`budget exhausted`**: never approve or merge. Ask the user, with `AskUserQuestion`, to grant one more recorded round (`ka review-rounds extend --reason …`), to hand the pull request to a person, or to withdraw findings with a reason (`ka review-rounds withdraw <id> --reason …`). Do nothing else until the answer.
+   - **`head moved since the last review`**: a commit after the last round changed more than the feature catalogue, the change's `tasks.md` and `review.json`, or the pending changelog entries; a spec delta, the design or the proposal edited after the review counts too. Review it: go back to 1.
+4. Once the gate passes, if suggestions are pending (`ka review-rounds status`), send them once to the `koalarnes-evaluator` agent (only suggestions are scored and deferred: `ka review-rounds defer` refuses an open blocker): id, title, reasoning and the code excerpt at the reviewed commit. Save the scores it returns and run `ka review-rounds score <file>`. Then:
+   - Scores of 8 or more: offer them to the user in one `AskUserQuestion`, grouped by area, as follow-up work items. When nothing reaches the threshold, ask nothing.
+   - Scores from 5 up to that: list them in the final review comment of the pull request.
+   - Lower scores, and every nitpick, are dropped.
+   - For each accepted area, first search the tracker for the `PR #<number> · <finding id>` marks, then create one work item whose description carries one mark per finding, and record it with `ka review-rounds defer <id>… --ref <work item>`. A finding with a reference is never offered again.
+
+**Outside the budget.** The findings of a human reviewer and the fix of a red E2E run go through the same fix path; run `/koalarnes:review-pr` saying the round reviews a human (or E2E) fix: it reads `ka review-rounds status --source human` (or `--source e2e`), which gives that review the incremental mode whatever the budget says, and its block is recorded with `ka review-rounds record <file> --source human` (or `--source e2e`), with no extension. **A change of scope** (a request from chat, stakeholders or design feedback that changes the artifacts after the first review) follows the same fix path after `ka review-rounds reset --reason …`: the next round is a full review of a new budget.
 
 `/opsx:continue` is not for this: it creates the next artifact of a new change; amendments are direct edits. The archived spec must match production exactly.

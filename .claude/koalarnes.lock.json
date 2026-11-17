@@ -1,18 +1,20 @@
 {
   "plugin": {
     "name": "koalarnes",
-    "version": "0.10.1"
+    "version": "0.12.0"
   },
   "managed": {
-    ".claude/rules/koalarnes-mandatory-steps.md": "81511ae89d13bebafb13ed592984ffefbd39be3566fab74015fce4b736ce32d6",
-    "docs/dev-standards/koalarnes.md": "6888a66cb2060e45b07e97ddf629061f9e756c7a6be5890e17f283163f3a945b"
+    ".claude/rules/koalarnes-mandatory-steps.md": "c1f1d8591c5122987c0813912eff6013b91eeb5261a951daa07c06eb53a7a9c7",
+    "docs/dev-standards/koalarnes.md": "3b696ccf0a9c3fc1da2c216cb5b0586f3aad009bb6f5008e6fb52662df1b38d6",
+    ".claude/agents/koalarnes-evaluator.md": "68f445854fe7719ddbbc588fab81129f2c697b80b00875f363927d412642b889",
+    ".claude/agents/koalarnes-reviewer.md": "ae6e9d474558e5939dc04b7b8ed8c0e4d627d3d5307d69073f23f98174cc1a85"
   },
   "scaffold": {
     "AGENTS.md": "f0d3d3555c4e91506f0bd610705aca5fa119d510d60e24337724a987c7b30f75",
-    "docs/dev-standards/base-standards.md": "42ae3f4dd8fd0f4727a842fe0c2420ab0570a22e1373350015be771250d0cf00",
-    "docs/dev-standards/documentation-standards.md": "b8c8b758ff590b77a0b9f7c9a99d490e6a5d2c0d26ed04e956fac9afb8d23929",
+    "docs/dev-standards/base-standards.md": "88dbeff640c9bd8bce9497370687246aa814e0204d631c0a6d6fa052414cfd67",
+    "docs/dev-standards/documentation-standards.md": "4aa958f9d19b2f8c6ffc0933fdc6baa1f45e4f5aabe0125a3df56dd00925739b",
     "docs/dev-standards/testing-standards.md": "381a508bf2b32db03a56624fa83408777276b2ae393fb177e7db1147057e8420",
-    "openspec/config.yaml": "995c635f5f9019a75b252b1bd1a28160588fb2f1eab66f3c2dc2fae781ae8735",
+    "openspec/config.yaml": "fe8b0f3eb6b802e7bcdc2c32332fd0b34d84c13048f555f9138b1c01a5d7e75c",
     "docs/FEATURES.md": "a4e1530a813b0a7c9bf2b4a02b8e4191d4c1eeb6d97211627b6d4710af4b2d8f",
     "CHANGELOG.md": "d2930a62e2c16d8fdfd0534152ac2e522f8271d52d6454bc88e42d8321eb4415",
     "changelogs/unreleased/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

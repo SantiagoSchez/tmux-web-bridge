@@ -5,7 +5,7 @@ The single source of truth for how AI agents and humans work on this codebase. `
 ## The principles
 
 1. **Languages are fixed per artifact.** Code, identifiers and code comments are in English. OpenSpec artifacts (proposal, design, specs, tasks), standards documents and test descriptions are in `en`; the full list is under [Languages](#languages). When a skill writes into content that already exists (a tracker card, a manual chapter), it matches that content's language.
-2. **The spec-driven flow is mandatory.** A non-trivial change starts with OpenSpec artifacts, not code. See [Workflow](#workflow).
+2. **The spec-driven flow is mandatory.** Every change starts with OpenSpec artifacts, not code: features, bug fixes, hotfixes, chores and documentation alike. The only exceptions are the release commit, the harness's own setup or update, and a dependency bump that changes no code ([the mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md)). See [Workflow](#workflow).
 3. **Tests first.** Write a failing test before the implementation and order `tasks.md` that way: failing test, minimal implementation, refactor. Tests follow the [testing standards](./testing-standards.md).
 4. **No escape hatches.** Do not silence the type checker, the linter or a failing test to get past a problem (untyped values, unchecked casts, ignore comments, skipped tests). Surface the problem and ask before reaching for one. A runtime guard that receives an untyped value and narrows it before use is the one honest exception.
 5. **Reuse before invention.** Before adding a helper, look for one in the shared packages, then in the layer's own utilities. A second copy of a helper is a future divergence.
@@ -15,6 +15,16 @@ The single source of truth for how AI agents and humans work on this codebase. `
 ## Standards index
 
 The index of every standards document, with when to open each, is in [`AGENTS.md`](../../AGENTS.md), which every agent has in view in every turn. A new standards document gets its row there.
+
+## Debugging an elusive failure
+
+When a failure does not explain itself at the first try (a test that fails at random, a result that differs between runs, anything that depends on a browser, a GPU or a third-party library), do not chain experiments of your own. After the first experiment that does not confirm the hypothesis:
+
+1. **Read the tool's whole log** for warnings, fallbacks and degraded modes (`grep -iE "warn|fallback|slower|did not|unavailable|deprecated"`), not only its result line.
+2. **Search the web for similar reports**: the library's issue tracker, the browser's bug tracker, forums. Note what they say and cite them.
+3. Only then design the next experiment, and tell the user what the search and the log showed.
+
+A cause the tool states in its own log, unread, costs every experiment run before reading it.
 
 ## Where to find what
 
@@ -31,7 +41,8 @@ The index of every standards document, with when to open each, is in [`AGENTS.md
 | Code, identifiers, code comments | English |
 | OpenSpec artifacts, standards documents, project skills | `en` |
 | Commit messages | `en` (a history consistently in another language wins) |
-| Pull request titles, descriptions and review comments | `es-ES` |
+| Pull request titles (a Conventional Commits subject, since a squash merge turns the title into the commit) | `en` |
+| Pull request descriptions and review comments | `es-ES` |
 | Tracker cards and issues | `es-ES` |
 | Feature catalogue | `es-ES` |
 | Changelog descriptions | `es-ES` |
@@ -50,15 +61,17 @@ From there the path is shared:
 /opsx:verify                         completeness, correctness, coherence
 /koalarnes:adversarial-review   opt-in, when the scope is broad: red-team the change before pushing
 /koalarnes:commit               commit and push; open the pull request when asked
-/koalarnes:review-pr            automated review of the pull request, in a fresh context
-  findings?                          the agent edits the artifacts, then apply → verify → commit → review-pr again
-/koalarnes:update-features      if user-visible, then commit
+/koalarnes:review-pr            automated review of the pull request, in a fresh context; ka review-rounds record
+  blockers open?                     the agent edits the artifacts, then apply → verify → commit → review-pr again
+                                     (at most 3 rounds; then the user decides)
+ka review-rounds gate                no open blocker on the reviewed commit; suggestions scored, follow-ups offered
+/koalarnes:update-features      when a requirement changed, then commit
 human review                         a person reviews (findings reopen the loop above), or the user takes it as good
 /opsx:archive                        after the approval, then commit the archive moves
 the agent merges                     into master
 ```
 
-This repository has a single developer, its owner: when step 8 of the mandatory task steps asks who reviews the pull request, the reviewer is the owner, or the owner takes it as good. The agent then merges with `gh pr merge <n> --squash --delete-branch`, giving the squash commit an English Conventional Commits subject (the pull request itself is in Spanish). Bug fixes and small touch-ups skip OpenSpec: a `bugfix/` or `chore/` branch in its own worktree, a changelog entry unless the change is purely internal (the harness, tooling, the standards), and a pull request, reviewed and merged the same way. The [release standards](./release-standards.md) hold the deployment and release steps.
+This repository has a single developer, its owner: when step 8 of the mandatory task steps asks who reviews the pull request, the reviewer is the owner, or the owner takes it as good. The agent then merges with `gh pr merge <n> --squash --delete-branch`, and the pull request's English title becomes the squash commit's subject. The [release standards](./release-standards.md) hold the deployment and release steps.
 
 `/opsx:explore` only thinks: it reads code and compares approaches, and never writes application code. `/opsx:continue` creates the next artifact of a new change; it never amends existing artifacts. Review findings and late change requests are applied by editing the artifacts directly, then re-implementing, so the archived spec always matches the code. The detail of each gate lives in the [mandatory task steps](../../.claude/rules/koalarnes-mandatory-steps.md).
 
