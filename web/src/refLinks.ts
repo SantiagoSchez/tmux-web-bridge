@@ -12,7 +12,7 @@ import { findWindow } from './state';
 // [Image #N] (the pasted image, in the viewer). A tap asks the providers synchronously, so
 // the project is read ahead of it.
 
-/** How long what a project lets link holds: a new koalarnes.json shows up on the first look after it. */
+/** How long what a project lets link holds: a new or edited ka.json (or koalarnes.json) shows up on the first look after it. */
 const CONTEXT_TTL = 5 * 60_000;
 
 /** Per host and folder, what its project lets link. An expired one keeps answering while it is read again. */

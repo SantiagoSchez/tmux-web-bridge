@@ -7,6 +7,7 @@
 
 import type { BranchList } from '../../shared/types.js';
 import { EXTRA_PATH, shPath, shQuote } from './exec.js';
+import { CONFIG_FILE, MAX_CONFIG } from './harness-config.js';
 
 /** Seconds a fetch may take before the scripts go on with what the machine knows. */
 const FETCH_SECONDS = 12;
@@ -19,8 +20,6 @@ const LS_REMOTE_SECONDS = 6;
  */
 const BRANCH_SECONDS = 4;
 const BRANCH_FETCH_SECONDS = 6;
-/** koalarnes.json is small; more than this is not one. */
-const MAX_CONFIG = 65_536;
 
 /** Seconds an SSH agent may take to say whether it has keys. */
 const AGENT_SECONDS = 2;
@@ -71,15 +70,16 @@ export function prelude(path: string, outside: string, tmux: string): string {
 
 /**
  * Sets `dh`, origin's default branch (origin/HEAD, else master or main), and `pb`, the
- * project's base: koalarnes.json's git.baseBranch while origin has it, else `dh`. A text
- * match on the file in one line, so the launch can compare without a JSON parser; the
- * branch list uses the same, so both always agree.
+ * project's base: git.baseBranch of the harness configuration (harness-config.ts) while
+ * origin has it, else `dh`. A text match on the file in one line, so the launch can compare
+ * without a JSON parser; the branch list uses the same, so both always agree.
  */
 const PROJECT_BASE =
   `dh=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null); dh=\${dh#origin/}; ` +
   `[ -n "$dh" ] && ! has "$dh" && dh=''; ` +
   `if [ -z "$dh" ]; then for c in master main; do has "$c" && { dh=$c; break; }; done; fi; ` +
-  `pb=''; f="$top/.claude/koalarnes.json"; ` +
+  `pb=''; ` +
+  CONFIG_FILE +
   `[ -f "$f" ] && pb=$(head -c ${MAX_CONFIG} "$f" | oneline | sed -n 's/.*"baseBranch"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p'); ` +
   `[ -n "$pb" ] && ! has "$pb" && pb=''; ` +
   `[ -z "$pb" ] && pb=$dh; `;

@@ -60,7 +60,7 @@ async function withHome(fn: (home: string) => Promise<void>): Promise<void> {
   }
 }
 
-const KOALARNES = JSON.stringify({ git: { baseBranch: 'release/2.0', hotfixBaseBranch: 'master' }, layers: [] }, null, 2);
+const CONFIG = JSON.stringify({ git: { baseBranch: 'release/2.0', hotfixBaseBranch: 'master' }, layers: [] }, null, 2);
 const HOOK_SETTINGS = JSON.stringify({ hooks: { WorktreeCreate: [{ hooks: [{ type: 'command', command: 'ka hook worktree-create' }] }] } }, null, 2);
 
 /** The machine's tmux for the scripts: none (a command that fails), so no test reaches a real tmux server. */
@@ -108,11 +108,26 @@ test("koalarnes.json's git.baseBranch is the base while origin has it", () =>
       const list = await branches(home, repo);
       return list.repo ? list.base : undefined;
     };
-    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    write(join(repo, '.claude/koalarnes.json'), CONFIG);
     assert.equal(await base(), 'release/2.0');
     write(join(repo, '.claude/koalarnes.json'), JSON.stringify({ git: { baseBranch: 'develop' } }));
     assert.equal(await base(), 'master');
     write(join(repo, '.claude/koalarnes.json'), '{ "layers": [] }');
+    assert.equal(await base(), 'master');
+  }));
+
+test("ka.json's git.baseBranch is the base while origin has it, and wins over koalarnes.json as a whole", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    const base = async () => {
+      const list = await branches(home, repo);
+      return list.repo ? list.base : undefined;
+    };
+    write(join(repo, '.claude/ka.json'), CONFIG);
+    assert.equal(await base(), 'release/2.0');
+    write(join(repo, '.claude/koalarnes.json'), JSON.stringify({ git: { baseBranch: 'feature/login' } }));
+    assert.equal(await base(), 'release/2.0');
+    write(join(repo, '.claude/ka.json'), '{ "layers": [] }');
     assert.equal(await base(), 'master');
   }));
 
@@ -322,7 +337,7 @@ test("with a hook, even the project's base is made into the branch; without a ba
   withHome(async (home) => {
     const { repo } = fixture(home);
     write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
-    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    write(join(repo, '.claude/koalarnes.json'), CONFIG);
     assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0'), { kind: 'hook' });
     assert.equal(sha(home, repo, 'refs/heads/feature/14-login'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
     assert.deepEqual(await prepare(home, repo, 'feature/15-otra', ''), { kind: 'native' });
@@ -337,7 +352,7 @@ test("with a hook, even the project's base is made into the branch; without a ba
 test("without a hook, the hub always makes the worktree, named like it, from origin/<base> or else the project's base", () =>
   withHome(async (home) => {
     const { repo } = fixture(home);
-    write(join(repo, '.claude/koalarnes.json'), KOALARNES);
+    write(join(repo, '.claude/koalarnes.json'), CONFIG);
     const made = await prepare(home, join(repo, 'sub'), 'feature/14-login', 'master');
     const path = join(repo, '.claude/worktrees/feature-14-login');
     assert.deepEqual(made, { kind: 'created', path });

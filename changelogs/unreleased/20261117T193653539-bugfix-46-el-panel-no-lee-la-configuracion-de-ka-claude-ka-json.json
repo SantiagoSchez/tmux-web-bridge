@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "server",
+  "description": "Corregidos los enlaces a «PR #N», «Issue #N» y «Trello #N» y la rama base que propone «Nuevo worktree» en los proyectos que ya guardan su configuración en .claude/ka.json, el nuevo nombre del harness. Los que siguen con .claude/koalarnes.json funcionan como antes",
+  "issue": "46",
+  "breaking": false,
+  "pr": "47"
+}

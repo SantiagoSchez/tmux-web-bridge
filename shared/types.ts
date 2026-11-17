@@ -447,7 +447,8 @@ export interface RefRepo {
 
 /**
  * What a pane's project lets the terminal link (GET /api/refs/context): its repository, from
- * .claude/koalarnes.json or else the origin remote, and its Trello board (koalarnes.json only).
+ * the harness configuration (.claude/ka.json, else .claude/koalarnes.json) or else the origin
+ * remote, and its Trello board (the harness configuration only).
  */
 export interface RefContext {
   repo?: RefRepo;
@@ -522,7 +523,7 @@ export type BranchList =
       repo: true;
       /** Without `origin/`, sorted. */
       branches: string[];
-      /** The project's base: koalarnes.json's `git.baseBranch`, else `origin`'s default branch, when `origin` has it. */
+      /** The project's base: `git.baseBranch` of ka.json (else koalarnes.json), else `origin`'s default branch, when `origin` has it. */
       base?: string;
       /** Why the branches could not be refreshed (git's message): the list is what the machine knew. */
       fetchError?: string;
