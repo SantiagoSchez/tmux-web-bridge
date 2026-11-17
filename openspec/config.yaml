@@ -39,10 +39,11 @@ context: |
   Workflow: Route A (refine, opsx:propose) or Route B (refine, opsx:explore,
   opsx:new, opsx:continue per artifact), then opsx:apply, opsx:verify,
   adversarial-review if the scope is broad, commit, pull request, review-pr
-  in a fresh context (findings: the agent
-  edits the artifacts directly, never with opsx:continue, then re-applies),
+  in a fresh context, in rounds bounded by ka review-rounds (blocking findings:
+  the agent edits the artifacts directly, never with opsx:continue, then
+  re-applies),
   update-features if user-visible, human review,
-  opsx:archive, commit, the reviewer merges into master. The full
+  opsx:archive, commit, merge into master. The full
   pipeline is in docs/dev-standards/base-standards.md.
 
   Global rules for every artifact:
@@ -66,6 +67,7 @@ rules:
   design:
     - For a change that crosses layers, show the full flow of requests and messages between them.
     - Record decisions with long-term consequences as Context, Decision, Consequences.
+    - 'Under "## Decisions", give each decision its own "### " heading that names what was chosen and about what (`### D3. Lava is the ninth material`): `ka decisions` finds a decision by its heading once the change is archived.'
     - Flag dependency-wiring or bootstrap changes and require a boot smoke test.
 
   specs:
@@ -76,5 +78,6 @@ rules:
     - Order the tasks test-first (failing test, minimal implementation, refactor).
     - Test, typecheck and lint with the commands configured for each layer (step 4 of the mandatory steps), never with the raw tools.
     - For schema work, include the exact command that generates the migration.
+    - For a dependency-wiring or bootstrap change, add a boot smoke test task (start the application, wait for its ready log line, stop it).
     - For a message or job payload change, add an audit task over every producer and consumer of it.
     - Unit and integration tests follow docs/dev-standards/testing-standards.md.

@@ -30,7 +30,13 @@
       "Bash(ka render *)",
       "Bash(ka sync --dry-run *)",
       "Bash(ka sync --scaffold --dry-run *)",
-      "Bash(ka archive-prune --dry-run *)"
+      "Bash(ka archive-prune --dry-run *)",
+      "Bash(ka decisions *)",
+      "Bash(ka review-rounds status *)",
+      "Bash(ka review-rounds gate *)",
+      "Bash(ka scope *)",
+      "Bash(ka openspec-check *)",
+      "Bash(ka features-check)"
     ]
   }
 }

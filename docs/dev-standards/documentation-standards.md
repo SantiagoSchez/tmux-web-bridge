@@ -18,6 +18,8 @@ Never:
 - mention the current task, ticket, pull request or author. That belongs in git history and the pull request;
 - write multi-paragraph essays. A long explanation goes in a docstring or in the design of the change.
 
+Code comments are in English.
+
 ## Docstrings
 
 Document (JSDoc, docstrings, doc comments, whatever the layer's language uses):
@@ -53,12 +55,17 @@ A decision with long-term consequences (a library, a pattern, a deployment model
 - **Decision**: the choice made, and the alternatives turned down.
 - **Consequences**: what it enables and what it rules out.
 
+Each decision is a `### ` heading under the `## Decisions` section, and the heading names the choice and its subject (`### D2. Shadows from one shadow map, fitted to the view`, not `### D2. Approach`). `ka decisions <terms>` lists the archived decisions by those headings, with file and line: it is how an agent finds the reason for something without searching the archive.
+
 ## Changelog
 
 `CHANGELOG.md` is generated: **never edit it by hand**. Each change adds one JSON entry under `changelogs/unreleased/`, so two branches never conflict on it, and a release compiles the pending entries into a new version section. A purely internal change adds none: a refactor with no visible effect, tests, tooling, the development harness (`.claude/`, the standards documents, OpenSpec artifacts). Whatever the branch prefix, what decides is whether anything changes for whoever uses, deploys or operates the product.
 
-- Add an entry with `/koalarnes:changelog`, which reads the branch diff and picks the type, scope and description. Without the skill, run `ka changelog add -t <type> -s <scope> -d "<description>" --pr <id>` (`-n` for a dry run).
+- Add an entry with `/koalarnes:changelog`, which reads the branch diff and picks the type, scope and description. Without the skill, run `ka changelog add -t <type> -s <scope> -d "<description>"` (`-n` for a dry run).
+- The entry is usually written before the pull request exists. Its number is added once it is opened, with `ka changelog ref --pr <id>`: `/koalarnes:commit` does it when it opens the pull request.
 - Types: `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
+- Scopes: server, web, trello-extension, host-kit.
+- Descriptions are in `es-ES`.
 - **`-b` (breaking) means a MAJOR release.** A release bumps MAJOR for any breaking entry, MINOR for any `added`, PATCH otherwise. Set it only when the team decides on a MAJOR release; a format or API break inside a normal release is explained in the description instead.
 
 `/koalarnes:release` compiles the entries, rewrites the new section for its readers, writes the version into the project's files and commits. The changelog is the public release notes: every line reads for the person using the product, related small fixes are grouped, entries with no effect on the product (tests, tooling, pipelines) are dropped, operational notes (deploy order, maintenance commands, environment variables) go to the deployment's work item instead, and security entries read as hardening without exploitation details.
@@ -89,5 +96,5 @@ Leave out what the repository already says: directory trees and architecture ove
   ```
 
   `<cap-slug>` is the capability's directory name; `<req-slug>` is the kebab-case of the requirement's name. An H2 that is only an introduction or an index is listed in `features.nonFeatureAreas` and needs no anchors.
-- When a requirement is added, changed or removed, the spec changes first; then `/koalarnes:update-features <change>` regenerates the affected sections, and `ka features-check` must exit 0. It runs once more right before `/opsx:archive`.
+- When a requirement is added, changed or removed, the spec changes first; then `/koalarnes:update-features <change>` regenerates the affected sections, and `ka features-check --strict` must exit 0. It runs once more right before `/opsx:archive`. Plain `ka features-check`, which the review loop runs, lists as pending the requirements a change adds and the catalogue lacks, and the sections for requirements it removes or renames, and still exits 0.
 - Describe capabilities, not figures that drift: no prices, rates or quotas of external services. Describe them qualitatively (tiers, speed against quality) and point at the place in the product where the live value is configured.
