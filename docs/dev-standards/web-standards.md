@@ -13,7 +13,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 
 ## Structure
 
-- `web/src/components/`: one PascalCase `.tsx` file per screen or feature (`Settings.tsx`, `Machines.tsx`, `TerminalView.tsx`, `Trello.tsx`…), which may hold several related components. `icons.tsx` holds the inline SVG icons; `Sheet.tsx` holds `Sheet`, the bottom sheet or centred card every dialog and side panel uses (a screen opened over another of the same flow, as in the file viewer, is a second `Sheet` marked `stacked`, with the one below `inert`, so the one below keeps its state and scroll); `Dialogs.tsx` holds the dialog renderer and the toasts.
+- `web/src/components/`: one PascalCase `.tsx` file per screen or feature (`Settings.tsx`, `Machines.tsx`, `TerminalView.tsx`, `Trello.tsx`…), which may hold several related components. `icons.tsx` holds the inline SVG icons; `Sheet.tsx` holds `Sheet`, the bottom sheet or centred card every dialog and side panel uses (a screen opened over another of the same flow, as in the file viewer, is a second `Sheet` marked `stacked`, with the one below `inert`, so the one below keeps its state and scroll; record the focused element when the screen opens, before the one below turns inert, and focus it again with `preventScroll` when the screen closes, as `FileViewerSheet` does); `Dialogs.tsx` holds the dialog renderer and the toasts.
 - `web/src/*.ts`: camelCase modules with the non-visual logic and global signals (`state.ts`, `ws.ts`, `prefs.ts`…).
 - `web/public/`: files served as is (fonts with their licences, icons, manifest, `sw.js`).
 - Types and pure logic shared with the hub come from `shared/` (`../../shared/types`, `../../../shared/keybar`…), imported without a file extension.

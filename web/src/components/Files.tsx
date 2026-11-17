@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
 import { toast } from '../state';
 import { Sheet } from './Sheet';
-import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin } from '../fileViewer';
+import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin, type FileScreen } from '../fileViewer';
 
 export { fileViewer, type FileOrigin };
 import { IconFileDiff, IconReload } from './icons';
@@ -49,7 +49,20 @@ export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   fileViewer.value = { origin, stack: [{ kind: 'changes' }] };
 }
 
-const push = pushFileScreen;
+/**
+ * For each screen, by its depth, the element that had the focus when the screen above it
+ * opened: it gets the focus back when that screen closes. Read as the screen opens, since
+ * the screen below turns inert right after and the browser takes the focus away from it.
+ */
+const openers: (HTMLElement | null)[] = [];
+
+function push(screen: FileScreen): void {
+  const v = fileViewer.value;
+  if (!v) return;
+  const a = document.activeElement;
+  openers[v.stack.length - 1] = a instanceof HTMLElement && a !== document.body ? a : null;
+  pushFileScreen(screen);
+}
 const pop = fileViewerBack;
 
 const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
@@ -107,8 +120,16 @@ export { fileUrl };
  */
 export function FileViewerSheet() {
   const v = fileViewer.value;
+  const top = (v?.stack.length ?? 0) - 1;
+  const was = useRef(top);
+  // Back one screen: the focus goes back to what opened the one that closed. After the
+  // sheets' own effects, so the one below is no longer inert and can take it.
+  useEffect(() => {
+    const opener = top >= 0 && top < was.current ? openers[top] : null;
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+    was.current = top;
+  }, [top]);
   if (!v) return null;
-  const top = v.stack.length - 1;
   return (
     <>
       {v.stack.map((screen, i) => {
