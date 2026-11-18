@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.26.2 - 2026-11-18
+
+### Cambiado
+
+- En el ordenador, al abrir una ventana desde cualquier sitio del panel (la lista, la búsqueda, la vista de ventanas o Ctrl+1…9) puedes escribir en tmux directamente, sin hacer antes clic en el terminal; un clic en la ventana que ya tienes abierta también te devuelve a él. Si tienes abierta una hoja como «Ajustes», el teclado se queda en ella, y en el móvil no se abre el teclado en pantalla.
+
 ## 1.26.1 - 2026-11-17
 
 ### Corregido
