@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "pr": 49,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "2eb33a42c35eeb3c028f9695f5d9dd2708615062",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-18T17:55:20.963Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 0
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "67caa9bb6d2c1178068f3e926f8f90bf168aa73a",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-18T18:44:47.982Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/TerminalView.tsx",
+      "symbol": "takeFocus",
+      "title": "Opening a window steals the focus from a non-modal editable field (scratchpad note)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "2eb33a42c35eeb3c028f9695f5d9dd2708615062",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The race is real (openWindowWhenReady retries for up to 5 s and takeFocus only checks for aria-modal), but every caller starts from a dialog the user just submitted, so typing a scratchpad note in that gap is unlikely; the guard is a few lines and needs care not to block Scratchpads.tsx:151, which opens a window on purpose, so it belongs in the review's final comment, not in its own work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/shortcuts.ts",
+      "symbol": "bindShortcuts",
+      "title": "Ctrl+N to the window already open skips openWindow and gives no focus back",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "2eb33a42c35eeb3c028f9695f5d9dd2708615062",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "Correct: shortcuts.ts:147 skips openWindow for the window already open, which contradicts the new web-standards.md:33 line, but the user-facing cost is small and the fix is a single line (passing r.pane so the pane is kept), better done now than scheduled.",
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

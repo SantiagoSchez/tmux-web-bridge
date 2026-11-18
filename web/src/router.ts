@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { goBack, replaceCurrent, takeOverlayEntry } from './backButton';
+import { terminalFocus } from './state';
 
 export type Route = { name: 'home' } | { name: 'grid' } | { name: 'window'; host: string; window: string; pane: string | null };
 
@@ -44,7 +45,9 @@ export function goHome(): void {
   else navigate('#/');
 }
 
+/** Opens a window, or the one already open again: on a computer its terminal takes the keyboard. */
 export function openWindow(host: string, window: string, pane?: string | null, replace = false): void {
+  terminalFocus.value = { pane: null, at: Date.now() };
   const hash = windowHref(host, window, pane);
   if (location.hash === hash) return;
   const go = () => {

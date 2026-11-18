@@ -45,6 +45,15 @@ const fontsReady: Promise<unknown> = Promise.race([
   new Promise((r) => setTimeout(r, 3000)),
 ]).catch(() => {});
 
+/**
+ * A terminal shown or a window opened takes the keyboard on a computer, unless a sheet or a
+ * dialog has it: every one is a `Sheet` (aria-modal), and the page below it is not inert.
+ */
+function takeFocus(term: Terminal | null): void {
+  if (isTouch || !term || document.querySelector('[aria-modal="true"]')) return;
+  term.focus();
+}
+
 /** Bytes of the tmux prefix key (C-a → 0x01). */
 function prefixBytes(prefix: string | undefined): string {
   const m = /^C-(.)$/.exec(prefix ?? '');
@@ -940,7 +949,7 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     const unbindInput = isTouch
       ? bindInputProxy(input.current!, sendRaw, () => modsRef.current, () => setMods(new Set()))
       : () => {};
-    if (!isTouch) term.focus();
+    takeFocus(term);
 
     return () => {
       box.current?.removeEventListener('mousedown', onMouseDown, true);
@@ -1174,10 +1183,14 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
   }, [ended]);
 
   // The same after a scratchpad note is pasted here (Enter sends it instead of pressing the paste button
-  // again), or the quick note closes over it.
+  // again), or the quick note closes over it. A window opened, this one again included, asks for
+  // whichever terminal is shown (`pane: null`); one of another space is mounted anew and takes the
+  // focus when it is created.
   const refocus = terminalFocus.value;
   useEffect(() => {
-    if (refocus?.pane === pane.id && !isTouch) termRef.current?.focus();
+    if (!refocus || isTouch) return;
+    if (refocus.pane === null) takeFocus(termRef.current);
+    else if (refocus.pane === pane.id) termRef.current?.focus();
   }, [refocus]);
 
   useEffect(() => {
