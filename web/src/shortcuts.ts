@@ -144,7 +144,10 @@ export function bindShortcuts(): () => void {
     } else if (current) {
       target = current.session.windows.find((x) => x.index === n)?.id ?? null;
     }
-    if (target && host && !(current && current.host.id === host.id && current.window.id === target)) openWindow(host.id, target);
+    if (!target || !host) return;
+    // The window already open keeps its pane: openWindow only gives its terminal the keyboard back.
+    const here = current?.host.id === host.id && current.window.id === target && r.name === 'window';
+    openWindow(host.id, target, here ? r.pane : null);
   };
   window.addEventListener('keydown', onKey, { capture: true });
   return () => window.removeEventListener('keydown', onKey, { capture: true });

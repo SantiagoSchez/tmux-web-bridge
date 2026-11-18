@@ -302,7 +302,7 @@ Si una ventana se abre mientras tienes abierta una hoja o un diálogo del panel,
 ### Volver al terminal con un clic en su ventana
 <!-- capability: terminal-focus; requirement: clicking-the-window-already-open-gives-its-terminal-the-focus -->
 
-En el ordenador, un clic en la ventana que ya tienes abierta devuelve el teclado a su terminal, por ejemplo después de usar un botón de la lista. El terminal no se recarga: conserva lo que mostraba.
+En el ordenador, un clic en la ventana que ya tienes abierta, o su atajo Ctrl+1…9, devuelve el teclado a su terminal, por ejemplo después de usar un botón de la lista. El terminal no se recarga: conserva lo que mostraba y el panel que tenías seleccionado en una ventana partida.
 
 ### En el móvil no se abre el teclado
 <!-- capability: terminal-focus; requirement: opening-a-window-leaves-the-on-screen-keyboard-as-it-was-on-a-touch-device -->

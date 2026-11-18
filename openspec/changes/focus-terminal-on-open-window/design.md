@@ -33,7 +33,7 @@ Alternatives considered:
 - Focusing in the retarget effect of `TerminalView` (on `window.id`/`pane.id` change). It misses the click on the window already open, where nothing changes, and it would also fire on route changes through `popstate`, which are out of scope.
 - Calling `focus()` in each caller's `onClick`. Fourteen call sites to keep in step, and a new one would forget it; the terminal is not mounted yet when the call is made.
 
-Consequences: `router.ts` imports `terminalFocus` from `state.ts`. `state.ts` does not import `router.ts`, so there is no import cycle.
+Consequences: `router.ts` imports `terminalFocus` from `state.ts`. `state.ts` does not import `router.ts`, so there is no import cycle. The number shortcuts (`bindShortcuts` of `web/src/shortcuts.ts`) skipped `openWindow` for the window already open; they now call it in that case too, passing the route's pane so the selected pane stays, and `openWindow` only asks for the focus because the hash does not change.
 
 ### D2. `terminalFocus.pane` accepts `null` for "the terminal shown"
 

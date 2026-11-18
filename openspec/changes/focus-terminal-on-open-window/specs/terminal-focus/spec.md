@@ -40,13 +40,19 @@ On a computer, when a window opens while a sheet or a dialog of the panel is ope
 
 ### Requirement: Clicking the window already open gives its terminal the focus
 
-On a computer, clicking the window the panel already shows, from any place that opens a window, SHALL give the focus back to its terminal without reloading the window.
+On a computer, clicking the window the panel already shows, from any place that opens a window, or pressing its number shortcut (Ctrl+1…9), SHALL give the focus back to its terminal without reloading the window or changing its selected pane.
 
 #### Scenario: Back to the terminal from the list
 
 - **GIVEN** the panel on a computer showing window 1 «claude» of «Local · demo», after the owner clicked a button of the list
 - **WHEN** the owner clicks window 1 «claude» of «Local · demo» in the list
 - **THEN** the terminal keeps what it shows and the next key typed reaches its pane
+
+#### Scenario: Back to the terminal with the number shortcut
+
+- **GIVEN** the panel on a computer showing the second pane of window 2 «shell» of «Local · demo», after the owner clicked a button of the list
+- **WHEN** the owner presses Ctrl+2
+- **THEN** the terminal keeps what it shows, the second pane stays selected and the next key typed reaches it
 
 ### Requirement: Opening a window leaves the on-screen keyboard as it was on a touch device
 
