@@ -35,7 +35,7 @@ The panel has no test runner (see `docs/dev-standards/web-standards.md`, Testing
 
 ## 6. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 6.1 Run `/ka:update-features focus-terminal-on-open-window` for the new `terminal-focus` capability, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 6.1 Run `/ka:update-features focus-terminal-on-open-window` for the new `terminal-focus` capability, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
 
 ## 7. E2E pipeline (mandatory step 7)
 

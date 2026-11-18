@@ -18,6 +18,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
 - [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo.
+- [Foco del terminal](#foco-del-terminal): cuándo el terminal recibe el teclado sin que tengas que hacer clic en él.
 
 ## Terminal
 
@@ -285,3 +286,25 @@ Cuando Claude Code termina en un panel, su ventana muestra ✅ hasta que lo ves.
 <!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->
 
 Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, o la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste). Así se puede saber por qué no llegó una notificación concreta.
+
+## Foco del terminal
+
+### Al abrir una ventana, escribes directamente en ella
+<!-- capability: terminal-focus; requirement: opening-a-window-gives-the-terminal-the-focus-on-a-computer -->
+
+En el ordenador, al abrir una ventana el terminal recibe el teclado: lo siguiente que escribes llega a tmux sin hacer antes clic en el terminal. Da igual desde dónde la abras (la lista de espacios y ventanas, sus tarjetas, el rail, la vista de ventanas, la búsqueda, la actividad, la franja de límites de uso, las pestañas de los paneles o los atajos Ctrl+1…9) y si es del espacio que ya ves o de otro. Una ventana que acabas de crear, también desde Trello, recibe el teclado en cuanto aparece.
+
+### Una hoja abierta conserva el teclado
+<!-- capability: terminal-focus; requirement: an-open-sheet-or-dialog-keeps-the-focus-when-a-window-opens -->
+
+Si una ventana se abre mientras tienes abierta una hoja o un diálogo del panel, como «Ajustes», el teclado se queda en la hoja. Pasa, por ejemplo, cuando una ventana recién creada tarda unos segundos en aparecer y entretanto has abierto «Ajustes»: el panel muestra la ventana detrás, pero lo que escribes sigue yendo al campo de «Ajustes».
+
+### Volver al terminal con un clic en su ventana
+<!-- capability: terminal-focus; requirement: clicking-the-window-already-open-gives-its-terminal-the-focus -->
+
+En el ordenador, un clic en la ventana que ya tienes abierta devuelve el teclado a su terminal, por ejemplo después de usar un botón de la lista. El terminal no se recarga: conserva lo que mostraba.
+
+### En el móvil no se abre el teclado
+<!-- capability: terminal-focus; requirement: opening-a-window-leaves-the-on-screen-keyboard-as-it-was-on-a-touch-device -->
+
+En el móvil y la tableta, abrir una ventana no saca el teclado en pantalla, para no tapar la mitad de lo que muestra el terminal. Para escribir, basta con tocar el terminal, como hasta ahora.
