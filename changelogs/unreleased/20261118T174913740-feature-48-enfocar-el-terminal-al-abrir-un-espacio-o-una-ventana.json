@@ -1,0 +1,7 @@
+{
+  "type": "changed",
+  "scope": "web",
+  "description": "En el ordenador, al abrir una ventana (desde la lista de espacios, las tarjetas, la búsqueda, la cuadrícula, los atajos Ctrl+1…9 o cualquier otro sitio) el terminal toma el foco y puedes escribir en tmux sin hacer clic antes en él. Un clic en la ventana que ya tienes abierta también te devuelve al terminal. Si tienes abierta una hoja como «Ajustes», el foco se queda en ella; en el móvil no se abre el teclado",
+  "issue": "48",
+  "breaking": false
+}
