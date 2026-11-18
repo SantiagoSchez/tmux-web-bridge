@@ -48,11 +48,13 @@ The panel has no test runner (see `docs/dev-standards/web-standards.md`, Testing
 
 ## 8. Human review (mandatory step 8)
 
-- [ ] 8.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+- [x] 8.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+  - 2026-11-18: the owner takes PR #49 as good, without a manual review, and asked to apply R1-02 first (reviewed in round 2, gate passed on `67caa9b`).
 
 ## 9. features-check before the archive (mandatory step 9)
 
-- [ ] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - Exit code 0 (51 sections verified).
 
 ## Workflow follow-up
 
