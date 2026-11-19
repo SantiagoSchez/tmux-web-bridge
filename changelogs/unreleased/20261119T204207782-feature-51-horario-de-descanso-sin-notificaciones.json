@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "server",
+  "description": "Añadido el horario de descanso en Ajustes › Notificaciones: una franja en los días que elijas, y días enteros, en los que el servidor central no envía ninguna notificación push a ningún dispositivo; lo pendiente se sigue viendo en el panel y «Enviar prueba» llega siempre",
+  "issue": "51",
+  "breaking": false
+}

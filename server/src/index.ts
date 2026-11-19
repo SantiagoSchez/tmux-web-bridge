@@ -8,6 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
+import { isQuietAt } from '../../shared/quiet-hours.js';
 import { branchNameProblem } from '../../shared/worktree.js';
 import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
@@ -74,11 +75,11 @@ const hosts = new Map<string, HostMonitor>();
 const accounts = new AccountManager(new AccountStore(config.dataDir), hosts);
 const hostOrder = new HostOrder(config.dataDir, () => [...hosts.keys()]);
 const conns = new ConnectionRegistry();
-const push = new PushService(config);
+const settings = new SettingsStore(config.dataDir);
+const push = new PushService(config, () => isQuietAt(settings.value.quietHours, new Date()));
 const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
-const settings = new SettingsStore(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
 const activity = new ActivityLog(config.dataDir);
 const scratchpads = new ScratchpadStore(config.dataDir);
@@ -1250,7 +1251,8 @@ app.post('/api/push/unsubscribe', async (req) => {
 
 app.post('/api/push/test', async (req) => {
   const { endpoint } = (req.body ?? {}) as { endpoint?: string };
-  const n = await push.send({ title: '🔔 twb', body: 'Las notificaciones funcionan', tag: 'test', url: '/' }, typeof endpoint === 'string' && endpoint ? [endpoint] : undefined);
+  // The test shows notifications work, so the quiet schedule does not hold it back.
+  const n = await push.send({ title: '🔔 twb', body: 'Las notificaciones funcionan', tag: 'test', url: '/' }, typeof endpoint === 'string' && endpoint ? [endpoint] : undefined, { evenWhenQuiet: true });
   return { ok: n > 0, sent: n };
 });
 

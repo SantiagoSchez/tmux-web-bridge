@@ -143,7 +143,7 @@ export const activity = signal<ActivityEvent[]>([]);
 /** The notes of the five scratchpads by storage position (from the hub). */
 export const scratchpads = signal<Scratchpads>([[], [], [], [], []]);
 
-export type SettingsTab = 'device' | 'shortcuts' | 'machines' | 'folders' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
+export type SettingsTab = 'device' | 'shortcuts' | 'machines' | 'folders' | 'notifications' | 'automations' | 'dictation' | 'keys' | 'trello' | 'account';
 /** The settings section shown; null: the list of sections on the phone, the first one on a big screen. */
 export const settingsTab = signal<SettingsTab | null>(null);
 

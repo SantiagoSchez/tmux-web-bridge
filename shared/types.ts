@@ -238,6 +238,23 @@ export interface HubAddresses {
   internal: string;
 }
 
+/**
+ * When the hub sends no push notification (Ajustes › Notificaciones), in the hub's local
+ * time. See shared/quiet-hours.ts.
+ */
+export interface QuietHours {
+  /** Off: pushes go out as if there were no schedule, which is kept as it is. */
+  enabled: boolean;
+  /** HH:MM. The window starts at this minute (inside) and ends at `to` (outside). */
+  from: string;
+  /** HH:MM, different from `from`. Earlier than `from`: the window crosses midnight. */
+  to: string;
+  /** The days the window starts on (0 Sunday … 6 Saturday). */
+  days: number[];
+  /** The days silenced from 00:00 to 24:00, whatever the window says. */
+  allDay: number[];
+}
+
 /** Settings of the whole hub (every device sees and changes the same ones). */
 export interface HubSettings {
   /**
@@ -288,6 +305,8 @@ export interface HubSettings {
   trelloExtension: Record<string, string>;
   /** The prompt of a task launched on a Trello card (panel and extension), with {url}, {name}, {shortLink} and {board}. */
   trelloPromptTemplate: string;
+  /** When the hub sends no push notification, for every device. */
+  quietHours: QuietHours;
 }
 
 /** A folder of a machine added in the panel: «Nuevo espacio» opens a space there. */

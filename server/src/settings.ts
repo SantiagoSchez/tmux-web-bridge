@@ -5,6 +5,7 @@ import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS } from '../../shared/dic
 import { parseShortcut, serializeShortcut } from '../../shared/shortcuts.js';
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
+import { DEFAULT_QUIET_HOURS, sanitizeQuietHours } from '../../shared/quiet-hours.js';
 import { DEFAULT_TEMPLATE } from '../../shared/trello.js';
 import type { HubAddresses, HubSettings } from '../../shared/types.js';
 
@@ -32,6 +33,7 @@ const DEFAULTS: HubSettings = {
   commands: {},
   trelloExtension: {},
   trelloPromptTemplate: DEFAULT_TEMPLATE,
+  quietHours: DEFAULT_QUIET_HOURS,
 };
 
 /** IP addresses (or ssh's from= patterns: CIDR, *), comma-separated; anything else is dropped. */
@@ -126,6 +128,7 @@ export class SettingsStore extends EventEmitter {
         trelloExtension: sanitizeTrelloExtension(saved.trelloExtension),
         hubAddresses: sanitizeAddresses(saved.hubAddresses) ?? DEFAULTS.hubAddresses,
         hubUrls: sanitizeUrls(saved.hubUrls) ?? DEFAULTS.hubUrls,
+        quietHours: sanitizeQuietHours(saved.quietHours) ?? DEFAULTS.quietHours,
       };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
@@ -174,6 +177,8 @@ export class SettingsStore extends EventEmitter {
     if (addresses) next.hubAddresses = addresses;
     const urls = sanitizeUrls(patch.hubUrls);
     if (urls) next.hubUrls = urls;
+    const quietHours = sanitizeQuietHours(patch.quietHours);
+    if (quietHours) next.quietHours = quietHours;
     this.state = next;
     this.save();
     this.emit('change', next);
