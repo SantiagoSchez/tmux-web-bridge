@@ -32,6 +32,8 @@
 # NOTIFY_TOKEN), cada pregunta/atención/terminado se envía al servidor central de
 # tmux-web-bridge, que decide a qué dispositivos manda la notificación push. El
 # kit no lanza notificaciones propias: solo le dice si ya lo estás viendo.
+# Un fin de turno (state done, hook Stop) con trabajo en segundo plano que volverá a
+# despertar a Claude es una pausa: el panel sigue en 🔨 y no se avisa (waits_for_background).
 #
 # Estados: question | attention | done | busy | claude | ssh
 #
@@ -326,6 +328,17 @@ lock() {
     trap 'rmdir "$STATE_DIR/.lock" 2>/dev/null' EXIT
 }
 
+# ¿El fin de turno (JSON del hook Stop en $1) deja trabajo que volverá a despertar a Claude?
+# Claude Code lo dice en background_tasks (lo que sigue en segundo plano) y session_crons
+# (/loop, ScheduleWakeup, CronCreate). Un comando shell no cuenta: un servidor de desarrollo
+# o un tail -f no terminan nunca y Claude sí está esperándote. Sin jq, sin JSON o sin esos
+# campos (Claude Code antiguo), no: es un final, como siempre.
+waits_for_background() {
+    [ -n "$1" ] && command -v jq >/dev/null 2>&1 || return 1
+    jq -e '([.background_tasks[]? | select(.type != "shell")] | length > 0)
+           or ((.session_crons // []) | length > 0)' <<< "$1" >/dev/null 2>&1
+}
+
 write_state() {
     local pane="$1" state="$2" name="$3" sid="$4"
     mkdir -p "$STATE_DIR"
@@ -344,6 +357,10 @@ cmd_state() {
     # rebajar 🙋 a 💬 (ni volver a notificar). La pregunta la limpia PostToolUse al responder.
     if [ "$state" = "attention" ] && [ "${old_state:-}" = "question" ]; then
         state="question"; event=""
+    fi
+    # Fin de turno con trabajo que despertará a Claude: es una pausa, no un final.
+    if [ "$state" = "done" ] && waits_for_background "$payload"; then
+        state="busy"; event=""
     fi
     # Terminado: si lo estás viendo no hay nada pendiente de ver.
     [ "$state" = "done" ] && pane_is_viewed "$TMUX_PANE" && state="claude"
