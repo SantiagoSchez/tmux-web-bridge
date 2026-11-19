@@ -4,6 +4,14 @@
     "worktrees": { "setup": "pnpm install --frozen-lockfile" }
   },
   "platform": { "host": "github", "repository": "SantiagoSchez/tmux-web-bridge" },
+  "pullRequests": {
+    "afterMerge": [
+      {
+        "name": "Follow the deploy",
+        "instructions": "Follow the `deploy` run of the merge commit with `gh run watch` and report how it went; say so when the merge deploys nothing (it only touched the `paths-ignore` of `.github/workflows/deploy.yml`). See docs/dev-standards/release-standards.md."
+      }
+    ]
+  },
   "tracker": { "kind": "github-issues" },
   "layers": [
     {

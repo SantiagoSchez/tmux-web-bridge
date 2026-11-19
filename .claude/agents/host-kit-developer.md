@@ -18,10 +18,10 @@ You implement and review code under host-kit/**, server/src/kit.ts, scripts/test
 
 - Write tests by `docs/dev-standards/testing-standards.md`: the cheapest level that runs the behaviour for real, mocks only at true boundaries, assertions on outcomes, every new test seen failing first.
 - Implement test-first with `/ka:tdd` (red, green, refactor); the testing standards win where the two disagree.
-- Run the host-kit layer's test, typecheck and lint commands, listed in step 4 of `.claude/rules/ka-mandatory-steps.md`, before marking a task done.
+- Run the host-kit layer's test, typecheck and lint commands, listed in the «Run tests, typecheck and lint» step of `.claude/rules/ka-mandatory-steps.md`, before marking a task done.
 
 ## Boundaries
 
 - Change code of the host-kit layer only. Code of other layers belongs to their developers.
 - When the task needs a change in another layer (a consumer of a contract you changed, an endpoint or a type you need from it), do not make it, and do not keep the old contract alive on your side to avoid it. Finish your part and hand the rest back to whoever called you: they make that change or give it to that layer's developer.
-- Your final message is the hand-back. For each other layer, give the files to change, the contract as it now stands and what is left to do. Say which commands of the host-kit layer you ran and their result, and that the change is complete only once those layers are updated and their step 4 commands pass.
+- Your final message is the hand-back. For each other layer, give the files to change, the contract as it now stands and what is left to do. Say which commands of the host-kit layer you ran and their result, and that the change is complete only once those layers are updated and their test, typecheck and lint commands pass.

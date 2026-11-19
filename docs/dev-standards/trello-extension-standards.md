@@ -44,7 +44,7 @@ The conventions of the `trello-extension` layer (trello-extension/**). The princ
 ## Testing
 
 - The levels this layer tests at and where each kind of test lives, following [testing-standards.md](testing-standards.md).
-- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
+- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in the «Run tests, typecheck and lint» step of [the mandatory steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
 - Unit tests live next to the code as `src/*.test.ts` and cover the browser-free logic of `logic.ts`, including the `shared/trello.ts` and `shared/worktree.ts` functions it re-exports, with no mocks.
 - The hub side of `/api/ext/*` (token, targets, launch) is tested in the server layer, `server/src/ext.test.ts`.
 - `content.ts`, `background.ts` and `options.ts` have no automated tests in the repo: a change to them is checked in Chrome against a local hub, building with `TWB_EXTRA_HOSTS` for a headless browser (to confirm the expected level for UI changes).
