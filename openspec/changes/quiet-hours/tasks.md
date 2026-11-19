@@ -59,7 +59,7 @@
 
 ## 9. Feature catalogue
 
-- [ ] 9.1 Run `/ka:update-features quiet-hours`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`
+- [x] 9.1 Run `/ka:update-features quiet-hours`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`
 
 ## 10. E2E pipeline
 

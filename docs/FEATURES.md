@@ -294,7 +294,32 @@ Claude Code a veces cierra el turno solo para esperar a algo que lo volverá a d
 ### Por qué no llegó una notificación
 <!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->
 
-Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, o la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste). Así se puede saber por qué no llegó una notificación concreta.
+Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste) o es horario de descanso. Así se puede saber por qué no llegó una notificación concreta.
+
+### Horario de descanso: la franja
+<!-- capability: push-notifications; requirement: the-quiet-window-silences-push-notifications-on-its-days -->
+
+En ⚙️ Ajustes › Notificaciones se elige una franja (por ejemplo, de 22:00 a 08:00) y los días en que se aplica. Mientras el horario está activado, dentro de esa franja el servidor central no envía ninguna notificación push, a ningún dispositivo. Si la franja acaba antes de empezar, cruza la medianoche y cuenta para el día en que empieza: marcar el viernes silencia del viernes a las 22:00 al sábado a las 08:00, pero no la noche del sábado. El minuto de inicio ya está dentro y el de fin ya no: a las 21:59 y a las 08:00 la notificación llega. Las horas son las del servidor central, como las de las automatizaciones.
+
+### Horario de descanso: días enteros
+<!-- capability: push-notifications; requirement: a-whole-quiet-day-silences-push-notifications-all-day -->
+
+Además de la franja, se pueden marcar días enteros, por ejemplo los fines de semana. Esos días no llega ninguna notificación push de 00:00 a 24:00, diga lo que diga la franja. El día siguiente vuelve a avisar desde las 00:00, salvo que la franja también lo cubra.
+
+### Qué silencia el horario de descanso
+<!-- capability: push-notifications; requirement: the-quiet-schedule-covers-every-push-except-the-test -->
+
+El horario silencia todas las notificaciones push: las 🙋 preguntas, los 💬 permisos y los ✅ turnos terminados de Claude Code, y los avisos de que una automatización no se ha podido lanzar. Solo cambia lo que llega al móvil: los iconos de las ventanas, los pendientes y la Actividad siguen igual, así que al volver ves todo lo que pasó. La notificación de prueba de «Enviar prueba» llega siempre, para comprobar que las notificaciones funcionan aunque sea de noche.
+
+### Desactivar el horario de descanso
+<!-- capability: push-notifications; requirement: turning-the-quiet-schedule-off-keeps-it -->
+
+El horario se activa y se desactiva con su interruptor. Desactivado, las notificaciones llegan como si no hubiera horario, pero la franja, sus días y los días enteros se guardan: al activarlo otra vez vuelven tal cual estaban.
+
+### Una franja necesita dos horas distintas
+<!-- capability: push-notifications; requirement: a-quiet-window-must-start-and-end-at-different-times -->
+
+Una franja que empieza y acaba a la misma hora (de 08:00 a 08:00) no se guarda: la pantalla explica que la franja no puede empezar y acabar a la misma hora, y el servidor central se queda con el horario que tenía. Lo mismo pasa con una hora o un día que no son válidos.
 
 ## Foco del terminal
 
