@@ -22,6 +22,22 @@
         "question": 0,
         "nitpick": 2
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "993a164ed38362babb1d36c2cc10446273c99e71",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T19:21:58.812Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -51,12 +67,12 @@
       "origin": "introduced",
       "round": 1,
       "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 4,
+      "scoreReason": "The double tooltip is real but only cosmetic, and only when the mouse rests on these small elements; the fix the reviewer proposes would cost information, because the custom tip shows neither the bell and activity flags nor the attached-client mark, and design D6 kept the icon-button titles on purpose.",
       "followUp": null
     },
     {
@@ -68,7 +84,7 @@
       "origin": "introduced",
       "round": 1,
       "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
@@ -85,7 +101,7 @@
       "origin": "introduced",
       "round": 1,
       "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,

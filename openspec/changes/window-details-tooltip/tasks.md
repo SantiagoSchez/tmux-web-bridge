@@ -80,7 +80,7 @@ The `web` layer has no test runner: its logic is covered by group 3, and the com
 
 ## 8. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 8.1 Run `/ka:update-features window-details-tooltip` for the new requirements of `window-details` and `trello-card-launch`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 8.1 Run `/ka:update-features window-details-tooltip` for the new requirements of `window-details` and `trello-card-launch`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
 
 ## 9. E2E pipeline (mandatory step 7)
 
