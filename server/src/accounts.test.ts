@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -341,6 +342,31 @@ function fakeHome(dir: string) {
   writeFileSync(join(dir, '.claude.json'), JSON.stringify({ numStartups: 5, oauthAccount: oauthAccount('max'), projects: { '/x': {} } }, null, 2));
 }
 
+/**
+ * The part of a fake tmux that answers `show-environment -g CLAUDE_CONFIG_DIR` as tmux
+ * does: `NAME=value` when the server's global environment sets it, else exit 1.
+ */
+function showEnvironment(configDir?: string): string {
+  const answer = configDir ? `echo 'CLAUDE_CONFIG_DIR=${configDir}'; exit 0` : `echo "unknown variable: CLAUDE_CONFIG_DIR" >&2; exit 1`;
+  return `if [ "$1" = show-environment ]; then [ "$2 $3" = "-g CLAUDE_CONFIG_DIR" ] || exit 1; ${answer}; fi\n`;
+}
+
+/** A tmux server that only answers `show-environment`, in `dir/bin`; its path. */
+function fakeTmux(dir: string, configDir?: string): { bin: string; tmux: string } {
+  const bin = join(dir, 'bin');
+  mkdirSync(bin, { recursive: true });
+  const tmux = join(bin, 'tmux');
+  writeFileSync(tmux, `#!/bin/sh\n${showEnvironment(configDir)}exit 1\n`, { mode: 0o755 });
+  return { bin, tmux };
+}
+
+/** A Claude Code folder with its own login and account, as `CLAUDE_CONFIG_DIR` points to. */
+function fakeConfigDir(dir: string, name: string) {
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, '.credentials.json'), JSON.stringify({ claudeAiOauth: cred(name) }), { mode: 0o600 });
+  writeFileSync(join(dir, '.claude.json'), JSON.stringify({ numStartups: 2, oauthAccount: oauthAccount(name) }, null, 2));
+}
+
 test('inspect reads the login and the account of a Linux machine', withDir(async (dir) => {
   if (process.platform !== 'linux') return;
   fakeHome(dir);
@@ -400,18 +426,66 @@ test('a switch the hub calls off writes nothing', withDir(async (dir) => {
   assert.equal(existsSync(join(dir, '.claude.lock')), false);
 }));
 
+test("a machine whose tmux sets CLAUDE_CONFIG_DIR is read from that folder, not the default one", withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  fakeHome(dir);
+  const folder = join(dir, '.claude-twb');
+  fakeConfigDir(folder, 'two');
+  const { bin, tmux } = fakeTmux(dir, folder);
+  const snap = await inspectHost(fakeExec(dir, bin, tmux));
+  assert.equal(snap.cred?.refreshToken, 'rt-two');
+  assert.deepEqual(snap.oauthAccount, oauthAccount('two'));
+}));
+
+test('a switch of that machine writes its folder and leaves the default one as it was', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  fakeHome(dir);
+  const folder = join(dir, '.claude-twb');
+  fakeConfigDir(folder, 'two');
+  const { bin, tmux } = fakeTmux(dir, folder);
+  const credsBefore = readFileSync(join(dir, '.claude', '.credentials.json'), 'utf8');
+  const confBefore = readFileSync(join(dir, '.claude.json'), 'utf8');
+  // A refresh of the default folder's Claude Code (another one: the bot) holds its three
+  // locks: it does not hold this switch up, and the switch leaves them to it.
+  const botLocks = ['.claude/.oauth_refresh.lock', '.claude.lock', '.claude.json.lock'];
+  for (const lock of botLocks) mkdirSync(join(dir, lock));
+  const { snap, written } = await switchHost(fakeExec(dir, bin, tmux), () => ({ cred: cred('three'), oauthAccount: oauthAccount('three') }));
+  assert.equal(written, true);
+  assert.equal(snap.cred?.refreshToken, 'rt-two');
+  assert.equal(JSON.parse(readFileSync(join(folder, '.credentials.json'), 'utf8')).claudeAiOauth.refreshToken, 'rt-three');
+  const config = JSON.parse(readFileSync(join(folder, '.claude.json'), 'utf8'));
+  assert.deepEqual(config.oauthAccount, oauthAccount('three'));
+  assert.equal(config.numStartups, 2);
+  assert.equal(readFileSync(join(dir, '.claude', '.credentials.json'), 'utf8'), credsBefore);
+  assert.equal(readFileSync(join(dir, '.claude.json'), 'utf8'), confBefore);
+  for (const lock of ['.claude-twb/.oauth_refresh.lock', '.claude-twb.lock', '.claude-twb/.claude.json.lock']) assert.equal(existsSync(join(dir, lock)), false, lock);
+  for (const lock of botLocks) assert.equal(existsSync(join(dir, lock)), true, lock);
+}));
+
+const SERVICE = 'Claude Code-credentials';
+
+/** A time long before any test runs, to tell whether a switch touched a file. */
+const PAST = new Date('2020-01-01T00:00:00Z');
+
+/** The Keychain item Claude Code uses with `CLAUDE_CONFIG_DIR` set to `folder`. */
+function folderService(folder: string): string {
+  return `${SERVICE}-${createHash('sha256').update(folder).digest('hex').slice(0, 8)}`;
+}
+
 /**
- * A made-up macOS in `dir/bin`: uname says Darwin, and `security` keeps the Keychain's
- * password in ~/kc (account s "pro", with an MCP server's token, `mcp` long if asked) and
- * leaves what `security -i` gets in ~/kc.in, and the arguments of a direct
- * `add-generic-password` (a login too long for `-i`) in ~/kc.args. Like the login
- * Keychain, it answers only inside the graphical session (TWB_GUI, set by the fake tmux
- * server's `run-shell`), except with `keychain: 'ssh'`, where it answers anyone. With
- * `keychain: 'none'` there is no tmux server either. The fake tmux logs its arguments in
- * ~/tmux.log and expands formats in `run-shell`'s command as tmux does (`##` is `#`,
- * `#{…}` and `#<letter>` are replaced).
+ * A made-up macOS in `dir/bin`: uname says Darwin, and `security` keeps one password per
+ * Keychain item, in ~/kc for `Claude Code-credentials` and in ~/kc<rest of the name> for
+ * another item (`Claude Code-credentials-<hash>` is ~/kc-<hash>); ~/kc holds account s
+ * "pro", with an MCP server's token (`mcp` long if asked). It leaves what `security -i`
+ * gets in ~/kc.in, and the arguments of a direct `add-generic-password` (a login too long
+ * for `-i`) in ~/kc.args. Like the login Keychain, it answers only inside the graphical
+ * session (TWB_GUI, set by the fake tmux server's `run-shell`), except with
+ * `keychain: 'ssh'`, where it answers anyone. With `keychain: 'none'` there is no tmux
+ * server either. The fake tmux logs its arguments in ~/tmux.log, sets `CLAUDE_CONFIG_DIR`
+ * in its global environment when `configDir` is given, and expands formats in
+ * `run-shell`'s command as tmux does (`##` is `#`, `#{…}` and `#<letter>` are replaced).
  */
-function fakeMac(dir: string, keychain: 'ssh' | 'tmux' | 'none', opts: { refuseWrite?: boolean; homeName?: string; mcp?: string } = {}) {
+function fakeMac(dir: string, keychain: 'ssh' | 'tmux' | 'none', opts: { refuseWrite?: boolean; homeName?: string; mcp?: string; configDir?: string } = {}) {
   const home = join(dir, opts.homeName ?? 'home');
   const bin = join(dir, 'bin');
   mkdirSync(home);
@@ -422,14 +496,16 @@ function fakeMac(dir: string, keychain: 'ssh' | 'tmux' | 'none', opts: { refuseW
   const gate = keychain === 'ssh' ? '' : '[ -n "$TWB_GUI" ] || { echo "security: User interaction is not allowed." >&2; exit 36; }\n';
   const write = opts.refuseWrite ? 'exit 45' : 'cat > "$HOME/kc.in"';
   const writeArgs = opts.refuseWrite ? 'exit 45' : 'shift; printf "%s\\n" "$@" > "$HOME/kc.args"';
-  writeFileSync(join(bin, 'security'), `#!/bin/sh\n${gate}case "$1" in find-generic-password) cat "$HOME/kc";; -i) ${write};; add-generic-password) ${writeArgs};; *) exit 1;; esac\n`, { mode: 0o755 });
+  const item = `svc=""; prev=""; for a in "$@"; do [ "$prev" = -s ] && svc=$a; prev=$a; done; f="$HOME/kc\${svc#${SERVICE}}"\n`;
+  const find = `[ -f "$f" ] || { echo "security: The specified item could not be found in the keychain." >&2; exit 44; }; cat "$f"`;
+  writeFileSync(join(bin, 'security'), `#!/bin/sh\n${gate}${item}case "$1" in find-generic-password) ${find};; -i) ${write};; add-generic-password) ${writeArgs};; *) exit 1;; esac\n`, { mode: 0o755 });
   const tmux = join(bin, 'tmux');
   const expand = `sed -e 's/##/@HASH@/g' -e 's/#{[^}]*}/X/g' -e 's/#[A-Za-z]/X/g' -e 's/@HASH@/#/g'`;
   writeFileSync(
     tmux,
     keychain === 'none'
       ? '#!/bin/sh\necho "no server running on /private/tmp/tmux-501/default" >&2\nexit 1\n'
-      : `#!/bin/sh\nprintf "%s\\n" "$*" >> "$HOME/tmux.log"\n[ "$1" = run-shell ] || exit 1\nTWB_GUI=1 exec /bin/sh -c "$(printf %s "$2" | ${expand})"\n`,
+      : `#!/bin/sh\nprintf "%s\\n" "$*" >> "$HOME/tmux.log"\n${showEnvironment(opts.configDir)}[ "$1" = run-shell ] || exit 1\nTWB_GUI=1 exec /bin/sh -c "$(printf %s "$2" | ${expand})"\n`,
     { mode: 0o755 },
   );
   return { home, exec: fakeExec(home, bin, tmux) };
@@ -437,16 +513,16 @@ function fakeMac(dir: string, keychain: 'ssh' | 'tmux' | 'none', opts: { refuseW
 
 type KeychainDoc = { claudeAiOauth: OAuthCred; mcpOAuth?: unknown };
 
-/** What the switch wrote into the fake Keychain, decoded: through `security -i`, or as arguments when too long. */
-function keychainWrite(home: string): KeychainDoc {
+/** What the switch wrote into the fake Keychain item `service`, decoded: through `security -i`, or as arguments when too long. */
+function keychainWrite(home: string, service = SERVICE): KeychainDoc {
   if (existsSync(join(home, 'kc.args'))) {
     const args = readFileSync(join(home, 'kc.args'), 'utf8').split('\n');
-    assert.deepEqual(args.slice(0, 5), ['-U', '-a', 'tester', '-s', 'Claude Code-credentials']);
+    assert.deepEqual(args.slice(0, 5), ['-U', '-a', 'tester', '-s', service]);
     assert.equal(args[5], '-X');
     return JSON.parse(Buffer.from(args[6], 'hex').toString('utf8'));
   }
   const cmd = readFileSync(join(home, 'kc.in'), 'utf8');
-  const hex = /-s "Claude Code-credentials" -X "([0-9a-f]+)"/.exec(cmd)?.[1];
+  const hex = new RegExp(`-s "${service}" -X "([0-9a-f]+)"`).exec(cmd)?.[1];
   assert.ok(cmd.startsWith('add-generic-password -U -a "tester"') && hex, cmd);
   return JSON.parse(Buffer.from(hex, 'hex').toString('utf8'));
 }
@@ -491,10 +567,12 @@ test('a switch of a Mac whose Keychain only answers through tmux writes the Keyc
 }));
 
 for (const via of ['ssh', 'tmux'] as const) {
-  test(`a Mac whose Keychain answers (${via}) is switched in the Keychain only, which keeps its other entries`, withDir(async (dir) => {
+  test(`a Mac whose Keychain answers (${via}) is switched in the Keychain only, which keeps its other entries, and its file gets a new time`, withDir(async (dir) => {
     if (process.platform !== 'linux') return;
     const { home, exec } = fakeMac(dir, via);
-    const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
+    const file = join(home, '.claude', '.credentials.json');
+    const fileBefore = readFileSync(file, 'utf8');
+    utimesSync(file, PAST, PAST);
     const { snap, written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
     assert.equal(written, true);
     assert.equal(snap.store, 'keychain');
@@ -503,7 +581,9 @@ for (const via of ['ssh', 'tmux'] as const) {
     assert.equal(kc.claudeAiOauth.refreshToken, 'rt-team');
     assert.deepEqual(kc.mcpOAuth, { srv: { token: 'k' } });
     // A second copy of a refresh token that works once would end the Keychain's session.
-    assert.equal(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'), fileBefore);
+    assert.equal(readFileSync(file, 'utf8'), fileBefore);
+    // Its new time is what makes the Claude Codes already running read the Keychain again.
+    assert.ok(statSync(file).mtimeMs > PAST.getTime());
     assert.deepEqual(JSON.parse(readFileSync(join(home, '.claude.json'), 'utf8')).oauthAccount, oauthAccount('team'));
   }));
 }
@@ -531,15 +611,51 @@ test('a Mac whose home has a # in its path still reaches its Keychain through tm
   assert.equal(keychainWrite(home).claudeAiOauth.refreshToken, 'rt-team');
 }));
 
+test('a Mac with no credentials file is switched in the Keychain and still has no file', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'tmux');
+  rmSync(join(home, '.claude', '.credentials.json'));
+  const { written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  assert.equal(written, true);
+  assert.equal(keychainWrite(home).claudeAiOauth.refreshToken, 'rt-team');
+  assert.equal(existsSync(join(home, '.claude', '.credentials.json')), false);
+}));
+
 test('a Mac whose Keychain refuses the write is left as it was', withDir(async (dir) => {
   if (process.platform !== 'linux') return;
   const { home, exec } = fakeMac(dir, 'tmux', { refuseWrite: true });
-  const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
+  const file = join(home, '.claude', '.credentials.json');
+  const fileBefore = readFileSync(file, 'utf8');
+  utimesSync(file, PAST, PAST);
   const confBefore = readFileSync(join(home, '.claude.json'), 'utf8');
   await assert.rejects(switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') })), /no se pudo escribir en el Llavero del Mac/);
-  assert.equal(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'), fileBefore);
+  assert.equal(readFileSync(file, 'utf8'), fileBefore);
+  assert.equal(statSync(file).mtimeMs, PAST.getTime());
   assert.equal(readFileSync(join(home, '.claude.json'), 'utf8'), confBefore);
   assert.equal(JSON.parse(readFileSync(join(home, 'kc'), 'utf8')).claudeAiOauth.refreshToken, 'rt-pro');
+}));
+
+test("a Mac whose tmux sets CLAUDE_CONFIG_DIR is read and switched in that folder's Keychain item", withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const folder = join(dir, 'home', '.claude-twb');
+  const { home, exec } = fakeMac(dir, 'tmux', { configDir: folder });
+  fakeConfigDir(folder, 'two');
+  const service = folderService(folder);
+  writeFileSync(join(home, `kc${service.slice(SERVICE.length)}`), JSON.stringify({ claudeAiOauth: cred('kc-two') }));
+  const confBefore = readFileSync(join(home, '.claude.json'), 'utf8');
+  const folderCreds = join(folder, '.credentials.json');
+  const folderCredsBefore = readFileSync(folderCreds, 'utf8');
+  utimesSync(folderCreds, PAST, PAST);
+  const snap = await inspectHost(exec);
+  assert.equal(snap.store, 'keychain');
+  assert.equal(snap.cred?.refreshToken, 'rt-kc-two');
+  const { written } = await switchHost(exec, () => ({ cred: cred('three'), oauthAccount: oauthAccount('three') }));
+  assert.equal(written, true);
+  assert.equal(keychainWrite(home, service).claudeAiOauth.refreshToken, 'rt-three');
+  assert.equal(readFileSync(folderCreds, 'utf8'), folderCredsBefore);
+  assert.ok(statSync(folderCreds).mtimeMs > PAST.getTime());
+  assert.deepEqual(JSON.parse(readFileSync(join(folder, '.claude.json'), 'utf8')).oauthAccount, oauthAccount('three'));
+  assert.equal(readFileSync(join(home, '.claude.json'), 'utf8'), confBefore);
 }));
 
 // ---------------------------------------------------------------- the hub's side (AccountManager)

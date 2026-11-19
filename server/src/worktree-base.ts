@@ -88,9 +88,12 @@ const PROJECT_BASE =
  * Sets `hook` when Claude Code has a WorktreeCreate hook for this repository: in the user's
  * settings, the project's (shared, or local in the checkout or the main one), or a plugin one
  * of them enables. A text match too; a hook declared anywhere else is missed (design D2).
+ * The user's settings and plugins are those of the panes' Claude Code: the folder of the tmux
+ * server's global CLAUDE_CONFIG_DIR, which the SSH session lacks, or ~/.claude. Needs `t`.
  */
 const HOOK =
-  `cfg=\${CLAUDE_CONFIG_DIR:-$HOME/.claude}; hook=''; ` +
+  `cfg=$(t show-environment -g CLAUDE_CONFIG_DIR); ` +
+  `case "$cfg" in CLAUDE_CONFIG_DIR=?*) cfg=\${cfg#CLAUDE_CONFIG_DIR=} ;; *) cfg=$HOME/.claude ;; esac; hook=''; ` +
   `for s in "$cfg/settings.json" "$top/.claude/settings.json" "$top/.claude/settings.local.json" "$main/.claude/settings.local.json"; do ` +
   `[ -f "$s" ] || continue; grep -q '"WorktreeCreate"' "$s" && hook=1; ` +
   `for pm in $(oneline < "$s" | grep -o '"[A-Za-z0-9._-]*@[A-Za-z0-9._-]*"[[:space:]]*:[[:space:]]*true' | sed 's/^"\\([^"]*\\)".*/\\1/'); do ` +

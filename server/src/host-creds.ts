@@ -6,34 +6,52 @@ import { type TmuxExec, tmuxFunction } from './exec.js';
 // Reading and writing a machine's Claude Code login over the same SSH the hub uses
 // for tmux. Only POSIX sh and tools every Mac and Linux has: no host-kit needed.
 //
-// Where Claude Code keeps it (default config folder only, as the statusline):
+// Which Claude Code: the one of the machine's tmux sessions, the panel's. Its folder is
+// CLAUDE_CONFIG_DIR of the tmux server's global environment, which the panes inherit,
+// and ~/.claude without it. With the variable, Claude Code (read in 2.1.329) keeps the
+// login file, the account file and its locks in that folder, and on macOS names its
+// Keychain item after it; the names below are for the default folder.
+//
+// Where Claude Code keeps it:
 // - the login: ~/.claude/.credentials.json on Linux. On macOS, the Keychain item
-//   "Claude Code-credentials" (account $USER) when Claude Code can reach the Keychain,
-//   and the same file when it cannot: outside the Mac's graphical session the login
-//   Keychain refuses ("User interaction is not allowed", exit 36) and Claude Code keeps
-//   the login in the file instead. The hub's SSH session is outside it, but a tmux
+//   "Claude Code-credentials" (account $USER; with CLAUDE_CONFIG_DIR, followed by "-"
+//   and the first 8 hex digits of the folder's SHA-256) when Claude Code can reach the
+//   Keychain, and the same file when it cannot: outside the Mac's graphical session the
+//   login Keychain refuses ("User interaction is not allowed", exit 36) and Claude Code
+//   keeps the login in the file instead. The hub's SSH session is outside it, but a tmux
 //   server started from a Terminal is inside, and so are the Claudes it runs. So the
 //   script asks the Keychain from SSH first, then through the machine's tmux server
 //   (`tmux run-shell`, secrets through files in a private `mktemp -d` folder, never on
 //   a command line), and uses the file only when neither answers with a login. A
 //   switch writes only that store: a refresh token works once, and a copy in the file
 //   renewed by a Claude outside the graphical session would end the Keychain's.
-//   Claude Code re-reads the file when its mtime changes, and the Keychain within
-//   ~30 s, so a running Claude picks a switch up on its own.
-// - who it is: `oauthAccount` in ~/.claude.json. It names the account Claude Code
-//   shows, not necessarily the login's: the hub asks Anthropic whose a login is before
-//   it uses it (AccountManager).
+// - who it is: `oauthAccount` in ~/.claude.json (<folder>/.claude.json with the
+//   variable). It names the account Claude Code shows, not necessarily the login's: the
+//   hub asks Anthropic whose a login is before it uses it (AccountManager).
+//
+// A running Claude Code reads its store again, before a request, when the time of the
+// folder's .credentials.json changes; with no such file, on every request (its Keychain
+// reads are cached 30 s); otherwise only when its token is about to expire, hours
+// later. So a Keychain switch also gives that file a new time, without writing it.
 //
 // A switch takes the locks Claude Code takes for the same files (a directory per
 // lock, stale after a minute at most): the two of a token refresh,
-// ~/.claude/.oauth_refresh.lock and ~/.claude.lock, and the config's,
-// ~/.claude.json.lock. With them held, a refresh cannot land halfway through a switch,
-// and Claude Code finds the new login when it gets them back.
+// ~/.claude/.oauth_refresh.lock and ~/.claude.lock (the folder's own name plus
+// ".lock"), and the config's, ~/.claude.json.lock. With them held, a refresh cannot
+// land halfway through a switch, and Claude Code finds the new login when it gets
+// them back.
 
 const SCRIPT = String.raw`
 umask 077
-H="$HOME"; C="$H/.claude"; CONF="$H/.claude.json"; CREDS="$C/.credentials.json"
-SVC="Claude Code-credentials"; U="$USER"; [ -n "$U" ] || U=$(id -un); OS=$(uname -s)
+H="$HOME"; SVC="Claude Code-credentials"; U="$USER"; [ -n "$U" ] || U=$(id -un); OS=$(uname -s)
+# The folder of the panes' Claude Code: CLAUDE_CONFIG_DIR of the tmux server's global
+# environment, which they inherit; ~/.claude without it. Its names are Claude Code's.
+F=$(t show-environment -g CLAUDE_CONFIG_DIR)
+case "$F" in CLAUDE_CONFIG_DIR=?*) F=$(printf %s "$F" | cut -d= -f2-) ;; *) F="" ;; esac
+if [ -n "$F" ]; then C="$F"; CONF="$F/.claude.json"; else C="$H/.claude"; CONF="$H/.claude.json"; fi
+CREDS="$C/.credentials.json"
+sha256() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi; }
+[ -n "$F" ] && [ "$OS" = Darwin ] && SVC="$SVC-$(printf %s "$F" | sha256 | cut -c1-8)"
 HELD=""; TD=""
 release() { for d in $HELD; do rmdir "$d" 2>/dev/null; done; HELD=""; [ -n "$TD" ] && rm -rf "$TD"; TD=""; }
 trap release EXIT
@@ -69,7 +87,7 @@ b64() { base64 | tr -d '\n'; }
 echo "OS $OS"
 if [ "$MODE" = switch ]; then
   mkdir -p "$C"
-  take "$C/.oauth_refresh.lock"; take "$H/.claude.lock"; take "$CONF.lock"
+  take "$C/.oauth_refresh.lock"; take "$C.lock"; take "$CONF.lock"
 fi
 # The Keychain if it answers this session, else through the tmux server, else the file:
 # from SSH the login Keychain refuses ("User interaction is not allowed").
@@ -104,6 +122,9 @@ if [ $STORE = keychain ]; then
   else
     security add-generic-password -U -a "$U" -s "$SVC" -X "$cred" >/dev/null 2>&1
   fi || { echo "ERR keychain"; exit 6; }
+  # The Claude Codes already running read their store again when this file's time
+  # changes: a new time, the same content, and no file made where there is none.
+  touch -c "$CREDS" 2>/dev/null
 else
   printf %s "$cred" | base64 $D | put "$CREDS" || { echo "ERR creds"; exit 6; }
 fi
@@ -120,7 +141,7 @@ export interface HostSnapshot extends HostLogin {
   via: 'ssh' | 'tmux' | null;
   /** The whole credentials document: it may hold more than the login (MCP servers' tokens). */
   credsDoc: Record<string, unknown> | null;
-  /** The whole ~/.claude.json, null if missing. */
+  /** The whole account file of Claude Code's folder (~/.claude.json for the default one), null if missing. */
   config: Record<string, unknown> | null;
 }
 
@@ -131,9 +152,9 @@ function script(exec: TmuxExec, mode: 'inspect' | 'switch'): string {
 
 const SCRIPT_ERRORS: Record<string, string> = {
   lock: 'Claude Code tiene ocupados sus ficheros (se está renovando la sesión); prueba otra vez en unos segundos',
-  conf: 'no se pudo escribir ~/.claude.json',
+  conf: 'no se pudo escribir el fichero de cuenta de Claude Code',
   keychain: 'no se pudo escribir en el Llavero del Mac',
-  creds: 'no se pudo escribir ~/.claude/.credentials.json',
+  creds: 'no se pudo escribir el fichero de credenciales de Claude Code',
 };
 
 function fromB64(s: string): Buffer {
@@ -171,7 +192,7 @@ export function parseSnapshot(out: string): HostSnapshot {
     try {
       config = JSON.parse(gunzipSync(fromB64(confRaw)).toString('utf8'));
     } catch {
-      throw new Error('~/.claude.json de la máquina no se puede leer');
+      throw new Error('el fichero de cuenta de Claude Code de la máquina no se puede leer');
     }
   }
   const cred = (credsDoc?.claudeAiOauth as OAuthCred | undefined) ?? null;
