@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFile, spawn } from 'node:child_process';
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'node:test';
+import { mock, test } from 'node:test';
 import { AccountStore, NeedsLoginError, type HostLogin } from './account-store.js';
-import { parseProfile, parseUsage, planName, splitCode, startLogin, type OAuthCred } from './claude-oauth.js';
+import { AccountManager } from './accounts.js';
+import { type Fetch, parseProfile, parseUsage, planName, splitCode, startLogin, type OAuthCred } from './claude-oauth.js';
 import type { TmuxExec } from './exec.js';
 import { inspectHost, parseSnapshot, switchedDocs, switchHost } from './host-creds.js';
+import type { HostMonitor } from './host.js';
 
 function withDir(fn: (dir: string) => void | Promise<void>): () => Promise<void> {
   return async () => {
@@ -154,6 +156,87 @@ test('the panel never gets a token', withDir((dir) => {
   assert.doesNotMatch(JSON.stringify(store.info([])), /rt-max|at-max/);
 }));
 
+/** A machine whose ~/.claude.json names s1 while its login is of s2 (the owner's Mac on 2026-11-19). */
+const mixed = (): HostLogin => ({ oauthAccount: oauthAccount('s1'), cred: cred('s2') });
+
+test('a login whose profile names another account moves there, confirmed, creating that account', withDir((dir) => {
+  const store = new AccountStore(dir);
+  store.addLogin(oauthAccount('s1'), cred('s1'), {});
+  store.observe('mac', mixed());
+  store.observe('mac', { oauthAccount: null, cred: null });
+  const wrong = store.get('acc-s1:org-s1')!.logins.find((l) => l.cred.refreshToken === 'rt-s2')!;
+  assert.equal(wrong.confirmed, undefined);
+  store.moveLogin(wrong.id, oauthAccount('s2'));
+  assert.deepEqual(store.get('acc-s1:org-s1')!.logins.map((l) => l.cred.refreshToken), ['rt-s1']);
+  const again = new AccountStore(dir);
+  const s2 = again.get('acc-s2:org-s2')!;
+  assert.equal(s2.email, 's2@example.com');
+  assert.deepEqual(s2.logins.map((l) => [l.cred.refreshToken, l.host, l.confirmed]), [['rt-s2', null, true]]);
+}));
+
+test("moving a machine's login shows the machine on the account it moved to, and the next look keeps it there", withDir((dir) => {
+  const store = new AccountStore(dir);
+  store.observe('mac', mixed());
+  store.moveLogin(store.get('acc-s1:org-s1')!.logins[0].id, oauthAccount('s2'));
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  // Its ~/.claude.json still names s1: the confirmed login stays where it belongs.
+  store.observe('mac', mixed());
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  assert.deepEqual(store.get('acc-s1:org-s1')!.logins, []);
+  const s2 = store.get('acc-s2:org-s2')!;
+  assert.deepEqual(s2.logins.map((l) => [l.host, l.confirmed]), [['mac', true]]);
+  assert.deepEqual(store.info([]).list.find((a) => a.id === 'acc-s2:org-s2')!.activeOn, ['mac']);
+}));
+
+/** The mixed machine, its login moved to s2, after its Claude Code renewed it (a new refresh token). */
+function movedAndRenewed(dir: string): AccountStore {
+  const store = new AccountStore(dir);
+  store.observe('mac', mixed());
+  store.moveLogin(store.get('acc-s1:org-s1')!.logins[0].id, oauthAccount('s2'));
+  store.observe('mac', { oauthAccount: oauthAccount('s1'), cred: { ...cred('s2'), accessToken: 'at-s2-b', refreshToken: 'rt-s2-b' } });
+  return store;
+}
+
+const refreshTokens = (store: AccountStore) => store.info([]).list.flatMap((a) => store.get(a.id)!.logins.map((l) => l.cred.refreshToken));
+
+test("a moved machine login renewed by its machine stays on the account it moved to, and the spent token is kept nowhere", withDir((dir) => {
+  const store = movedAndRenewed(dir);
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.host, l.confirmed]), [['rt-s2-b', 'mac', false]]);
+  assert.deepEqual(refreshTokens(store), ['rt-s2-b']);
+}));
+
+test('a switch away from a renewed moved login takes the renewed one back as spare, never the spent one', withDir((dir) => {
+  const store = movedAndRenewed(dir);
+  const s3 = store.addLogin(oauthAccount('s3'), cred('s3'), {});
+  store.commitSwitch('mac', { oauthAccount: oauthAccount('s1'), cred: { ...cred('s2'), accessToken: 'at-s2-c', refreshToken: 'rt-s2-c' } }, s3.logins[0].id, cred('s3'));
+  assert.equal(store.hostAccount('mac'), 'acc-s3:org-s3');
+  assert.equal(store.spareLogin('acc-s2:org-s2').cred.refreshToken, 'rt-s2-c');
+  assert.deepEqual(refreshTokens(store).sort(), ['rt-s2-c', 'rt-s3']);
+}));
+
+test('a /login by hand on a machine whose login was moved files the new login by its ~/.claude.json and keeps the old one as spare', withDir((dir) => {
+  const store = new AccountStore(dir);
+  store.observe('mac', mixed());
+  store.moveLogin(store.get('acc-s1:org-s1')!.logins[0].id, oauthAccount('s2'));
+  store.observe('mac', seen('s3'));
+  assert.equal(store.hostAccount('mac'), 'acc-s3:org-s3');
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.host, l.configAccount]), [['rt-s2', null, undefined]]);
+}));
+
+test('a new token from a machine must be confirmed again; a renewal by the hub or a login from the panel need not', withDir((dir) => {
+  const store = new AccountStore(dir);
+  store.observe('mac', seen('max'));
+  const login = store.get('acc-max:org-max')!.logins[0];
+  store.confirm(login.id);
+  store.observe('mac', seen('max', { ...cred('max'), refreshToken: 'rt-max-2' }));
+  assert.equal(store.get('acc-max:org-max')!.logins[0].confirmed, false);
+  const team = store.addLogin(oauthAccount('team'), cred('team'), {});
+  assert.equal(team.logins[0].confirmed, true);
+  store.updateCred(team.logins[0].id, { ...cred('team'), refreshToken: 'rt-team-2' });
+  assert.equal(store.get(team.id)!.logins[0].confirmed, true);
+}));
+
 // ---------------------------------------------------------------- Anthropic answers
 
 test('usage: 5 h, 7 d and the weekly limit of each model', () => {
@@ -240,9 +323,10 @@ test('a script error comes back as a sentence', () => {
  * Runs the real script with /bin/sh in a made-up HOME: it only touches files there
  * (no tmux), so nothing of this machine's own Claude Code is at stake.
  */
-function fakeExec(home: string, bin?: string): TmuxExec {
+function fakeExec(home: string, bin?: string, tmux = 'false'): TmuxExec {
   const env = { ...process.env, HOME: home, USER: 'tester', ...(bin ? { PATH: `${bin}:${process.env.PATH}` } : {}) };
   return {
+    tmuxCommand: tmux,
     shell: (script: string) =>
       new Promise<string>((resolve, reject) =>
         execFile('/bin/sh', ['-c', script], { env, encoding: 'utf8' }, (err, out, stderr) => (err ? reject(new Error(stderr || err.message)) : resolve(out))),
@@ -316,46 +400,302 @@ test('a switch the hub calls off writes nothing', withDir(async (dir) => {
   assert.equal(existsSync(join(dir, '.claude.lock')), false);
 }));
 
-test('a Mac whose Keychain refuses the hub (SSH) switches through the file, as Claude Code does', withDir(async (dir) => {
-  if (process.platform !== 'linux') return;
-  const home = join(dir, 'home');
+/**
+ * A made-up macOS in `dir/bin`: uname says Darwin, and `security` keeps the Keychain's
+ * password in ~/kc (account s "pro", with an MCP server's token, `mcp` long if asked) and
+ * leaves what `security -i` gets in ~/kc.in, and the arguments of a direct
+ * `add-generic-password` (a login too long for `-i`) in ~/kc.args. Like the login
+ * Keychain, it answers only inside the graphical session (TWB_GUI, set by the fake tmux
+ * server's `run-shell`), except with `keychain: 'ssh'`, where it answers anyone. With
+ * `keychain: 'none'` there is no tmux server either. The fake tmux logs its arguments in
+ * ~/tmux.log and expands formats in `run-shell`'s command as tmux does (`##` is `#`,
+ * `#{…}` and `#<letter>` are replaced).
+ */
+function fakeMac(dir: string, keychain: 'ssh' | 'tmux' | 'none', opts: { refuseWrite?: boolean; homeName?: string; mcp?: string } = {}) {
+  const home = join(dir, opts.homeName ?? 'home');
   const bin = join(dir, 'bin');
   mkdirSync(home);
   mkdirSync(bin);
   fakeHome(home);
-  // A made-up macOS: uname says Darwin and the Keychain answers as it does over SSH.
+  writeFileSync(join(home, 'kc'), JSON.stringify({ claudeAiOauth: cred('pro'), mcpOAuth: { srv: { token: opts.mcp ?? 'k' } } }));
   writeFileSync(join(bin, 'uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o755 });
-  writeFileSync(join(bin, 'security'), '#!/bin/sh\necho "security: SecKeychainItemCreateFromContent (<default>): User interaction is not allowed." >&2\nexit 36\n', { mode: 0o755 });
-  const snap = await inspectHost(fakeExec(home, bin));
+  const gate = keychain === 'ssh' ? '' : '[ -n "$TWB_GUI" ] || { echo "security: User interaction is not allowed." >&2; exit 36; }\n';
+  const write = opts.refuseWrite ? 'exit 45' : 'cat > "$HOME/kc.in"';
+  const writeArgs = opts.refuseWrite ? 'exit 45' : 'shift; printf "%s\\n" "$@" > "$HOME/kc.args"';
+  writeFileSync(join(bin, 'security'), `#!/bin/sh\n${gate}case "$1" in find-generic-password) cat "$HOME/kc";; -i) ${write};; add-generic-password) ${writeArgs};; *) exit 1;; esac\n`, { mode: 0o755 });
+  const tmux = join(bin, 'tmux');
+  const expand = `sed -e 's/##/@HASH@/g' -e 's/#{[^}]*}/X/g' -e 's/#[A-Za-z]/X/g' -e 's/@HASH@/#/g'`;
+  writeFileSync(
+    tmux,
+    keychain === 'none'
+      ? '#!/bin/sh\necho "no server running on /private/tmp/tmux-501/default" >&2\nexit 1\n'
+      : `#!/bin/sh\nprintf "%s\\n" "$*" >> "$HOME/tmux.log"\n[ "$1" = run-shell ] || exit 1\nTWB_GUI=1 exec /bin/sh -c "$(printf %s "$2" | ${expand})"\n`,
+    { mode: 0o755 },
+  );
+  return { home, exec: fakeExec(home, bin, tmux) };
+}
+
+type KeychainDoc = { claudeAiOauth: OAuthCred; mcpOAuth?: unknown };
+
+/** What the switch wrote into the fake Keychain, decoded: through `security -i`, or as arguments when too long. */
+function keychainWrite(home: string): KeychainDoc {
+  if (existsSync(join(home, 'kc.args'))) {
+    const args = readFileSync(join(home, 'kc.args'), 'utf8').split('\n');
+    assert.deepEqual(args.slice(0, 5), ['-U', '-a', 'tester', '-s', 'Claude Code-credentials']);
+    assert.equal(args[5], '-X');
+    return JSON.parse(Buffer.from(args[6], 'hex').toString('utf8'));
+  }
+  const cmd = readFileSync(join(home, 'kc.in'), 'utf8');
+  const hex = /-s "Claude Code-credentials" -X "([0-9a-f]+)"/.exec(cmd)?.[1];
+  assert.ok(cmd.startsWith('add-generic-password -U -a "tester"') && hex, cmd);
+  return JSON.parse(Buffer.from(hex, 'hex').toString('utf8'));
+}
+
+test('a Mac whose Keychain answers no one (no tmux server) is read and switched through the file', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'none');
+  const snap = await inspectHost(exec);
   assert.equal(snap.os, 'Darwin');
   assert.equal(snap.store, 'file');
   assert.equal(snap.cred?.refreshToken, 'rt-max');
-  const { written } = await switchHost(fakeExec(home, bin), () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  const { written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
   assert.equal(written, true);
   const creds = JSON.parse(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'));
   assert.equal(creds.claudeAiOauth.refreshToken, 'rt-team');
   assert.deepEqual(creds.mcpOAuth, { srv: { token: 't' } });
+  assert.equal(existsSync(join(home, 'kc.in')), false);
 }));
 
-test('a Mac whose Keychain answers is switched in the Keychain, and its file is left alone', withDir(async (dir) => {
+test('a Mac whose Keychain only answers through its tmux server is read from the Keychain', withDir(async (dir) => {
   if (process.platform !== 'linux') return;
-  const home = join(dir, 'home');
-  const bin = join(dir, 'bin');
-  mkdirSync(home);
-  mkdirSync(bin);
-  fakeHome(home);
-  const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
-  writeFileSync(join(home, 'kc'), JSON.stringify({ claudeAiOauth: cred('pro') }));
-  writeFileSync(join(bin, 'uname'), '#!/bin/sh\necho Darwin\n', { mode: 0o755 });
-  // A Keychain that answers: reads come from ~/kc, `security -i` leaves its input in ~/kc.in.
-  writeFileSync(join(bin, 'security'), '#!/bin/sh\ncase "$1" in find-generic-password) cat "$HOME/kc";; -i) cat > "$HOME/kc.in";; *) exit 1;; esac\n', { mode: 0o755 });
-  const { snap, written } = await switchHost(fakeExec(home, bin), () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  const { home, exec } = fakeMac(dir, 'tmux');
+  const snap = await inspectHost(exec);
+  assert.equal(snap.store, 'keychain');
+  assert.equal(snap.via, 'tmux');
+  // The Keychain's login (the one its Claude Codes use), not the file's.
+  assert.equal(snap.cred?.refreshToken, 'rt-pro');
+  assert.deepEqual(readdirSync(join(home, '.claude')).filter((f) => f.startsWith('.twb')), []);
+}));
+
+test('a switch of a Mac whose Keychain only answers through tmux writes the Keychain through it, with no secret on its command line', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'tmux');
+  const { snap, written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
   assert.equal(written, true);
+  assert.equal(snap.cred?.refreshToken, 'rt-pro');
+  assert.equal(keychainWrite(home).claudeAiOauth.refreshToken, 'rt-team');
+  const log = readFileSync(join(home, 'tmux.log'), 'utf8');
+  assert.match(log, /^run-shell /m);
+  assert.doesNotMatch(log, /rt-team|at-team|rt-pro|[0-9a-f]{64}/);
+  assert.deepEqual(readdirSync(join(home, '.claude')).filter((f) => f.startsWith('.twb')), []);
+}));
+
+for (const via of ['ssh', 'tmux'] as const) {
+  test(`a Mac whose Keychain answers (${via}) is switched in the Keychain only, which keeps its other entries`, withDir(async (dir) => {
+    if (process.platform !== 'linux') return;
+    const { home, exec } = fakeMac(dir, via);
+    const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
+    const { snap, written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+    assert.equal(written, true);
+    assert.equal(snap.store, 'keychain');
+    assert.equal(snap.cred?.refreshToken, 'rt-pro');
+    const kc = keychainWrite(home);
+    assert.equal(kc.claudeAiOauth.refreshToken, 'rt-team');
+    assert.deepEqual(kc.mcpOAuth, { srv: { token: 'k' } });
+    // A second copy of a refresh token that works once would end the Keychain's session.
+    assert.equal(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'), fileBefore);
+    assert.deepEqual(JSON.parse(readFileSync(join(home, '.claude.json'), 'utf8')).oauthAccount, oauthAccount('team'));
+  }));
+}
+
+test('a Keychain login too long for `security -i` is written through tmux as an argument, never on its command line', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'tmux', { mcp: 'm'.repeat(3000) });
+  const { written } = await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  assert.equal(written, true);
+  assert.equal(existsSync(join(home, 'kc.in')), false);
+  const kc = keychainWrite(home);
+  assert.equal(kc.claudeAiOauth.refreshToken, 'rt-team');
+  assert.deepEqual(kc.mcpOAuth, { srv: { token: 'm'.repeat(3000) } });
+  assert.doesNotMatch(readFileSync(join(home, 'tmux.log'), 'utf8'), /rt-team|at-team|[0-9a-f]{64}/);
+  assert.deepEqual(readdirSync(join(home, '.claude')).filter((f) => f.startsWith('.twb')), []);
+}));
+
+test('a Mac whose home has a # in its path still reaches its Keychain through tmux', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'tmux', { homeName: 'x#Hy' });
+  const snap = await inspectHost(exec);
   assert.equal(snap.store, 'keychain');
   assert.equal(snap.cred?.refreshToken, 'rt-pro');
-  const cmd = readFileSync(join(home, 'kc.in'), 'utf8');
-  const hex = /-s "Claude Code-credentials" -X "([0-9a-f]+)"/.exec(cmd)?.[1];
-  assert.ok(cmd.startsWith('add-generic-password -U -a "tester"') && hex, cmd);
-  assert.equal(JSON.parse(Buffer.from(hex, 'hex').toString('utf8')).claudeAiOauth.refreshToken, 'rt-team');
+  await switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') }));
+  assert.equal(keychainWrite(home).claudeAiOauth.refreshToken, 'rt-team');
+}));
+
+test('a Mac whose Keychain refuses the write is left as it was', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const { home, exec } = fakeMac(dir, 'tmux', { refuseWrite: true });
+  const fileBefore = readFileSync(join(home, '.claude', '.credentials.json'), 'utf8');
+  const confBefore = readFileSync(join(home, '.claude.json'), 'utf8');
+  await assert.rejects(switchHost(exec, () => ({ cred: cred('team'), oauthAccount: oauthAccount('team') })), /no se pudo escribir en el Llavero del Mac/);
   assert.equal(readFileSync(join(home, '.claude', '.credentials.json'), 'utf8'), fileBefore);
+  assert.equal(readFileSync(join(home, '.claude.json'), 'utf8'), confBefore);
+  assert.equal(JSON.parse(readFileSync(join(home, 'kc'), 'utf8')).claudeAiOauth.refreshToken, 'rt-pro');
+}));
+
+// ---------------------------------------------------------------- the hub's side (AccountManager)
+
+/**
+ * Anthropic's profile and usage endpoints, answered by access token (`at-<name>`, or a
+ * renewed `at-<name>-<n>`, is of account `<name>`), with every request logged as
+ * "<path> <token>". s1's week is spent. With `together`, profile answers wait until that
+ * many profile questions are in flight (2 s at most), so they overlap.
+ */
+function fakeAnthropic(opts: { together?: number } = {}): { fetch: Fetch; calls: string[] } {
+  const calls: string[] = [];
+  const weekly: Record<string, number> = { s1: 100, s2: 2, s3: 50 };
+  const held: (() => void)[] = [];
+  const answer: Fetch = async (input, init) => {
+    const path = new URL(input instanceof Request ? input.url : String(input)).pathname;
+    const token = (new Headers(init?.headers).get('Authorization') ?? '').replace('Bearer ', '');
+    calls.push(`${path} ${token}`);
+    const who = /^at-(s\d)(-\w+)?$/.exec(token)?.[1];
+    if (!who) return new Response('{}', { status: 401 });
+    if (path === '/api/oauth/profile') {
+      if (opts.together) {
+        await new Promise<void>((go) => {
+          held.push(go);
+          setTimeout(go, 2000);
+          if (held.length >= opts.together!) for (const g of held.splice(0)) g();
+        });
+      }
+      return Response.json({ account: { uuid: `acc-${who}`, email: `${who}@example.com` }, organization: { uuid: `org-${who}`, name: who, organization_type: 'claude_max' } });
+    }
+    return Response.json({ five_hour: { utilization: 10, resets_at: '2026-11-19T16:40:00Z' }, seven_day: { utilization: weekly[who], resets_at: '2026-11-23T08:00:00Z' } });
+  };
+  return { fetch: answer, calls };
+}
+
+/** A Linux machine `id` whose files (in `dir/<id>`) hold `login`, for inspect and switch. */
+function fakeMachine(dir: string, id: string, login: HostLogin): HostMonitor {
+  const home = join(dir, id);
+  mkdirSync(join(home, '.claude'), { recursive: true });
+  writeFileSync(join(home, '.claude', '.credentials.json'), JSON.stringify({ claudeAiOauth: login.cred }));
+  writeFileSync(join(home, '.claude.json'), JSON.stringify({ oauthAccount: login.oauthAccount }));
+  return { id, name: id, exec: fakeExec(home), snapshot: { status: 'ok' }, on: () => {} } as unknown as HostMonitor;
+}
+
+/** The store after the owner's Mac (files naming s1, login of s2) was switched away: s1 keeps a spare of s2. */
+function withWrongSpare(store: AccountStore): void {
+  store.observe('mac', mixed());
+  store.observe('mac', { oauthAccount: null, cred: null });
+}
+
+test("a login of s2 filed under s1 moves to s2 before s1's usage is read, and s1 never shows s2's numbers", withDir(async (dir) => {
+  const store = new AccountStore(dir);
+  withWrongSpare(store);
+  const api = fakeAnthropic();
+  const manager = new AccountManager(store, new Map(), api.fetch);
+  await manager.pollDue();
+  assert.equal(api.calls[0], '/api/oauth/profile at-s2');
+  assert.equal(store.get('acc-s1:org-s1')!.usage, undefined);
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => l.cred.refreshToken), ['rt-s2']);
+  await manager.pollDue();
+  assert.equal(store.get('acc-s2:org-s2')!.usage?.sevenDay?.pct, 2);
+  assert.equal(store.get('acc-s1:org-s1')!.usage, undefined);
+}));
+
+test('a confirmed login is not asked for its profile again, not even after a restart', withDir(async (dir) => {
+  const store = new AccountStore(dir);
+  withWrongSpare(store);
+  await new AccountManager(store, new Map(), fakeAnthropic().fetch).pollDue();
+  const again = fakeAnthropic();
+  await new AccountManager(new AccountStore(dir), new Map(), again.fetch).pollDue();
+  assert.deepEqual(again.calls, ['/api/oauth/usage at-s2']);
+}));
+
+test('a switch hands out only a login confirmed as the account: one of another account moves, and the next spare goes', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  store.observe('ct', seen('s3'));
+  // s1's own login, older, and a newer one of s2 filed under s1 (the freshest spare goes first).
+  store.addLogin(oauthAccount('s1'), cred('s1'), {});
+  await new Promise((r) => setTimeout(r, 5));
+  withWrongSpare(store);
+  const manager = new AccountManager(store, new Map([['ct', fakeMachine(dir, 'ct', seen('s3'))]]), fakeAnthropic().fetch);
+  await manager.switchHost('ct', 'acc-s1:org-s1');
+  assert.equal(JSON.parse(readFileSync(join(dir, 'ct', '.claude', '.credentials.json'), 'utf8')).claudeAiOauth.refreshToken, 'rt-s1');
+  assert.equal(store.hostAccount('ct'), 'acc-s1:org-s1');
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => l.cred.refreshToken), ['rt-s2']);
+}));
+
+test('a switch to an account whose only spare is of another one asks for a login and writes nothing', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  store.observe('ct', seen('s3'));
+  withWrongSpare(store);
+  const manager = new AccountManager(store, new Map([['ct', fakeMachine(dir, 'ct', seen('s3'))]]), fakeAnthropic().fetch);
+  await assert.rejects(manager.switchHost('ct', 'acc-s1:org-s1'), NeedsLoginError);
+  assert.equal(JSON.parse(readFileSync(join(dir, 'ct', '.claude', '.credentials.json'), 'utf8')).claudeAiOauth.refreshToken, 'rt-s3');
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => l.cred.refreshToken), ['rt-s2']);
+}));
+
+test("a machine whose files disagree is shown on its login's account, once its token can be asked", withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  const hosts = new Map([['mac', fakeMachine(dir, 'mac', { oauthAccount: oauthAccount('s1'), cred: cred('s2', -60_000) })]]);
+  const api = fakeAnthropic();
+  const manager = new AccountManager(store, hosts, api.fetch);
+  await manager.inspect('mac', true);
+  await manager.pollDue();
+  // Only the machine renews its login: until it does, the hub neither asks nor reads with it.
+  assert.deepEqual(api.calls, []);
+  hosts.set('mac', fakeMachine(join(dir, 'later'), 'mac', mixed()));
+  await manager.inspect('mac', true);
+  assert.deepEqual(api.calls, ['/api/oauth/profile at-s2']);
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+}));
+
+test('a moved machine login renewed by its machine is confirmed again on its account with one profile question', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  const hosts = new Map([['mac', fakeMachine(dir, 'mac', mixed())]]);
+  const api = fakeAnthropic();
+  const manager = new AccountManager(store, hosts, api.fetch);
+  await manager.inspect('mac', true);
+  hosts.set('mac', fakeMachine(join(dir, 'later'), 'mac', { oauthAccount: oauthAccount('s1'), cred: { ...cred('s2'), accessToken: 'at-s2-b', refreshToken: 'rt-s2-b' } }));
+  await manager.inspect('mac', true);
+  assert.deepEqual(api.calls, ['/api/oauth/profile at-s2', '/api/oauth/profile at-s2-b']);
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.confirmed]), [['rt-s2-b', true]]);
+}));
+
+test("a switch to the account a machine's ~/.claude.json names writes the login when the machine's own is of another account", withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  // The owner's MacBook Pro after the deploy: its file names s2, its login is s1's.
+  const machine: HostLogin = { oauthAccount: oauthAccount('s2'), cred: cred('s1') };
+  store.observe('mac', machine);
+  store.moveLogin(store.get('acc-s2:org-s2')!.logins[0].id, oauthAccount('s1'));
+  store.addLogin(oauthAccount('s2'), { ...cred('s2'), accessToken: 'at-s2-p', refreshToken: 'rt-s2-p' }, {});
+  const manager = new AccountManager(store, new Map([['mac', fakeMachine(dir, 'mac', machine)]]), fakeAnthropic().fetch);
+  await manager.switchHost('mac', 'acc-s2:org-s2');
+  assert.equal(JSON.parse(readFileSync(join(dir, 'mac', '.claude', '.credentials.json'), 'utf8')).claudeAiOauth.refreshToken, 'rt-s2-p');
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  assert.equal(store.spareLogin('acc-s1:org-s1').cred.refreshToken, 'rt-s1');
+}));
+
+test('two rounds that confirm the same login at once move it once and log one move', withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  withWrongSpare(store);
+  const logged = mock.method(console, 'log', () => {});
+  try {
+    const manager = new AccountManager(store, new Map([['ct', fakeMachine(dir, 'ct', seen('s3'))]]), fakeAnthropic({ together: 2 }).fetch);
+    await Promise.allSettled([manager.pollDue(), manager.switchHost('ct', 'acc-s1:org-s1')]);
+  } finally {
+    logged.mock.restore();
+  }
+  const moves = logged.mock.calls.map((c) => String(c.arguments[0])).filter((line) => line.includes('movido'));
+  assert.deepEqual(moves, ['[cuentas] el login que estaba en s1 es de s2: movido']);
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.confirmed]), [['rt-s2', true]]);
 }));

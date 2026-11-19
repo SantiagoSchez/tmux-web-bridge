@@ -1,9 +1,9 @@
 import { EventEmitter } from 'node:events';
 import type { AccountOp, AccountsInfo } from '../../shared/types.js';
-import { AccountStore, NeedsLoginError, type StoredAccount, type StoredLogin, accountId } from './account-store.js';
-import { exchangeCode, fetchProfile, fetchUsage, OAuthError, type OAuthCred, type PendingLogin, refresh, splitCode, startLogin } from './claude-oauth.js';
+import { AccountStore, NeedsLoginError, type StoredAccount, type StoredLogin } from './account-store.js';
+import { exchangeCode, type Fetch, fetchProfile, fetchUsage, OAuthError, type OAuthCred, type PendingLogin, type Profile, refresh, splitCode, startLogin } from './claude-oauth.js';
 import type { HostMonitor } from './host.js';
-import { inspectHost, switchHost } from './host-creds.js';
+import { type HostSnapshot, inspectHost, switchHost } from './host-creds.js';
 
 /** How often each account's usage is read: the endpoint allows ~30 reads an hour per account. */
 const USAGE_EVERY = 5 * 60_000;
@@ -45,6 +45,8 @@ export class AccountManager extends EventEmitter {
   constructor(
     readonly store: AccountStore,
     private readonly hosts: Map<string, HostMonitor>,
+    /** How Anthropic is reached: the global `fetch`, or the tests' fake. */
+    private readonly doFetch: Fetch = fetch,
   ) {
     super();
   }
@@ -91,6 +93,14 @@ export class AccountManager extends EventEmitter {
         const snap = await inspectHost(host.exec);
         if (this.switching.has(hostId)) return; // the switch takes it in itself
         if (this.store.observe(hostId, snap)) this.changed();
+        // A new token is filed under the account ~/.claude.json names: ask whose it is
+        // while it is valid (only the machine renews it).
+        const mine = this.store.hostLogin(hostId);
+        if (mine && !mine.login.confirmed && mine.login.cred.expiresAt - Date.now() > 60_000) {
+          await this.owns(mine.acc, mine.login, mine.login.cred.accessToken).catch((err: Error) => {
+            console.warn(`[cuentas] ${hostId}: no se pudo preguntar a Anthropic de qué cuenta es su login: ${err.message}`);
+          });
+        }
       } catch (err) {
         console.warn(`[cuentas] ${hostId}: no se pudo leer su login de Claude: ${(err as Error).message}`);
       } finally {
@@ -105,7 +115,7 @@ export class AccountManager extends EventEmitter {
   private async freshen(login: StoredLogin): Promise<OAuthCred> {
     if (login.cred.expiresAt - Date.now() > EXPIRY_MARGIN) return login.cred;
     try {
-      const cred = await refresh(login.cred);
+      const cred = await refresh(login.cred, this.doFetch);
       this.store.updateCred(login.id, cred);
       return cred;
     } catch (err) {
@@ -121,18 +131,55 @@ export class AccountManager extends EventEmitter {
    * An access token to read an account's usage with: a spare login's (the hub may renew
    * it), or else the last one seen of a machine's login, which only that machine renews.
    */
-  private async accessToken(acc: StoredAccount): Promise<string | null> {
+  private async accessToken(acc: StoredAccount): Promise<{ login: StoredLogin; token: string } | null> {
     const spare = acc.logins.filter((l) => l.host === null && !l.dead).sort((a, b) => b.at - a.at)[0];
-    if (spare) return this.serial(async () => (await this.freshen(spare)).accessToken);
+    if (spare) return this.serial(async () => ({ login: spare, token: (await this.freshen(spare)).accessToken }));
     const live = acc.logins.filter((l) => l.host && !l.dead).sort((a, b) => b.cred.expiresAt - a.cred.expiresAt)[0];
     if (!live) return null;
-    if (live.cred.expiresAt - Date.now() > 60_000) return live.cred.accessToken;
+    if (live.cred.expiresAt - Date.now() > 60_000) return { login: live, token: live.cred.accessToken };
     // Its machine has surely renewed it by now: look again, and use it next round.
     void this.inspect(live.host!);
     return null;
   }
 
-  private async pollDue(): Promise<void> {
+  /**
+   * Whether `login` is `acc`'s, as Anthropic's profile says: asked while the login is
+   * unconfirmed, or when the account's plan is due a new look. A login of another
+   * account moves there (created if new) and the answer is false; one another round
+   * moved meanwhile is only confirmed where it is. A failed question throws for an
+   * unconfirmed login, which must not be used meanwhile.
+   */
+  private async owns(acc: StoredAccount, login: StoredLogin, accessToken: string): Promise<boolean> {
+    if (login.confirmed && Date.now() - (acc.profileAt ?? 0) <= PROFILE_EVERY) return true;
+    let prof: Profile;
+    try {
+      prof = await fetchProfile(accessToken, this.doFetch);
+    } catch (err) {
+      if (login.confirmed) return true; // only the plan's look failed
+      throw err;
+    }
+    if (!prof.accountUuid || !prof.orgUuid) throw new Error('Anthropic no dice de qué cuenta es el login');
+    const info = { plan: prof.plan, orgName: prof.orgName };
+    const owner = `${prof.accountUuid}:${prof.orgUuid}`;
+    // Where the login sits now: a round that asked at the same time may have moved it.
+    const now = this.store.loginAccount(login.id);
+    if (!now) return false;
+    if (owner === now.id) {
+      this.store.confirm(login.id);
+      this.store.setProfile(now.id, info);
+      return now.id === acc.id;
+    }
+    const { from, to } = this.store.moveLogin(login.id, prof.oauthAccount);
+    this.store.setProfile(to.id, info);
+    this.polls.delete(from.id);
+    this.polls.delete(to.id);
+    console.log(`[cuentas] el login que estaba en ${from.alias} es de ${to.alias}: movido`);
+    this.changed();
+    return false;
+  }
+
+  /** One round of usage reads, of the accounts that are due one; start() runs it every 30 s. */
+  async pollDue(): Promise<void> {
     if (this.polling) return;
     this.polling = true;
     try {
@@ -149,20 +196,21 @@ export class AccountManager extends EventEmitter {
 
   private async poll(acc: StoredAccount, p: PollState): Promise<void> {
     try {
-      const token = await this.accessToken(acc);
-      if (!token) {
+      const got = await this.accessToken(acc);
+      if (!got) {
         p.next = Date.now() + 60_000;
         if (!acc.logins.some((l) => !l.dead)) this.store.setUsage(acc.id, null, 'Hace falta iniciar sesión otra vez');
         return;
       }
-      const usage = await fetchUsage(token);
+      // A login of another account would show that account's usage as this one's.
+      if (!(await this.owns(acc, got.login, got.token))) {
+        p.next = 0; // read again next round, with another login
+        return;
+      }
+      const usage = await fetchUsage(got.token, this.doFetch);
       this.store.setUsage(acc.id, usage);
       p.backoff = 0;
       p.next = Date.now() + USAGE_EVERY;
-      if (Date.now() - (acc.profileAt ?? 0) > PROFILE_EVERY) {
-        const prof = await fetchProfile(token).catch(() => null);
-        if (prof && `${prof.accountUuid}:${prof.orgUuid}` === acc.id) this.store.setProfile(acc.id, { plan: prof.plan, orgName: prof.orgName });
-      }
     } catch (err) {
       const e = err as OAuthError;
       if (e.status === 429) {
@@ -202,15 +250,24 @@ export class AccountManager extends EventEmitter {
             return;
           }
         }
-        const login = this.store.spareLogin(accId);
+        // Only a login Anthropic says is this account's: one of another moves there, and
+        // the next spare is tried (spareLogin throws NeedsLoginError when none is left).
+        let login: StoredLogin;
         let cred: OAuthCred;
-        try {
-          cred = await this.freshen(login);
-        } catch (err) {
-          if (err instanceof OAuthError && err.deadGrant) throw new NeedsLoginError(`El login guardado de ${acc.alias} ya no vale: inicia sesión otra vez`);
-          throw err;
+        for (;;) {
+          login = this.store.spareLogin(accId);
+          try {
+            cred = await this.freshen(login);
+          } catch (err) {
+            if (err instanceof OAuthError && err.deadGrant) throw new NeedsLoginError(`El login guardado de ${acc.alias} ya no vale: inicia sesión otra vez`);
+            throw err;
+          }
+          if (await this.owns(acc, login, cred.accessToken)) break;
         }
-        const { snap, written } = await switchHost(host.exec, (s) => (accountId(s.oauthAccount) === accId && s.cred ? null : { cred, oauthAccount: acc.oauthAccount }));
+        // Already on it only if its login is one the hub keeps under the account: its
+        // ~/.claude.json may name an account its login is not of.
+        const onIt = (s: HostSnapshot) => !!s.cred && this.store.tokenAccount(s.cred.refreshToken) === accId;
+        const { snap, written } = await switchHost(host.exec, (s) => (onIt(s) ? null : { cred, oauthAccount: acc.oauthAccount }));
         if (written) this.store.commitSwitch(hostId, snap, login.id, cred);
         else this.store.observe(hostId, snap);
         this.inspected.set(hostId, Date.now());
@@ -247,12 +304,12 @@ export class AccountManager extends EventEmitter {
     if (pastedState && pastedState !== state) throw new Error('Ese código es de otro inicio de sesión');
     let got;
     try {
-      got = await exchangeCode(pending, code);
+      got = await exchangeCode(pending, code, this.doFetch);
     } catch (err) {
       throw new Error(`Claude no ha aceptado el código: ${(err as Error).message}`);
     }
     this.pending.delete(state);
-    const prof = await fetchProfile(got.cred.accessToken);
+    const prof = await fetchProfile(got.cred.accessToken, this.doFetch);
     const cred: OAuthCred = { ...got.cred, subscriptionType: prof.subscriptionType ?? null, rateLimitTier: prof.rateLimitTier ?? null };
     const acc = this.store.addLogin(prof.oauthAccount, cred, { alias, plan: prof.plan, orgName: prof.orgName });
     this.polls.delete(acc.id); // its usage, on the next round

@@ -17,6 +17,7 @@ import { paneAt } from '../../../shared/panes';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
+import { isMac } from '../shortcuts';
 import { dictationEnded } from '../dictation';
 import { clientId, findWindow, hubSettings, terminalFocus, toast } from '../state';
 import type { FileOrigin } from '../fileViewer';
@@ -86,6 +87,14 @@ function macShortcut(e: KeyboardEvent): string | null {
   }
   if (e.key === 'Enter' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) return NEWLINE;
   return null;
+}
+
+/**
+ * Ctrl+V or Ctrl+Shift+V, without Alt or Cmd: the paste key of Linux and Windows. Also by
+ * keyCode, as xterm.js reads it: with a Cyrillic or Greek layout `key` is that layout's letter.
+ */
+function isPasteKey(e: KeyboardEvent): boolean {
+  return e.ctrlKey && !e.altKey && !e.metaKey && (e.key.toLowerCase() === 'v' || e.keyCode === 86);
 }
 
 async function copyText(text: string, asIs?: string): Promise<void> {
@@ -895,6 +904,10 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
         void copyFromTerminal(term, term.getSelection(), term.getSelectionPosition()?.start.x);
         return false;
       }
+      // Off the Mac, Ctrl+V (and Ctrl+Shift+V) is the computer's paste: left to the browser,
+      // whose paste event uploads an image (WindowView) or types text (xterm), instead of
+      // xterm sending ^V, which would read the clipboard of the pane's machine, not this one's.
+      if (!isMac && isPasteKey(e)) return false;
       const seq = macShortcut(e);
       if (seq === null) return true;
       e.preventDefault();

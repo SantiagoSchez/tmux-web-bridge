@@ -19,6 +19,8 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
 - [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo.
 - [Foco del terminal](#foco-del-terminal): cuándo el terminal recibe el teclado sin que tengas que hacer clic en él.
+- [Cuentas de Claude](#cuentas-de-claude): dónde escribe el cambio de cuenta en cada máquina y cómo se guarda cada login en su cuenta.
+- [Pegar en el terminal](#pegar-en-el-terminal): qué hace la tecla de pegar del ordenador con un texto o una imagen.
 
 ## Terminal
 
@@ -308,3 +310,32 @@ En el ordenador, un clic en la ventana que ya tienes abierta, o su atajo Ctrl+1�
 <!-- capability: terminal-focus; requirement: opening-a-window-leaves-the-on-screen-keyboard-as-it-was-on-a-touch-device -->
 
 En el móvil y la tableta, abrir una ventana no saca el teclado en pantalla, para no tapar la mitad de lo que muestra el terminal. Para escribir, basta con tocar el terminal, como hasta ahora.
+
+## Cuentas de Claude
+
+### Dónde se cambia la cuenta en cada máquina
+<!-- capability: claude-accounts; requirement: the-hub-uses-the-store-the-machine-s-claude-code-reads -->
+
+Al cambiar de cuenta una máquina desde el panel, el servidor central escribe el login donde lo lee el Claude Code de esa máquina. En Linux es el fichero de credenciales de Claude Code. En un Mac, Claude Code lo guarda en el Llavero cuando puede llegar a él, lo que ocurre si su tmux arrancó desde el Terminal del escritorio. El Llavero no contesta a una conexión SSH, así que el servidor central pregunta primero por SSH y, si no contesta, a través del tmux de la máquina. Solo usa el fichero cuando el Llavero no contesta de ninguna de las dos formas, como pasa con un tmux arrancado fuera del escritorio. Así, los Claudes del Mac, también los que se abren después, pasan a la cuenta nueva. Ninguna credencial aparece en las órdenes que ejecuta tmux.
+
+### En el Mac solo se toca el Llavero
+<!-- capability: claude-accounts; requirement: a-keychain-switch-writes-only-the-keychain -->
+
+Cuando un Mac guarda el login en el Llavero, el cambio de cuenta escribe solo ahí y conserva lo demás que guarda (los tokens de los servidores MCP). El fichero de credenciales se queda como estaba. Cada login solo se puede renovar una vez con el mismo token, y una segunda copia que renovase otro Claude dejaría sin sesión a los del Llavero. El Llavero se escribe antes que la configuración de Claude Code: si rechaza la escritura, el panel muestra el error y la máquina sigue exactamente como estaba.
+
+### Cada login en su cuenta
+<!-- capability: claude-accounts; requirement: every-login-is-filed-under-the-account-it-belongs-to -->
+
+Antes de leer los límites de una cuenta con un login, o de dar un login a una máquina, el servidor central pregunta a Anthropic de qué cuenta es, salvo que ya lo haya confirmado y el login no haya cambiado. La configuración de Claude Code de una máquina puede nombrar una cuenta mientras su login es de otra. Por eso, un login guardado en la cuenta equivocada se mueve a la suya, que aparece en el panel si no existía, y la máquina que lo usa se muestra en esa cuenta. Así, una cuenta deja de mostrar los límites de otra.
+
+- Cuando la máquina renueva su login, sigue en la cuenta a la que se movió, y el servidor central no guarda la copia anterior, que ya no sirve.
+- Si se cambia esa máquina desde el panel a la cuenta que nombra su configuración, el cambio escribe un login de esa cuenta.
+- Un `/login` a mano con otra cuenta lleva la máquina a esa cuenta, y el login que tenía vuelve al servidor central para usarlo en otra máquina. Si el `/login` es con la misma cuenta que ya nombra la configuración, no se distingue de una renovación, y el login anterior se pierde.
+- Un login confirmado no se vuelve a preguntar cada pocos minutos. El de una máquina con la sesión caducada espera a que la máquina lo renueve, sin que el servidor central lo use mientras tanto.
+
+## Pegar en el terminal
+
+### Pegar con la tecla del ordenador
+<!-- capability: terminal-paste; requirement: the-computer-s-paste-key-pastes-into-the-terminal -->
+
+En el ordenador, la tecla de pegar de cada sistema pega en el terminal lo que hay en el portapapeles: Cmd+V en el Mac, y Ctrl+V o Ctrl+Shift+V en Linux y Windows, también con teclados cirílicos o griegos. Un texto se pega en el panel. Una imagen o un fichero sin texto se sube a la máquina del panel abierto y su ruta se escribe en el panel sin pulsar Enter, lista para que Claude la lea. Si el portapapeles lleva texto e imagen a la vez, como al copiar celdas de una hoja de cálculo, solo se pega el texto. Fuera del Mac, Ctrl+V ya no envía `^V` al panel. En el Mac, Ctrl+V sigue llegando al panel, para que Claude Code lea el portapapeles del propio Mac.

@@ -18,6 +18,18 @@ export interface StoredLogin {
   dead?: boolean;
   /** When `cred` was last known to be current (epoch ms). */
   at: number;
+  /**
+   * Anthropic's profile said this login is of the account it is filed under. A machine
+   * files its login under the account its ~/.claude.json names, which may not be the
+   * login's: a new token from a machine is unconfirmed until the hub asks.
+   */
+  confirmed?: boolean;
+  /**
+   * A machine's login filed off the account its ~/.claude.json names: that account. While
+   * the file still names it, a new token from the machine is this login renewed, not a
+   * /login by hand.
+   */
+  configAccount?: string;
 }
 
 export interface StoredAccount {
@@ -40,7 +52,7 @@ interface StoreFile {
   hosts: Record<string, string | null>;
 }
 
-/** What a machine's Claude Code is logged in with, read from its files. */
+/** What a machine's Claude Code is logged in with, read from its Keychain or its files. */
 export interface HostLogin {
   oauthAccount: Record<string, unknown> | null;
   cred: OAuthCred | null;
@@ -131,20 +143,49 @@ export class AccountStore {
   }
 
   /**
-   * What a machine turned out to be logged in with (read from its files). Its login is
-   * the machine's from now on: the hub keeps the copy current, never refreshes it. A
-   * login the hub did not know of (a /login by hand, or one from before the hub kept
-   * accounts) is adopted, with its account. Logins the hub thought were on that machine
-   * and are not there any more come back as spare. Returns whether anything changed.
+   * The account a machine's login goes under: the one a confirmed copy of it already
+   * sits in; else, when the machine's login was moved off the account its ~/.claude.json
+   * still names, that login's (the machine renewed it); else the one the file names (to
+   * be confirmed).
+   */
+  private owner(host: string, seen: { oauthAccount: Record<string, unknown>; cred: OAuthCred }): StoredAccount {
+    const known = this.data.accounts.find((a) => a.logins.some((l) => l.confirmed && l.cred.refreshToken === seen.cred.refreshToken));
+    if (known) return known;
+    const named = accountId(seen.oauthAccount)!;
+    const current = this.hostLogin(host);
+    if (current && current.login.configAccount === named) return current.acc;
+    return this.ensure(named, seen.oauthAccount);
+  }
+
+  /** Takes in a newer credential of a login; one with another refresh token from a machine is unconfirmed again. */
+  private renew(login: StoredLogin, cred: OAuthCred): void {
+    if (JSON.stringify(login.cred) === JSON.stringify(cred)) return;
+    if (login.cred.refreshToken !== cred.refreshToken) login.confirmed = false;
+    login.cred = cred;
+    login.at = Date.now();
+  }
+
+  /**
+   * What a machine turned out to be logged in with (read from its Keychain or its
+   * files). Its login is the machine's from now on: the hub keeps the copy current,
+   * never refreshes it. A login the hub did not know of (a /login by hand, or one from
+   * before the hub kept accounts) is adopted under the account its ~/.claude.json
+   * names, unconfirmed until Anthropic's profile says whose it is. Logins the hub
+   * thought were on that machine and are not there any more come back as spare.
+   * Returns whether anything changed.
    */
   observe(host: string, seen: HostLogin): boolean {
     const before = JSON.stringify(this.data);
-    const id = usable(seen) ? accountId(seen.oauthAccount) : null;
-    for (const acc of this.data.accounts) {
-      for (const l of acc.logins) if (l.host === host && acc.id !== id) l.host = null;
+    const acc = usable(seen) ? this.owner(host, seen) : null;
+    const id = acc?.id ?? null;
+    for (const a of this.data.accounts) {
+      for (const l of a.logins) {
+        if (l.host !== host || a.id === id) continue;
+        l.host = null;
+        delete l.configAccount;
+      }
     }
-    if (id && usable(seen)) {
-      const acc = this.ensure(id, seen.oauthAccount);
+    if (acc && usable(seen)) {
       let login =
         acc.logins.find((l) => l.host === host) ??
         // The same login, back from the hub (a switch whose answer got lost).
@@ -153,12 +194,12 @@ export class AccountStore {
         login = { id: randomBytes(6).toString('hex'), cred: seen.cred, host, at: Date.now() };
         acc.logins.push(login);
       }
-      if (JSON.stringify(login.cred) !== JSON.stringify(seen.cred)) {
-        login.cred = seen.cred;
-        login.at = Date.now();
-      }
+      this.renew(login, seen.cred);
       login.host = host;
       login.dead = false;
+      const named = accountId(seen.oauthAccount)!;
+      if (acc.id === named) delete login.configAccount;
+      else login.configAccount = named;
       // Any other copy of the same login is stale (or, spare, would be handed out twice).
       const live = login;
       for (const a of this.data.accounts) a.logins = a.logins.filter((l) => l === live || l.cred.refreshToken !== seen.cred.refreshToken);
@@ -187,19 +228,21 @@ export class AccountStore {
    */
   commitSwitch(host: string, outgoing: HostLogin, loginId: string, cred: OAuthCred): void {
     if (usable(outgoing)) {
-      const id = accountId(outgoing.oauthAccount)!;
-      const acc = this.ensure(id, outgoing.oauthAccount);
+      const acc = this.owner(host, outgoing);
       const login = acc.logins.find((l) => l.host === host) ?? acc.logins.find((l) => l.cred.refreshToken === outgoing.cred.refreshToken);
       if (login) {
-        login.cred = outgoing.cred;
+        this.renew(login, outgoing.cred);
         login.host = null;
         login.dead = false;
         login.at = Date.now();
+        delete login.configAccount;
       } else acc.logins.push({ id: randomBytes(6).toString('hex'), cred: outgoing.cred, host: null, at: Date.now() });
     }
     for (const acc of this.data.accounts) for (const l of acc.logins) if (l.host === host) l.host = null;
     const found = this.findLogin(loginId);
     if (!found) throw new Error('El login ya no existe');
+    // The switch writes its account into the machine's ~/.claude.json.
+    delete found.login.configAccount;
     found.login.host = host;
     found.login.cred = cred;
     found.login.at = Date.now();
@@ -215,9 +258,63 @@ export class AccountStore {
     if (info.plan) acc.plan = info.plan;
     if (info.orgName) acc.orgName = info.orgName;
     acc.profileAt = Date.now();
-    acc.logins.push({ id: randomBytes(6).toString('hex'), cred, host: null, at: Date.now() });
+    // Its profile was read with its own token: it is this account's.
+    acc.logins.push({ id: randomBytes(6).toString('hex'), cred, host: null, at: Date.now(), confirmed: true });
     this.save();
     return acc;
+  }
+
+  /** The account the hub keeps a login with this refresh token under, if any. */
+  tokenAccount(refreshToken: string): string | undefined {
+    return this.data.accounts.find((a) => a.logins.some((l) => l.cred.refreshToken === refreshToken))?.id;
+  }
+
+  /** The account a login sits in now (another round may have moved it), or undefined once gone. */
+  loginAccount(loginId: string): StoredAccount | undefined {
+    return this.findLogin(loginId)?.acc;
+  }
+
+  /** The login a machine is using, with its account. */
+  hostLogin(host: string): { acc: StoredAccount; login: StoredLogin } | undefined {
+    for (const acc of this.data.accounts) {
+      const login = acc.logins.find((l) => l.host === host);
+      if (login) return { acc, login };
+    }
+    return undefined;
+  }
+
+  /** Anthropic's profile says the login is of the account it is filed under. */
+  confirm(loginId: string): void {
+    const found = this.findLogin(loginId);
+    if (!found || found.login.confirmed) return;
+    found.login.confirmed = true;
+    this.save();
+  }
+
+  /**
+   * Anthropic's profile says the login is of another account (`oauthAccount`, from the
+   * profile): it moves there, confirmed, and that account is created when the hub does
+   * not know it. A machine using it is on that account from now on.
+   */
+  moveLogin(loginId: string, oauthAccount: Record<string, unknown>): { from: StoredAccount; to: StoredAccount } {
+    const id = accountId(oauthAccount);
+    const found = this.findLogin(loginId);
+    if (!id || !found) throw new Error('El login ya no existe');
+    const to = this.ensure(id, oauthAccount);
+    if (found.acc !== to) {
+      found.acc.logins = found.acc.logins.filter((l) => l !== found.login);
+      to.logins.push(found.login);
+    }
+    found.login.confirmed = true;
+    if (found.login.host) {
+      this.data.hosts[found.login.host] = to.id;
+      // Its machine's ~/.claude.json still names the account it was filed under.
+      const named = found.login.configAccount ?? found.acc.id;
+      if (named === to.id) delete found.login.configAccount;
+      else found.login.configAccount = named;
+    }
+    this.save();
+    return { from: found.acc, to };
   }
 
   /** A spare login the hub refreshed: the old refresh token no longer works, so this one must be kept. */
