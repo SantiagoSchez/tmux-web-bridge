@@ -3,5 +3,6 @@
   "scope": "server",
   "description": "Corregido el cambio de cuenta en un Mac: los Claude Code que ya están en marcha pasan a la cuenta nueva en su siguiente petición, en lugar de seguir horas con la anterior y gastar sus límites",
   "issue": "60",
-  "breaking": false
+  "breaking": false,
+  "pr": "62"
 }
