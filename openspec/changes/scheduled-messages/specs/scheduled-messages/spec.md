@@ -91,13 +91,13 @@ The form SHALL offer, from the latest reading of the limits of the Claude accoun
 
 ### Requirement: A message missed while the hub was stopped launches when it starts
 
-When the hub starts and a pending message's time has passed, it SHALL launch the message right away and record in its result that it launched late and the time it was due.
+When the hub starts and a pending message's time has passed, it SHALL launch the message on its first check, within 20 seconds of starting, and record in its result that it launched late and the time it was due.
 
 #### Scenario: The hub was stopped at the message's time
 
 - **GIVEN** a pending message for 10:00 and the hub stopped from 09:50 to 11:30
 - **WHEN** the hub starts at 11:30
-- **THEN** it launches the message
+- **THEN** it launches the message within 20 seconds
 - **AND** its result says it launched late and was due at 10:00
 
 ### Requirement: A message launches whatever the account's limits

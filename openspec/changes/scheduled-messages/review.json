@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "pr": 63,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T21:58:09.075Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 3,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "server/src/scheduled.ts",
+      "symbol": "ScheduledMessages.launch",
+      "title": "Late is measured from each launch's start, so serial launches in one tick can mark a message late while the hub was running",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "server/src/index.ts",
+      "symbol": "scheduled check",
+      "title": "Save-time folder check compares only the path; launch uses sameFolder with subfolders",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "server/src/scheduled.ts",
+      "symbol": "ScheduledMessages.constructor",
+      "title": "scheduled.json is barely validated on load (only id and at)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "openspec/changes/scheduled-messages/specs/scheduled-messages/spec.md",
+      "symbol": null,
+      "title": "Spec says a missed message launches right away; the code waits one 20 s interval",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}
