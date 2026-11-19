@@ -68,11 +68,12 @@
 
 ## 11. Human review
 
-- [ ] 11.1 After `ka review-rounds gate` passes, ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here
+- [x] 11.1 After `ka review-rounds gate` passes, ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here
+  - The owner takes PR #59 as good, without a manual review (asked on 2026-11-19 after the gate passed on 41e0a1a).
 
 ## 12. features-check before the archive
 
-- [ ] 12.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0
+- [x] 12.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0
 
 ## Workflow follow-up
 
