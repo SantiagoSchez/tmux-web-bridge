@@ -27,6 +27,8 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   /** On a wide screen, the scratchpads folded into a narrow strip on the right. */
   scratchpadsCollapsed: boolean;
+  /** The «Programados» section above the scratchpads, folded to its header. */
+  scheduledFolded: boolean;
   /** The scratchpad shown, by storage position (0 blue, 1 green, 2 orange, 3 yellow, 4 purple). */
   scratchpad: number;
   /** The panel shortcuts changed on this device (Ajustes › Atajos), serialized; a missing one is its default. */
@@ -34,7 +36,7 @@ export interface Prefs {
 }
 
 const DEFAULTS: Prefs = { termFontSize: 13, collapsedHosts: [], collapsedSessions: [], silenceWhilePresent: false, theme: 'dark', skipPermissions: false, listView: 'detailed',
-  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, worktreeBases: {}, sidebarCollapsed: false, scratchpadsCollapsed: false, scratchpad: 0, shortcuts: {} };
+  trelloBoard: '', trelloLists: {}, trelloLaunch: {}, trelloWorktree: false, worktreeBases: {}, sidebarCollapsed: false, scratchpadsCollapsed: false, scheduledFolded: false, scratchpad: 0, shortcuts: {} };
 const KEY = 'tmux-web-bridge:prefs';
 
 function load(): Prefs {

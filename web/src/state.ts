@@ -1,6 +1,6 @@
 import { computed, signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
-import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, MachinesInfo, PaneInfo, PaneState, Scratchpads, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
+import type { AccountsInfo, ActivityEvent, ConnectionInfo, DictationInfo, HostInfo, HubSettings, MachinesInfo, PaneInfo, PaneState, ScheduledMessage, Scratchpads, SessionInfo, UsageSample, WindowInfo } from '../../shared/types';
 
 export type WsStatus = 'connecting' | 'open' | 'closed';
 
@@ -116,7 +116,9 @@ export type Dialog =
    */
   | { kind: 'claudeLogin'; host?: string; account?: string }
   /** A note written and placed from the keyboard (the quick note shortcut). */
-  | { kind: 'quickNote' };
+  | { kind: 'quickNote' }
+  /** «Programar mensaje» on a machine, or, with `message`, a change to that pending one. */
+  | { kind: 'scheduled'; host: string; message?: ScheduledMessage };
 
 /** A Claude about to be closed, and the command that resumes its conversation later. */
 export interface ClaudeResume {
@@ -139,6 +141,9 @@ export const sheet = signal<'connections' | 'settings' | 'trello' | 'activity' |
 
 /** The activity of the last days, newest first (see ActivityEvent). */
 export const activity = signal<ActivityEvent[]>([]);
+
+/** The scheduled messages, pending and the results of the last 7 days (from the hub). */
+export const scheduled = signal<ScheduledMessage[]>([]);
 
 /** The notes of the five scratchpads by storage position (from the hub). */
 export const scratchpads = signal<Scratchpads>([[], [], [], [], []]);

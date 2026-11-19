@@ -23,6 +23,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Pegar en el terminal](#pegar-en-el-terminal): qué hace la tecla de pegar del ordenador con un texto o una imagen.
 - [Detalles al pasar el ratón](#detalles-al-pasar-el-ratón): los datos completos de una ventana o un espacio que la lista corta con «…».
 - [Tareas desde tarjetas de Trello](#tareas-desde-tarjetas-de-trello): el nombre que el agente da a la ventana de una tarea lanzada sobre una tarjeta.
+- [Mensajes programados](#mensajes-programados): prompts que el servidor central lanza una sola vez, a la hora elegida, para gastar el límite que sobra.
 
 ## Terminal
 
@@ -436,3 +437,60 @@ El servidor central lee la tarjeta una vez por lanzamiento, mientras prepara el 
 <!-- capability: trello-card-launch; requirement: launches-without-a-card-do-not-change -->
 
 Un lanzamiento sin tarjeta, como un worktree nuevo desde «Nuevo espacio» o «Nueva ventana» o una automatización, escribe solo su prompt en la ventana, como hasta ahora.
+
+## Mensajes programados
+
+### El botón del reloj de cada máquina
+<!-- capability: scheduled-messages; requirement: each-machine-in-the-sidebar-opens-the-scheduling-form -->
+
+Cada máquina de la lista tiene, junto al «+» de «Nuevo espacio», un botón con un reloj: «Programar mensaje». Abre el formulario con esa máquina ya elegida. El formulario tiene los campos de una automatización: nombre, máquina, carpeta, prompt, worktree nuevo con su rama base y saltarse los permisos, y en lugar de un horario, una fecha y una hora.
+
+### Horas sugeridas por los límites de la cuenta
+<!-- capability: scheduled-messages; requirement: the-form-suggests-times-from-the-machine-s-account-limits -->
+
+Para gastar el límite semanal que queda al final de la semana, el formulario propone horas a partir de la última lectura de los límites de la cuenta de Claude que usa la máquina: 1 día, 12 horas y 3 horas antes de que se reinicie el límite semanal, y el momento en que se reinicia el límite de 5 horas. Solo salen las que aún no han pasado. Elegir una solo rellena la fecha y la hora, que se guardan tal cual: si después se reinicia el límite en otro momento o la máquina cambia de cuenta, el mensaje se lanza a la hora guardada. Si el panel no sabe qué cuenta usa la máquina, no sugiere nada y la fecha y la hora se escriben a mano.
+
+### Lo que se comprueba al guardar
+<!-- capability: scheduled-messages; requirement: a-scheduled-message-is-checked-when-saved -->
+
+El servidor central no guarda un mensaje sin nombre, sin prompt, con una máquina que el panel no tiene, con una carpeta que no está entre las de esa máquina, con una hora que ya ha pasado o con una rama base que no es válida, ni pasa de 50 mensajes. En cada caso explica el motivo, por ejemplo «Esa hora ya ha pasado» o «Esa carpeta no está entre las de …». El formulario avisa de lo mismo antes de enviar.
+
+### Se lanza una vez, a su hora
+<!-- capability: scheduled-messages; requirement: a-scheduled-message-launches-once-at-its-time -->
+
+Cuando llega la fecha y la hora, el servidor central lanza el prompt una sola vez, como una tarea en una ventana nueva del espacio de la carpeta, con las opciones del mensaje. La ventana se llama como el mensaje o, con worktree nuevo, como el worktree, que lleva el nombre del mensaje y la hora prevista (`limpieza-20261120-1830`) y parte de la rama base elegida. El mensaje queda como lanzado, con su ventana, y el lanzamiento aparece en la Actividad como «Lanzado el mensaje programado «…»».
+
+### Se lanza aunque el límite esté agotado
+<!-- capability: scheduled-messages; requirement: a-message-launches-whatever-the-account-s-limits -->
+
+El mensaje se lanza a su hora aunque la cuenta de la máquina haya gastado su límite semanal o el de 5 horas, como las automatizaciones: el servidor central no mira los límites al lanzar.
+
+### Si el servidor central estaba parado
+<!-- capability: scheduled-messages; requirement: a-message-missed-while-the-hub-was-stopped-launches-when-it-starts -->
+
+Si el servidor central estaba parado cuando le tocaba a un mensaje, lo lanza al arrancar, en su primera comprobación, como mucho 20 segundos después. El resultado dice que se lanzó tarde y a qué hora tocaba.
+
+### Nunca se lanza dos veces
+<!-- capability: scheduled-messages; requirement: a-message-is-never-launched-twice -->
+
+El servidor central apunta que está lanzando un mensaje antes de lanzarlo. Si se para justo en ese momento, al arrancar no lo vuelve a lanzar, porque la ventana puede estar ya abierta: lo deja como error, con el motivo «El hub se reinició mientras lo lanzaba». Un lanzamiento lento tampoco se repite en la siguiente comprobación.
+
+### Cuando no se puede lanzar
+<!-- capability: scheduled-messages; requirement: a-message-that-cannot-launch-says-so -->
+
+Si el mensaje no se puede lanzar (la máquina no está conectada o ya no está en el panel, la carpeta ya no existe o el lanzamiento falla), el error queda en el resultado del mensaje y en la Actividad, y llega una notificación push diciendo que el mensaje programado no se ha podido lanzar. Dentro del horario de descanso esa notificación no llega, como cualquier otra.
+
+### La sección «Programados»
+<!-- capability: scheduled-messages; requirement: the-panel-shows-the-scheduled-messages -->
+
+Mientras hay algún mensaje programado, el panel derecho muestra encima de los scratchpads la sección «Programados (n)», que se puede plegar. Cada mensaje dice cuándo se lanza, en qué máquina y en qué carpeta. Los pendientes tienen «Editar» y «Cancelar». Los lanzados muestran cuándo se lanzaron, «Ir a la ventana» mientras la ventana existe, y «Quitar». Los que fallaron muestran el error y «Quitar». Sin ningún mensaje, la sección no aparece.
+
+### Editar o cancelar un pendiente
+<!-- capability: scheduled-messages; requirement: a-pending-message-can-be-edited-or-cancelled -->
+
+Mientras no se ha lanzado, cualquier campo del mensaje se puede cambiar: se lanza a su nueva hora con los datos nuevos. Cancelarlo, tras confirmarlo, lo quita de la lista y ya no se lanza. Un mensaje que ya se lanzó o que falló no se puede editar.
+
+### Los resultados duran 7 días
+<!-- capability: scheduled-messages; requirement: results-stay-for-7-days -->
+
+Un mensaje lanzado o fallido se queda en la lista con su resultado durante 7 días desde que se ejecutó y después desaparece solo. Con «Quitar» se puede retirar antes.

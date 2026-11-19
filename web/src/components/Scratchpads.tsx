@@ -7,6 +7,7 @@ import { isDesktop, prefs, setPref, toggleScratchpads } from '../prefs';
 import { isMac, shortcutLabel } from '../shortcuts';
 import { openWindow, route } from '../router';
 import { findWindow, hosts, paneOf, scratchpads, scratchpadsOpen, terminalFocus, toast } from '../state';
+import { ScheduledList } from './Scheduled';
 import { Sheet } from './Sheet';
 import { IconPaste, IconPin, IconSidebarRight, IconTrash } from './icons';
 
@@ -86,6 +87,7 @@ export function Scratchpads() {
   const notes = scratchpads.value[n];
   return (
     <section class="pads" aria-label="Scratchpads" style={{ '--pad': pad.color }}>
+      <ScheduledList />
       <div class="pads-head">
         <div class="pads-tabs" role="tablist" aria-label="Scratchpad">
           {PADS.map((p) => (

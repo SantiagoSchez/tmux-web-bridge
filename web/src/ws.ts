@@ -1,6 +1,6 @@
 import type { AccountOp, ActionOp, ClientMessage, ServerMessage, ViewInfo } from '../../shared/types';
 import { recheck, signedOut } from './auth';
-import { accountsInfo, activity, applyHostOrder, clientId, connections, dictationInfo, hosts, hubSettings, machinesInfo, scratchpads, toast, usageSamples, vapidKey, wsStatus } from './state';
+import { accountsInfo, activity, applyHostOrder, clientId, connections, dictationInfo, hosts, hubSettings, machinesInfo, scheduled, scratchpads, toast, usageSamples, vapidKey, wsStatus } from './state';
 import { updateInfo } from './updates';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
@@ -174,6 +174,9 @@ class HubSocket {
         break;
       case 'scratchpads':
         scratchpads.value = msg.pads;
+        break;
+      case 'scheduled':
+        scheduled.value = msg.list;
         break;
       case 'result': {
         const p = this.pending.get(msg.id);

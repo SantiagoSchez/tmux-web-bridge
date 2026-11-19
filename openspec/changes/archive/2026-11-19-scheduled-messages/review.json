@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "pr": 63,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T21:58:09.075Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 3,
+        "question": 0,
+        "nitpick": 1
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "051cdbda775de39df9b11522847ddf50025ad40b",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T22:03:17.413Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "server/src/scheduled.ts",
+      "symbol": "ScheduledMessages.launch",
+      "title": "Late is measured from each launch's start, so serial launches in one tick can mark a message late while the hub was running",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "Correct but only cosmetic: the late flag only changes the panel row and the log, it is reached only when several slow due launches share one tick, and the fix (read the tick's start time instead of the launch's) is about one line.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "server/src/index.ts",
+      "symbol": "scheduled check",
+      "title": "Save-time folder check compares only the path; launch uses sameFolder with subfolders",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "Confirmed mismatch, but the UI's folderChoices always builds targets that match sameFolder, so only a hand-made API call reaches it; a later change of the folder's subfolders flag fails at launch even with a stricter save check, and switching index.ts to sameFolder is a one-line change better done now than scheduled.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "server/src/scheduled.ts",
+      "symbol": "ScheduledMessages.constructor",
+      "title": "scheduled.json is barely validated on load (only id and at)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "Right that server-standards.md requires validation on load and the constructor checks only id and at, but scheduled.json is written only by the store (temp file and rename), so a bad entry needs a hand edit; a status allow-list filter is a one-line change, not a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "openspec/changes/scheduled-messages/specs/scheduled-messages/spec.md",
+      "symbol": null,
+      "title": "Spec says a missed message launches right away; the code waits one 20 s interval",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "364054cf353042187bc11773f188ed42e63259c9",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

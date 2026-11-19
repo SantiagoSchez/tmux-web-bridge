@@ -702,6 +702,8 @@ export type ServerMessage =
   | { t: 'activityAdd'; event: ActivityEvent }
   /** The notes of the five scratchpads (on connect, and after every change). */
   | { t: 'scratchpads'; pads: Scratchpads }
+  /** The scheduled messages, pending and the results of the last 7 days (on connect, and after every change). */
+  | { t: 'scheduled'; list: ScheduledMessage[] }
   /** code: what kind of failure, when the panel can do something about it ('needsLogin'). */
   | { t: 'result'; id: number; ok: boolean; error?: string; code?: string; data?: unknown };
 
@@ -815,6 +817,39 @@ export interface AutomationRun {
   worktree?: string;
 }
 
+/** A prompt the hub launches once, at `at` (the right panel's «Programados»). */
+export interface ScheduledMessage {
+  id: string;
+  name: string;
+  host: string;
+  /** An added folder (or `sub`, one inside a folder with subfolders): a new window in its space. */
+  target: { folder: string; sub?: string };
+  prompt: string;
+  /** In a new worktree, «<name>-<planned date>». */
+  worktree: boolean;
+  /** The branch of `origin` the worktree starts from (ExtLaunchRequest.base). */
+  base?: string;
+  skipPermissions: boolean;
+  /** When it launches, epoch milliseconds. */
+  at: number;
+  /** pending; launching: the hub started launching it; launched; error: it could not launch. */
+  status: 'pending' | 'launching' | 'launched' | 'error';
+  /** launched or error: when it ran, epoch milliseconds. */
+  ranAt?: number;
+  /** It launched after its time, because the hub was stopped at `at`. */
+  late?: boolean;
+  /** error: why. */
+  message?: string;
+  session?: string;
+  window?: string;
+  pane?: string;
+  /** The worktree it launched in. */
+  worktreeName?: string;
+}
+
+/** POST /api/scheduled: a new one (no id), or a change to a pending one. */
+export type ScheduledMessageInput = Pick<ScheduledMessage, 'name' | 'host' | 'target' | 'prompt' | 'worktree' | 'base' | 'skipPermissions' | 'at'> & { id?: string };
+
 /** GET /api/automations: each one, with its next run and its last ones (newest first). */
 export interface AutomationInfo extends Automation {
   /** Epoch milliseconds; null when disabled (or a cron that never matches). */
@@ -873,7 +908,7 @@ export interface GitChanges {
 /**
  * What happened, for the panel's «Actividad»: a Claude asked, wanted permission or
  * finished (and how long it worked), a task was launched (from where), an automation
- * was skipped or failed.
+ * was skipped or failed, a scheduled message failed.
  */
 export interface ActivityEvent {
   id: number;
@@ -890,7 +925,7 @@ export interface ActivityEvent {
   /** done: how long it had been working (ms), when the hub saw it start. */
   worked?: number;
   /** launch: where the task came from. */
-  source?: 'trello' | 'extension' | 'automation' | 'panel';
-  /** launch: the worktree (or, from an automation, its name); skipped and error: why (windowName is the automation's name). */
+  source?: 'trello' | 'extension' | 'automation' | 'scheduled' | 'panel';
+  /** launch: the worktree (or, from an automation or a scheduled message, its name); skipped and error: why (windowName is the automation's or the scheduled message's name). */
   text?: string;
 }

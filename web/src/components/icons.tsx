@@ -63,6 +63,13 @@ export const IconPlus = () => (
     <path d="M12 5v14M5 12h14" />
   </Svg>
 );
+/** «Programar mensaje»: a clock with a plus. */
+export const IconScheduled = () => (
+  <Svg size={18}>
+    <circle cx="11" cy="13" r="7" />
+    <path d="M11 9.5V13l2.2 1.6M18 2.5v5M15.5 5h5" />
+  </Svg>
+);
 export const IconClose = () => (
   <Svg size={16}>
     <path d="M6 6l12 12M18 6L6 18" />

@@ -9,7 +9,8 @@ import { activity, hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStat
 import { ago, duration } from '../time';
 import { updateInfo } from '../updates';
 import { spaceTip, useHoverTip, windowTip } from './HoverTip';
-import { IconBranch, IconClose, IconMore, IconPlus, IconWorktree } from './icons';
+import { IconBranch, IconClose, IconMore, IconPlus, IconScheduled, IconWorktree } from './icons';
+import { openScheduled } from './Scheduled';
 
 /** Home: what needs you first, then every host → space → window. */
 export function Tree() {
@@ -216,6 +217,9 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
               <IconPlus />
             </button>
           )}
+          <button class="icon-btn small-btn" aria-label={`Programar mensaje en ${host.name}`} title="Programar mensaje" onClick={() => openScheduled(host.id)}>
+            <IconScheduled />
+          </button>
           <button class="icon-btn small-btn" aria-label={`Acciones de ${host.name}`} onClick={() => hostMenu(host)}>
             <IconMore />
           </button>
@@ -225,6 +229,9 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
           <h2 class="section-title">Espacios</h2>
           <button class="icon-btn small-btn" aria-label="Nuevo espacio" title="Nuevo espacio" onClick={() => newSession(host)}>
             <IconPlus />
+          </button>
+          <button class="icon-btn small-btn" aria-label="Programar mensaje" title="Programar mensaje" onClick={() => openScheduled(host.id)}>
+            <IconScheduled />
           </button>
           <button class="icon-btn small-btn" aria-label="Acciones" onClick={() => hostMenu(host)}>
             <IconMore />

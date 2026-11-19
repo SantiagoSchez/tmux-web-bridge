@@ -9,7 +9,7 @@ import { Sheet } from './Sheet';
 // whose window is still open opens it.
 
 const ICON: Record<ActivityEvent['kind'], string> = { question: '🙋', attention: '💬', done: '✅', launch: '▶', skipped: '⏭', error: '⚠' };
-const SOURCE: Record<NonNullable<ActivityEvent['source']>, string> = { trello: 'desde Trello', extension: 'desde la extensión de Trello', automation: 'por una automatización', panel: 'desde el panel' };
+const SOURCE: Record<NonNullable<ActivityEvent['source']>, string> = { trello: 'desde Trello', extension: 'desde la extensión de Trello', automation: 'por una automatización', scheduled: 'por un mensaje programado', panel: 'desde el panel' };
 
 type Filter = 'all' | 'claude' | 'tasks';
 const FILTERS: [Filter, string][] = [
@@ -28,11 +28,12 @@ function what(e: ActivityEvent): string {
       return e.worked ? `Terminó tras ${duration(e.worked)}` : 'Terminó';
     case 'launch':
       if (e.source === 'automation') return e.text ? `Lanzada por «${e.text}»` : SOURCE.automation;
+      if (e.source === 'scheduled') return e.text ? `Lanzado el mensaje programado «${e.text}»` : `Lanzada ${SOURCE.scheduled}`;
       return `Lanzada ${e.source ? SOURCE[e.source] : ''}${e.text ? ` · worktree ${e.text}` : ''}`;
     case 'skipped':
       return `Automatización saltada${e.text ? `: ${e.text.charAt(0).toLowerCase()}${e.text.slice(1)}` : ''}`;
     case 'error':
-      return `Automatización fallida${e.text ? `: ${e.text}` : ''}`;
+      return `${e.source === 'scheduled' ? 'Mensaje programado fallido' : 'Automatización fallida'}${e.text ? `: ${e.text}` : ''}`;
   }
 }
 
