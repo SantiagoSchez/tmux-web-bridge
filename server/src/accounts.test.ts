@@ -445,8 +445,10 @@ test('a switch of that machine writes its folder and leaves the default one as i
   const { bin, tmux } = fakeTmux(dir, folder);
   const credsBefore = readFileSync(join(dir, '.claude', '.credentials.json'), 'utf8');
   const confBefore = readFileSync(join(dir, '.claude.json'), 'utf8');
-  // A refresh of the default folder's Claude Code (another one: the bot) does not hold this switch up.
-  mkdirSync(join(dir, '.claude', '.oauth_refresh.lock'));
+  // A refresh of the default folder's Claude Code (another one: the bot) holds its three
+  // locks: it does not hold this switch up, and the switch leaves them to it.
+  const botLocks = ['.claude/.oauth_refresh.lock', '.claude.lock', '.claude.json.lock'];
+  for (const lock of botLocks) mkdirSync(join(dir, lock));
   const { snap, written } = await switchHost(fakeExec(dir, bin, tmux), () => ({ cred: cred('three'), oauthAccount: oauthAccount('three') }));
   assert.equal(written, true);
   assert.equal(snap.cred?.refreshToken, 'rt-two');
@@ -456,7 +458,8 @@ test('a switch of that machine writes its folder and leaves the default one as i
   assert.equal(config.numStartups, 2);
   assert.equal(readFileSync(join(dir, '.claude', '.credentials.json'), 'utf8'), credsBefore);
   assert.equal(readFileSync(join(dir, '.claude.json'), 'utf8'), confBefore);
-  for (const lock of ['.claude-twb/.oauth_refresh.lock', '.claude-twb.lock', '.claude-twb/.claude.json.lock', '.claude.lock', '.claude.json.lock']) assert.equal(existsSync(join(dir, lock)), false, lock);
+  for (const lock of ['.claude-twb/.oauth_refresh.lock', '.claude-twb.lock', '.claude-twb/.claude.json.lock']) assert.equal(existsSync(join(dir, lock)), false, lock);
+  for (const lock of botLocks) assert.equal(existsSync(join(dir, lock)), true, lock);
 }));
 
 const SERVICE = 'Claude Code-credentials';

@@ -51,3 +51,9 @@ A worktree created with a base branch SHALL start from that branch as it is on t
 - **GIVEN** a machine whose tmux server sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb`, with a hook that creates worktrees declared only in that folder's settings
 - **WHEN** a task is launched in worktree `feature/14-login` with base `release/2.0`
 - **THEN** the hook creates the worktree, and its branch `feature/14-login` starts at `origin/release/2.0`
+
+#### Scenario: Hook only in the default folder when tmux sets another one
+
+- **GIVEN** a machine whose tmux server sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb`, with a hook that creates worktrees declared only in `~/.claude`'s settings
+- **WHEN** a task is launched in worktree `feature/14-login` with base `release/2.0`
+- **THEN** the hub creates the worktree under the repository's `.claude/worktrees/`, as on a machine without a hook

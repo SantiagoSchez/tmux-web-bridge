@@ -17,7 +17,7 @@ An account switch from the panel does not reach the Claude Codes that should tak
 - A switch whose store is the file is unchanged in that respect: it already rewrites the file, which changes its time.
 - The worktree preparation script looks for the `WorktreeCreate` hook in the settings and plugins of the same folder, read the same way (`t show-environment -g CLAUDE_CONFIG_DIR`, `~/.claude` without it).
 - The switch's error messages and the hub's comments stop naming `~/.claude.json` and `~/.claude/.credentials.json` as if they were the only files (R1-01): they name Claude Code's account and credentials files.
-- The header comment of `server/src/host-creds.ts` is corrected: it says Claude Code re-reads the Keychain within about 30 s and that only the default folder is handled.
+- The header comment of `server/src/host-creds.ts` is corrected. Today it says that Claude Code re-reads the Keychain within about 30 s and that the script handles only the default folder; both are wrong.
 
 ## Capabilities
 
