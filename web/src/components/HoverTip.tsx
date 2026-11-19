@@ -54,6 +54,8 @@ export function useHoverTip(key: string, render: () => ComponentChildren | null)
       cancel(key);
       if (hoverTip.value?.key === key) hoverTip.value = null;
     },
+    // A click on the row is an action, not a rest: the tip it was waiting for does not come after it.
+    onPointerDown: () => cancel(key),
   };
 }
 
@@ -81,13 +83,14 @@ function TipBox({ tip }: { tip: Tip }) {
     const close = () => (hoverTip.value = null);
     const key = (e: KeyboardEvent) => e.key === 'Escape' && close();
     addEventListener('pointerdown', close, true);
-    addEventListener('keydown', key);
+    // Capture: xterm stops the Escape it handles, and the terminal usually has the focus. The key still reaches it.
+    addEventListener('keydown', key, true);
     addEventListener('scroll', close, true);
     addEventListener('resize', close);
     addEventListener('blur', close);
     return () => {
       removeEventListener('pointerdown', close, true);
-      removeEventListener('keydown', key);
+      removeEventListener('keydown', key, true);
       removeEventListener('scroll', close, true);
       removeEventListener('resize', close);
       removeEventListener('blur', close);

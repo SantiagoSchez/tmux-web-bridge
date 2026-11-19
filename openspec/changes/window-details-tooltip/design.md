@@ -51,7 +51,7 @@ Launching on a card goes through `launchFromRequest` in `server/src/index.ts` fo
 
 ### D5. Closing
 
-**Decision.** Besides `onPointerLeave`, `HoverTip` closes on `pointerdown` (capture, anywhere), `keydown` Escape, `scroll` (capture) and `resize`, as `LimitTip` does, and on the window's `blur` (switching to another app leaves no tip behind). `pointer-events: none` means a click lands on the row below and opens the window as today.
+**Decision.** Besides `onPointerLeave`, `HoverTip` closes on `pointerdown` (capture, anywhere), `keydown` Escape, `scroll` (capture) and `resize`, as `LimitTip` does, and on the window's `blur` (switching to another app leaves no tip behind). The Escape listener is registered in the capture phase: on a computer the terminal usually has the focus, and xterm stops the propagation of the Escape it handles, so a bubble-phase listener on `window` never hears it. The listener does not stop the key either: Escape still reaches the terminal (it interrupts Claude), because a tip the mouse happens to rest on must not swallow a key meant for the pane. `pointer-events: none` means a click lands on the row below and opens the window as today. A `pointerdown` on the row also cancels a tip still waiting for its second, so clicking a row does not bring its tip up a second later.
 
 ### D6. Native titles removed where the tip covers
 
