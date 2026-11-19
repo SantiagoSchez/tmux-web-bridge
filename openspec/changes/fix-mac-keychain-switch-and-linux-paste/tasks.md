@@ -98,7 +98,8 @@ Run again after the fix round of the adversarial review.
 
 ## 9. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 9.1 Run `/ka:update-features fix-mac-keychain-switch-and-linux-paste` for the new `claude-accounts` and `terminal-paste` capabilities, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 9.1 Run `/ka:update-features fix-mac-keychain-switch-and-linux-paste` for the new `claude-accounts` and `terminal-paste` capabilities, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - Two new areas in `docs/FEATURES.md`, each with its index line: «Cuentas de Claude» (3 sections) and «Pegar en el terminal» (1 section). `ka features-check --strict`: exit 0, 55 sections verified.
 
 ## 10. E2E pipeline (mandatory step 7)
 

@@ -22,6 +22,22 @@
         "question": 1,
         "nitpick": 1
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "6cff5fe2297802bb7088962b2c472dc51fb6a7a0",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T14:03:28.998Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 2
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -68,8 +84,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -85,6 +101,23 @@
       "origin": "introduced",
       "round": 1,
       "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R2-01",
+      "severity": "NITPICK",
+      "path": "server/src/accounts.test.ts",
+      "symbol": null,
+      "title": "Test comment names the incident and the deploy",
+      "origin": "introduced",
+      "round": 2,
+      "sha": "6cff5fe2297802bb7088962b2c472dc51fb6a7a0",
       "state": "open",
       "fixedIn": null,
       "reopened": 0,
