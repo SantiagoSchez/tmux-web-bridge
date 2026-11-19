@@ -1,0 +1,7 @@
+{
+  "type": "fixed",
+  "scope": "server",
+  "description": "Corregido el cambio de cuenta en las máquinas cuyo tmux usa otra carpeta de configuración de Claude Code (CLAUDE_CONFIG_DIR): ahora cambia la cuenta de los Claude Code de sus paneles y deja intacta la carpeta por defecto (~/.claude), que puede usar otro Claude Code de esa máquina",
+  "issue": "61",
+  "breaking": false
+}
