@@ -1,7 +1,7 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { HostLogin } from './account-store.js';
 import type { OAuthCred } from './claude-oauth.js';
-import type { TmuxExec } from './exec.js';
+import { type TmuxExec, tmuxFunction } from './exec.js';
 
 // Reading and writing a machine's Claude Code login over the same SSH the hub uses
 // for tmux. Only POSIX sh and tools every Mac and Linux has: no host-kit needed.
@@ -9,13 +9,20 @@ import type { TmuxExec } from './exec.js';
 // Where Claude Code keeps it (default config folder only, as the statusline):
 // - the login: ~/.claude/.credentials.json on Linux. On macOS, the Keychain item
 //   "Claude Code-credentials" (account $USER) when Claude Code can reach the Keychain,
-//   and the same file when it cannot: from SSH, and from a tmux server not started in
-//   the Mac's graphical session, the login Keychain refuses ("User interaction is not
-//   allowed") and Claude Code keeps the login in the file instead. The script goes by
-//   what it can read: the Keychain if it answers with a login, the file otherwise.
+//   and the same file when it cannot: outside the Mac's graphical session the login
+//   Keychain refuses ("User interaction is not allowed", exit 36) and Claude Code keeps
+//   the login in the file instead. The hub's SSH session is outside it, but a tmux
+//   server started from a Terminal is inside, and so are the Claudes it runs. So the
+//   script asks the Keychain from SSH first, then through the machine's tmux server
+//   (`tmux run-shell`, secrets through files in a private `mktemp -d` folder, never on
+//   a command line), and uses the file only when neither answers with a login. A
+//   switch writes only that store: a refresh token works once, and a copy in the file
+//   renewed by a Claude outside the graphical session would end the Keychain's.
 //   Claude Code re-reads the file when its mtime changes, and the Keychain within
 //   ~30 s, so a running Claude picks a switch up on its own.
-// - who it is: `oauthAccount` in ~/.claude.json.
+// - who it is: `oauthAccount` in ~/.claude.json. It names the account Claude Code
+//   shows, not necessarily the login's: the hub asks Anthropic whose a login is before
+//   it uses it (AccountManager).
 //
 // A switch takes the locks Claude Code takes for the same files (a directory per
 // lock, stale after a minute at most): the two of a token refresh,
@@ -27,8 +34,8 @@ const SCRIPT = String.raw`
 umask 077
 H="$HOME"; C="$H/.claude"; CONF="$H/.claude.json"; CREDS="$C/.credentials.json"
 SVC="Claude Code-credentials"; U="$USER"; [ -n "$U" ] || U=$(id -un); OS=$(uname -s)
-HELD=""
-release() { for d in $HELD; do rmdir "$d" 2>/dev/null; done; HELD=""; }
+HELD=""; TD=""
+release() { for d in $HELD; do rmdir "$d" 2>/dev/null; done; HELD=""; [ -n "$TD" ] && rm -rf "$TD"; TD=""; }
 trap release EXIT
 trap 'release; exit 1' INT TERM HUP
 take() {
@@ -46,15 +53,34 @@ put() {
   if [ -L "$1" ]; then cat "$1.twb" > "$1" && rm -f "$1.twb"; else mv -f "$1.twb" "$1"; fi
 }
 if printf '' | base64 -d >/dev/null 2>&1; then D=-d; else D=-D; fi
+# A single-quoted word for a command the tmux server runs; tmux expands formats there
+# (#{…}, #H), so every # is doubled.
+q() { printf "'%s'" "$(printf %s "$1" | sed -e "s/'/'\\\\''/g" -e 's/#/##/g')"; }
+# The private folder the Keychain's answers go through when it is reached through tmux.
+kcdir() { [ -n "$TD" ] || TD=$(mktemp -d "$C/.twb-kc.XXXXXX" 2>/dev/null) || TD=""; [ -n "$TD" ]; }
+# Runs a command in the machine's tmux server (the graphical session, whose Keychain
+# answers): true if it ran and exited 0.
+kctmux() {
+  rm -f "$TD/rc"
+  t run-shell "$1; echo \$? > $(q "$TD/rc")" || return 1
+  [ "$(cat "$TD/rc" 2>/dev/null)" = 0 ]
+}
 b64() { base64 | tr -d '\n'; }
 echo "OS $OS"
 if [ "$MODE" = switch ]; then
   mkdir -p "$C"
   take "$C/.oauth_refresh.lock"; take "$H/.claude.lock"; take "$CONF.lock"
 fi
-STORE=file
-if [ "$OS" = Darwin ] && K=$(security find-generic-password -s "$SVC" -a "$U" -w 2>/dev/null) && [ -n "$K" ]; then STORE=keychain; fi
-echo "STORE $STORE"
+# The Keychain if it answers this session, else through the tmux server, else the file:
+# from SSH the login Keychain refuses ("User interaction is not allowed").
+STORE=file; VIA=""
+if [ "$OS" = Darwin ]; then
+  if K=$(security find-generic-password -s "$SVC" -a "$U" -w 2>/dev/null) && [ -n "$K" ]; then STORE=keychain; VIA=ssh
+  elif [ -d "$C" ] && kcdir && kctmux "security find-generic-password -s $(q "$SVC") -a $(q "$U") -w > $(q "$TD/out") 2>/dev/null" && K=$(cat "$TD/out") && [ -n "$K" ]; then STORE=keychain; VIA=tmux
+  fi
+  [ -n "$TD" ] && rm -f "$TD/out"
+fi
+echo "STORE $STORE $VIA"
 printf 'CRED '
 if [ $STORE = keychain ]; then printf %s "$K" | b64; else cat "$CREDS" 2>/dev/null | b64; fi
 echo
@@ -65,10 +91,19 @@ read -r cmd || exit 4
 [ "$cmd" = WRITE ] || { echo SKIPPED; exit 0; }
 read -r conf || exit 4
 read -r cred || exit 4
-# The login first: if it is refused, nothing has changed.
+# The login first, in its store only (a refresh token works once: a second copy renewed
+# elsewhere would end the first's session). If it is refused, nothing has changed.
 if [ $STORE = keychain ]; then
+  # security -i reads lines of at most 4032 bytes; a longer login goes as an argument.
+  # Through tmux, both go by files in the private folder, never on run-shell's command line.
   line="add-generic-password -U -a \"$U\" -s \"$SVC\" -X \"$cred\""
-  if [ "$(printf %s "$line" | wc -c)" -le 4032 ]; then printf '%s\n' "$line" | security -i >/dev/null 2>&1; else security add-generic-password -U -a "$U" -s "$SVC" -X "$cred" >/dev/null 2>&1; fi || { echo "ERR keychain"; exit 6; }
+  if [ "$(printf %s "$line" | wc -c)" -le 4032 ]; then
+    if [ "$VIA" = tmux ]; then printf '%s\n' "$line" > "$TD/cmd" && kctmux "security -i < $(q "$TD/cmd") > /dev/null 2>&1"; else printf '%s\n' "$line" | security -i >/dev/null 2>&1; fi
+  elif [ "$VIA" = tmux ]; then
+    printf %s "$cred" > "$TD/hex" && kctmux "security add-generic-password -U -a $(q "$U") -s $(q "$SVC") -X \"\$(cat $(q "$TD/hex"))\" > /dev/null 2>&1"
+  else
+    security add-generic-password -U -a "$U" -s "$SVC" -X "$cred" >/dev/null 2>&1
+  fi || { echo "ERR keychain"; exit 6; }
 else
   printf %s "$cred" | base64 $D | put "$CREDS" || { echo "ERR creds"; exit 6; }
 fi
@@ -81,10 +116,17 @@ export interface HostSnapshot extends HostLogin {
   os: string;
   /** Where the login is kept: the Keychain (a Mac that lets the hub in) or the file. */
   store: 'keychain' | 'file';
+  /** How the Keychain answered: the hub's own session, or the machine's tmux server (the graphical session). */
+  via: 'ssh' | 'tmux' | null;
   /** The whole credentials document: it may hold more than the login (MCP servers' tokens). */
   credsDoc: Record<string, unknown> | null;
   /** The whole ~/.claude.json, null if missing. */
   config: Record<string, unknown> | null;
+}
+
+/** The script for one mode, with `t` running the machine's tmux (to reach its Keychain). */
+function script(exec: TmuxExec, mode: 'inspect' | 'switch'): string {
+  return `MODE=${mode}\n${tmuxFunction('t', exec.tmuxCommand)}\n${SCRIPT}`;
 }
 
 const SCRIPT_ERRORS: Record<string, string> = {
@@ -111,7 +153,9 @@ export function parseSnapshot(out: string): HostSnapshot {
   const line = (key: string) => new RegExp(`^${key} ?(.*)$`, 'm').exec(out)?.[1] ?? null;
   const os = line('OS');
   if (!os) throw new Error('la máquina no ha contestado como se esperaba');
-  const store = line('STORE') === 'keychain' ? 'keychain' : 'file';
+  const [storeWord, viaWord] = (line('STORE') ?? '').split(' ');
+  const store = storeWord === 'keychain' ? 'keychain' : 'file';
+  const via = store === 'keychain' ? (viaWord === 'tmux' ? 'tmux' : 'ssh') : null;
   let credsDoc: Record<string, unknown> | null = null;
   const credRaw = line('CRED');
   if (credRaw) {
@@ -132,15 +176,18 @@ export function parseSnapshot(out: string): HostSnapshot {
   }
   const cred = (credsDoc?.claudeAiOauth as OAuthCred | undefined) ?? null;
   const oauthAccount = (config?.oauthAccount as Record<string, unknown> | undefined) ?? null;
-  return { os, store, credsDoc, config, cred: cred?.refreshToken ? cred : null, oauthAccount };
+  return { os, store, via, credsDoc, config, cred: cred?.refreshToken ? cred : null, oauthAccount };
 }
 
 /** What Claude Code is logged in with on a machine. Read only: no locks taken. */
 export async function inspectHost(exec: TmuxExec): Promise<HostSnapshot> {
-  return parseSnapshot(await exec.shell(`MODE=inspect\n${SCRIPT}`, 30_000));
+  return parseSnapshot(await exec.shell(script(exec, 'inspect'), 30_000));
 }
 
-/** The documents to write for a switch: the machine's own, with only the login and the account replaced. */
+/**
+ * The documents to write for a switch: the machine's own, with only the login and the
+ * account replaced.
+ */
 export function switchedDocs(snap: HostSnapshot, cred: OAuthCred, oauthAccount: Record<string, unknown>): { config: string; creds: string } {
   // The account's own snapshot replaces the outgoing one whole: no field of the old
   // account may survive. Claude Code fills in what is missing from the profile itself.
@@ -161,7 +208,7 @@ export function switchHost(
   decide: (snap: HostSnapshot) => { cred: OAuthCred; oauthAccount: Record<string, unknown> } | null,
 ): Promise<{ snap: HostSnapshot; written: boolean }> {
   return new Promise((resolve, reject) => {
-    const child = exec.spawnShell(`MODE=switch\n${SCRIPT}`);
+    const child = exec.spawnShell(script(exec, 'switch'));
     let out = '';
     let err = '';
     let snap: HostSnapshot | null = null;

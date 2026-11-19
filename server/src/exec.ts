@@ -14,6 +14,15 @@ export function shq(arg: string): string {
   return /^[A-Za-z0-9_@%+:,./-][A-Za-z0-9_@%+=:,./-]*$/.test(arg) ? arg : shQuote(arg);
 }
 
+/**
+ * A shell function `name` that runs the machine's tmux (`tmux`: TmuxExec.tmuxCommand) with
+ * its arguments, for a script that runs on the machine: with the PATH tmux needs, its errors
+ * dropped and no stdin, so it never eats the script's own input.
+ */
+export function tmuxFunction(name: string, tmux: string): string {
+  return `${name}() { ( PATH="$PATH:${EXTRA_PATH}"; export PATH; exec ${tmux} "$@" ) 2>/dev/null </dev/null; }`;
+}
+
 /** Quotes a string for the shell, always (a single-quoted word). */
 export function shQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;

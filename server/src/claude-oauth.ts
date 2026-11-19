@@ -75,8 +75,11 @@ export function splitCode(pasted: string): { code: string; state?: string } {
   return { code: code.trim(), state: state?.trim() || undefined };
 }
 
-async function post(body: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const res = await fetch(TOKEN_URL, {
+/** How the requests reach Anthropic: the global `fetch`, or the tests' fake. */
+export type Fetch = typeof fetch;
+
+async function post(body: Record<string, unknown>, doFetch: Fetch): Promise<Record<string, unknown>> {
+  const res = await doFetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'User-Agent': UA },
     body: JSON.stringify(body),
@@ -115,9 +118,9 @@ function credFrom(data: Record<string, unknown>, previous?: OAuthCred): { cred: 
 }
 
 /** Trades the pasted code for a login. */
-export async function exchangeCode(pending: PendingLogin, code: string) {
+export async function exchangeCode(pending: PendingLogin, code: string, doFetch: Fetch = fetch) {
   return credFrom(
-    await post({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, client_id: CLIENT_ID, code_verifier: pending.verifier, state: pending.state }),
+    await post({ grant_type: 'authorization_code', code, redirect_uri: REDIRECT_URI, client_id: CLIENT_ID, code_verifier: pending.verifier, state: pending.state }, doFetch),
   );
 }
 
@@ -125,12 +128,12 @@ export async function exchangeCode(pending: PendingLogin, code: string) {
  * A new access token for a login the hub holds. The refresh token works once: the
  * answer brings its successor, which must be kept before anything else happens.
  */
-export async function refresh(cred: OAuthCred): Promise<OAuthCred> {
-  return credFrom(await post({ grant_type: 'refresh_token', refresh_token: cred.refreshToken, client_id: CLIENT_ID, scope: REFRESH_SCOPES.join(' ') }), cred).cred;
+export async function refresh(cred: OAuthCred, doFetch: Fetch = fetch): Promise<OAuthCred> {
+  return credFrom(await post({ grant_type: 'refresh_token', refresh_token: cred.refreshToken, client_id: CLIENT_ID, scope: REFRESH_SCOPES.join(' ') }, doFetch), cred).cred;
 }
 
-async function get(path: string, accessToken: string): Promise<Record<string, unknown>> {
-  const res = await fetch(`${API}${path}`, {
+async function get(path: string, accessToken: string, doFetch: Fetch): Promise<Record<string, unknown>> {
+  const res = await doFetch(`${API}${path}`, {
     headers: { Authorization: `Bearer ${accessToken}`, 'anthropic-beta': BETA, 'User-Agent': UA },
     signal: AbortSignal.timeout(15_000),
   });
@@ -165,8 +168,8 @@ export function parseUsage(data: Record<string, unknown>, t: number): AccountUsa
 }
 
 /** 5 h, 7 d and the weekly limits per model of the login's account. */
-export async function fetchUsage(accessToken: string): Promise<AccountUsage> {
-  return parseUsage(await get('/api/oauth/usage', accessToken), Math.floor(Date.now() / 1000));
+export async function fetchUsage(accessToken: string, doFetch: Fetch = fetch): Promise<AccountUsage> {
+  return parseUsage(await get('/api/oauth/usage', accessToken, doFetch), Math.floor(Date.now() / 1000));
 }
 
 export interface Profile {
@@ -227,6 +230,6 @@ export function parseProfile(data: Record<string, unknown>): Profile {
   };
 }
 
-export async function fetchProfile(accessToken: string): Promise<Profile> {
-  return parseProfile(await get('/api/oauth/profile', accessToken));
+export async function fetchProfile(accessToken: string, doFetch: Fetch = fetch): Promise<Profile> {
+  return parseProfile(await get('/api/oauth/profile', accessToken, doFetch));
 }

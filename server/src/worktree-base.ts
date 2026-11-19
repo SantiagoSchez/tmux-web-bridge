@@ -6,7 +6,7 @@
 // the change worktree-base-branch.
 
 import type { BranchList } from '../../shared/types.js';
-import { EXTRA_PATH, shPath, shQuote } from './exec.js';
+import { shPath, shQuote, tmuxFunction } from './exec.js';
 import { CONFIG_FILE, MAX_CONFIG } from './harness-config.js';
 
 /** Seconds a fetch may take before the scripts go on with what the machine knows. */
@@ -35,7 +35,7 @@ const AGENT_SECONDS = 2;
  */
 function sshAgent(tmux: string): string {
   return (
-    `t() { ( PATH="$PATH:${EXTRA_PATH}"; export PATH; exec ${tmux} "$@" ) 2>/dev/null </dev/null; }; ` +
+    `${tmuxFunction('t', tmux)}; ` +
     `keys() { [ -S "$1" ] && [ -O "$1" ] && bounded ${AGENT_SECONDS} env SSH_AUTH_SOCK="$1" ssh-add -l; }; ` +
     `if ! keys "\${SSH_AUTH_SOCK:-}"; then ` +
     `nl=$(printf '\\nx'); nl=\${nl%x}; ifs=$IFS; IFS=$nl; tried="$nl\${SSH_AUTH_SOCK:-}$nl"; ` +
