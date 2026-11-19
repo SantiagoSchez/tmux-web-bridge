@@ -122,7 +122,15 @@ Once the pull request is approved, or taken as good, the agent closes it without
 2. Check that the platform shows the commit you pushed last: compare `git rev-parse HEAD` with the pull request's latest commit (`gh pr view <n> --json headRefOid`; merge with `--match-head-commit <that commit>` too, so GitHub refuses an older head). When they differ, the platform has not caught up with the push yet: wait a few seconds and read it again. Never merge an earlier head: the merge would leave the later commits out of `master`.
 3. Merge the pull request with the `squash` strategy (`gh pr merge`: `--squash` for `squash`, `--merge` for `merge_commit`, `--rebase` for `fast_forward`). When the platform refuses the merge (a pending or failing check, a conflict, a missing approval), report why and stop: never bypass a restriction.
 
-After the merge, check the pull request's state on the platform; never assume it is merged. Then propose what is left, each on the user's go-ahead, both questions in one `AskUserQuestion` call:
+After the merge, check the pull request's state on the platform; never assume it is merged.
+
+The project has post-merge actions (`pullRequests.afterMerge`). Each one gets the merged change's context: the pull request's number and link, the merged branch, the merge commit on `master`, and the path of the archived change under `openspec/changes/archive/`, whose proposal, design and tasks say what the change did. A skill gets them as its arguments, in that order; for instructions, write them above the instructions. When an action fails, say what failed and what the user has to do by hand, then go on with the other actions: the merge is never reverted. The actions belong to a change's pull request, never to the release pull request of `/ka:release`.
+
+Run these in order, without asking, once the platform shows the pull request merged and before proposing what is left:
+
+1. **Follow the deploy**: follow these instructions with the context: Follow the `deploy` run of the merge commit with `gh run watch` and report how it went; say so when the merge deploys nothing (it only touched the `paths-ignore` of `.github/workflows/deploy.yml`). See docs/dev-standards/release-standards.md.
+
+Then propose what is left, each on the user's go-ahead, in one `AskUserQuestion` call:
 
 - Leave a comment on the GitHub issue with the link to the pull request, written in es-ES, and close the issue when the merge left it open.
 - Remove the branch's worktree and its local branch with `/ka:git-worktree remove`. The removal deletes the branch once its changes are in `origin/master`. Afterwards run `git branch --list <branch>`: when the branch is still there, it holds commits the pull request did not merge; say so and leave it.

@@ -69,6 +69,7 @@ ka review-rounds gate                no open blocker on the reviewed commit; sug
 human review                         a person reviews (findings reopen the loop above), or the user takes it as good
 /opsx:archive                        after the approval, then commit the archive moves
 the agent merges                     into master
+post-merge actions                   the project's own (pullRequests.afterMerge), in order, once the merge shows on the platform
 ```
 
 This repository has a single developer, its owner: when step 8 of the mandatory task steps asks who reviews the pull request, the reviewer is the owner, or the owner takes it as good. The agent then merges with `gh pr merge <n> --squash --delete-branch`, and the pull request's English title becomes the squash commit's subject. The [release standards](./release-standards.md) hold the deployment and release steps.

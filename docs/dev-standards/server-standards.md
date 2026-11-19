@@ -59,7 +59,7 @@ The conventions of the `server` layer (server/**, shared/**). The principles in 
 ## Testing
 
 - The levels this layer tests at and where each kind of test lives, following [testing-standards.md](testing-standards.md).
-- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in step 4 of [the mandatory task steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
+- The test, typecheck and lint commands are configured in `.claude/ka.json` and listed in the «Run tests, typecheck and lint» step of [the mandatory steps](../../.claude/rules/ka-mandatory-steps.md); never copy them here, where they would go stale.
 - Tests use `node:test` (`test(...)`) and `node:assert/strict`, run by `tsx`, one file per module in `server/src/<module>.test.ts`. Test names are English sentences stating the behaviour; assertions match the Spanish messages (`/No existe la carpeta/`).
 - Pure logic (parsers, sanitisers, `shared/` helpers, schedules) is unit-tested without mocks.
 - Remote shell scripts are tested by running them for real with `/bin/sh` against a temporary `HOME` (`mkdtempSync(join(tmpdir(), 'twb-…'))`, removed in `finally`), through a fake host that implements only the `exec` methods the code uses (see `fakeHost` in `actions.test.ts` and `temp.test.ts`).

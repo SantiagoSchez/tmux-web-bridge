@@ -27,6 +27,5 @@ The project works with the koalarnes plugin. [`.claude/rules/ka-mandatory-steps.
 ## Always in view
 
 - Never merge a pull request without the owner's yes in the chat. See [the workflow](./docs/dev-standards/base-standards.md#workflow).
-- After merging into `master`, follow the `deploy` run with `gh run watch` and report how it went; say so when the merge deploys nothing. See [the release standards](./docs/dev-standards/release-standards.md).
 - When a feature is merged, deployed and checked, propose a release: the version (`ka changelog release --dry-run`) and what it would hold. Cut it only on the owner's yes. See [the release standards](./docs/dev-standards/release-standards.md#cutting-a-release).
 - Never run a bare `tmux`, or `host-kit/install.sh` by hand, in a test or a manual check: they reach the user's real tmux server. See [the host-kit standards](./docs/dev-standards/host-kit-standards.md#testing).

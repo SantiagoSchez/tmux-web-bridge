@@ -76,7 +76,7 @@ rules:
 
   tasks:
     - Order the tasks test-first (failing test, minimal implementation, refactor).
-    - Test, typecheck and lint with the commands configured for each layer (step 4 of the mandatory steps), never with the raw tools.
+    - Test, typecheck and lint with the commands configured for each layer (the «Run tests, typecheck and lint» step of the mandatory steps), never with the raw tools.
     - For schema work, include the exact command that generates the migration.
     - For a dependency-wiring or bootstrap change, add a boot smoke test task (start the application, wait for its ready log line, stop it).
     - For a message or job payload change, add an audit task over every producer and consumer of it.
