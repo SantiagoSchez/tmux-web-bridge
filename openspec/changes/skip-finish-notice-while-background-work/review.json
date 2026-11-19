@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "pr": 56,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "b2b5d887fd30485f48e81bf00be69e7b2f71cb61",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T17:10:11.261Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "openspec/changes/skip-finish-notice-while-background-work/specs/push-notifications/spec.md",
+      "symbol": null,
+      "title": "Make explicit that a pause is not a finished turn for the existing requirements",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "b2b5d887fd30485f48e81bf00be69e7b2f71cb61",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The existing requirements say \"finishes its turn\" leads to a notice and a ✅, and the new one says \"ends its turn\" leads to 🔨 and no notice, so the archived spec reads as ambiguous. One sentence in the spec delta; worth mentioning in the final comment, not a work item of its own.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "scripts/test-window-title.sh",
+      "symbol": "finish",
+      "title": "Pin D4: a payload that is not JSON is a finish",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "b2b5d887fd30485f48e81bf00be69e7b2f71cb61",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "jq -e fails on input that is not JSON, so the turn is treated as finished as D4 says; Claude Code always sends JSON, and the test is a one-line addition.",
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

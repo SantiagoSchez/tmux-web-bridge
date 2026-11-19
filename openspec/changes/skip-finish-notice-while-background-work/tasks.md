@@ -36,7 +36,8 @@
 
 ## 6. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 6.1 Run `/ka:update-features skip-finish-notice-while-background-work` for the new requirement of `push-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 6.1 Run `/ka:update-features skip-finish-notice-while-background-work` for the new requirement of `push-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - New section «Una pausa a la espera de trabajo en segundo plano no avisa» in the «Notificaciones» area of `docs/FEATURES.md`, after «El ✅ de un panel terminado». `ka features-check --strict`: exit 0, 56 sections verified.
 
 ## 7. E2E pipeline (mandatory step 7)
 
