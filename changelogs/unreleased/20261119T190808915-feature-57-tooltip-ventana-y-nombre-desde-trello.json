@@ -3,5 +3,6 @@
   "scope": "server",
   "description": "Añadido que el Claude lanzado desde una tarjeta de Trello, en el panel o en la extensión, empiece cambiando el nombre de su ventana por un resumen del título de la tarjeta, de 30 caracteres como mucho. Si lanzas sin saltar permisos, Claude pide permiso para «tmux rename-window»; se puede dejar permitido con Bash(tmux rename-window:*) en los ajustes de Claude",
   "issue": "57",
-  "breaking": false
+  "breaking": false,
+  "pr": "58"
 }
