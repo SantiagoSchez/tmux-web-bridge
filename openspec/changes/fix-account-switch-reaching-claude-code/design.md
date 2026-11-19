@@ -46,6 +46,14 @@ Alternatives considered: the kit's `claude-dir` file (the owner chose the tmux e
 
 Alternatives considered: deleting the file (Claude Code would re-read the Keychain every 30 s, but a Claude Code outside the graphical session would lose its login; the owner chose `touch -c`); creating an empty file when it is missing (not needed: with no file, Claude Code already re-reads on every check).
 
+### D3. The worktree hook is looked for in the same folder
+
+**Context.** `prepareScript` in `server/src/worktree-base.ts` decides whether the hub creates the worktree itself or leaves it to a `WorktreeCreate` hook. Its `HOOK` part read `${CLAUDE_CONFIG_DIR:-$HOME/.claude}` in the SSH session, which never has the variable (the reason for D1), so on a machine whose tmux sets another folder it looked in the wrong settings and plugin cache.
+
+**Decision.** `HOOK` takes the folder as D1 does: `t show-environment -g CLAUDE_CONFIG_DIR`, the value after `CLAUDE_CONFIG_DIR=` when it is not empty, `$HOME/.claude` otherwise. The script already defines `t` for the SSH agent search. The project's settings keep their places.
+
+**Consequences.** On a machine without the variable nothing changes. On drangleic-claude a hook declared in `~/.claude-twb` (directly or through an enabled plugin) creates the worktree, and one declared only in `~/.claude` (which the panes' Claude Code does not read) no longer does.
+
 ## Risks / Trade-offs
 
 - [A later Claude Code version changes the folder's file names, the Keychain naming or stops watching the file's time] → The header comment of `host-creds.ts` names the version these were read in, so the next look knows what to check.

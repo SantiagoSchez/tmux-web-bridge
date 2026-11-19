@@ -141,7 +141,7 @@ export interface HostSnapshot extends HostLogin {
   via: 'ssh' | 'tmux' | null;
   /** The whole credentials document: it may hold more than the login (MCP servers' tokens). */
   credsDoc: Record<string, unknown> | null;
-  /** The whole ~/.claude.json, null if missing. */
+  /** The whole account file of Claude Code's folder (~/.claude.json for the default one), null if missing. */
   config: Record<string, unknown> | null;
 }
 
@@ -152,9 +152,9 @@ function script(exec: TmuxExec, mode: 'inspect' | 'switch'): string {
 
 const SCRIPT_ERRORS: Record<string, string> = {
   lock: 'Claude Code tiene ocupados sus ficheros (se está renovando la sesión); prueba otra vez en unos segundos',
-  conf: 'no se pudo escribir ~/.claude.json',
+  conf: 'no se pudo escribir el fichero de cuenta de Claude Code',
   keychain: 'no se pudo escribir en el Llavero del Mac',
-  creds: 'no se pudo escribir ~/.claude/.credentials.json',
+  creds: 'no se pudo escribir el fichero de credenciales de Claude Code',
 };
 
 function fromB64(s: string): Buffer {
@@ -192,7 +192,7 @@ export function parseSnapshot(out: string): HostSnapshot {
     try {
       config = JSON.parse(gunzipSync(fromB64(confRaw)).toString('utf8'));
     } catch {
-      throw new Error('~/.claude.json de la máquina no se puede leer');
+      throw new Error('el fichero de cuenta de Claude Code de la máquina no se puede leer');
     }
   }
   const cred = (credsDoc?.claudeAiOauth as OAuthCred | undefined) ?? null;

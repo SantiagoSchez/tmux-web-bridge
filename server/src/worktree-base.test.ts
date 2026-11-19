@@ -297,12 +297,29 @@ test('an origin that cannot be reached: the worktree starts from the known origi
     await assert.rejects(prepare(home, repo, 'feature/15-otra', 'no-existe'), /No se ha podido contactar con origin.*«no-existe»/);
   }));
 
-/** The places a WorktreeCreate hook can be declared in: each puts one there and gives the extra environment it needs. */
-const HOOK_PLACES: [string, (home: string, repo: string) => Record<string, string>][] = [
+/**
+ * A fake tmux for the machine whose server's global environment sets CLAUDE_CONFIG_DIR to
+ * `folder`: it answers that one question as tmux does and fails on anything else.
+ */
+function tmuxWithConfigDir(home: string, folder: string): string {
+  const bin = join(home, 'bin/tmux');
+  write(bin, `#!/bin/sh\n[ "$*" = "show-environment -g CLAUDE_CONFIG_DIR" ] && { printf '%s\\n' ${shQuote(`CLAUDE_CONFIG_DIR=${folder}`)}; exit 0; }\nexit 1\n`);
+  chmodSync(bin, 0o755);
+  return shQuote(bin);
+}
+
+/** What the machine needs for a hook in one place: the extra environment and the machine's tmux. */
+type HookPlace = { extra?: Record<string, string>; tmux?: string };
+
+/** The places a WorktreeCreate hook can be declared in: each puts one there and gives what the machine needs for it. */
+const HOOK_PLACES: [string, (home: string, repo: string) => HookPlace][] = [
   ['the user settings', (home) => (write(join(home, '.claude/settings.json'), HOOK_SETTINGS), {})],
   ['the project settings', (_home, repo) => (write(join(repo, '.claude/settings.json'), HOOK_SETTINGS), {})],
   ['the local project settings', (_home, repo) => (write(join(repo, '.claude/settings.local.json'), HOOK_SETTINGS), {})],
-  ['the settings of CLAUDE_CONFIG_DIR', (home) => (write(join(home, 'cfg/settings.json'), HOOK_SETTINGS), { CLAUDE_CONFIG_DIR: join(home, 'cfg') })],
+  [
+    "the settings of the CLAUDE_CONFIG_DIR of the machine's tmux",
+    (home) => (write(join(home, '.claude-twb/settings.json'), HOOK_SETTINGS), { tmux: tmuxWithConfigDir(home, join(home, '.claude-twb')) }),
+  ],
   [
     'an enabled plugin',
     (home, repo) => {
@@ -311,19 +328,35 @@ const HOOK_PLACES: [string, (home: string, repo: string) => Record<string, strin
       return {};
     },
   ],
+  [
+    "an enabled plugin cached in the CLAUDE_CONFIG_DIR of the machine's tmux",
+    (home) => {
+      write(join(home, '.claude-twb/settings.json'), JSON.stringify({ enabledPlugins: { 'koalarnes@koalarnes': true } }, null, 2));
+      write(join(home, '.claude-twb/plugins/cache/koalarnes/koalarnes/0.8.1/hooks/hooks.json'), HOOK_SETTINGS);
+      return { tmux: tmuxWithConfigDir(home, join(home, '.claude-twb')) };
+    },
+  ],
 ];
 
 for (const [place, put] of HOOK_PLACES) {
   test(`with a WorktreeCreate hook in ${place}, the worktree's branch is made from origin/<base> for the hook`, () =>
     withHome(async (home) => {
       const { repo } = fixture(home);
-      const extra = put(home, repo);
-      assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0', extra), { kind: 'hook' });
+      const { extra = {}, tmux = NO_TMUX } = put(home, repo);
+      assert.deepEqual(await prepare(home, repo, 'feature/14-login', 'release/2.0', extra, tmux), { kind: 'hook' });
       assert.equal(sha(home, repo, 'refs/heads/feature/14-login'), sha(home, repo, 'refs/remotes/origin/release/2.0'));
       assert.throws(() => git(home, repo, 'rev-parse', '--abbrev-ref', 'feature/14-login@{upstream}'));
       assert.equal(git(home, repo, 'worktree', 'list', '--porcelain').split('\n').filter((l) => l.startsWith('worktree ')).length, 1);
     }));
 }
+
+test("when the machine's tmux sets another Claude Code folder, a hook only in ~/.claude is not the panes': the hub makes the worktree", () =>
+  withHome(async (home) => {
+    const { repo } = fixture(home);
+    write(join(home, '.claude/settings.json'), HOOK_SETTINGS);
+    const made = await prepare(home, repo, 'feature/14-login', 'release/2.0', {}, tmuxWithConfigDir(home, join(home, '.claude-twb')));
+    assert.equal(made.kind, 'created');
+  }));
 
 test('a plugin with the hook that is not enabled is no hook: the hub makes the worktree', () =>
   withHome(async (home) => {

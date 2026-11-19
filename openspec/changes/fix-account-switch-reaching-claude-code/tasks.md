@@ -54,6 +54,28 @@ The script tests run the real script with `/bin/sh` in a temporary `HOME`, with 
 - [x] 8.1 The project has no E2E suite; this step does not apply. Record it here.
   - Not applicable: `ka scope` reports «the project has no E2E suite».
 
+## 11. Scope change after review round 1: the worktree hook's folder (mandatory step 3, design D3)
+
+The owner asked to fix R1-02 in this pull request; `ka review-rounds reset` opened a new budget. The worktree script tests run the real script with `/bin/sh` in a temporary `HOME`; the machine's tmux is a fake script passed as the `tmux` command line, never a real one.
+
+- [x] 11.1 Review the tests of `server/src/worktree-base.ts` (`server/src/worktree-base.test.ts`): the `HOOK_PLACES` case «the settings of CLAUDE_CONFIG_DIR» puts the variable in the SSH session's environment, which describes the wrong behaviour. Rewrite it so a fake `tmux` answers `show-environment -g CLAUDE_CONFIG_DIR` with the folder, and add a case for an enabled plugin cached under that folder and a test where tmux sets the folder and the hook is only in `~/.claude` (the hub creates the worktree). Run `pnpm --filter server test` and see them fail for the right reason.
+  - `server/src/worktree-base.ts`: tests updated in this change. The case moved to «the settings of the CLAUDE_CONFIG_DIR of the machine's tmux» with `tmuxWithConfigDir()`, a fake `tmux` that answers only `show-environment -g CLAUDE_CONFIG_DIR`; `HOOK_PLACES` now gives the extra environment and the tmux (`HookPlace`). Added the plugin cached under that folder and the hook only in `~/.claude`. The three failed: the first two got `created` instead of `hook`, the third `hook` instead of `created`.
+- [x] 11.2 In `HOOK`, take the folder with `t show-environment -g CLAUDE_CONFIG_DIR` as design D3 says. Verify with `pnpm --filter server test` and `pnpm --filter server typecheck`.
+  - `HOOK` reads `t show-environment -g CLAUDE_CONFIG_DIR` and keeps the value after `CLAUDE_CONFIG_DIR=` when it is not empty, `$HOME/.claude` otherwise; its JSDoc says so. `pnpm --filter server test`: 350 pass; typecheck exit 0.
+
+## 12. Error messages and comments that name the default folder (R1-01)
+
+- [x] 12.1 In `server/src/host-creds.ts`, word the `conf` and `creds` errors of `SCRIPT_ERRORS`, the unreadable account file's error and the JSDoc of `HostSnapshot.config` without the default folder's paths. Verify with `grep` that no message of the file names `~/.claude` and with `pnpm --filter server test`.
+  - `conf`: «no se pudo escribir el fichero de cuenta de Claude Code»; `creds`: «no se pudo escribir el fichero de credenciales de Claude Code»; the unreadable account: «el fichero de cuenta de Claude Code de la máquina no se puede leer»; `HostSnapshot.config` names the folder's account file. `grep` of `~/.claude` in the file's strings: nothing. 350 tests pass.
+
+## 13. Checks, documentation and catalogue after the scope change (mandatory steps 4 to 6)
+
+- [x] 13.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck`, `ka features-check` and `ka docs-check`, and see them pass.
+  - `pnpm --filter server test`: 350 pass, 0 fail; `pnpm --filter server typecheck`: exit 0; `ka features-check`: exit 0, 67 sections; `ka docs-check`: no dead reference.
+- [x] 13.2 Run `/ka:update-docs`: the line of `docs/dev-standards/server-standards.md` on the tmux server's `CLAUDE_CONFIG_DIR` covers every script that looks into the Claude Code folder. Update the Issue #61 changelog entry with `/ka:changelog` so it says the worktree hook is found in that folder too.
+  - `/ka:update-docs`: no patch; line 35 of `docs/dev-standards/server-standards.md` already speaks of any script that reads or writes the Claude Code folder, which covers `HOOK`, and no document described where the hook is looked for. `/ka:changelog`: the Issue 61 entry (`20261119T211958594-…json`) rewritten with `-f`, keeping `--issue 61 --pr 62`; it now says a new worktree on those machines uses the `WorktreeCreate` hook of that folder.
+- [ ] 13.3 After the new review loop's gate passes, run `/ka:update-features fix-account-switch-reaching-claude-code` for the modified `worktree-base` requirement, `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+
 ## 9. Human review (mandatory step 8)
 
 - [ ] 9.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.

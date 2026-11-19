@@ -4,7 +4,13 @@
   "budget": {
     "maxRounds": 3,
     "extensions": [],
-    "resets": []
+    "resets": [
+      {
+        "reason": "Scope change: the owner asked to fix R1-02 (worktree-base HOOK reads CLAUDE_CONFIG_DIR from the SSH session) in this PR; R1-01 (error messages naming the default folder) goes with it",
+        "at": "2026-11-19T21:28:35.523Z",
+        "afterRound": 1
+      }
+    ]
   },
   "rounds": [
     {
