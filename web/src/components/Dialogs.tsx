@@ -10,6 +10,7 @@ import { BaseBranchSelect } from './BaseBranch';
 import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
 import { IconBranch, IconClose, IconWorktree } from './icons';
 import { hub } from '../ws';
+import { ScheduledDialog } from './Scheduled';
 import { QuickNoteDialog } from './Scratchpads';
 import { Sheet } from './Sheet';
 
@@ -45,6 +46,7 @@ export function Dialogs() {
   if (d.kind === 'project') return <ProjectDialog d={d} close={close} />;
   if (d.kind === 'claudeLogin') return <ClaudeLoginDialog d={d} close={close} />;
   if (d.kind === 'quickNote') return <QuickNoteDialog close={close} />;
+  if (d.kind === 'scheduled') return <ScheduledDialog d={d} close={close} />;
   return <PromptDialog d={d} close={close} />;
 }
 

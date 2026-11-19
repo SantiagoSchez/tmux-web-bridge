@@ -10,7 +10,7 @@ import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import { isQuietAt } from '../../shared/quiet-hours.js';
 import { branchNameProblem } from '../../shared/worktree.js';
-import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -25,6 +25,7 @@ import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask, listBranches } from './tasks.js';
 import { isCardRef, TrelloNotFoundError, TrelloService, TrelloSetupError } from './trello.js';
 import { Automations } from './automations.js';
+import { ScheduledError, ScheduledMessages } from './scheduled.js';
 import { ActivityLog } from './activity.js';
 import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
@@ -370,15 +371,18 @@ function machineFolders(host: HostMonitor): MachineFolders {
 
 // ---------------------------------------------------------------- automations
 
+/** A task the hub launches on its own (an automation run, a scheduled message): its machine has to be in the panel and connected. */
+async function launchOnHost(hostId: string, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult> {
+  const host = hosts.get(hostId);
+  if (!host) throw new Error(`No existe la máquina «${hostId}»`);
+  if (host.snapshot.status !== 'ok') throw new Error(`${host.name} no está conectada`);
+  const result = await launchTask(host, machineFolders(host), req);
+  await host.refresh();
+  return result;
+}
+
 const automations = new Automations(config.dataDir, {
-  launch: async (a, req) => {
-    const host = hosts.get(a.host);
-    if (!host) throw new Error(`No existe la máquina «${a.host}»`);
-    if (host.snapshot.status !== 'ok') throw new Error(`${host.name} no está conectada`);
-    const result = await launchTask(host, machineFolders(host), req);
-    await host.refresh();
-    return result;
-  },
+  launch: (a, req) => launchOnHost(a.host, req),
   paneState: (hostId, pane) => {
     const ctx = hosts.get(hostId)?.findPane(pane);
     return ctx ? ctx.pane.state : undefined;
@@ -399,6 +403,32 @@ automations.on('run', (a: Automation, run: AutomationRun) => {
   void push.send({ title: `⚠️ ${a.name}`, body: `La automatización no se ha podido lanzar: ${run.message ?? 'error'}`, tag: `automation:${a.id}`, url: '/' });
 });
 
+// ---------------------------------------------------------------- scheduled messages
+
+const scheduled = new ScheduledMessages(config.dataDir, {
+  launch: (m, req) => launchOnHost(m.host, req),
+  check: (hostId, target) => {
+    const host = hosts.get(hostId);
+    if (!host) return `No existe la máquina «${hostId}»`;
+    if (!(settings.value.folders[hostId] ?? []).some((f) => f.path === target.folder)) return `Esa carpeta no está entre las de ${host.name}`;
+    return null;
+  },
+});
+scheduled.start();
+scheduled.on('change', (list: ScheduledMessage[]) => broadcast({ t: 'scheduled', list }));
+// A message that did not launch says so on the phone, as an automation does: nobody is watching at its time.
+scheduled.on('run', (m: ScheduledMessage) => {
+  const host = hosts.get(m.host);
+  const hostName = host?.name ?? m.host;
+  if (m.status === 'launched') {
+    const win = m.pane ? host?.findPane(m.pane) : null;
+    activity.add({ kind: 'launch', source: 'scheduled', host: m.host, hostName, space: win?.session.name, window: m.window, windowName: win?.window.name, pane: m.pane, text: m.name });
+    return;
+  }
+  activity.add({ kind: 'error', source: 'scheduled', host: m.host, hostName, windowName: m.name, text: m.message });
+  void push.send({ title: `⚠️ ${m.name}`, body: `El mensaje programado no se ha podido lanzar: ${m.message ?? 'error'}`, tag: `scheduled:${m.id}`, url: '/' });
+});
+
 app.get('/ws', { websocket: true }, (ws, req) => {
   bindSession(req, ws);
   heartbeat.watch(ws);
@@ -416,6 +446,7 @@ app.get('/ws', { websocket: true }, (ws, req) => {
   send(ws, { t: 'accounts', info: accountsView(check) });
   send(ws, { t: 'activity', events: activity.list.slice(0, 400) });
   send(ws, { t: 'scratchpads', pads: scratchpads.pads });
+  send(ws, { t: 'scheduled', list: scheduled.list });
 
   ws.on('message', async (raw) => {
     let msg: ClientMessage;
@@ -771,6 +802,27 @@ app.post('/api/automations/:id/run', async (req, reply) => {
     return await automations.runNow((req.params as { id: string }).id);
   } catch (err) {
     return reply.code(400).send({ error: (err as Error).message });
+  }
+});
+
+app.get('/api/scheduled', async () => scheduled.list);
+
+/** A new scheduled message (no id) or a change to a pending one. */
+app.post('/api/scheduled', async (req, reply) => {
+  try {
+    return scheduled.upsert(req.body);
+  } catch (err) {
+    return reply.code(err instanceof ScheduledError ? err.status : 400).send({ error: (err as Error).message });
+  }
+});
+
+/** Cancels a pending scheduled message, or removes a result. */
+app.post('/api/scheduled/:id/delete', async (req, reply) => {
+  try {
+    scheduled.remove((req.params as { id: string }).id);
+    return { ok: true };
+  } catch (err) {
+    return reply.code(err instanceof ScheduledError ? err.status : 400).send({ error: (err as Error).message });
   }
 });
 

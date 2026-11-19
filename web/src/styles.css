@@ -3703,3 +3703,132 @@ button.pads-origin:hover {
 .pads-rail .pads-tab {
   width: 40px;
 }
+
+/* ------------------------------------------------------------ scheduled messages */
+
+/* «Programados», above the scratchpads: it takes the top safe area, and at most half the panel. */
+.sched {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 45%;
+  padding-top: var(--safe-top);
+  border-bottom: 1px solid var(--surface0);
+}
+.sched + .pads-head {
+  padding-top: 5px;
+}
+.drawer-right .sched {
+  padding-top: 0;
+}
+.sched-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--subtext1);
+  text-align: left;
+}
+.sched-head:hover {
+  background: var(--surface0);
+}
+@media (pointer: coarse) {
+  .sched-head {
+    min-height: var(--tap);
+  }
+}
+.sched-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+/* Each one edged by its state: blue waiting, yellow launching, green launched, red failed. */
+.sched-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--base);
+  border: 1px solid var(--surface0);
+  border-left: 3px solid var(--blue);
+}
+.sched-launching {
+  border-left-color: var(--yellow);
+}
+.sched-launched {
+  border-left-color: var(--green);
+}
+.sched-error {
+  border-left-color: var(--red);
+}
+.sched-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sched-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sched-error .sched-status {
+  color: var(--red);
+}
+.sched-where {
+  overflow-wrap: anywhere;
+}
+.sched-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sched-actions:empty {
+  display: none;
+}
+.btn.sched-btn {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+@media (pointer: coarse) {
+  .btn.sched-btn {
+    min-height: var(--tap);
+  }
+}
+/* The times the form suggests from the account's limits. */
+.sched-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.sched-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--surface1);
+  background: var(--base);
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+.sched-chip:hover {
+  background: var(--surface0);
+}
+.sched-chip.on {
+  border-color: var(--mauve);
+  background: var(--surface0);
+}

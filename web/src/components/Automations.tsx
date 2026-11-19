@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { describeSchedule, EVERY_HOURS, nextRun, scheduleProblem, type Schedule } from '../../../shared/schedule';
-import type { Automation, AutomationInfo, AutomationRun, ExtHostTargets, ExtTargets } from '../../../shared/types';
+import type { Automation, AutomationInfo, AutomationRun } from '../../../shared/types';
 import { runWorktreeName } from '../../../shared/worktree';
 import { api } from '../api';
 import { openWindow } from '../router';
-import { BaseBranchSelect } from './BaseBranch';
 import { DayPicker } from './DayPicker';
+import { LaunchOptionFields, LaunchTargetFields, useLaunchFields } from './LaunchFields';
 import { dialog, findWindow, hosts, sheet, toast } from '../state';
 
 // Settings › Automatizaciones: prompts the hub launches on its own on a schedule, each as
@@ -15,26 +15,6 @@ const when = (t: number) =>
   new Date(t).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 const RUN_LABEL: Record<AutomationRun['status'], string> = { launched: '▶ Lanzada', skipped: '⏭ Saltada', error: '⚠ Falló' };
-
-/** A folder of a machine where an automation can run: an added one, or one inside an added folder with subfolders. */
-interface FolderChoice {
-  key: string;
-  label: string;
-  group: string;
-  target: Automation['target'];
-}
-
-function folderChoices(h: ExtHostTargets | undefined): FolderChoice[] {
-  const out: FolderChoice[] = [];
-  for (const f of h?.folders ?? []) {
-    if (f.missing) continue;
-    if (f.subfolders) for (const c of f.children) out.push({ key: `${f.path}\n${c}`, label: c, group: `${f.name} (carpetas)`, target: { folder: f.path, sub: c } });
-    else out.push({ key: `${f.path}\n`, label: f.name, group: 'Carpetas', target: { folder: f.path } });
-  }
-  return out;
-}
-
-const targetKey = (t: Automation['target']) => `${t.folder}\n${t.sub ?? ''}`;
 
 export function AutomationSettings() {
   const [list, setList] = useState<AutomationInfo[] | null>(null);
@@ -162,14 +142,7 @@ type Mode = Schedule['kind'];
 
 function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Partial<Automation>) => Promise<void>; onCancel: () => void; onDelete?: () => void }) {
   const init = props.initial;
-  const [name, setName] = useState(init.name ?? '');
-  const [hostId, setHostId] = useState(init.host ?? '');
-  const [target, setTarget] = useState(init.target ? targetKey(init.target) : '');
-  const [prompt, setPrompt] = useState(init.prompt ?? '');
-  const [worktree, setWorktree] = useState(init.worktree ?? false);
-  /** '' is the project's base at each run; undefined, the list is not read (the saved one is kept). */
-  const [base, setBase] = useState<string | undefined>(undefined);
-  const [skip, setSkip] = useState(init.skipPermissions ?? false);
+  const f = useLaunchFields(init);
   const s = init.schedule;
   const [mode, setMode] = useState<Mode>(s?.kind ?? 'days');
   const [days, setDays] = useState<number[]>(s?.kind === 'days' ? s.days : [1, 2, 3, 4, 5]);
@@ -177,23 +150,7 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
   const [hours, setHours] = useState(s?.kind === 'every' ? s.hours : 6);
   const [minute, setMinute] = useState(s?.kind === 'every' ? s.minute : 0);
   const [expr, setExpr] = useState(s?.kind === 'cron' ? s.expr : '0 18 * * 1-5');
-  const [targets, setTargets] = useState<ExtHostTargets[] | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    api<ExtTargets>('/api/targets').then(
-      ({ hosts: list }) => {
-        setTargets(list);
-        if (!hostId) setHostId(list.find((h) => h.status === 'ok')?.id ?? list[0]?.id ?? '');
-      },
-      (err: Error) => toast(err.message, 'error'),
-    );
-  }, []);
-
-  const host = targets?.find((h) => h.id === hostId);
-  const choices = useMemo(() => folderChoices(host), [host]);
-  const groups = [...new Set(choices.map((c) => c.group))];
-  const chosen = choices.find((c) => c.key === target);
   const schedule: Schedule = mode === 'days' ? { kind: 'days', days, time } : mode === 'every' ? { kind: 'every', hours, minute } : { kind: 'cron', expr };
   const problem = scheduleProblem(schedule);
   const upcoming = useMemo(() => {
@@ -208,16 +165,13 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
     }
     return out;
   }, [JSON.stringify(schedule)]);
-  // An automation kept with a folder this machine no longer offers still saves with it.
-  const finalTarget = chosen?.target ?? (init.target && target === targetKey(init.target) && hostId === init.host ? init.target : undefined);
-  const ready = !!name.trim() && !!hostId && !!finalTarget && !!prompt.trim() && !problem;
+  const ready = !!f.value && !problem;
 
   const submit = async () => {
-    if (!ready || busy) return;
+    if (!f.value || problem || busy) return;
     setBusy(true);
     try {
-      const savedBase = worktree ? (base === undefined ? init.base : base || undefined) : undefined;
-      await props.onSave({ ...init, name: name.trim(), host: hostId, target: finalTarget, prompt: prompt.trim(), worktree, base: savedBase, skipPermissions: skip, schedule, enabled: init.enabled ?? true });
+      await props.onSave({ ...init, ...f.value, schedule, enabled: init.enabled ?? true });
     } catch (err) {
       toast((err as Error).message, 'error');
       setBusy(false);
@@ -234,52 +188,7 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
           void submit();
         }}
       >
-        <label class="folder-name">
-          <span class="dim small">Nombre</span>
-          <input class="text-input" value={name} placeholder="p. ej. Dependencias nocturnas" onInput={(e) => setName(e.currentTarget.value)} />
-        </label>
-        <label class="folder-name">
-          <span class="dim small">Máquina</span>
-          <select
-            class="text-input"
-            value={hostId}
-            onChange={(e) => {
-              setHostId(e.currentTarget.value);
-              setTarget('');
-            }}
-          >
-            {(targets ?? []).map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.status === 'ok' ? h.name : `${h.name} (sin conexión)`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label class="folder-name">
-          <span class="dim small">Carpeta</span>
-          <select class="text-input" value={target} onChange={(e) => setTarget(e.currentTarget.value)}>
-            <option value="" disabled>
-              {targets ? 'Elige una carpeta…' : 'Cargando…'}
-            </option>
-            {init.target && !chosen && hostId === init.host && target === targetKey(init.target) && <option value={target}>{init.target.sub ?? init.target.folder}</option>}
-            {groups.map((g) => (
-              <optgroup key={g} label={g}>
-                {choices
-                  .filter((c) => c.group === g)
-                  .map((c) => (
-                    <option key={c.key} value={c.key}>
-                      {c.label}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
-        {host && host.status === 'ok' && !choices.length && <p class="settings-state small">Esta máquina no tiene carpetas en Ajustes › Carpetas.</p>}
-        <label class="folder-name">
-          <span class="dim small">Prompt</span>
-          <textarea class="text-input" rows={4} value={prompt} onInput={(e) => setPrompt(e.currentTarget.value)} />
-        </label>
+        <LaunchTargetFields f={f} namePlaceholder="p. ej. Dependencias nocturnas" />
 
         <div class="folder-name">
           <span class="dim small">Cuándo</span>
@@ -325,15 +234,7 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
         )}
         <p class="small">{problem ? <span class="settings-state">{problem}</span> : upcoming.length ? `Próximas: ${upcoming.map((d) => when(d.getTime())).join(' · ')}` : 'Ese cron no se cumple nunca.'}</p>
 
-        <label class="kb-check">
-          <input type="checkbox" checked={worktree} onChange={(e) => setWorktree(e.currentTarget.checked)} />
-          Cada ejecución en un worktree nuevo{name.trim() ? ` (${runWorktreeName(name.trim(), new Date())})` : ''}
-        </label>
-        {worktree && <BaseBranchSelect hostId={hostId} target={finalTarget} remembered={init.base} value={base} onChange={setBase} projectOption />}
-        <label class="kb-check">
-          <input type="checkbox" checked={skip} onChange={(e) => setSkip(e.currentTarget.checked)} />
-          Saltarse los permisos
-        </label>
+        <LaunchOptionFields f={f} worktreeLabel={`Cada ejecución en un worktree nuevo${f.name.trim() ? ` (${runWorktreeName(f.name.trim(), new Date())})` : ''}`} />
         <div class="row-btns">
           {props.onDelete && (
             <button type="button" class="btn" onClick={props.onDelete}>

@@ -237,6 +237,17 @@ function rows(): Row[] {
   return out.sort((a, b) => Number(!a.acc) - Number(!b.acc) || a.label.localeCompare(b.label));
 }
 
+/**
+ * The 5-hour and weekly limits of the account a machine uses, as freshly as the panel knows
+ * them: the only account whose login is active on it (the test currentRow() makes). None when
+ * the hub knows no account of it, or two claim it.
+ */
+export function machineLimits(hostId: string): { five?: UsageWindow; seven?: UsageWindow } | undefined {
+  const onHost = rows().filter((r) => r.acc?.activeOn.includes(hostId));
+  if (onHost.length !== 1) return undefined;
+  return { five: onHost[0].five, seven: onHost[0].seven };
+}
+
 /** The machine and the account of the Claude in the pane open in the app (its active one if none is picked), if any. */
 function openPane(): { host: string; account?: string } | undefined {
   const r = route.value;
