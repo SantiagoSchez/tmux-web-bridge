@@ -29,6 +29,9 @@ export function isCardRef(board: string, n: string): boolean {
 /** A card's labels as Trello sends them (missing when it has none): only their name and colour. */
 const labelsOf = (labels: TrelloLabel[] = []): TrelloLabel[] => labels.map((x) => ({ name: x.name, color: x.color }));
 
+/** A card read for a launch: the card, or why Trello did not give it. */
+export type CardRead = { card: TrelloCard; error?: undefined } | { card?: undefined; error: string };
+
 interface Creds {
   key: string;
   token: string;
@@ -174,16 +177,26 @@ export class TrelloService {
   }
 
   /**
+   * A card a task is launched on, read once for the launch (its title for the rename
+   * instruction) and for what follows it. Never rejects: the task launches anyway.
+   */
+  async readCard(cardId: string): Promise<CardRead> {
+    try {
+      return { card: await this.card(cardId) };
+    } catch (err) {
+      return { error: (err as Error).message };
+    }
+  }
+
+  /**
    * Once a task is running on a card: to the end of its board's Doing list, and a comment
    * saying where it runs. Failures are warnings: the task was launched anyway.
    */
-  async afterLaunch(cardId: string, result: Pick<ExtLaunchResult, 'hostName' | 'space' | 'windowName'>): Promise<TrelloAfterLaunch> {
+  async afterLaunch(read: CardRead, result: Pick<ExtLaunchResult, 'hostName' | 'space' | 'windowName'>): Promise<TrelloAfterLaunch> {
     const out: TrelloAfterLaunch = { commented: false, warnings: [] };
-    let card: TrelloCard;
-    try {
-      card = await this.card(cardId);
-    } catch (err) {
-      out.warnings.push(`No se pudo leer la tarjeta: ${(err as Error).message}`);
+    const card = read.card;
+    if (!card) {
+      out.warnings.push(`No se pudo leer la tarjeta: ${read.error}`);
       return out;
     }
     try {

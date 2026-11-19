@@ -82,7 +82,7 @@ test(
     const t = new TrelloService(dir, fakeTrello(calls));
     await t.set(KEY, TOKEN);
     calls.length = 0;
-    const out = await t.afterLaunch(CARD, { hostName: 'Mac', space: 'twb', windowName: '3-login' });
+    const out = await t.afterLaunch(await t.readCard(CARD), { hostName: 'Mac', space: 'twb', windowName: '3-login' });
     assert.deepEqual(out, { movedTo: '⚙ Doing', commented: true, warnings: [] });
     assert.ok(calls.includes(`PUT /1/cards/${CARD}?idList=doing&pos=bottom`));
     assert.ok(calls.some((c) => c.startsWith(`POST /1/cards/${CARD}/actions/comments?text=`) && decodeURIComponent(c.replace(/\+/g, ' ')).includes('Mac › twb · ventana «3-login»')));
@@ -94,12 +94,32 @@ test(
   withDir(async (dir) => {
     const t = new TrelloService(dir, fakeTrello([], { doing: false, failComment: true }));
     await t.set(KEY, TOKEN);
-    const out = await t.afterLaunch(CARD, { hostName: 'Mac', space: 'twb', windowName: 'x' });
+    const out = await t.afterLaunch(await t.readCard(CARD), { hostName: 'Mac', space: 'twb', windowName: 'x' });
     assert.equal(out.movedTo, undefined);
     assert.equal(out.commented, false);
     assert.equal(out.warnings.length, 2);
     const none = new TrelloService(join(dir, 'otro'), fakeTrello([]));
     await assert.rejects(none.boards(), TrelloSetupError);
+  }),
+);
+
+test(
+  'a card Trello cannot give is an error the launch carries on with, and after it nothing is moved or commented',
+  withDir(async (dir) => {
+    const calls: string[] = [];
+    const t = new TrelloService(dir, fakeTrello(calls));
+    await t.set(KEY, TOKEN);
+    const read = await t.readCard('0123456789abcdef01234567');
+    assert.equal(read.card, undefined);
+    assert.ok(read.error);
+    assert.equal((await t.readCard('no-es-un-id')).card, undefined);
+    calls.length = 0;
+    const out = await t.afterLaunch(read, { hostName: 'Mac', space: 'twb', windowName: 'x' });
+    assert.equal(out.commented, false);
+    assert.equal(out.movedTo, undefined);
+    assert.equal(out.warnings.length, 1);
+    assert.match(out.warnings[0], /^No se pudo leer la tarjeta: /);
+    assert.deepEqual(calls, []);
   }),
 );
 

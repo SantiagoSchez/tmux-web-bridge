@@ -27,14 +27,7 @@ export function isSolo(session: SessionInfo): boolean {
 
 export const PRIO: Record<PaneState, number> = { question: 60, attention: 50, done: 40, busy: 30, claude: 20, ssh: 10 };
 export const ALERT_STATES: PaneState[] = ['question', 'attention', 'done'];
-export const STATE_LABEL: Record<PaneState, string> = {
-  question: 'Pregunta',
-  attention: 'Necesita atención',
-  done: 'Terminado',
-  busy: 'Trabajando',
-  claude: 'Claude',
-  ssh: 'SSH',
-};
+export { STATE_LABEL } from '../../shared/window-details';
 
 export interface PaneRef {
   host: HostInfo;

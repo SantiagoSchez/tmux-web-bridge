@@ -1,5 +1,5 @@
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import type { BranchList, ExtHostTargets, ExtLaunchRequest, ExtLaunchResult } from '../../shared/types.js';
+import type { BranchList, ExtHostTargets, ExtLaunchRequest, ExtLaunchResult, TrelloCard } from '../../shared/types.js';
 import { branchNameProblem, worktreeNameProblem } from '../../shared/worktree.js';
 import { folderPath, folderWindow, listProjects, openSpace, projectCommand, type MachineFolders } from './actions.js';
 import type { HostMonitor } from './host.js';
@@ -11,6 +11,8 @@ import { branchesScript, parseBranches, parsePrepare, prepareScript, type Prepar
 
 const MAX_PROMPT = 10_000;
 const MAX_WINDOW_NAME = 30;
+/** How much of a card's title goes into the rename instruction (Trello allows 16 384 characters). */
+const MAX_CARD_TITLE = 200;
 
 /** A card's name as a window name: one line, no control characters, cut to fit the list. */
 export function taskWindowName(name: unknown): string {
@@ -18,6 +20,28 @@ export function taskWindowName(name: unknown): string {
   const clean = name.replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s+/g, ' ').trim();
   const chars = [...clean];
   return chars.length > MAX_WINDOW_NAME ? `${chars.slice(0, MAX_WINDOW_NAME - 1).join('').trimEnd()}…` : clean;
+}
+
+/**
+ * What a task on a Trello card asks the agent before anything else: to rename the tmux window
+ * it runs in with a summary of the card's title. `$TMUX_PANE` stays literal in the typed text
+ * and is expanded by Claude's own shell, so it names the pane Claude runs in, whichever window
+ * the owner is looking at. The window was pinned at launch, so the kit keeps the new name.
+ */
+export function cardRenameInstruction(title: string): string {
+  const clean = [...title.replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s+/g, ' ').trim()];
+  const shown = clean.length > MAX_CARD_TITLE ? `${clean.slice(0, MAX_CARD_TITLE - 1).join('').trimEnd()}…` : clean.join('');
+  return (
+    `Antes de nada, cambia el nombre de la ventana de tmux en la que estás por un resumen del título de esta tarjeta de Trello: «${shown}». ` +
+    'Sin el número de la tarjeta y de 30 caracteres como máximo. ' +
+    `Ejecuta: tmux rename-window -t "$TMUX_PANE" '<resumen>'`
+  );
+}
+
+/** The prompt of a task, after the rename instruction when it is about a card (`title`); alone when the prompt is empty. */
+export function withCardRename(prompt: string, title: string | undefined): string {
+  if (!title) return prompt;
+  return [cardRenameInstruction(title), prompt].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -126,9 +150,15 @@ export async function targetFolder(host: HostMonitor, machine: MachineFolders, t
  * with a folder gets a new window in that folder. With `worktree`,
  * claude starts in a new git worktree of that name, and the prompt may be left out: the
  * worktree is prepared on the machine first, from origin/<base> when `base` is given (see
- * worktree-base.ts), and nothing opens if that fails.
+ * worktree-base.ts), and nothing opens if that fails. With `opts.card`, a task on a Trello
+ * card, the agent is first asked to rename its window after the card (see cardRenameInstruction).
  */
-export async function launchTask(host: HostMonitor, machine: MachineFolders, req: Omit<ExtLaunchRequest, 'host'>): Promise<ExtLaunchResult> {
+export async function launchTask(
+  host: HostMonitor,
+  machine: MachineFolders,
+  req: Omit<ExtLaunchRequest, 'host'>,
+  opts: { card?: Promise<TrelloCard | null> } = {},
+): Promise<ExtLaunchResult> {
   const prompt = typeof req.prompt === 'string' ? req.prompt.trim() : '';
   const worktree = typeof req.worktree === 'string' ? req.worktree.trim() : '';
   const base = worktree && typeof req.base === 'string' ? req.base.trim() : '';
@@ -188,8 +218,10 @@ export async function launchTask(host: HostMonitor, machine: MachineFolders, req
     pane = (await run(args)).trim();
     if (name) await run(['set-option', '-w', '-t', pane, '@name_pinned', '1']);
   }
+  // The card was read while the worktree was prepared: waiting for it only now keeps the launch as long as the slower of the two.
+  const card = opts.card ? await opts.card : null;
   // Typed into the window's shell, as «Nuevo espacio» does: quitting claude leaves you there.
-  await run(['send-keys', '-t', pane, '-l', taskCommand(machine.command, req.skipPermissions === true, prompt, worktree || undefined, cd)]);
+  await run(['send-keys', '-t', pane, '-l', taskCommand(machine.command, req.skipPermissions === true, withCardRename(prompt, card?.name), worktree || undefined, cd)]);
   await run(['send-keys', '-t', pane, 'Enter']);
   const [window, windowName] = (await host.exec.runFormat(['display-message', '-p', '-t', pane, '#{window_id}\t#{window_name}'])).trim().split('\t');
   const result: ExtLaunchResult = { host: host.id, hostName: host.name, session, space, window: window ?? '', windowName: windowName ?? name, pane, createdSpace };

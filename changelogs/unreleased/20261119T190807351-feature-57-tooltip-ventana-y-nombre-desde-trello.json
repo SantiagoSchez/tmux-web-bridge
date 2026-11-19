@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadidos los detalles de una ventana al dejar el ratón un segundo encima en la lista: su nombre entero, su estado y desde cuándo y, de cada panel, el comando, el worktree o la rama, la carpeta y la cuenta de Claude, sin cortar nada. También en la cabecera de cada espacio y en los iconos de la lista plegada",
+  "issue": "57",
+  "breaking": false
+}

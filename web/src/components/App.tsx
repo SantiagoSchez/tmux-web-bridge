@@ -11,6 +11,7 @@ import { Dialogs, Toasts } from './Dialogs';
 import { Drawer, ScratchpadsDrawer } from './Drawer';
 import { Grid } from './Grid';
 import { Header } from './Header';
+import { HoverTip } from './HoverTip';
 import { LimitsBar } from './LimitsBar';
 import { Login } from './Login';
 import { Palette } from './Palette';
@@ -103,6 +104,7 @@ function Overlays() {
       <ActivitySheet />
       <FileViewerSheet />
       <FilePeek />
+      <HoverTip />
       <Dialogs />
       <Palette />
       <Toasts />
