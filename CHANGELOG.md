@@ -4,6 +4,18 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.28.0 - 2026-11-19
+
+### Añadido
+
+- Añadido el horario de descanso en Ajustes › Notificaciones: una franja horaria en los días que elijas, o días enteros, sin ninguna notificación push en ningún dispositivo. Lo pendiente se sigue viendo en el panel y «Enviar prueba» llega siempre.
+- Añadidos los mensajes programados, para gastar el límite semanal que sobra: con el botón del reloj de cada máquina programas un prompt que se lanza una sola vez a la fecha y hora elegidas, con horas sugeridas a partir de los límites de la cuenta. Se lanza aunque el límite esté agotado, o al arrancar si el servidor estaba parado a esa hora, y los pendientes y sus resultados se ven en «Programados», encima de los scratchpads.
+
+### Corregido
+
+- Corregido el cambio de cuenta en un Mac: los Claude Code que ya están en marcha pasan a la cuenta nueva en su siguiente petición, en lugar de seguir horas con la anterior y gastar sus límites.
+- Corregido el cambio de cuenta en las máquinas cuyo tmux usa otra carpeta de configuración de Claude Code (`CLAUDE_CONFIG_DIR`): ahora cambia la cuenta de los Claude Code de sus paneles sin tocar la carpeta por defecto (`~/.claude`), que puede estar usando otro Claude Code. En esas máquinas, los worktrees nuevos lanzados desde el panel usan también el hook `WorktreeCreate` de esa carpeta.
+
 ## 1.27.0 - 2026-11-19
 
 ### Añadido
