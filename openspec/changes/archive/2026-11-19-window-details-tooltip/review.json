@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "pr": 58,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T19:16:23.385Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 2
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "993a164ed38362babb1d36c2cc10446273c99e71",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T19:21:58.812Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "web/src/components/HoverTip.tsx",
+      "symbol": "TipBox",
+      "title": "Escape does not close the tip while the terminal has focus (xterm stops its propagation; bubble-phase keydown listener)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Tree.tsx",
+      "symbol": "WindowRow",
+      "title": "Native titles left inside the tipped rows (attached dot, bell and activity flags, icon buttons) show a second tooltip",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 4,
+      "scoreReason": "The double tooltip is real but only cosmetic, and only when the mouse rests on these small elements; the fix the reviewer proposes would cost information, because the custom tip shows neither the bell and activity flags nor the attached-client mark, and design D6 kept the icon-button titles on purpose.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "web/src/components/HoverTip.tsx",
+      "symbol": "useHoverTip",
+      "title": "Type the handler with TargetedPointerEvent instead of casting currentTarget",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "openspec/changes/window-details-tooltip/specs/window-details/spec.md",
+      "symbol": null,
+      "title": "Spec says 'device whose main pointer is a mouse'; the code decides per input (pointerType)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "28c4094fb2fbf0dcd38b4fa590441838a7c3f9cd",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

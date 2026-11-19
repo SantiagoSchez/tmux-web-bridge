@@ -8,6 +8,7 @@ import { openWindow, route } from '../router';
 import { activity, hosts, isSolo, multiHost, pending, STATE_LABEL, toast, wsStatus, type PaneRef } from '../state';
 import { ago, duration } from '../time';
 import { updateInfo } from '../updates';
+import { spaceTip, useHoverTip, windowTip } from './HoverTip';
 import { IconBranch, IconClose, IconMore, IconPlus, IconWorktree } from './icons';
 
 /** Home: what needs you first, then every host → space → window. */
@@ -250,6 +251,8 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
 }
 
 function SessionBlock({ host, session }: { host: HostInfo; session: SessionInfo }) {
+  // Before the solo branch: a space can gain or lose its second window while it is shown.
+  const headTip = useHoverTip(`space:${host.id}:${session.id}`, spaceTip(host.id, session.id));
   if (isSolo(session)) return <SoloSession host={host} session={session} window={session.windows[0]} />;
   const key = `${host.id}:${session.name}`;
   const collapsed = prefs.value.collapsedSessions.includes(key);
@@ -263,8 +266,8 @@ function SessionBlock({ host, session }: { host: HostInfo; session: SessionInfo 
   const icons = collapsed ? [...new Set(session.windows.map((w) => w.icon).filter(Boolean))] : [];
   return (
     <div class={`session ${collapsed ? 'collapsed' : ''} ${collapsed && holdsCurrent ? 'holds-current' : ''}`}>
-      <div class="session-head">
-        <button class="session-toggle" onClick={toggle} aria-expanded={!collapsed} title={collapsed ? 'Desplegar' : 'Plegar'}>
+      <div class="session-head" {...headTip}>
+        <button class="session-toggle" onClick={toggle} aria-expanded={!collapsed}>
           <span class={`chevron ${collapsed ? '' : 'open'}`} aria-hidden="true">
             ›
           </span>
@@ -307,9 +310,10 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
     window.panes.length > 1 ? `${window.panes.length} paneles` : '',
     window.zoomed ? 'zoom' : '',
   ].filter(Boolean);
+  const tip = useHoverTip(`win:${host.id}:${window.id}`, windowTip(host.id, window.id, { space: true }));
   return (
     <div class="session solo">
-      <div class={`win-row ${current ? 'current' : ''}`}>
+      <div class={`win-row ${current ? 'current' : ''}`} {...tip}>
         <button class={`win ${current ? 'current' : ''} ${window.temp ? 'temp' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
           <span class="session-num">{session.num ?? '·'}</span>
           <span class="win-icon">{window.icon || session.icon}</span>
@@ -352,13 +356,13 @@ function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined 
   return (
     <span class="win-meta win-where">
       {git ? (
-        <span class="win-git" title={`${git.worktree ? `Worktree de git: ${git.worktree}` : `Rama de git: ${git.branch}`}\n${path}`}>
+        <span class="win-git">
           <span class="git-icon">{git.worktree ? <IconWorktree /> : <IconBranch />}</span>
           {git.worktree ?? git.branch}
         </span>
       ) : (
         // Right to left, so the ellipsis goes at the start; the marks keep ~ and / where they are.
-        <span class="win-path" title={path}>
+        <span class="win-path">
           {`\u200e${path}\u200e`}
         </span>
       )}
@@ -370,8 +374,9 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
   const r = route.value;
   const current = r.name === 'window' && r.host === host.id && r.window === window.id;
   const active = window.panes.find((p) => p.active) ?? window.panes[0];
+  const tip = useHoverTip(`win:${host.id}:${window.id}`, windowTip(host.id, window.id));
   return (
-    <li class={`win-row ${current ? 'current' : ''}`}>
+    <li class={`win-row ${current ? 'current' : ''}`} {...tip}>
       <button class={`win ${current ? 'current' : ''} ${window.temp ? 'temp' : ''} ${window.state ? `state-${window.state}` : ''}`} onClick={() => openWindow(host.id, window.id)}>
         <span class="win-index">{window.index}</span>
         <span class="win-icon">{window.icon}</span>

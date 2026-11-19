@@ -4,10 +4,10 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, w
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import type { HostInfo, SavedFolder } from '../../shared/types.js';
+import type { HostInfo, SavedFolder, TrelloCard } from '../../shared/types.js';
 import { ExtTokenStore } from './ext.js';
 import { cardWindowName, cardWorktreeName, runWorktreeName, WORKTREE_MAX, worktreeNameProblem } from '../../shared/worktree.js';
-import { hostTargets, launchTask, shellWord, targetFolder, taskCommand, taskWindowName } from './tasks.js';
+import { cardRenameInstruction, hostTargets, launchTask, shellWord, targetFolder, taskCommand, taskWindowName, withCardRename } from './tasks.js';
 import type { HostMonitor } from './host.js';
 
 function tempDir(prefix: string): string {
@@ -242,6 +242,70 @@ test(
     assert.ok(!tmux.some((a) => a[0] === 'set-option'));
     assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto 'hola'"]);
     assert.equal(res.space, 'otro');
+  }),
+);
+
+// ---------------------------------------------------------------- a card's task renames its window
+
+const CARD: TrelloCard = {
+  id: '6650a1b2c3d4e5f6a7b8c9d0',
+  name: 'Permitir reintentar las subidas de vídeo que fallan por timeout',
+  url: 'https://trello.com/c/aB3dE6fG',
+  shortLink: 'aB3dE6fG',
+  idShort: 481,
+  idList: 'todo',
+  board: { id: 'b1', name: 'Universia' },
+  labels: [],
+};
+
+test('a card task first asks the agent to rename its window after the card (pins the instruction)', () => {
+  assert.equal(
+    cardRenameInstruction(CARD.name),
+    'Antes de nada, cambia el nombre de la ventana de tmux en la que estás por un resumen del título de esta tarjeta de Trello: ' +
+      '«Permitir reintentar las subidas de vídeo que fallan por timeout». Sin el número de la tarjeta y de 30 caracteres como máximo. ' +
+      `Ejecuta: tmux rename-window -t "$TMUX_PANE" '<resumen>'`,
+  );
+});
+
+test('a card title reaches the instruction on one line, cut when it is very long', () => {
+  const title = cardRenameInstruction('dos\nlíneas\tjuntas');
+  assert.ok(title.includes('«dos líneas juntas»'));
+  const long = cardRenameInstruction('x'.repeat(500));
+  const quoted = long.slice(long.indexOf('«') + 1, long.indexOf('»'));
+  assert.equal([...quoted].length, 200);
+  assert.ok(quoted.endsWith('…'));
+});
+
+test('the instruction goes before the prompt, alone when the prompt is empty, and not at all without a card', () => {
+  const rename = cardRenameInstruction(CARD.name);
+  assert.equal(withCardRename('Haz la tarjeta https://trello.com/c/aB3dE6fG', CARD.name), `${rename}\n\nHaz la tarjeta https://trello.com/c/aB3dE6fG`);
+  assert.equal(withCardRename('', CARD.name), rename);
+  assert.equal(withCardRename('hola', undefined), 'hola');
+});
+
+test(
+  'a launch with a card types the instruction and then the prompt, in a window named and pinned as before',
+  withHome(async (home) => {
+    const tmux: string[][] = [];
+    const prompt = 'Haz la tarjeta https://trello.com/c/aB3dE6fG';
+    await launchTask(fakeHost(home, tmux, [{ id: '$3', name: 'universia' }]), { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt, name: 'feat/481-permitir' }, { card: Promise.resolve(CARD) });
+    assert.deepEqual(tmux.find((a) => a[0] === 'new-window')?.slice(-2), ['-n', 'feat/481-permitir']);
+    assert.ok(tmux.some((a) => a.join(' ') === 'set-option -w -t %21 @name_pinned 1'));
+    const typed = keys(tmux)[0][1];
+    const prefix = 'claude --permission-mode auto ';
+    assert.ok(typed.startsWith(prefix));
+    assert.equal(await shellArg('/bin/bash', typed.slice(prefix.length)), withCardRename(prompt, CARD.name));
+  }),
+);
+
+test(
+  'a launch whose card could not be read, or without one, types the prompt alone',
+  withHome(async (home) => {
+    for (const opts of [{ card: Promise.resolve(null) }, {}, undefined]) {
+      const tmux: string[][] = [];
+      await launchTask(fakeHost(home, tmux, [{ id: '$3', name: 'otro' }]), { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt: 'hola' }, opts);
+      assert.deepEqual(keys(tmux)[0], ['-l', "claude --permission-mode auto 'hola'"]);
+    }
   }),
 );
 

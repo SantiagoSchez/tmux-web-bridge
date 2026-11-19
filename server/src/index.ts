@@ -642,17 +642,19 @@ app.get('/api/ext/branches', async (req, reply) => {
 
 /**
  * A task from the extension or the panel's Trello drawer: launched and then, if it is about
- * a card, the card goes to Doing with a comment (warnings only: the task runs anyway).
+ * a card, the card goes to Doing with a comment (warnings only: the task runs anyway). The
+ * card is read while the task launches: its title asks the agent to rename its window.
  */
 async function launchFromRequest(body: Partial<ExtLaunchRequest>, from: string): Promise<ExtLaunchResult> {
   const host = typeof body.host === 'string' ? hosts.get(body.host) : undefined;
   if (!host) throw new Error('Máquina desconocida');
   const card = typeof body.card === 'string' && body.card ? body.card : undefined;
   if (card && !trello.configured) throw new TrelloSetupError('El panel no tiene cuenta de Trello: añade la API key y el token en Ajustes › Trello.');
-  const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest);
+  const read = card ? trello.readCard(card) : undefined;
+  const result = await launchTask(host, machineFolders(host), body as ExtLaunchRequest, { card: read?.then((r) => r.card ?? null) });
   await host.refresh();
   console.log(`[${from}] tarea en ${host.id} › ${result.space} (${result.window}${result.createdSpace ? ', espacio nuevo' : ''}${body.worktree ? `, worktree ${body.worktree}` : ''})`);
-  if (card) result.trello = await trello.afterLaunch(card, result);
+  if (read) result.trello = await trello.afterLaunch(await read, result);
   logLaunch(result, from === 'ext' ? 'extension' : 'trello', body.worktree);
   return result;
 }

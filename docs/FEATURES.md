@@ -21,6 +21,8 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Foco del terminal](#foco-del-terminal): cuándo el terminal recibe el teclado sin que tengas que hacer clic en él.
 - [Cuentas de Claude](#cuentas-de-claude): dónde escribe el cambio de cuenta en cada máquina y cómo se guarda cada login en su cuenta.
 - [Pegar en el terminal](#pegar-en-el-terminal): qué hace la tecla de pegar del ordenador con un texto o una imagen.
+- [Detalles al pasar el ratón](#detalles-al-pasar-el-ratón): los datos completos de una ventana o un espacio que la lista corta con «…».
+- [Tareas desde tarjetas de Trello](#tareas-desde-tarjetas-de-trello): el nombre que el agente da a la ventana de una tarea lanzada sobre una tarjeta.
 
 ## Terminal
 
@@ -344,3 +346,68 @@ Antes de leer los límites de una cuenta con un login, o de dar un login a una m
 <!-- capability: terminal-paste; requirement: the-computer-s-paste-key-pastes-into-the-terminal -->
 
 En el ordenador, la tecla de pegar de cada sistema pega en el terminal lo que hay en el portapapeles: Cmd+V en el Mac, y Ctrl+V o Ctrl+Shift+V en Linux y Windows, también con teclados cirílicos o griegos. Un texto se pega en el panel. Una imagen o un fichero sin texto se sube a la máquina del panel abierto y su ruta se escribe en el panel sin pulsar Enter, lista para que Claude la lea. Si el portapapeles lleva texto e imagen a la vez, como al copiar celdas de una hoja de cálculo, solo se pega el texto. Fuera del Mac, Ctrl+V ya no envía `^V` al panel. En el Mac, Ctrl+V sigue llegando al panel, para que Claude Code lea el portapapeles del propio Mac.
+
+## Detalles al pasar el ratón
+
+### Los detalles salen tras un segundo
+<!-- capability: window-details; requirement: a-window-s-details-show-after-the-mouse-rests-on-it -->
+
+La lista de espacios y ventanas corta con «…» los nombres, las ramas y las carpetas largas. Si dejas el ratón un segundo encima de una ventana, aparece a su lado un recuadro con sus detalles completos. Pasar el ratón por encima sin pararse no muestra nada. El recuadro siempre cabe en la pantalla, también en la última fila de la lista: si no cabe a la derecha de la ventana, sale a la izquierda, y nunca queda cortado por los bordes.
+
+### Qué muestran los detalles de una ventana
+<!-- capability: window-details; requirement: a-window-s-details-list-the-window-and-each-of-its-panes -->
+
+El recuadro muestra el nombre completo de la ventana, su estado con su icono y desde cuándo lo tiene, y el nombre de la máquina cuando el panel muestra varias. Después, panel a panel:
+
+- el comando que ejecuta;
+- el worktree de git o, si no está en uno, la rama;
+- la carpeta completa;
+- la cuenta de Claude que usa, si tiene una.
+
+Todo sale entero, sin cortar. En una ventana partida se marca el panel activo. Lo que el panel no sabe, como el estado de una ventana sin Claude o la rama de una carpeta fuera de git, simplemente no aparece.
+
+### Los detalles se actualizan solos
+<!-- capability: window-details; requirement: the-details-stay-current-while-they-show -->
+
+Mientras el recuadro está abierto, refleja lo último que el panel sabe de esa ventana: si Claude termina, pasa de 🔨 a ✅ sin mover el ratón. Si la ventana, el espacio o el panel que describe se cierra, el recuadro se cierra con él.
+
+### Espacios y barra plegada
+<!-- capability: window-details; requirement: a-space-s-and-a-pending-pane-s-details -->
+
+El mismo recuadro, con el mismo segundo de espera, sale en los demás sitios de la lista que cortan texto:
+
+- En un espacio de una sola ventana, que ocupa una fila, muestra el nombre completo del espacio y los detalles de su ventana.
+- En la cabecera de un espacio, muestra su nombre completo y cuántas ventanas tiene.
+- En los iconos de la lista plegada de las pantallas anchas, muestra los detalles de la ventana de ese icono y marca su panel.
+
+### Sin el tooltip del navegador
+<!-- capability: window-details; requirement: the-tooltip-replaces-the-native-title-of-what-it-covers -->
+
+Donde sale el recuadro del panel ya no sale además el del navegador: la segunda línea de cada ventana (worktree, rama o carpeta), el botón de plegar la cabecera de un espacio y los iconos de la lista plegada dejan de tenerlo. Los lectores de pantalla siguen leyendo los mismos nombres que antes.
+
+### Solo con ratón
+<!-- capability: window-details; requirement: the-tooltip-shows-only-with-a-mouse-and-closes-on-any-other-action -->
+
+El recuadro sale solo con ratón o trackpad: en el móvil, tocar y mantener una ventana no lo muestra. Se cierra al sacar el ratón de lo que describe, al hacer clic o tocar en cualquier sitio, con Escape (que sigue llegando al terminal) y al desplazar la lista o la página o cambiar el tamaño de la ventana. Un clic en la ventana la abre como siempre.
+
+## Tareas desde tarjetas de Trello
+
+### El agente pone a su ventana un nombre sacado de la tarjeta
+<!-- capability: trello-card-launch; requirement: a-card-s-task-renames-its-window-after-the-card -->
+
+Al lanzar una tarea sobre una tarjeta de Trello, desde la extensión de Chrome o desde la pestaña Trello del panel, lo que se escribe en la ventana nueva empieza con una instrucción para el agente: antes de nada, cambiar el nombre de su propia ventana de tmux por un resumen del título de la tarjeta, sin el número y de 30 caracteres como máximo. La instrucción cita el título y da el comando exacto que renombra la ventana en la que está el agente. Detrás va el prompt del formulario, sin cambios; si lo dejaste vacío, se escribe solo la instrucción. Sin «Saltar permisos», Claude pide permiso para ese comando la primera vez; se puede permitir de forma fija con `Bash(tmux rename-window:*)` en los ajustes de Claude Code.
+
+### El nombre del lanzamiento hasta que el agente lo cambia
+<!-- capability: trello-card-launch; requirement: the-window-keeps-its-launch-name-until-the-agent-renames-it -->
+
+La ventana nace con el nombre de siempre: el de su worktree con feat/ o bug/ o, si no hay worktree, el título de la tarjeta. Ese nombre queda fijo, así que el nombre que le dé el agente se mantiene mientras Claude trabaja y la máquina no lo sustituye. El comentario que se deja en la tarjeta nombra la ventana como se lanzó.
+
+### Una tarjeta que no se puede leer
+<!-- capability: trello-card-launch; requirement: a-card-the-hub-cannot-read-launches-without-the-instruction -->
+
+El servidor central lee la tarjeta una vez por lanzamiento, mientras prepara el worktree, así que el lanzamiento no tarda más por ello salvo que Trello vaya más lento. Si Trello no responde o da un error, la tarea arranca igualmente con el prompt solo y el nombre del formulario, y la extensión o el panel avisan de que no se pudo leer la tarjeta, igual que cuando no se puede mover ni comentar.
+
+### Los lanzamientos sin tarjeta no cambian
+<!-- capability: trello-card-launch; requirement: launches-without-a-card-do-not-change -->
+
+Un lanzamiento sin tarjeta, como un worktree nuevo desde «Nuevo espacio» o «Nueva ventana» o una automatización, escribe solo su prompt en la ventana, como hasta ahora.
