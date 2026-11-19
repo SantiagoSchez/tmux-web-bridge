@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "pr": 62,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "7d62394ccb33c2c24cc062eaffd063aa57e91534",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T21:24:33.125Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "server/src/host-creds.ts",
+      "symbol": "SCRIPT_ERRORS",
+      "title": "Error messages name the default folder's files on a CLAUDE_CONFIG_DIR machine",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "7d62394ccb33c2c24cc062eaffd063aa57e91534",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "Correct (paths are hard-coded while the script now resolves CLAUDE_CONFIG_DIR), but it only misleads wording in rare error messages and is a few-word fix better done now than tracked.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "server/src/worktree-base.ts",
+      "symbol": "HOOK",
+      "title": "HOOK reads CLAUDE_CONFIG_DIR from the SSH session, against the new server standard",
+      "origin": "pre-existing",
+      "round": 1,
+      "sha": "7d62394ccb33c2c24cc062eaffd063aa57e91534",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 8,
+      "scoreReason": "Verified real defect on the owner's own CLAUDE_CONFIG_DIR machine: HOOK reads the SSH session's variable, so a WorktreeCreate hook or plugin configured only in ~/.claude-twb is missed and the hub creates the worktree itself; the script already defines `t` and the test case already exists, so the fix is small.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "openspec/changes/fix-account-switch-reaching-claude-code/specs/claude-accounts/spec.md",
+      "symbol": null,
+      "title": "Modified Keychain requirement and HostSnapshot.config doc still name the default folder's paths",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "7d62394ccb33c2c24cc062eaffd063aa57e91534",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

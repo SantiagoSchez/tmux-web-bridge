@@ -46,7 +46,8 @@ The script tests run the real script with `/bin/sh` in a temporary `HOME`, with 
 
 ## 7. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 7.1 Run `/ka:update-features fix-account-switch-reaching-claude-code` for the added and the modified requirements of `claude-accounts`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 7.1 Run `/ka:update-features fix-account-switch-reaching-claude-code` for the added and the modified requirements of `claude-accounts`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - Run after `ka review-rounds gate` passed on `7d62394` (round 1: no blocker). `docs/FEATURES.md`, area «Cuentas de Claude»: new section «La cuenta de los Claude de los paneles» (line 328) and «En el Mac solo se toca el Llavero» rewritten (line 333). `ka features-check --strict`: exit 0, 67 sections verified.
 
 ## 8. E2E pipeline (mandatory step 7)
 

@@ -325,10 +325,15 @@ En el móvil y la tableta, abrir una ventana no saca el teclado en pantalla, par
 
 Al cambiar de cuenta una máquina desde el panel, el servidor central escribe el login donde lo lee el Claude Code de esa máquina. En Linux es el fichero de credenciales de Claude Code. En un Mac, Claude Code lo guarda en el Llavero cuando puede llegar a él, lo que ocurre si su tmux arrancó desde el Terminal del escritorio. El Llavero no contesta a una conexión SSH, así que el servidor central pregunta primero por SSH y, si no contesta, a través del tmux de la máquina. Solo usa el fichero cuando el Llavero no contesta de ninguna de las dos formas, como pasa con un tmux arrancado fuera del escritorio. Así, los Claudes del Mac, también los que se abren después, pasan a la cuenta nueva. Ninguna credencial aparece en las órdenes que ejecuta tmux.
 
+### La cuenta de los Claude de los paneles
+<!-- capability: claude-accounts; requirement: the-hub-uses-the-claude-code-folder-of-the-machine-s-tmux-sessions -->
+
+El panel lee y cambia la cuenta de los Claude Code que se ejecutan en el tmux de cada máquina. Si ese tmux les da otra carpeta de configuración (la variable `CLAUDE_CONFIG_DIR`), el servidor central usa la de esa carpeta: su login, su configuración y, en un Mac, el elemento del Llavero que Claude Code tiene para ella. La carpeta por defecto (`~/.claude`) se queda como estaba, porque puede ser la de otro Claude Code de la máquina que no se ejecuta en ese tmux. Sin esa variable, o sin tmux en marcha, todo funciona como antes, con la carpeta por defecto.
+
 ### En el Mac solo se toca el Llavero
 <!-- capability: claude-accounts; requirement: a-keychain-switch-writes-only-the-keychain -->
 
-Cuando un Mac guarda el login en el Llavero, el cambio de cuenta escribe solo ahí y conserva lo demás que guarda (los tokens de los servidores MCP). El fichero de credenciales se queda como estaba. Cada login solo se puede renovar una vez con el mismo token, y una segunda copia que renovase otro Claude dejaría sin sesión a los del Llavero. El Llavero se escribe antes que la configuración de Claude Code: si rechaza la escritura, el panel muestra el error y la máquina sigue exactamente como estaba.
+Cuando un Mac guarda el login en el Llavero, el cambio de cuenta escribe solo ahí y conserva lo demás que guarda (los tokens de los servidores MCP). El contenido del fichero de credenciales se queda como estaba: cada login solo se puede renovar una vez con el mismo token, y una segunda copia que renovase otro Claude dejaría sin sesión a los del Llavero. Lo único que cambia del fichero, si existe, es su fecha, que es lo que mira un Claude ya abierto para volver a leer su login. Así, los Claude que estaban trabajando pasan a la cuenta nueva en su siguiente petición, en lugar de seguir horas con la anterior. Si el fichero no existe, no se crea. El Llavero se escribe antes que la configuración de Claude Code: si rechaza la escritura, el panel muestra el error y la máquina sigue exactamente como estaba, también la fecha del fichero.
 
 ### Cada login en su cuenta
 <!-- capability: claude-accounts; requirement: every-login-is-filed-under-the-account-it-belongs-to -->
