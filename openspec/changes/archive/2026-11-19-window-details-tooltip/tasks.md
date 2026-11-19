@@ -89,11 +89,13 @@ The `web` layer has no test runner: its logic is covered by group 3, and the com
 
 ## 10. Human review (mandatory step 8)
 
-- [ ] 10.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+- [x] 10.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+  - The owner takes PR #58 as good, without a manual review (2026-11-19).
 
 ## 11. features-check before the archive (mandatory step 9)
 
-- [ ] 11.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 11.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - Exit code 0: 66 sections verified.
 
 ## Workflow follow-up
 
