@@ -46,11 +46,13 @@
 
 ## 8. Human review (mandatory step 8)
 
-- [ ] 8.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+- [x] 8.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+  - The owner takes PR #56 as good without a manual review (2026-11-19), after review round 1 approved it and `ka review-rounds gate` passed on `b2b5d88`.
 
 ## 9. features-check before the archive (mandatory step 9)
 
-- [ ] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - Exit 0: 56 sections verified.
 
 ## Workflow follow-up
 
