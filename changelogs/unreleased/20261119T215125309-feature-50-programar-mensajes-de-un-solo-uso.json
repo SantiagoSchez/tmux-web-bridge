@@ -3,5 +3,6 @@
   "scope": "server",
   "description": "Añadidos los mensajes programados para gastar el límite semanal que sobra: desde el botón del reloj de cada máquina se programa un prompt que el servidor central lanza una sola vez, a la fecha y hora elegidas, con horas sugeridas a partir de los límites de la cuenta; se lanza aunque el límite esté agotado o, si el servidor estaba parado, al arrancar, y los pendientes y sus resultados se ven en «Programados», encima de los scratchpads",
   "issue": "50",
-  "breaking": false
+  "breaking": false,
+  "pr": "63"
 }
