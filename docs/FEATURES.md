@@ -284,6 +284,11 @@ Cuando Claude Code pregunta, pide permiso o termina en un panel, la máquina le 
 
 Cuando Claude Code termina en un panel, su ventana muestra ✅ hasta que lo ves. Si en ese momento una terminal conectada a la máquina tiene el panel delante, se entiende que ya lo has visto y la ventana pasa directamente a 🤖. Tenerlo abierto solo en la terminal web no basta: el ✅ se queda.
 
+### Una pausa a la espera de trabajo en segundo plano no avisa
+<!-- capability: push-notifications; requirement: an-end-of-turn-that-waits-for-background-work-sends-no-notice -->
+
+Claude Code a veces cierra el turno solo para esperar a algo que lo volverá a despertar: un subagente, un workflow, un monitor, un teammate, una sesión en la nube, una tarea MCP o la siguiente vuelta de un `/loop` o una espera programada. Eso no es terminar: no llega la notificación «Terminado» y la ventana sigue en 🔨. Cuando Claude acaba de verdad, sin nada pendiente, llega un único aviso y la ventana pasa a ✅. Un comando en segundo plano, como un servidor de desarrollo, no cuenta como espera: no termina nunca, y Claude sí puede estar esperándote. Con una versión de Claude Code que no dice qué sigue en marcha, todo fin de turno avisa, como antes.
+
 ### Por qué no llegó una notificación
 <!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->
 

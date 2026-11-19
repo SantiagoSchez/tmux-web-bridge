@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Prueba de host-kit/tmux-window-title.sh: cuándo le dice al hub que ya estás viendo un
-# panel (viewed) y cuándo deja ✅ en un panel terminado. Ejecuta el script de verdad contra
+# panel (viewed), cuándo deja ✅ en un panel terminado y cuándo un fin de turno es una
+# pausa (trabajo en segundo plano) que no avisa. Ejecuta el script de verdad contra
 # un tmux propio (socket y TMUX_TMPDIR de una carpeta temporal) y un hub falso en un puerto
 # de loopback que guarda lo que recibe en /api/notify. KEEP=1 conserva la carpeta.
 #
@@ -123,15 +124,17 @@ wait_clients() {
     exit 1
 }
 
-# Claude termina en el panel: el hook Stop, con el reloj de $1 (real o adelantado).
-# Deja en VIEWED lo que recibió el hub y en ICON el icono del panel.
+# Claude termina el turno en el panel: el hook Stop, con el reloj de $1 (real o adelantado)
+# y el JSON del hook de $2. Deja en VIEWED lo que recibió el hub y en ICON el icono del
+# panel. WAIT (décimas de segundo, 50 por defecto) es lo que espera al aviso: los casos
+# que no esperan ninguno lo acortan.
 finish() {
-    local path="$PATH" before
+    local path="$PATH" before payload="${2:-$STOP_DONE}"
     [ "${1:-real}" = adelantado ] && path="$T/bin:$PATH"
     before="$(wc -l < "$T/hub.log")"
-    printf '{"last_assistant_message":"Listo"}' |
+    printf '%s' "$payload" |
         env TMUX="$TMUX_VALUE" TMUX_PANE="$PANE" PATH="$path" "$KIT_SCRIPT" state done prueba
-    for _ in $(seq 50); do
+    for _ in $(seq "${WAIT:-50}"); do
         [ "$(wc -l < "$T/hub.log")" -gt "$before" ] && break
         sleep 0.1
     done
@@ -142,6 +145,14 @@ finish() {
     fi
     ICON="$(tm show-options -p -t "$PANE" -qv @pane_icon)"
 }
+
+# El JSON del hook Stop. Claude Code (2.1.x) pasa background_tasks y session_crons:
+# lo que sigue en segundo plano y lo que lo volverá a despertar. Los antiguos, ninguno.
+STOP_DONE='{"last_assistant_message":"Listo"}'
+STOP_EMPTY='{"last_assistant_message":"Listo","background_tasks":[],"session_crons":[]}'
+STOP_SUBAGENT='{"last_assistant_message":"Espero al subagente","background_tasks":[{"id":"a1","type":"subagent","status":"running","description":"Revisar","agent_type":"Explore"}],"session_crons":[]}'
+STOP_CRON='{"last_assistant_message":"Vuelvo en 20 min","background_tasks":[],"session_crons":[{"id":"c1","schedule":"*/20 * * * *","recurring":true,"prompt":"/loop"}]}'
+STOP_SHELL='{"last_assistant_message":"Servidor arrancado","background_tasks":[{"id":"b1","type":"shell","status":"running","description":"pnpm dev","command":"pnpm dev"}],"session_crons":[]}'
 
 # ------------------------------------------------------------ casos
 echo "La terminal web del panel tiene delante el panel y acabas de escribir en ella"
@@ -174,6 +185,47 @@ client "attach -t main"
 wait_clients 1
 finish adelantado
 expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+
+# Fin de turno con trabajo en segundo plano que despertará a Claude: es una pausa. El panel
+# está abierto solo en la terminal web, así que un final de verdad sí avisaría.
+web_terminal() {
+    new_server
+    client "new-session -t main -s _tw-prueba \\; select-window -t :0"
+    wait_clients 1
+}
+
+echo "Claude cierra el turno con un subagente en segundo plano"
+web_terminal
+WAIT=20 finish real "$STOP_SUBAGENT"
+expect "…no avisa al hub" "$VIEWED" '^sin aviso$'
+expect "…y el panel sigue con 🔨" "$ICON" '^🔨$'
+
+echo "Claude cierra el turno con un /loop programado y nada en segundo plano"
+web_terminal
+WAIT=20 finish real "$STOP_CRON"
+expect "…no avisa al hub" "$VIEWED" '^sin aviso$'
+expect "…y el panel sigue con 🔨" "$ICON" '^🔨$'
+
+echo "Claude cierra el turno con solo un comando shell en segundo plano (un servidor)"
+web_terminal
+finish real "$STOP_SHELL"
+expect "…avisa al hub, no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel pasa a ✅" "$ICON" '^✅$'
+
+echo "Claude cierra el turno sin nada en segundo plano ni programado"
+web_terminal
+finish real "$STOP_EMPTY"
+expect "…avisa al hub, no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel pasa a ✅" "$ICON" '^✅$'
+
+echo "Claude espera a un subagente y, cuando acaba, termina de verdad"
+web_terminal
+avisos_antes="$(wc -l < "$T/hub.log")"
+WAIT=20 finish real "$STOP_SUBAGENT"
+finish real "$STOP_EMPTY"
+expect "…el hub recibe un solo aviso" "$(( $(wc -l < "$T/hub.log") - avisos_antes ))" '^1$'
+expect "…no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel pasa a ✅" "$ICON" '^✅$'
 
 echo "El tmux del socket por defecto"
 expect "…sigue con su sesión y sin iconos del kit" \

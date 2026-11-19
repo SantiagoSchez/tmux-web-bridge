@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "host-kit",
+  "description": "Corregido el aviso «Terminado» que llegaba cuando Claude cerraba el turno pero seguía esperando a un subagente, un workflow, un monitor o la siguiente vuelta de un /loop: ahora la ventana sigue en 🔨 y el aviso llega solo al terminar de verdad. Un comando en segundo plano, como un servidor de desarrollo, no lo retiene",
+  "issue": "55",
+  "breaking": false,
+  "pr": "56"
+}
