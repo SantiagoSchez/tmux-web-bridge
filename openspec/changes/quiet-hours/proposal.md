@@ -26,7 +26,7 @@ None.
 
 ## Impact
 
-- Layers: `server` (`shared/quiet-hours.ts` new, `shared/types.ts`, `server/src/settings.ts`, `server/src/push.ts`, `server/src/notifications.ts`, `server/src/index.ts`) and `web` (`web/src/state.ts`, `web/src/components/Settings.tsx`, a new section component, `web/src/styles.css`). No external service changes; Web Push is only called less often.
+- Layers: `server` (`shared/quiet-hours.ts` new, `shared/types.ts`, `server/src/settings.ts`, `server/src/push.ts`, `server/src/notifications.ts`, `server/src/index.ts`) and `web` (`web/src/state.ts`, `web/src/components/Settings.tsx` with the new section, `web/src/components/DayPicker.tsx` new and used by `web/src/components/Automations.tsx` too, `web/src/styles.css`); `shared/schedule.ts` shares its day names with the section's summary. No external service changes; Web Push is only called less often.
 - Contract: `HubSettings` gains the `quietHours` field (type `QuietHours` in `shared/types.ts`). It travels in the existing settings broadcast and in the `settings` client message; no new endpoint, message type or environment variable. `settings.json` files without the key take the default (off, 22:00 to 08:00 every day, no whole days); no migration.
 
 ## Non-goals

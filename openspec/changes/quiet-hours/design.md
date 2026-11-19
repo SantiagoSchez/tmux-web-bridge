@@ -48,7 +48,15 @@ All three call `PushService.send()` (`server/src/push.ts`). Hub settings shared 
 
 ### D5. A section «Notificaciones» in Settings, with a day picker shared with automations
 
-**Decision:** a new `SettingsTab` `'notifications'` with its section component, `QuietHoursSettings`, in `web/src/components/Settings.tsx` next to `DictationSettings`, because both use that file's `Toggle`: the on/off switch (the `Toggle` of `Settings.tsx`), two `type="time"` inputs (desde, hasta), the window's day picker and the whole days' day picker, and a one-line description of what is silenced. The day chips of `Automations.tsx` move to a `DayPicker` component (`web/src/components/DayPicker.tsx`) that both screens use. Every change validates with `quietHoursProblem` and sends `hub.send({ t: 'settings', settings: { quietHours } })`. The times are kept as typed and saved when their field loses focus, because a time field fires `change` on every digit and would save the half-typed time; the toggle sends the whole schedule with only `enabled` flipped, so turning it off keeps the rest.
+**Decision:** a new `SettingsTab` `'notifications'` with its section component, `QuietHoursSettings`, in `web/src/components/Settings.tsx` next to `DictationSettings`, because both use that file's `Toggle`: the on/off switch (the `Toggle` of `Settings.tsx`), two `type="time"` inputs (desde, hasta), the window's day picker and the whole days' day picker, and a one-line description of what is silenced. The day chips of `Automations.tsx` move to a `DayPicker` component (`web/src/components/DayPicker.tsx`) that both screens use. The times are kept as typed and saved when their field loses focus, because a time field fires `change` on every digit and would save the half-typed time.
+
+Every change is computed by `editQuietHours(current, typed, patch)` in `shared/quiet-hours.ts`, a pure function tested with the rest of the rule. `current` is `hubSettings.value.quietHours` read when the control fires, not the value of the last render. `typed` holds the times in the fields; `patch` holds what the control changes (`enabled`, `days`, `allDay`, or the times on blur). It returns the schedule to save, or a problem and nothing to save:
+
+- `patch` over `current` with the typed times, when that is valid: a day tapped right after typing a time saves both.
+- Otherwise, when `patch` changes the times, nothing is saved and the problem is shown.
+- Otherwise, `patch` over `current` with the hub's times: the refused typed times go back to the hub's.
+
+Before sending, the screen writes the schedule into `hubSettings` (as `KeybarSettings.tsx` does). Two controls fired before the hub answers then build on each other: tapping two days keeps both, and leaving a time field by tapping a day saves the time and then the day. The whole schedule is sent with `hub.send({ t: 'settings', settings: { quietHours } })`, so the toggle flips only `enabled` and turning it off keeps the rest.
 
 ## Risks / Trade-offs
 

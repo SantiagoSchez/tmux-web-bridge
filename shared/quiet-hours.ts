@@ -37,6 +37,22 @@ export function sanitizeQuietHours(raw: unknown): QuietHours | null {
   return { enabled: q.enabled, from: q.from, to: q.to, days: days(q.days), allDay: days(q.allDay) };
 }
 
+/**
+ * What a control of Ajustes › Notificaciones saves: `patch` over the hub's schedule
+ * (`current`, as it is when the control fires), with the times as typed in the fields
+ * when that makes a valid schedule. A refused time change saves nothing and says why;
+ * another control then saves with the hub's times.
+ */
+export function editQuietHours(current: QuietHours, typed: { from: string; to: string }, patch: Partial<QuietHours>): { save: QuietHours | null; problem: string | null } {
+  const withTyped = { ...current, ...typed, ...patch };
+  const problem = quietHoursProblem(withTyped);
+  if (!problem) return { save: sanitizeQuietHours(withTyped), problem: null };
+  if ('from' in patch || 'to' in patch) return { save: null, problem };
+  const withHubTimes = { ...current, ...patch };
+  const fallback = quietHoursProblem(withHubTimes);
+  return fallback ? { save: null, problem: fallback } : { save: sanitizeQuietHours(withHubTimes), problem: null };
+}
+
 /** Whether no push goes out at `date` (read on its local clock). */
 export function isQuietAt(q: QuietHours, date: Date): boolean {
   if (!q.enabled || quietHoursProblem(q)) return false;

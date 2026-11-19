@@ -5,7 +5,7 @@ import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { currentSubscription } from '../push';
 import { DICTATION_TIMEOUTS, type DictationButton } from '../../../shared/dictation';
-import { describeQuietHours, quietHoursProblem } from '../../../shared/quiet-hours';
+import { describeQuietHours, editQuietHours } from '../../../shared/quiet-hours';
 import type { QuietHours } from '../../../shared/types';
 import { shortcutText } from '../shortcuts';
 import { dictationShortcut, notReady } from '../dictation';
@@ -500,16 +500,21 @@ function QuietHoursSettings() {
   if (!s) return null;
   const q = s.quietHours;
   const save = (patch: Partial<QuietHours>) => {
-    const next = { ...q, ...patch };
-    // Another control saves the times the hub has: the ones typed and refused go back to them.
-    setFrom(next.from);
-    setTo(next.to);
-    const why = quietHoursProblem(next);
+    // The hub's schedule as it is now, not as this render saw it: two taps before the hub answers build on each other.
+    const current = hubSettings.value;
+    if (!current) return;
+    const { save: quietHours, problem: why } = editQuietHours(current.quietHours, { from, to }, patch);
     setProblem(why);
-    if (!why) hub.send({ t: 'settings', settings: { quietHours: next } });
+    if (!quietHours) return;
+    setFrom(quietHours.from);
+    setTo(quietHours.to);
+    // Shown here at once, before the hub sends it back to every device.
+    hubSettings.value = { ...current, quietHours };
+    hub.send({ t: 'settings', settings: { quietHours } });
   };
   const saveTimes = () => {
-    if (from !== q.from || to !== q.to) save({ from, to });
+    const saved = hubSettings.value?.quietHours;
+    if (from !== saved?.from || to !== saved?.to) save({ from, to });
   };
   return (
     <>

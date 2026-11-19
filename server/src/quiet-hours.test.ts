@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { DEFAULT_QUIET_HOURS, describeQuietHours, isQuietAt, quietHoursProblem, sanitizeQuietHours } from '../../shared/quiet-hours.js';
+import { DEFAULT_QUIET_HOURS, describeQuietHours, editQuietHours, isQuietAt, quietHoursProblem, sanitizeQuietHours } from '../../shared/quiet-hours.js';
 import type { QuietHours } from '../../shared/types.js';
 
 /** 2026-11-20 is a Friday; the times are the local clock, as the hub reads them. */
@@ -79,6 +79,27 @@ test('a schedule with no day at all is valid and the summary says it silences no
   assert.equal(quietHoursProblem(none), null);
   assert.equal(isQuietAt(none, at(SAT, 3, 0)), false);
   assert.match(describeQuietHours(none), /ningún día/);
+});
+
+test('a day tapped right after typing a valid time saves both', () => {
+  assert.deepEqual(editQuietHours(fridayNights, { from: '23:00', to: '08:00' }, { days: [1, 5] }), {
+    save: { ...fridayNights, from: '23:00', days: [1, 5] },
+    problem: null,
+  });
+});
+
+test('leaving a time field with a window that starts and ends at once saves nothing and says why', () => {
+  assert.deepEqual(editQuietHours(fridayNights, { from: '08:00', to: '08:00' }, { from: '08:00', to: '08:00' }), {
+    save: null,
+    problem: 'La franja no puede empezar y acabar a la misma hora',
+  });
+});
+
+test('a day tapped while the typed times are refused saves the day with the hub times', () => {
+  assert.deepEqual(editQuietHours(fridayNights, { from: '08:00', to: '08:00' }, { allDay: [0] }), {
+    save: { ...fridayNights, allDay: [0] },
+    problem: null,
+  });
 });
 
 test('the summary names the window, its days and the whole days', () => {
