@@ -108,11 +108,13 @@ Run again after the fix round of the adversarial review.
 
 ## 11. Human review (mandatory step 8)
 
-- [ ] 11.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+- [x] 11.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+  - The owner takes PR #53 as good without a manual review (2026-11-19), after review round 2 approved it and `ka review-rounds gate` passed on `6cff5fe`.
 
 ## 12. features-check before the archive (mandatory step 9)
 
-- [ ] 12.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 12.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - Exit 0: 55 sections verified.
 
 ## Workflow follow-up
 
