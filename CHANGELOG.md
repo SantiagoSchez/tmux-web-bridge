@@ -4,6 +4,13 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.27.0 - 2026-11-19
+
+### Añadido
+
+- Añadidos los detalles de una ventana al dejar el ratón un segundo encima en la lista: su nombre entero, su estado y desde cuándo y, de cada panel, el comando, el worktree o la rama, la carpeta y la cuenta de Claude, sin cortar nada. También salen en la cabecera de cada espacio y en los iconos de la lista plegada.
+- Añadido que el Claude lanzado desde una tarjeta de Trello, en el panel o en la extensión, empiece cambiando el nombre de su ventana por un resumen del título de la tarjeta, de 30 caracteres como mucho. Sin «Saltar permisos», Claude pide permiso para `tmux rename-window`; puedes dejarlo permitido con `Bash(tmux rename-window:*)` en los ajustes de Claude Code.
+
 ## 1.26.4 - 2026-11-19
 
 ### Corregido
