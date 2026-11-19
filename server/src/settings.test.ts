@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { DEFAULT_KEYBAR, type KeybarButton } from '../../shared/keybar.js';
+import { DEFAULT_QUIET_HOURS } from '../../shared/quiet-hours.js';
 import { DEFAULT_GLOSSARY, SettingsStore } from './settings.js';
 
 function withDir(fn: (dir: string) => void): void {
@@ -208,4 +209,35 @@ test('only the hub sets which machines keep the Trello extension, and it survive
     // A hand-edited file keeps only absolute folders.
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ trelloExtension: { a: 'relativa', b: 3, c: '/ok/trello-extension' } }));
     assert.deepEqual(new SettingsStore(dir).value.trelloExtension, { c: '/ok/trello-extension' });
+  }));
+
+test('the quiet schedule starts off, 22:00 to 08:00 every day, and a valid one survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    assert.deepEqual(store.value.quietHours, DEFAULT_QUIET_HOURS);
+    store.update({ quietHours: { enabled: true, from: '23:00', to: '07:30', days: [5, 6], allDay: [0] } });
+    assert.deepEqual(new SettingsStore(dir).value.quietHours, { enabled: true, from: '23:00', to: '07:30', days: [5, 6], allDay: [0] });
+  }));
+
+test('a quiet window from 08:00 to 08:00 is ignored and the previous schedule stays', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({ quietHours: { enabled: true, from: '22:00', to: '08:00', days: [5], allDay: [] } });
+    store.update({ quietHours: { enabled: true, from: '08:00', to: '08:00', days: [5], allDay: [] } });
+    assert.deepEqual(store.value.quietHours, { enabled: true, from: '22:00', to: '08:00', days: [5], allDay: [] });
+  }));
+
+test('turning the quiet schedule off keeps its window and days', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    const fridays = { enabled: true, from: '22:00', to: '08:00', days: [5], allDay: [0] };
+    store.update({ quietHours: fridays });
+    store.update({ quietHours: { ...store.value.quietHours, enabled: false } });
+    assert.deepEqual(new SettingsStore(dir).value.quietHours, { ...fridays, enabled: false });
+  }));
+
+test('a broken quiet schedule in the file falls back to the default one', () =>
+  withDir((dir) => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ quietHours: { enabled: true, from: '25:00', to: '08:00', days: [5], allDay: [] } }));
+    assert.deepEqual(new SettingsStore(dir).value.quietHours, DEFAULT_QUIET_HOURS);
   }));

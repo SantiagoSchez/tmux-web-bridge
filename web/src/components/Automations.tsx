@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'preact/hooks';
-import { DAY_LETTERS, describeSchedule, EVERY_HOURS, nextRun, scheduleProblem, type Schedule } from '../../../shared/schedule';
+import { describeSchedule, EVERY_HOURS, nextRun, scheduleProblem, type Schedule } from '../../../shared/schedule';
 import type { Automation, AutomationInfo, AutomationRun, ExtHostTargets, ExtTargets } from '../../../shared/types';
 import { runWorktreeName } from '../../../shared/worktree';
 import { api } from '../api';
 import { openWindow } from '../router';
 import { BaseBranchSelect } from './BaseBranch';
+import { DayPicker } from './DayPicker';
 import { dialog, findWindow, hosts, sheet, toast } from '../state';
 
 // Settings › Automatizaciones: prompts the hub launches on its own on a schedule, each as
@@ -298,17 +299,7 @@ function AutomationForm(props: { initial: Partial<Automation>; onSave: (a: Parti
         </div>
         {mode === 'days' && (
           <div class="auto-days">
-            {[1, 2, 3, 4, 5, 6, 0].map((d) => (
-              <button
-                key={d}
-                type="button"
-                class={`day-chip ${days.includes(d) ? 'on' : ''}`}
-                aria-pressed={days.includes(d)}
-                onClick={() => setDays(days.includes(d) ? days.filter((x) => x !== d) : [...days, d])}
-              >
-                {DAY_LETTERS[d]}
-              </button>
-            ))}
+            <DayPicker days={days} label="Días" onChange={setDays} />
             <input class="text-input auto-time" type="time" value={time} aria-label="Hora" onInput={(e) => setTime(e.currentTarget.value)} />
           </div>
         )}

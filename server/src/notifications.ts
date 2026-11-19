@@ -92,6 +92,7 @@ export class Notifier {
     const ctx = host.findPane(paneId);
     if (!ctx || ctx.pane.state !== state) return;
     if (this.conns.isWatched(host.id, paneId, ctx.window.id)) return;
+    if (this.quiet(host, ctx, state)) return;
     const route = this.route(ctx, state);
     if (!route) return;
     let body = ALERT[state].label;
@@ -131,6 +132,7 @@ export class Notifier {
       console.log(`[push] ${this.title(ctx, req.state)}: no se envía, lo tienes abierto en la web`);
       return { pushed: false, reason: 'watched in web' };
     }
+    if (this.quiet(host, ctx, req.state)) return { pushed: false, reason: 'quiet hours' };
     const route = this.route(ctx, req.state);
     if (!route) return { pushed: false, reason: 'present' };
 
@@ -142,6 +144,16 @@ export class Notifier {
       await this.deliver({ title: req.title || `${ALERT[state].icon} ${host.name}`, body, tag: key, url: '/' }, route.only);
     }
     return { pushed: true };
+  }
+
+  /**
+   * Inside the quiet schedule: says so in the log and nothing is pushed. Checked before
+   * reading the pane, so no capture or wait for the choices menu is spent on it.
+   */
+  private quiet(host: HostMonitor, ctx: PaneContext | null, state: AlertState): boolean {
+    if (!this.push.quiet()) return false;
+    console.log(`[push] ${this.what(host, ctx, state)}: no se envía, es horario de descanso`);
+    return true;
   }
 
   /** Pushes to `only` those endpoints, or to every device when none of them took it (a subscription gone). */

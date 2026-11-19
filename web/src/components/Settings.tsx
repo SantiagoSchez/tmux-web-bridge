@@ -5,6 +5,8 @@ import { isDesktop, prefs, setPref, type Prefs } from '../prefs';
 import { disablePresence, enablePresence, presenceState, type PresenceState } from '../presence';
 import { currentSubscription } from '../push';
 import { DICTATION_TIMEOUTS, type DictationButton } from '../../../shared/dictation';
+import { describeQuietHours, editQuietHours } from '../../../shared/quiet-hours';
+import type { QuietHours } from '../../../shared/types';
 import { shortcutText } from '../shortcuts';
 import { dictationShortcut, notReady } from '../dictation';
 import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
@@ -14,6 +16,7 @@ import { Sheet } from './Sheet';
 import { ExtTokenSettings, TrelloMachines } from './ExtToken';
 import { TrelloAccountSettings } from './Trello';
 import { AutomationSettings } from './Automations';
+import { DayPicker } from './DayPicker';
 import { FolderSettings } from './Folders';
 import { KeybarSettings } from './KeybarSettings';
 import { ShortcutSettings } from './ShortcutSettings';
@@ -101,6 +104,7 @@ const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'shortcuts', label: 'Atajos', hint: 'Búsqueda, plegar, nota rápida y dictado' },
   { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; lista de espacios, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
+  { id: 'notifications', label: 'Notificaciones', hint: 'Horario de descanso sin notificaciones push' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
   { id: 'dictation', label: 'Dictado', hint: 'Botón 🎤, atajo, limpieza y glosario' },
   { id: 'keys', label: 'Teclas', hint: 'La barra de teclas del móvil' },
@@ -181,6 +185,8 @@ function SettingsSection({ id }: { id: SettingsTab }) {
       return <MachineSettings />;
     case 'folders':
       return <FolderSettings />;
+    case 'notifications':
+      return <QuietHoursSettings />;
     case 'automations':
       return <AutomationSettings />;
     case 'dictation':
@@ -478,6 +484,74 @@ function DictationSettings() {
           </section>
         </>
       )}
+    </>
+  );
+}
+
+/** The quiet schedule, for the whole hub: when no push notification goes out to any device. */
+function QuietHoursSettings() {
+  const s = hubSettings.value;
+  const [problem, setProblem] = useState<string | null>(null);
+  // The times as typed: a time field fires change on every digit, so they are saved when it loses focus.
+  const [from, setFrom] = useState(s?.quietHours.from ?? '');
+  const [to, setTo] = useState(s?.quietHours.to ?? '');
+  useEffect(() => setFrom(s?.quietHours.from ?? ''), [s?.quietHours.from]);
+  useEffect(() => setTo(s?.quietHours.to ?? ''), [s?.quietHours.to]);
+  if (!s) return null;
+  const q = s.quietHours;
+  const save = (patch: Partial<QuietHours>) => {
+    // The hub's schedule as it is now, not as this render saw it: two taps before the hub answers build on each other.
+    const current = hubSettings.value;
+    if (!current) return;
+    const { save: quietHours, problem: why } = editQuietHours(current.quietHours, { from, to }, patch);
+    setProblem(why);
+    if (!quietHours) return;
+    setFrom(quietHours.from);
+    setTo(quietHours.to);
+    // Shown here at once, before the hub sends it back to every device.
+    hubSettings.value = { ...current, quietHours };
+    hub.send({ t: 'settings', settings: { quietHours } });
+  };
+  const saveTimes = () => {
+    const saved = hubSettings.value?.quietHours;
+    if (from !== saved?.from || to !== saved?.to) save({ from, to });
+  };
+  return (
+    <>
+      <p class="settings-scope dim small">Vale para todos los dispositivos. Las horas son las del servidor central, como las de las automatizaciones.</p>
+      <Toggle
+        title="Horario de descanso"
+        desc="Dentro del horario no se envía ninguna notificación push: ni 🙋 preguntas, 💬 permisos o ✅ tareas terminadas, ni los avisos de automatizaciones que no se han podido lanzar. Lo pendiente se sigue viendo en el panel. «Enviar prueba» llega siempre."
+        on={q.enabled}
+        onChange={(on) => save({ enabled: on })}
+      >
+        <p class="settings-state small">{describeQuietHours(q)}.</p>
+      </Toggle>
+      <section class="setting">
+        <h3>Franja</h3>
+        <p class="dim small">Si acaba antes de empezar, cruza la medianoche y cuenta para el día en que empieza: marcar el viernes con 22:00 a 08:00 silencia hasta el sábado a las 08:00.</p>
+        <div class="quiet-window">
+          <label>
+            Desde
+            <input class="text-input" type="time" value={from} required onInput={(e) => setFrom(e.currentTarget.value)} onBlur={saveTimes} />
+          </label>
+          <label>
+            Hasta
+            <input class="text-input" type="time" value={to} required onInput={(e) => setTo(e.currentTarget.value)} onBlur={saveTimes} />
+          </label>
+        </div>
+        {problem && (
+          <p class="quiet-problem small" role="alert">
+            {problem}
+          </p>
+        )}
+        <DayPicker days={q.days} label="Días de la franja" onChange={(days) => save({ days })} />
+      </section>
+      <section class="setting">
+        <h3>Días enteros</h3>
+        <p class="dim small">Silenciados de 00:00 a 24:00, diga lo que diga la franja. Por ejemplo, los fines de semana.</p>
+        <DayPicker days={q.allDay} label="Días enteros" onChange={(allDay) => save({ allDay })} />
+      </section>
     </>
   );
 }

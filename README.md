@@ -53,6 +53,7 @@
 - **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas, con desde cuándo esperan y, si terminaron, cuánto trabajaron.
 - **Actividad** (el botón con el pulso de la cabecera): lo que ha pasado en los últimos 7 días en todas las máquinas, agrupado por días. Recoge qué Claude preguntó, cuál pidió permiso y cuál terminó, y tras cuánto tiempo; qué tareas se lanzaron y desde dónde (Trello, la extensión, el panel o una automatización); y qué automatizaciones se saltaron o fallaron. Tocar una fila abre su ventana, si sigue abierta.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
+- **Horario de descanso** en ⚙️ **Ajustes › Notificaciones**: una franja (por ejemplo, de 22:00 a 08:00) en los días que elijas, y días enteros (los fines de semana), en los que el servidor central no envía ninguna notificación push a ningún dispositivo. Una franja que cruza la medianoche cuenta para el día en que empieza. Lo pendiente se sigue viendo en el panel y en Actividad; «Enviar prueba» llega siempre.
 - **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «espacio › ventana». Un toque abre la que quieras.
 
 ### 📱 Una terminal de verdad en el móvil
@@ -291,7 +292,7 @@ scripts/test-kit-update.sh   # «Actualizar el kit» de punta a punta, aislado (
 | Síntoma | Causa probable |
 | --- | --- |
 | Una máquina sale «sin conexión» | Pasa el ratón (o toca) «sin conexión» para ver el error de ssh, y prueba `ssh` a mano desde el servidor central. Sus espacios dejan de mostrarse al minuto sin respuesta, porque ya no se sabe qué tiene abierto. |
-| No llegan notificaciones | ⚙️ Ajustes › Dispositivo › Enviar prueba; `host-kit/install.sh --check` en la máquina. Cada aviso deja en el log del servidor central una línea `[push]`: a cuántos dispositivos se envió o por qué no se envió. |
+| No llegan notificaciones | ⚙️ Ajustes › Dispositivo › Enviar prueba; mira si estás dentro del horario de descanso (⚙️ Ajustes › Notificaciones); `host-kit/install.sh --check` en la máquina. Cada aviso deja en el log del servidor central una línea `[push]`: a cuántos dispositivos se envió o por qué no se envió. |
 | 401 al abrir el panel | Con `auth.method: tailscale`, estás entrando sin `tailscale serve`. |
 | «Código incorrecto» en la verificación en dos pasos | La hora del móvil o del servidor va desfasada más de 30 s. |
 | `posix_spawnp failed` | Permisos del `spawn-helper` de node-pty: `node scripts/fix-node-pty.mjs`. |

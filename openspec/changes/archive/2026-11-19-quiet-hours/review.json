@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "pr": 59,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "026b301b42847baa317546ad95c3d54336d2967b",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T21:00:27.133Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "41e0a1a3474cf7cbebd40b10e64e185f9afd0ead",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T21:07:03.480Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "web/src/components/Settings.tsx",
+      "symbol": "QuietHoursSettings",
+      "title": "Saving the quiet schedule builds on a stale hub value and loses a typed time or a previous day toggle",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "026b301b42847baa317546ad95c3d54336d2967b",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "openspec/changes/quiet-hours/proposal.md",
+      "symbol": null,
+      "title": "Proposal impact lists a new section component and omits DayPicker, Automations and schedule.ts",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "026b301b42847baa317546ad95c3d54336d2967b",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R2-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Settings.tsx",
+      "symbol": "QuietHoursSettings",
+      "title": "An earlier save's broadcast overwrites the optimistic quiet schedule when three controls fire faster than the hub round trip",
+      "origin": "introduced",
+      "round": 2,
+      "sha": "41e0a1a3474cf7cbebd40b10e64e185f9afd0ead",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 4,
+      "scoreReason": "The race is real: the hub's broadcast of the first tap replaces the optimistic second tap before the third builds on it, but it needs three taps inside one tailnet round trip on a rarely edited setting of a single-owner app, the panel then shows the missing day so the owner can tap it again, and a fix (tracking pending saves or ignoring broadcasts while one is in flight) would leave the optimistic pattern KeybarSettings also uses, with its own regression risk.",
+      "followUp": null
+    },
+    {
+      "id": "R2-02",
+      "severity": "NITPICK",
+      "path": "shared/quiet-hours.ts",
+      "symbol": "editQuietHours",
+      "title": "The early return for a time patch gives the same result as the fallback for every panel call",
+      "origin": "introduced",
+      "round": 2,
+      "sha": "41e0a1a3474cf7cbebd40b10e64e185f9afd0ead",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

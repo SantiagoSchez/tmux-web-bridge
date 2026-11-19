@@ -26,11 +26,13 @@ function fakeHost(): HostMonitor {
 
 /**
  * The push service at its network boundary: records what would be sent and to whom.
- * Endpoints in `gone` are subscribed but the push service no longer takes them.
+ * Endpoints in `gone` are subscribed but the push service no longer takes them;
+ * `quiet`: it is inside the quiet schedule.
  */
-function fakePush(subscribed: string[], gone: string[] = []) {
+function fakePush(subscribed: string[], gone: string[] = [], quiet = false) {
   const sent: { payload: PushPayload; only?: readonly string[] }[] = [];
   const push = {
+    quiet: () => quiet,
     has: (e: string) => subscribed.includes(e),
     send: async (payload: PushPayload, only?: readonly string[]) => {
       sent.push({ payload, only });
@@ -160,4 +162,37 @@ test('a notice from a machine the panel does not have is not pushed and says so 
   const lines = await pushLog(t, () => n.onScriptNotify({ ...done, host: 'portatil-viejo' }));
   assert.equal(sent.length, 0);
   assert.deepEqual(lines, ['[push] ✅ portatil-viejo: no se envía, la máquina portatil-viejo no está en el panel']);
+});
+
+test('a notice inside the quiet schedule is not pushed and says so in the log', async (t) => {
+  const { push, sent } = fakePush([MAC], [], true);
+  const n = notifier(new ConnectionRegistry(), push);
+
+  let result: unknown;
+  const lines = await pushLog(t, async () => (result = await n.onScriptNotify(done)));
+  assert.deepEqual(result, { pushed: false, reason: 'quiet hours' });
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, es horario de descanso']);
+});
+
+test('the same notice outside the quiet schedule is pushed', async () => {
+  const { push, sent } = fakePush([MAC], [], false);
+
+  assert.deepEqual(await notifier(new ConnectionRegistry(), push).onScriptNotify(done), { pushed: true });
+  assert.equal(sent.length, 1);
+});
+
+test('a pane icon turning ✅ inside the quiet schedule pushes nothing', async (t) => {
+  const { push, sent } = fakePush([MAC], [], true);
+  const host = fakeHost();
+  const n = new Notifier({ fallbackDelayMs: 0 } as Config, new Map([['mac', host]]), push, new ConnectionRegistry());
+
+  const ctx = host.findPane('%1');
+  assert.ok(ctx);
+  const lines = await pushLog(t, async () => {
+    n.onTransition({ ...ctx, from: 'busy', to: 'done' });
+    await new Promise((r) => setTimeout(r, 20));
+  });
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, es horario de descanso']);
 });

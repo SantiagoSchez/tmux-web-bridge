@@ -10,13 +10,20 @@ interface StoredSubscription extends PushSubscription {
   userAgent?: string;
 }
 
-/** Web Push: VAPID keys and browser subscriptions, persisted in dataDir. */
+/**
+ * Web Push: VAPID keys and browser subscriptions, persisted in dataDir. Every push goes
+ * through send(), which drops it inside the quiet schedule (Ajustes › Notificaciones).
+ */
 export class PushService {
   readonly publicKey: string;
   private subs: StoredSubscription[] = [];
   private readonly subsPath: string;
 
-  constructor(config: Config) {
+  /** `quiet`: whether it is inside the quiet schedule right now. */
+  constructor(
+    config: Config,
+    readonly quiet: () => boolean,
+  ) {
     const keysPath = join(config.dataDir, 'vapid.json');
     let keys: { publicKey: string; privateKey: string };
     if (existsSync(keysPath)) {
@@ -55,8 +62,15 @@ export class PushService {
     this.save();
   }
 
-  /** Sends to every subscribed browser, or `only` to those endpoints. Returns how many accepted it. */
-  async send(payload: PushPayload, only?: readonly string[]): Promise<number> {
+  /**
+   * Sends to every subscribed browser, or `only` to those endpoints. Returns how many accepted it:
+   * none inside the quiet schedule, unless `evenWhenQuiet` (the test notification).
+   */
+  async send(payload: PushPayload, only?: readonly string[], { evenWhenQuiet = false } = {}): Promise<number> {
+    if (!evenWhenQuiet && this.quiet()) {
+      console.log(`[push] ${payload.title}: no se envía, es horario de descanso`);
+      return 0;
+    }
     const body = JSON.stringify(payload);
     const targets = only ? this.subs.filter((s) => only.includes(s.endpoint)) : this.subs;
     let ok = 0;

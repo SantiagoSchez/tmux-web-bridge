@@ -145,10 +145,18 @@ function range(a: number, b: number): number[] {
 export function describeSchedule(s: Schedule): string {
   if (s.kind === 'cron') return `Cron ${s.expr.trim()}`;
   if (s.kind === 'every') return s.minute ? `Cada ${s.hours} h, a y ${String(s.minute).padStart(2, '0')}` : `Cada ${s.hours} h, en punto`;
-  const days = [...new Set(s.days)].sort();
-  const key = days.join('');
-  const when = key === '0123456' ? 'Cada día' : key === '12345' ? 'Laborables' : key === '06' ? 'Fines de semana' : list(days.sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_NAMES[d]));
+  const when = describeDays(s.days);
   return `${when[0].toUpperCase()}${when.slice(1)} a las ${s.time}`;
+}
+
+/** Days of the week in words, from Monday: «cada día», «laborables», «fines de semana», «lunes y jueves». */
+export function describeDays(chosen: readonly number[]): string {
+  const days = [...new Set(chosen)].sort();
+  const key = days.join('');
+  if (key === '0123456') return 'cada día';
+  if (key === '12345') return 'laborables';
+  if (key === '06') return 'fines de semana';
+  return list(days.sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map((d) => DAY_NAMES[d]));
 }
 
 function list(items: string[]): string {
