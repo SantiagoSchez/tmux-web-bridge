@@ -74,7 +74,8 @@
 
 ## 9. Feature catalogue
 
-- [ ] 9.1 Run `/ka:update-features scheduled-messages`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`
+- [x] 9.1 Run `/ka:update-features scheduled-messages`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`
+  - New area «Mensajes programados» in `docs/FEATURES.md`, with its index line and 11 sections, one per requirement. `ka features-check --strict`: 82 sections verified, exit 0.
 
 ## 10. E2E pipeline
 
