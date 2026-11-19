@@ -144,8 +144,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "The reviewer is right that server-standards.md:35 is worded too broadly: the uninstall script in kit.ts (lines 267-268) reads and edits the Claude Code folder through the kit's saved claude-dir file. The fix is to narrow the standard to scripts that act on the panes' running Claude Code, a one-line doc edit to make now or mention in the final comment. Making kit.ts follow the rule would be wrong, because the uninstall must clean the folder the kit was installed into.",
       "followUp": null
     },
     {
@@ -157,12 +157,12 @@
       "origin": "introduced",
       "round": 2,
       "sha": "8215b4fd07a4206fa83a3ea7d83b56318e52346f",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 3,
+      "scoreReason": "The repeated code is two shell lines in two places, and each has its own fake-tmux test. The places don't need the same thing: host-creds.ts (inside a String.raw script) also needs the empty case and the .claude.json path, while worktree-base.ts falls back straight to $HOME/.claude. A shared helper in exec.ts would save little and could break the escaping of either script.",
       "followUp": null
     },
     {
@@ -225,7 +225,7 @@
       "origin": "introduced",
       "round": 3,
       "sha": "1eaf2f1d6f5422ab36622b84179e4ad61362cc20",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,

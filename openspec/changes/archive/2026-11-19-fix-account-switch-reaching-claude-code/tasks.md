@@ -84,11 +84,13 @@ The owner asked to fix R1-02 in this pull request; `ka review-rounds reset` open
 
 ## 9. Human review (mandatory step 8)
 
-- [ ] 9.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+- [x] 9.1 Ask the owner with `AskUserQuestion` who reviews the pull request (a person, or the owner takes it as good) and record the answer here; do not archive before the approval or that answer.
+  - The owner takes PR #62 as good without a manual review (2026-11-19), first after review round 1 and again after the scope change's rounds, with the go-ahead to archive and merge.
 
 ## 10. features-check before the archive (mandatory step 9)
 
-- [ ] 10.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 10.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - `ka features-check --strict`: exit 0, 67 sections verified, on `ce4b08e` before `/opsx:archive`.
 
 ## Workflow follow-up
 

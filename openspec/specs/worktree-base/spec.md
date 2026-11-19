@@ -94,7 +94,7 @@ The base branch offered first SHALL be the last one used for the same Trello boa
 
 ### Requirement: The worktree starts from the chosen base
 
-A worktree created with a base branch SHALL start from that branch as it is on the remote, or, when the remote cannot be reached, from the copy the machine has, telling the user. With a hook that creates Claude Code's worktrees, the hook SHALL still create the worktree and do its own preparation; without one, the hub SHALL create it under the main checkout, copying the ignored files `.worktreeinclude` selects. Its branch SHALL keep the worktree's name.
+A worktree created with a base branch SHALL start from that branch as it is on the remote, or, when the remote cannot be reached, from the copy the machine has, telling the user. With a hook that creates Claude Code's worktrees, the hook SHALL still create the worktree and do its own preparation; the hook SHALL be looked for in the settings and plugins of the Claude Code folder the machine's tmux sessions use (the tmux server's global `CLAUDE_CONFIG_DIR`, `~/.claude` without it) and in the project's settings; without one, the hub SHALL create it under the main checkout, copying the ignored files `.worktreeinclude` selects. Its branch SHALL keep the worktree's name.
 
 #### Scenario: Machine with a worktree hook
 
@@ -137,6 +137,18 @@ A worktree created with a base branch SHALL start from that branch as it is on t
 - **GIVEN** a machine that knows `origin/release/2.0` and cannot reach the remote
 - **WHEN** a task is launched in a new worktree with base `release/2.0`
 - **THEN** the worktree starts from the known `origin/release/2.0` and the user is told the remote could not be updated
+
+#### Scenario: Hook in the folder the machine's tmux sets
+
+- **GIVEN** a machine whose tmux server sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb`, with a hook that creates worktrees declared only in that folder's settings
+- **WHEN** a task is launched in worktree `feature/14-login` with base `release/2.0`
+- **THEN** the hook creates the worktree, and its branch `feature/14-login` starts at `origin/release/2.0`
+
+#### Scenario: Hook only in the default folder when tmux sets another one
+
+- **GIVEN** a machine whose tmux server sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb`, with a hook that creates worktrees declared only in `~/.claude`'s settings
+- **WHEN** a task is launched in worktree `feature/14-login` with base `release/2.0`
+- **THEN** the hub creates the worktree under the repository's `.claude/worktrees/`, as on a machine without a hook
 
 ### Requirement: An automation keeps its base branch
 
