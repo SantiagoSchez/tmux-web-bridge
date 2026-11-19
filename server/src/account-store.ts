@@ -179,7 +179,11 @@ export class AccountStore {
     const acc = usable(seen) ? this.owner(host, seen) : null;
     const id = acc?.id ?? null;
     for (const a of this.data.accounts) {
-      for (const l of a.logins) if (l.host === host && a.id !== id) l.host = null;
+      for (const l of a.logins) {
+        if (l.host !== host || a.id === id) continue;
+        l.host = null;
+        delete l.configAccount;
+      }
     }
     if (acc && usable(seen)) {
       let login =
@@ -258,6 +262,11 @@ export class AccountStore {
     acc.logins.push({ id: randomBytes(6).toString('hex'), cred, host: null, at: Date.now(), confirmed: true });
     this.save();
     return acc;
+  }
+
+  /** The account the hub keeps a login with this refresh token under, if any. */
+  tokenAccount(refreshToken: string): string | undefined {
+    return this.data.accounts.find((a) => a.logins.some((l) => l.cred.refreshToken === refreshToken))?.id;
   }
 
   /** The account a login sits in now (another round may have moved it), or undefined once gone. */

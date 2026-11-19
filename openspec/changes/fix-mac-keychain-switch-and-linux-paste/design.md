@@ -62,6 +62,10 @@ Alternatives considered: writing both copies (the owner's first choice, dropped 
 
 A machine renews its login with a new refresh token, and the old one stops working. So a moved machine login also records, in an optional `configAccount`, the account its machine's `~/.claude.json` named when it moved. When `observe` or `commitSwitch` (the login a switch takes back) meets a token the hub does not know on a machine whose stored login carries a `configAccount` equal to what `~/.claude.json` names now, the file has not changed: it is that login, renewed. It is updated in place, in its account and unconfirmed, and confirmed again before its next use. When `~/.claude.json` names another account, someone ran `/login` by hand: the previous login, still valid, comes back as spare and the new one is filed as any new login. No copy of a spent refresh token is ever left as spare. `configAccount` is cleared when the login sits under the account `~/.claude.json` names, and when it comes back to the hub.
 
+A `/login` by hand with the account `~/.claude.json` already names does not change the file, so it looks like a renewal: the new login takes the moved one's place, the profile question moves it to its account, and the hub forgets the previous login although it still works. Owner's choice (2026-11-19, review round 1): accepted, since keeping the previous credential as spare would keep a spent refresh token after every ordinary renewal.
+
+A switch reads what the machine has under Claude Code's locks and skips the write only when the machine's login is one the hub keeps under the target account (by refresh token), never because `~/.claude.json` names that account: on a machine whose login was moved, the file names the other account.
+
 When `owns()` finds that the account a profile names is the one the login already sits in (two rounds confirmed it at once), it confirms without logging a move. The log says when it was the profile question that failed, not the reading of the machine.
 
 A login on a machine whose access token has expired is not confirmed until the machine renews it (the hub never renews a machine's login).

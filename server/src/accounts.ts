@@ -1,9 +1,9 @@
 import { EventEmitter } from 'node:events';
 import type { AccountOp, AccountsInfo } from '../../shared/types.js';
-import { AccountStore, NeedsLoginError, type StoredAccount, type StoredLogin, accountId } from './account-store.js';
+import { AccountStore, NeedsLoginError, type StoredAccount, type StoredLogin } from './account-store.js';
 import { exchangeCode, type Fetch, fetchProfile, fetchUsage, OAuthError, type OAuthCred, type PendingLogin, type Profile, refresh, splitCode, startLogin } from './claude-oauth.js';
 import type { HostMonitor } from './host.js';
-import { inspectHost, switchHost } from './host-creds.js';
+import { type HostSnapshot, inspectHost, switchHost } from './host-creds.js';
 
 /** How often each account's usage is read: the endpoint allows ~30 reads an hour per account. */
 const USAGE_EVERY = 5 * 60_000;
@@ -264,7 +264,10 @@ export class AccountManager extends EventEmitter {
           }
           if (await this.owns(acc, login, cred.accessToken)) break;
         }
-        const { snap, written } = await switchHost(host.exec, (s) => (accountId(s.oauthAccount) === accId && s.cred ? null : { cred, oauthAccount: acc.oauthAccount }));
+        // Already on it only if its login is one the hub keeps under the account: its
+        // ~/.claude.json may name an account its login is not of.
+        const onIt = (s: HostSnapshot) => !!s.cred && this.store.tokenAccount(s.cred.refreshToken) === accId;
+        const { snap, written } = await switchHost(host.exec, (s) => (onIt(s) ? null : { cred, oauthAccount: acc.oauthAccount }));
         if (written) this.store.commitSwitch(hostId, snap, login.id, cred);
         else this.store.observe(hostId, snap);
         this.inspected.set(hostId, Date.now());

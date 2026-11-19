@@ -221,7 +221,7 @@ test('a /login by hand on a machine whose login was moved files the new login by
   store.moveLogin(store.get('acc-s1:org-s1')!.logins[0].id, oauthAccount('s2'));
   store.observe('mac', seen('s3'));
   assert.equal(store.hostAccount('mac'), 'acc-s3:org-s3');
-  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.host]), [['rt-s2', null]]);
+  assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.host, l.configAccount]), [['rt-s2', null, undefined]]);
 }));
 
 test('a new token from a machine must be confirmed again; a renewal by the hub or a login from the panel need not', withDir((dir) => {
@@ -667,6 +667,21 @@ test('a moved machine login renewed by its machine is confirmed again on its acc
   assert.deepEqual(api.calls, ['/api/oauth/profile at-s2', '/api/oauth/profile at-s2-b']);
   assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
   assert.deepEqual(store.get('acc-s2:org-s2')!.logins.map((l) => [l.cred.refreshToken, l.confirmed]), [['rt-s2-b', true]]);
+}));
+
+test("a switch to the account a machine's ~/.claude.json names writes the login when the machine's own is of another account", withDir(async (dir) => {
+  if (process.platform !== 'linux') return;
+  const store = new AccountStore(dir);
+  // The owner's MacBook Pro after the deploy: its file names s2, its login is s1's.
+  const machine: HostLogin = { oauthAccount: oauthAccount('s2'), cred: cred('s1') };
+  store.observe('mac', machine);
+  store.moveLogin(store.get('acc-s2:org-s2')!.logins[0].id, oauthAccount('s1'));
+  store.addLogin(oauthAccount('s2'), { ...cred('s2'), accessToken: 'at-s2-p', refreshToken: 'rt-s2-p' }, {});
+  const manager = new AccountManager(store, new Map([['mac', fakeMachine(dir, 'mac', machine)]]), fakeAnthropic().fetch);
+  await manager.switchHost('mac', 'acc-s2:org-s2');
+  assert.equal(JSON.parse(readFileSync(join(dir, 'mac', '.claude', '.credentials.json'), 'utf8')).claudeAiOauth.refreshToken, 'rt-s2-p');
+  assert.equal(store.hostAccount('mac'), 'acc-s2:org-s2');
+  assert.equal(store.spareLogin('acc-s1:org-s1').cred.refreshToken, 'rt-s1');
 }));
 
 test('two rounds that confirm the same login at once move it once and log one move', withDir(async (dir) => {

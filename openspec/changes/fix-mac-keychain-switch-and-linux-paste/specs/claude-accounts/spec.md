@@ -66,6 +66,12 @@ Before the hub reads an account's usage with a login, or hands a login to a mach
 - **WHEN** its Claude Code renews the login and the hub looks at the machine again
 - **THEN** the panel keeps showing the machine on s2, and the hub keeps no copy of the login's previous refresh token
 
+#### Scenario: Switching that machine to the account its file names
+
+- **GIVEN** a machine shown on s1, whose login is s1's and whose `~/.claude.json` names s2
+- **WHEN** the owner switches it to s2 from the panel
+- **THEN** the hub writes an s2 login into the machine's store, and the panel shows the machine on s2
+
 #### Scenario: A /login by hand on that machine
 
 - **GIVEN** the same machine, shown on s2, whose `~/.claude.json` names s1

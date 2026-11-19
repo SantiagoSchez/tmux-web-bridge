@@ -51,6 +51,10 @@ Fix round of the adversarial review (owner's decision of 2026-11-19): the first 
   - The test holds both profile answers until both questions are in flight; it failed first with «el login que estaba en s2 es de s2: movido». `owns()` now compares with where the login sits now (`AccountStore.loginAccount`). After `inspect`, a failed question logs «no se pudo preguntar a Anthropic de qué cuenta es su login».
 - [x] 5.9 Type the fake `fetch` of the manager tests without casts: `answer` with the `Fetch` signature, and the token read with `new Headers(init?.headers).get('Authorization')`. Verify with `pnpm --filter server test` and `pnpm --filter server typecheck`.
   - Done; no cast left in `fakeAnthropic`. The `as unknown as HostMonitor` of `fakeMachine` stays, as in the suite's other fake hosts (`actions.test.ts`, `kit.test.ts`).
+- [x] 5.10 Fix round of review round 1 (R1-01): write the failing manager tests. A machine whose `~/.claude.json` names s2 and whose login is s1's (shown on s1, with a spare s2 login in the hub), switched to s2: its file then holds the s2 spare's refresh token and the machine is on s2. See it fail.
+  - Failed first (the file kept `rt-s1`). The review also proposed failing a switch that leaves the machine on another account; with the new rule no realistic state reaches it, so it was left out rather than added untested.
+- [x] 5.11 In `AccountManager.switchHost`, skip the write only when the machine's refresh token is of a login the store keeps under the target account. When a login comes back to the hub as spare in `observe`, clear its `configAccount` (R1-03). Document R1-02's accepted case in D3 (done in the design). Verify with `pnpm --filter server test` and `pnpm --filter server typecheck`.
+  - `AccountStore.tokenAccount()` gives the account a refresh token is kept under. The `/login`-by-hand test now also checks `configAccount` is cleared, and failed without the change. 327 server tests pass; typecheck clean.
 
 ## 6. Ctrl+V pastes outside a Mac (mandatory step 3, design D4)
 

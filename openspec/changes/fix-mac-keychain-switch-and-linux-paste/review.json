@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "pr": 53,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-19T13:12:15.393Z",
+      "counts": {
+        "critical": 1,
+        "required": 0,
+        "suggestion": 1,
+        "question": 1,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "CRITICAL",
+      "path": "server/src/accounts.ts",
+      "symbol": "AccountManager.switchHost",
+      "title": "A switch to the account ~/.claude.json names is skipped on a machine whose login was moved, and reported as done",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "QUESTION",
+      "path": "server/src/account-store.ts",
+      "symbol": "AccountStore.owner",
+      "title": "A /login by hand with the account the file already names overwrites the still-valid moved login",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "state": "withdrawn",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": "Owner accepts it (2026-11-19): a /login by hand with the account the file already names cannot be told from a renewal; keeping the previous credential as spare would bring back the spent-token bug. Documented in design D3.",
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "server/src/account-store.ts",
+      "symbol": "AccountStore.observe",
+      "title": "configAccount is kept when a machine login comes back to the hub as spare",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "server/src/host-creds.ts",
+      "symbol": "HostSnapshot.via",
+      "title": "HostSnapshot.via is read only by a test",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "d176dcc30e8108a0b3cb882b0b31e73e505d7f69",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}
