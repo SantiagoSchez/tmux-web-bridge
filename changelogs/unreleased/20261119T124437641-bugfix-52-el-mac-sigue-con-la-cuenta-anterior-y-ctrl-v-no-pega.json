@@ -1,8 +1,0 @@
-{
-  "type": "fixed",
-  "scope": "web",
-  "description": "Corregido el pegado con Ctrl+V en la terminal web desde Linux y Windows: mandaba Ctrl+V a tmux en vez de pegar, así que una captura del portapapeles no llegaba a Claude. Ahora Ctrl+V y Ctrl+Shift+V pegan el texto, o suben la imagen y escriben su ruta en el panel, como Cmd+V en el Mac",
-  "issue": "52",
-  "breaking": false,
-  "pr": "53"
-}

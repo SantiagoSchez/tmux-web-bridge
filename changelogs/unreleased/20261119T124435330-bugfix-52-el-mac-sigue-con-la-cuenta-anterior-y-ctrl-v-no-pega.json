@@ -1,8 +1,0 @@
-{
-  "type": "fixed",
-  "scope": "server",
-  "description": "Corregido el cambio de cuenta de Claude en un Mac cuyo tmux arrancó desde el Terminal: el panel escribía el login en un fichero que Claude Code no lee allí (usa el Llavero), así que los Claudes de ese Mac, también los nuevos, seguían con la cuenta anterior y decían que tenían los límites agotados. Ahora el cambio llega al Llavero a través de tmux. Corregida además una cuenta que mostraba los límites de otra y el aviso ⚠ de que alguna máquina publicaba con ella los límites de otra cuenta: el servidor central guardaba un login bajo una cuenta que no era la suya. Ahora pregunta a Anthropic de quién es cada login antes de usarlo y lo mueve a su cuenta, creándola si no la conocía",
-  "issue": "52",
-  "breaking": false,
-  "pr": "53"
-}

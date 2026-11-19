@@ -4,6 +4,14 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.26.3 - 2026-11-19
+
+### Corregido
+
+- Corregido el cambio de cuenta de Claude en un Mac cuyo tmux arrancó desde el Terminal: sus Claudes, también los nuevos, seguían con la cuenta anterior. Ahora el cambio llega al Llavero del Mac, que es donde Claude Code guarda allí la sesión.
+- Corregida una cuenta que mostraba los límites de otra, con el aviso ⚠ de que una máquina publicaba con ella los límites de otra cuenta. Cada sesión guardada se asigna ahora a la cuenta a la que pertenece de verdad.
+- Corregido el pegado con Ctrl+V en la terminal web desde Linux y Windows, que no pegaba y no dejaba pasar a Claude una captura del portapapeles. Ahora Ctrl+V y Ctrl+Shift+V pegan el texto, o suben la imagen y escriben su ruta en el panel, como Cmd+V en el Mac.
+
 ## 1.26.2 - 2026-11-18
 
 ### Cambiado
