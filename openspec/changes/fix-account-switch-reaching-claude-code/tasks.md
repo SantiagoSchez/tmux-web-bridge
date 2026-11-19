@@ -74,7 +74,8 @@ The owner asked to fix R1-02 in this pull request; `ka review-rounds reset` open
   - `pnpm --filter server test`: 350 pass, 0 fail; `pnpm --filter server typecheck`: exit 0; `ka features-check`: exit 0, 67 sections; `ka docs-check`: no dead reference.
 - [x] 13.2 Run `/ka:update-docs`: the line of `docs/dev-standards/server-standards.md` on the tmux server's `CLAUDE_CONFIG_DIR` covers every script that looks into the Claude Code folder. Update the Issue #61 changelog entry with `/ka:changelog` so it says the worktree hook is found in that folder too.
   - `/ka:update-docs`: no patch; line 35 of `docs/dev-standards/server-standards.md` already speaks of any script that reads or writes the Claude Code folder, which covers `HOOK`, and no document described where the hook is looked for. `/ka:changelog`: the Issue 61 entry (`20261119T211958594-…json`) rewritten with `-f`, keeping `--issue 61 --pr 62`; it now says a new worktree on those machines uses the `WorktreeCreate` hook of that folder.
-- [ ] 13.3 After the new review loop's gate passes, run `/ka:update-features fix-account-switch-reaching-claude-code` for the modified `worktree-base` requirement, `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 13.3 After the new review loop's gate passes, run `/ka:update-features fix-account-switch-reaching-claude-code` for the modified `worktree-base` requirement, `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - Run after `ka review-rounds gate` passed on `1eaf2f1` (round 3 of the PR, 2 of the new budget). `docs/FEATURES.md`, «El worktree parte de la rama elegida» (line 66): the hook is looked for in the project's settings and in the folder of the panes' Claude Code (the tmux `CLAUDE_CONFIG_DIR`, else `~/.claude`). `ka features-check --strict`: exit 0, 67 sections.
 
 ## 14. Review round 2 fix: the default folder's locks (R2-01)
 
