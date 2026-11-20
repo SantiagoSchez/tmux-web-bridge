@@ -3,5 +3,6 @@
   "scope": "host-kit",
   "description": "Corregido que una ventana se quedara en 🔨 y sin el aviso «Terminado» cuando Claude Code terminaba el turno con solo trabajo interno suyo en segundo plano (como la consolidación de memoria) o una tarea de un tipo desconocido; ahora solo retienen el aviso los subagentes, workflows, monitores, compañeros, sesiones en la nube, tareas MCP y los /loop",
   "issue": "65",
-  "breaking": false
+  "breaking": false,
+  "pr": "66"
 }
