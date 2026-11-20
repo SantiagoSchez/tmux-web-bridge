@@ -4,6 +4,16 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.30.0 - 2026-11-20
+
+### Añadido
+
+- Añadido el cambio automático de cuenta en Ajustes › Máquinas: en las máquinas donde lo actives, cuando su cuenta de Claude llega al umbral del límite de 5 h o del semanal (90 % y 95 % por defecto, editables), el servidor central la pasa a otra cuenta con margen, sin reiniciar sus Claude Code. Cada cambio, o el aviso de que ninguna cuenta tiene margen, sale en «Actividad» y en una notificación.
+
+### Cambiado
+
+- La vista de ventanas se abre ahora desde el menú «Más vistas», junto a «Actividad», y su botón sale de la cabecera para dejar sitio en el móvil. Con la vista abierta, la flecha del menú se resalta y su entrada pasa a «Cerrar la vista de ventanas».
+
 ## 1.29.0 - 2026-11-20
 
 ### Añadido

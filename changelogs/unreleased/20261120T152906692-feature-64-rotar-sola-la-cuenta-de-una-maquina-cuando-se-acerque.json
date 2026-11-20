@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "server",
-  "description": "Añadido el cambio automático de cuenta en Ajustes › Máquinas: en las máquinas donde lo actives, cuando su cuenta de Claude llega al umbral del límite de 5 h o del semanal (90 % y 95 % por defecto, editables), el servidor central la pasa a otra cuenta con margen de la que guarde una sesión libre, sin reiniciar sus Claude Code. Prefiere una cuenta que no use otra máquina y la menos gastada, y cada cambio, o el aviso de que ninguna cuenta tiene margen, sale en «Actividad» y en una notificación.",
-  "issue": "64",
-  "breaking": false,
-  "pr": "69"
-}
