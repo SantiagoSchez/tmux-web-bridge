@@ -95,7 +95,9 @@ function MuteButton() {
 
   if (!mute || !muted) {
     const menu = () => {
-      const run = (hours: MuteHours | null) => () => hub.send({ t: 'mute', hours });
+      // Read when the duration is chosen: the connection may drop while the menu is open.
+      const run = (hours: MuteHours | null) => () =>
+        wsStatus.value === 'open' ? hub.send({ t: 'mute', hours }) : toast('Sin conexión con el servidor central: no se han silenciado', 'error');
       dialog.value = {
         kind: 'menu',
         title: 'Silenciar notificaciones',

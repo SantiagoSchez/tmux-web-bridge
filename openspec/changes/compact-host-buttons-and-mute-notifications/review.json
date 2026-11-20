@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "pr": 68,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T15:59:38.022Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 2
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/compact-host-buttons-and-mute-notifications/proposal.md",
+      "symbol": null,
+      "title": "Proposal says the mute travels in the settings patch and omits the mute/unmute ClientMessage variants",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Header.tsx",
+      "symbol": "MuteButton",
+      "title": "Muting while disconnected is silently dropped with no toast",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "server/src/settings.ts",
+      "symbol": "SettingsStore.set",
+      "title": "setTrelloExtension could reuse the new set() helper",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "openspec/changes/compact-host-buttons-and-mute-notifications/tasks.md",
+      "symbol": null,
+      "title": "Step 7 group sits before step 6 group",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

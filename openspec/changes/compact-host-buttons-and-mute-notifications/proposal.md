@@ -30,8 +30,11 @@ The sidebar buttons, the icon and the top bar's layout are not requirements of a
 
 ## Impact
 
-- Layers: `server` (`server/src/settings.ts`, `server/src/push.ts`, `server/src/notifications.ts`, `server/src/index.ts`, and `shared/types.ts` plus a new pure module in `shared/`), and `web` (`web/src/components/Header.tsx`, `web/src/components/Tree.tsx`, `web/src/components/icons.tsx`, `web/src/styles.css`).
-- Contract changes: `HubSettings` gains a field for the mute, sent in the settings patch of the `settings` client message and in the `settings` broadcast. The answer of `POST /api/notify` gains a `reason` value for a muted push; the host kit does not read it.
+- Layers: `server` (`server/src/settings.ts`, `server/src/push.ts`, `server/src/notifications.ts`, `server/src/index.ts`, and `shared/types.ts` plus a new pure module in `shared/`), and `web` (`web/src/components/Header.tsx`, `web/src/components/Tree.tsx`, `web/src/components/icons.tsx`, `web/src/state.ts`, where `MenuItem.icon` also takes an icon component, and `web/src/styles.css`).
+- Contract changes:
+  - `ClientMessage` gains `{ t: 'mute'; hours }` and `{ t: 'unmute' }`: the only way to set or end the mute. A `settings` patch cannot carry it; the hub ignores a `mute` key there.
+  - `HubSettings` gains `mute`, read-only for the panel: it reaches every device in the `settings` broadcast and the `/ws` snapshot.
+  - The answer of `POST /api/notify` gains a `reason` value for a muted push; the host kit does not read it.
 - Persisted data: `settings.json` gains the field; a file without it loads as not muted. No migration.
 - No new environment variable, dependency or external service.
 - Docs: `README.md` names «el botón con el pulso de la cabecera» for Actividad and «el botón del reloj» for scheduled messages; both change. `docs/FEATURES.md` describes the clock button and the reasons of the `[push]` line.

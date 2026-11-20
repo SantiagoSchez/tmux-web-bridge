@@ -67,6 +67,13 @@
 - [x] 5.8 `docs/dev-standards/web-standards.md`: where it says hub settings change with `hub.send({ t: 'settings' })`, say that a setting only the hub decides has its own message (`mute`/`unmute`), linking the server standards. Verify: `ka docs-check` passes.
   - Also says that `hub.send` drops a message while the socket is down, so an optimistic control checks `wsStatus` first. `ka docs-check`: no dead reference.
 
+## 5c. Findings of review round 1 (PR #68)
+
+- [x] 5.9 R1-01: `proposal.md` lists the `mute`/`unmute` `ClientMessage` variants as the contract change, says a `settings` patch cannot carry the mute, and names `web/src/state.ts` among the layers. Verify: `openspec validate --strict compact-host-buttons-and-mute-notifications` passes.
+  - Valid.
+- [x] 5.10 R1-02 (a suggestion, fixed with the blocker since it is the same defect as 5.5): choosing a duration with no connection shows the error toast «Sin conexión con el servidor central: no se han silenciado» and sends nothing (design, Risks). Verify: `pnpm --filter web typecheck` passes, and in the browser, with the hub stopped, choosing «1 hora» leaves the bell as it was and shows the toast.
+  - Typecheck exit 0. The menu opened, the test hub stopped (its config checked first), then «1 hora»: the bell stayed «Silenciar notificaciones» and the toast showed. The connection is read when the duration is chosen, not when the menu opens.
+
 ## 6. Tests, typecheck and lint (mandatory step 4)
 
 - [x] 6.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`; all must pass. Run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), reporting the ones that do not apply, and `openspec validate --strict compact-host-buttons-and-mute-notifications`.
@@ -86,7 +93,7 @@
 
 ## 9. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 9.1 Run `/ka:update-features compact-host-buttons-and-mute-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The section «El botón del reloj de cada máquina» also describes the new icon, and the section of «A message that cannot launch says so» names the mute.
+- [ ] 9.1 Run `/ka:update-features compact-host-buttons-and-mute-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The section «El botón del reloj de cada máquina» also describes the new icon, and the sections of «A message that cannot launch says so» and of the `[push]` log line name the mute.
 
 ## 10. Human review (mandatory step 8)
 
