@@ -628,6 +628,15 @@ h3 {
   align-items: center;
   gap: 4px;
 }
+/* The grid's button and, touching it, the narrow chevron with the other views. */
+.views-group {
+  display: flex;
+  align-items: center;
+}
+.topbar .icon-btn.chevron-btn {
+  width: 22px;
+  margin-left: -2px;
+}
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -649,6 +658,15 @@ h3 {
 }
 .small-btn {
   width: 36px;
+  height: 36px;
+}
+/* The buttons at the head of a machine: narrow and touching, so the name keeps the room. */
+.host-btns {
+  display: flex;
+  flex-shrink: 0;
+}
+.host-btns .host-btn {
+  width: 28px;
   height: 36px;
 }
 
@@ -2252,6 +2270,10 @@ body.dragging-host * {
   text-align: center;
   color: var(--overlay1);
 }
+.menu-icon svg {
+  display: block;
+  margin: 0 auto;
+}
 .menu-item.danger .menu-icon {
   color: inherit;
 }
@@ -3099,7 +3121,7 @@ textarea.text-input {
 }
 
 
-/* A narrow header (a phone, or the sidebar): its buttons (grid, activity, Trello, connections, settings) take the room the words would. */
+/* A narrow header (a phone, or the sidebar): its buttons (grid and its chevron, bell, Trello, connections, settings) take the room the words would. */
 .topbar {
   container-type: inline-size;
 }
@@ -3124,7 +3146,10 @@ textarea.text-input {
     gap: 0;
   }
   .topbar .icon-btn {
-    width: 34px;
+    width: 32px;
+  }
+  .topbar .icon-btn.chevron-btn {
+    width: 18px;
   }
   .topbar .conn-btn {
     gap: 4px;

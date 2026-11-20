@@ -5,16 +5,17 @@ import { join } from 'node:path';
 import { test, type TestContext } from 'node:test';
 import webpush from 'web-push';
 import type { Config } from './config.js';
-import { PushService } from './push.js';
+import { PushService, type QuietReason } from './push.js';
 
 const PHONE = { endpoint: 'https://push.example/phone', keys: { p256dh: 'p', auth: 'a' } };
 const payload = { title: '⚠️ copia nocturna', body: 'La automatización no se ha podido lanzar', tag: 'automation:1', url: '/' };
 
 /**
  * A push service with one subscribed phone, in a temporary dataDir, whose Web Push
- * requests (the network boundary) are recorded instead of sent; `quiet` is the schedule.
+ * requests (the network boundary) are recorded instead of sent; `quiet` is why pushes are
+ * held back right now (the mute or the quiet schedule), or null.
  */
-function service(t: TestContext, quiet: boolean) {
+function service(t: TestContext, quiet: QuietReason | null) {
   const dir = mkdtempSync(join(tmpdir(), 'twb-push-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const sent: string[] = [];
@@ -30,7 +31,7 @@ function service(t: TestContext, quiet: boolean) {
 }
 
 test('inside the quiet schedule nothing is sent, and the log says why', async (t) => {
-  const { push, sent, lines } = service(t, true);
+  const { push, sent, lines } = service(t, 'quiet hours');
 
   assert.equal(await push.send(payload), 0);
   assert.deepEqual(sent, []);
@@ -38,16 +39,24 @@ test('inside the quiet schedule nothing is sent, and the log says why', async (t
 });
 
 test('the test notification goes out even inside the quiet schedule', async (t) => {
-  const { push, sent } = service(t, true);
+  const { push, sent } = service(t, 'quiet hours');
 
   assert.equal(await push.send(payload, undefined, { evenWhenQuiet: true }), 1);
   assert.deepEqual(sent, [PHONE.endpoint]);
 });
 
 test('outside the quiet schedule every subscribed device gets the push', async (t) => {
-  const { push, sent, lines } = service(t, false);
+  const { push, sent, lines } = service(t, null);
 
   assert.equal(await push.send(payload), 1);
   assert.deepEqual(sent, [PHONE.endpoint]);
   assert.deepEqual(lines(), []);
+});
+
+test('while muted nothing is sent, and the log says they are muted', async (t) => {
+  const { push, sent, lines } = service(t, 'muted');
+
+  assert.equal(await push.send(payload), 0);
+  assert.deepEqual(sent, []);
+  assert.deepEqual(lines(), ['[push] ⚠️ copia nocturna: no se envía, las notificaciones están silenciadas']);
 });

@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadida una campana en la cabecera del panel que silencia las notificaciones push durante 1, 2, 3 o 5 horas, o hasta nuevo aviso, en todos los dispositivos; tachada, dice hasta cuándo dura, y un toque las vuelve a activar. Calla lo mismo que el horario de descanso, y «Enviar prueba» sigue llegando",
+  "breaking": false,
+  "pr": "68"
+}

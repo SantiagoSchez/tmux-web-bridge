@@ -212,30 +212,34 @@ function HostBlock({ host, index, last }: { host: HostInfo; index: number; last:
               <span class="dim small">{host.status === 'ok' ? `${host.sessions.length} espacios` : 'conectando…'}</span>
             )}
           </button>
-          {host.status === 'ok' && (
-            <button class="icon-btn small-btn" aria-label={`Nuevo espacio en ${host.name}`} title="Nuevo espacio" onClick={() => newSession(host)}>
-              <IconPlus />
+          <div class="host-btns">
+            {host.status === 'ok' && (
+              <button class="icon-btn host-btn" aria-label={`Nuevo espacio en ${host.name}`} title="Nuevo espacio" onClick={() => newSession(host)}>
+                <IconPlus />
+              </button>
+            )}
+            <button class="icon-btn host-btn" aria-label={`Programar mensaje en ${host.name}`} title="Programar mensaje" onClick={() => openScheduled(host.id)}>
+              <IconScheduled />
             </button>
-          )}
-          <button class="icon-btn small-btn" aria-label={`Programar mensaje en ${host.name}`} title="Programar mensaje" onClick={() => openScheduled(host.id)}>
-            <IconScheduled />
-          </button>
-          <button class="icon-btn small-btn" aria-label={`Acciones de ${host.name}`} onClick={() => hostMenu(host)}>
-            <IconMore />
-          </button>
+            <button class="icon-btn host-btn" aria-label={`Acciones de ${host.name}`} onClick={() => hostMenu(host)}>
+              <IconMore />
+            </button>
+          </div>
         </div>
       ) : (
         <div class="host-head">
           <h2 class="section-title">Espacios</h2>
-          <button class="icon-btn small-btn" aria-label="Nuevo espacio" title="Nuevo espacio" onClick={() => newSession(host)}>
-            <IconPlus />
-          </button>
-          <button class="icon-btn small-btn" aria-label="Programar mensaje" title="Programar mensaje" onClick={() => openScheduled(host.id)}>
-            <IconScheduled />
-          </button>
-          <button class="icon-btn small-btn" aria-label="Acciones" onClick={() => hostMenu(host)}>
-            <IconMore />
-          </button>
+          <div class="host-btns">
+            <button class="icon-btn host-btn" aria-label="Nuevo espacio" title="Nuevo espacio" onClick={() => newSession(host)}>
+              <IconPlus />
+            </button>
+            <button class="icon-btn host-btn" aria-label="Programar mensaje" title="Programar mensaje" onClick={() => openScheduled(host.id)}>
+              <IconScheduled />
+            </button>
+            <button class="icon-btn host-btn" aria-label="Acciones" onClick={() => hostMenu(host)}>
+              <IconMore />
+            </button>
+          </div>
         </div>
       )}
       {!(collapsed && multiHost.value) && (

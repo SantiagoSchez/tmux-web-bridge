@@ -1,8 +1,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import webpush, { type PushSubscription } from 'web-push';
+import type { QuietReason } from '../../shared/mute.js';
 import type { PushPayload } from '../../shared/types.js';
 import type { Config } from './config.js';
+
+export type { QuietReason };
 
 interface StoredSubscription extends PushSubscription {
   addedAt: number;
@@ -10,19 +13,25 @@ interface StoredSubscription extends PushSubscription {
   userAgent?: string;
 }
 
+/** What the `[push]` line says after «no se envía, » for each reason. */
+export const QUIET_LOG: Record<QuietReason, string> = {
+  muted: 'las notificaciones están silenciadas',
+  'quiet hours': 'es horario de descanso',
+};
+
 /**
  * Web Push: VAPID keys and browser subscriptions, persisted in dataDir. Every push goes
- * through send(), which drops it inside the quiet schedule (Ajustes › Notificaciones).
+ * through send(), which drops it while muted or inside the quiet schedule.
  */
 export class PushService {
   readonly publicKey: string;
   private subs: StoredSubscription[] = [];
   private readonly subsPath: string;
 
-  /** `quiet`: whether it is inside the quiet schedule right now. */
+  /** `quiet`: why pushes are held back right now, or null when they go out. */
   constructor(
     config: Config,
-    readonly quiet: () => boolean,
+    readonly quiet: () => QuietReason | null,
   ) {
     const keysPath = join(config.dataDir, 'vapid.json');
     let keys: { publicKey: string; privateKey: string };
@@ -64,11 +73,12 @@ export class PushService {
 
   /**
    * Sends to every subscribed browser, or `only` to those endpoints. Returns how many accepted it:
-   * none inside the quiet schedule, unless `evenWhenQuiet` (the test notification).
+   * none while muted or inside the quiet schedule, unless `evenWhenQuiet` (the test notification).
    */
   async send(payload: PushPayload, only?: readonly string[], { evenWhenQuiet = false } = {}): Promise<number> {
-    if (!evenWhenQuiet && this.quiet()) {
-      console.log(`[push] ${payload.title}: no se envía, es horario de descanso`);
+    const quiet = evenWhenQuiet ? null : this.quiet();
+    if (quiet) {
+      console.log(`[push] ${payload.title}: no se envía, ${QUIET_LOG[quiet]}`);
       return 0;
     }
     const body = JSON.stringify(payload);
