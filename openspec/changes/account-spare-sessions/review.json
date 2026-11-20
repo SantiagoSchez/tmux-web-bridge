@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "pr": 73,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T22:07:10.804Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/account-spare-sessions/proposal.md",
+      "symbol": null,
+      "title": "proposal.md omits the login toast change, the Settings hint and two touched files from its scope",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Dialogs.tsx",
+      "symbol": "ClaudeLoginDialog",
+      "title": "loginFinish result type redeclared inline in web; move it to shared/types.ts",
+      "origin": "pre-existing",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "openspec/changes/account-spare-sessions/design.md",
+      "symbol": null,
+      "title": "D4 describes the button's place and the section text slightly differently from the code",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}
