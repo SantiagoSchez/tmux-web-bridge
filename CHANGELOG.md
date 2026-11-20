@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.28.1 - 2026-11-20
+
+### Corregido
+
+- Corregido que una ventana se quedara en 🔨 sin el aviso «Terminado» cuando Claude Code terminaba el turno dejando en segundo plano solo trabajo interno suyo, como la consolidación de su memoria. Ahora solo retienen el aviso los subagentes, workflows, monitores, compañeros, sesiones en la nube, tareas MCP y los `/loop`.
+
 ## 1.28.0 - 2026-11-19
 
 ### Añadido
