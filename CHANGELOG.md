@@ -4,6 +4,17 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.29.0 - 2026-11-20
+
+### Añadido
+
+- Añadida una campana en la cabecera del panel que silencia las notificaciones push durante 1, 2, 3 o 5 horas, o hasta nuevo aviso, en todos los dispositivos. Mientras dura aparece tachada y dice hasta cuándo; un toque las vuelve a activar. Calla lo mismo que el horario de descanso, y «Enviar prueba» sigue llegando.
+
+### Cambiado
+
+- Actividad se abre ahora desde el menú de la flecha que hay junto al botón de la vista de ventanas, para dejar sitio a la campana en la cabecera.
+- Los botones «+», «Programar mensaje» y «•••» de cada máquina ocupan menos ancho, y «Programar mensaje» tiene un despertador como icono.
+
 ## 1.28.1 - 2026-11-20
 
 ### Corregido
