@@ -1,0 +1,7 @@
+{
+  "type": "changed",
+  "scope": "web",
+  "description": "La vista de ventanas se abre desde el menú «Más vistas» de la barra de la lista, junto a «Actividad», y su botón sale de la barra para dejar sitio en el móvil; con la vista abierta, la flecha del menú se resalta y su entrada pasa a «Cerrar la vista de ventanas»",
+  "issue": "70",
+  "breaking": false
+}

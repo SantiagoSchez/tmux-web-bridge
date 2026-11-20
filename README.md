@@ -51,11 +51,11 @@
 ### 🙋 Claude te avisa y tú contestas desde donde estés
 
 - **Pendientes primero.** Los Claude que te esperan (🙋 pregunta, 💬 permiso, ✅ terminado) salen arriba, de todas las máquinas, con desde cuándo esperan y, si terminaron, cuánto trabajaron.
-- **Actividad** (en el menú de la flecha que hay junto al botón de la vista de ventanas, en la cabecera): lo que ha pasado en los últimos 7 días en todas las máquinas, agrupado por días. Recoge qué Claude preguntó, cuál pidió permiso y cuál terminó, y tras cuánto tiempo; qué tareas se lanzaron y desde dónde (Trello, la extensión, el panel o una automatización); y qué automatizaciones se saltaron o fallaron. Tocar una fila abre su ventana, si sigue abierta.
+- **Actividad** (en el menú «Más vistas», la flecha de la cabecera): lo que ha pasado en los últimos 7 días en todas las máquinas, agrupado por días. Recoge qué Claude preguntó, cuál pidió permiso y cuál terminó, y tras cuánto tiempo; qué tareas se lanzaron y desde dónde (Trello, la extensión, el panel o una automatización); y qué automatizaciones se saltaron o fallaron. Tocar una fila abre su ventana, si sigue abierta.
 - **Notificaciones push** (Web Push) con el texto de la pregunta, y botones para responder desde la propia notificación.
 - **Horario de descanso** en ⚙️ **Ajustes › Notificaciones**: una franja (por ejemplo, de 22:00 a 08:00) en los días que elijas, y días enteros (los fines de semana), en los que el servidor central no envía ninguna notificación push a ningún dispositivo. Una franja que cruza la medianoche cuenta para el día en que empieza. Lo pendiente se sigue viendo en el panel y en Actividad; «Enviar prueba» llega siempre.
 - **Silenciar un rato**: la campana de la cabecera silencia las notificaciones push durante 1, 2, 3 o 5 horas, o hasta nuevo aviso, en todos los dispositivos; calla lo mismo que el horario de descanso. Mientras dura, la campana sale tachada y dice hasta cuándo; un toque las vuelve a activar.
-- **Vista de ventanas**: todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «espacio › ventana». Un toque abre la que quieras.
+- **Vista de ventanas** (en el menú «Más vistas», la flecha de la cabecera): todas las ventanas abiertas en miniatura y en vivo, con sus paneles y tituladas «espacio › ventana». Un toque abre la que quieras.
 
 ### 📱 Una terminal de verdad en el móvil
 
