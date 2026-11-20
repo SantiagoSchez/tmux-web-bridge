@@ -364,6 +364,20 @@ h3 {
 .limit-warn {
   color: var(--peach);
 }
+/* The spare logins the hub keeps of the account, next to its name. */
+.limit-spare {
+  color: var(--overlay0);
+  white-space: nowrap;
+}
+/* Read by a screen reader, not shown. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 /* The weekly limits of single models (Fable): as many as the account has. */
 .limit-models {
   display: flex;

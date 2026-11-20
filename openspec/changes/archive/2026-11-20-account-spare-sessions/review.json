@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "pr": 73,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T22:07:10.804Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 1
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "de8094f3751242d9f31d7370957f618f0174f0da",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T22:09:22.379Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/account-spare-sessions/proposal.md",
+      "symbol": null,
+      "title": "proposal.md omits the login toast change, the Settings hint and two touched files from its scope",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Dialogs.tsx",
+      "symbol": "ClaudeLoginDialog",
+      "title": "loginFinish result type redeclared inline in web; move it to shared/types.ts",
+      "origin": "pre-existing",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "web-standards.md forbids redeclaring hub payload types in web/, and the loginStart and loginFinish results are declared inline on both sides with no shared type, so a renamed field would get past the typecheck; the fix is two small shared types, worth a mention in the final comment rather than a follow-up item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "openspec/changes/account-spare-sessions/design.md",
+      "symbol": null,
+      "title": "D4 describes the button's place and the section text slightly differently from the code",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

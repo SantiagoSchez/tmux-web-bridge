@@ -2,7 +2,7 @@ import { signal } from '@preact/signals';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { ClaudeAccount, PaneState, RateLimits, UsageSample, UsageWindow } from '../../../shared/types';
-import { accountMenu, addAccount, mislabelledWarning, useAccount } from '../accounts';
+import { accountMenu, addAccount, mislabelledWarning, spareLabel, useAccount } from '../accounts';
 import { openWindow, route } from '../router';
 import { accountsInfo, findWindow, hosts, STATE_LABEL, usageSamples, type PaneRef } from '../state';
 
@@ -301,6 +301,7 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
     acc?.plan,
     acc?.org && acc.plan === 'Team' ? acc.org : undefined,
     age ? `leídos hace ${age === '—' ? 'un momento' : age}` : 'sin lecturas todavía',
+    acc && spareLabel(acc.spare),
     acc?.usageError,
     mislabelled && `⚠ ${mislabelled}`,
   ]
@@ -310,6 +311,8 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
   const canUse = acc && here && !acc.activeOn.includes(here) && !acc.needsLogin;
   const busy = here !== undefined && switching.includes(here);
   const use = () => void useAccount(here!, acc!);
+  // Outside the button, which cuts its text: on a phone the count stays in view.
+  const spare = acc ? spareLabel(acc.spare) : undefined;
   return (
     <div class={`limit-row ${dim === false ? 'current' : dim ? 'dim' : ''}`}>
       <span class="limit-account-cell">
@@ -318,6 +321,12 @@ function AccountRow({ row, samples, now, dim, here }: { row: Row; samples: Usage
           {acc?.plan && <span class="limit-plan"> {acc.plan}</span>}
           {(acc?.needsLogin || (acc?.usageError && !acc.usage) || mislabelled) && <span class="limit-warn"> ⚠</span>}
         </button>
+        {spare && (
+          <span class="limit-spare" title={spare}>
+            <span aria-hidden="true">·{acc!.spare}</span>
+            <span class="visually-hidden">{spare}</span>
+          </span>
+        )}
       </span>
       {row.five ? (
         <Meter id={`${row.key}|5h`} label="5h" pct={row.five.pct} resetsAt={row.five.resetsAt} now={now} runsOut={runsOutAt(mine, 'five', row.five.pct, row.five.resetsAt, now)} />

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'preact/hooks';
 import { sanitizeAccountRotation } from '../../../shared/rotation';
 import type { AccountRotationSettings } from '../../../shared/types';
+import { addAccount } from '../accounts';
 import { hubSettings, machinesInfo } from '../state';
 import { hub } from '../ws';
 
 // Ajustes › Máquinas › «Cambio automático de cuenta»: the two thresholds, the same for
-// every machine, and one switch per machine. The hub decides (server/src/rotation.ts).
+// every machine, one switch per machine, and adding a Claude account. The hub decides
+// (server/src/rotation.ts).
 
 type Field = 'fiveHour' | 'sevenDay';
 
@@ -62,7 +64,7 @@ export function AccountRotationSettings() {
     <section class="setting">
       <h3>Cambio automático de cuenta</h3>
       <p class="dim small">
-        Cuando la cuenta de Claude de una máquina llega al umbral de su límite de 5 h o del semanal, el servidor central la pasa a otra cuenta con margen, igual que al cambiarla desde la franja de límites, sin reiniciar sus Claude Code. Solo puede pasarla a una cuenta de la que guarde una sesión libre. Si la vuelves a poner a mano en una cuenta por encima del umbral, la cambia otra vez: apaga aquí su interruptor para dejarla. Cada cambio sale en «Actividad» y en una notificación.
+        Cuando la cuenta de Claude de una máquina llega al umbral de su límite de 5 h o del semanal, el servidor central la pasa a otra cuenta con margen, igual que al cambiarla desde la franja de límites, sin reiniciar sus Claude Code. Solo puede pasarla a una cuenta de la que guarde una sesión libre: el número junto a cada cuenta de la franja dice cuántas tiene, y el menú de la cuenta añade otra. Una cuenta nueva se añade con el botón de abajo. Si la vuelves a poner a mano en una cuenta por encima del umbral, la cambia otra vez: apaga aquí su interruptor para dejarla. Cada cambio sale en «Actividad» y en una notificación.
       </p>
       <div class="rotation-thresholds">
         <Threshold field="fiveHour" label="Límite de 5 h" />
@@ -83,6 +85,11 @@ export function AccountRotationSettings() {
           })}
         </ul>
       )}
+      <div class="row-btns">
+        <button class="btn" onClick={addAccount}>
+          Añadir una cuenta de Claude
+        </button>
+      </div>
     </section>
   );
 }

@@ -19,7 +19,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
 - [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo o porque lo has silenciado.
 - [Foco del terminal](#foco-del-terminal): cuándo el terminal recibe el teclado sin que tengas que hacer clic en él.
-- [Cuentas de Claude](#cuentas-de-claude): dónde escribe el cambio de cuenta en cada máquina y cómo se guarda cada login en su cuenta.
+- [Cuentas de Claude](#cuentas-de-claude): dónde escribe el cambio de cuenta en cada máquina, cómo se guarda cada login en su cuenta, y cómo se ven y se añaden las sesiones libres y las cuentas nuevas.
 - [Pegar en el terminal](#pegar-en-el-terminal): qué hace la tecla de pegar del ordenador con un texto o una imagen.
 - [Detalles al pasar el ratón](#detalles-al-pasar-el-ratón): los datos completos de una ventana o un espacio que la lista corta con «…».
 - [Tareas desde tarjetas de Trello](#tareas-desde-tarjetas-de-trello): el nombre que el agente da a la ventana de una tarea lanzada sobre una tarjeta.
@@ -392,6 +392,21 @@ Antes de leer los límites de una cuenta con un login, o de dar un login a una m
 - Si se cambia esa máquina desde el panel a la cuenta que nombra su configuración, el cambio escribe un login de esa cuenta.
 - Un `/login` a mano con otra cuenta lleva la máquina a esa cuenta, y el login que tenía vuelve al servidor central para usarlo en otra máquina. Si el `/login` es con la misma cuenta que ya nombra la configuración, no se distingue de una renovación, y el login anterior se pierde.
 - Un login confirmado no se vuelve a preguntar cada pocos minutos. El de una máquina con la sesión caducada espera a que la máquina lo renueve, sin que el servidor central lo use mientras tanto.
+
+### Sesiones libres de cada cuenta
+<!-- capability: claude-accounts; requirement: the-account-s-row-shows-its-spare-logins -->
+
+En la franja de límites, cada cuenta muestra junto a su nombre y su plan cuántas sesiones libres guarda de ella el servidor central: los logins que no usa ninguna máquina, que son los que permiten pasar una máquina a esa cuenta, a mano o con el cambio automático. Se ve como un número pequeño (`·2`), también en el móvil, y el tooltip lo dice con palabras («2 sesiones libres», «1 sesión libre»). Una cuenta sin sesiones libres, como la que solo usa una máquina, no muestra nada. El número cambia en cuanto una máquina toma una sesión o devuelve la suya.
+
+### Otra sesión de una cuenta
+<!-- capability: claude-accounts; requirement: an-account-s-menu-adds-a-login-of-that-account -->
+
+El menú de una cuenta tiene «Añadir una sesión de esta cuenta», que abre el login de Claude con el correo de esa cuenta. La sesión se suma a la misma fila de la franja, que no se duplica, y su número sube en uno. Si se entra con otra cuenta, la sesión se guarda en la suya, ninguna máquina cambia de cuenta y el panel avisa de que era de otra. Cuando ya no queda ningún login de la cuenta que funcione, el menú ofrece en su lugar «Iniciar sesión otra vez». Desde el menú de una cuenta no se añade otra cuenta distinta.
+
+### Añadir una cuenta nueva
+<!-- capability: claude-accounts; requirement: a-new-account-is-added-from-ajustes-maquinas -->
+
+Una cuenta de Claude nueva se añade en ⚙️ Ajustes › Máquinas, con el botón «Añadir una cuenta de Claude» de la sección «Cambio automático de cuenta», que abre el login de Claude sin pedir ninguna cuenta concreta. Si la cuenta es nueva, el panel avisa de que se ha añadido y aparece en la franja con su sesión libre (`·1`). Si ya la tenía, el panel dice que ha guardado otra sesión suya y la suma a su fila. Ninguna máquina cambia de cuenta. Tocar en la franja una cuenta que solo conoce la status line de una máquina abre ese mismo login.
 
 ## Pegar en el terminal
 
