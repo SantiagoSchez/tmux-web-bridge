@@ -9,16 +9,20 @@
 # abre server/src/terminal.ts; una terminal de la máquina es un cliente con attach. Los dos
 # se conectan con script(1), que les da un pty.
 #
-# Solo en Linux: en macOS el script mira si Ghostty está a la vista, y script(1) es otro.
+# En Linux y en macOS. En macOS el script decide si lo estás viendo preguntando a lsappinfo
+# y osascript si Ghostty está a la vista: el test pone delante en el PATH unos falsos que
+# responden lo que diga $T/ghostty (front, por defecto, u oculto), para no depender de
+# tu escritorio. El script(1) de util-linux y el de BSD se llaman de forma distinta.
 #
 # Uso: scripts/test-window-title.sh
 
 set -euo pipefail
 
-if [ "$(uname -s)" != Linux ]; then
-    echo "scripts/test-window-title.sh: solo se ejecuta en Linux; aquí no aplica."
-    exit 0
-fi
+OS="$(uname -s)"
+case "$OS" in
+    Linux|Darwin) ;;
+    *) echo "scripts/test-window-title.sh: solo funciona en Linux y macOS, no en $OS." >&2; exit 1 ;;
+esac
 for tool in node script jq curl tmux; do
     command -v "$tool" >/dev/null || { echo "Falta $tool" >&2; exit 1; }
 done
@@ -88,6 +92,28 @@ fi
 EOF
 chmod +x "$T/bin/date"
 
+# macOS: Ghostty a la vista o no, según $T/ghostty. lsappinfo front da un ASN cualquiera
+# y info dice qué app es; osascript nunca ve un quick terminal desplegado.
+if [ "$OS" = Darwin ]; then
+    mkdir -p "$T/mac"
+    echo front > "$T/ghostty"
+    cat > "$T/mac/lsappinfo" <<EOF
+#!/bin/sh
+case "\$1" in
+    front) echo 'ASN:0x0-0x1:' ;;
+    info)
+        if [ "\$(cat "$T/ghostty")" = front ]; then
+            echo '"CFBundleIdentifier"="com.mitchellh.ghostty"'
+        else
+            echo '"CFBundleIdentifier"="com.apple.finder"'
+        fi ;;
+esac
+EOF
+    printf '#!/bin/sh\necho false\n' > "$T/mac/osascript"
+    chmod +x "$T/mac/lsappinfo" "$T/mac/osascript"
+    export PATH="$T/mac:$PATH"
+fi
+
 FAILS=0
 ok() { printf '\033[32m✓\033[0m %s\n' "$1"; }
 ko() { printf '\033[31m✗\033[0m %s\n' "$1"; FAILS=$((FAILS + 1)); }
@@ -108,9 +134,14 @@ new_server() {
     TMUX_VALUE="$(tm display-message -p '#{socket_path}'),$SERVER_PID,0"
 }
 
-# Un cliente de tmux con su propio pty que se queda conectado. Uso: client <órdenes de tmux>
+# Un cliente de tmux con su propio pty que se queda conectado. Uso: client <argumentos de tmux>
+# (cada uno una palabra; las órdenes encadenadas, con un ';' suelto).
 client() {
-    sleep 3600 2>/dev/null | script -qfc "tmux -L $SOCKET -f /dev/null $*" /dev/null >/dev/null 2>&1 &
+    if [ "$OS" = Darwin ]; then
+        sleep 3600 2>/dev/null | script -q /dev/null tmux -L "$SOCKET" -f /dev/null "$@" >/dev/null 2>&1 &
+    else
+        sleep 3600 2>/dev/null | script -qfc "tmux -L $SOCKET -f /dev/null $(printf '%q ' "$@")" /dev/null >/dev/null 2>&1 &
+    fi
     PIDS+=("$!")
 }
 
@@ -157,7 +188,7 @@ STOP_SHELL='{"last_assistant_message":"Servidor arrancado","background_tasks":[{
 # ------------------------------------------------------------ casos
 echo "La terminal web del panel tiene delante el panel y acabas de escribir en ella"
 new_server
-client "new-session -t main -s _tw-prueba \\; select-window -t :0"
+client new-session -t main -s _tw-prueba \; select-window -t :0
 wait_clients 1
 finish
 expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
@@ -165,7 +196,7 @@ expect "…y el panel se queda con ✅" "$ICON" '^✅$'
 
 echo "Una terminal de la máquina tiene delante el panel y acabas de usarla"
 new_server
-client "attach -t main"
+client attach -t main
 wait_clients 1
 finish
 expect "…el aviso va como visto" "$VIEWED" "^prueba $PANE viewed=true\$"
@@ -173,24 +204,36 @@ expect "…y el panel pasa a 🤖" "$ICON" '^🤖$'
 
 echo "Una terminal de la máquina tiene delante otra ventana de la misma sesión"
 new_server
-client "attach -t main \\; select-window -t :1"
+client attach -t main \; select-window -t :1
 wait_clients 1
 finish
 expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
 expect "…y el panel se queda con ✅" "$ICON" '^✅$'
 
-echo "Una terminal de la máquina tiene delante el panel, pero lleva 150 s sin usarse"
+# No lo estás viendo aunque la terminal tenga el panel delante. En Linux, porque lleva
+# 150 s sin usarse; en macOS, porque Ghostty no está a la vista.
+if [ "$OS" = Darwin ]; then
+    echo "Una terminal de la máquina tiene delante el panel, pero Ghostty no está a la vista"
+else
+    echo "Una terminal de la máquina tiene delante el panel, pero lleva 150 s sin usarse"
+fi
 new_server
-client "attach -t main"
+client attach -t main
 wait_clients 1
-finish adelantado
+if [ "$OS" = Darwin ]; then
+    echo oculto > "$T/ghostty"
+    finish
+    echo front > "$T/ghostty"
+else
+    finish adelantado
+fi
 expect "…el aviso no va como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
 
 # Fin de turno con trabajo en segundo plano que despertará a Claude: es una pausa. El panel
 # está abierto solo en la terminal web, así que un final de verdad sí avisaría.
 web_terminal() {
     new_server
-    client "new-session -t main -s _tw-prueba \\; select-window -t :0"
+    client new-session -t main -s _tw-prueba \; select-window -t :0
     wait_clients 1
 }
 
@@ -218,6 +261,32 @@ finish real "$STOP_EMPTY"
 expect "…avisa al hub, no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
 expect "…y el panel pasa a ✅" "$ICON" '^✅$'
 
+# Lo que Claude Code mete en background_tasks y nunca lo despierta: su propio trabajo
+# (dream, la consolidación de memoria; auto-mode scan) y un tipo que el kit no conoce.
+STOP_INTERNAL='{"last_assistant_message":"Listo","background_tasks":[{"id":"d1","type":"dream","status":"running","description":"dreaming"},{"id":"m1","type":"auto-mode scan","status":"running","description":"scanning for auto-mode setup"},{"id":"b1","type":"shell","status":"running","description":"pnpm dev","command":"pnpm dev"}],"session_crons":[]}'
+STOP_UNKNOWN='{"last_assistant_message":"Listo","background_tasks":[{"id":"x1","type":"future-thing","status":"running","description":"algo nuevo"}],"session_crons":[]}'
+
+echo "Claude cierra el turno con solo trabajo interno de Claude Code (dream, auto-mode scan) y un shell"
+web_terminal
+finish real "$STOP_INTERNAL"
+expect "…avisa al hub, no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel pasa a ✅" "$ICON" '^✅$'
+
+echo "Claude cierra el turno con solo una tarea de un tipo que el kit no conoce"
+web_terminal
+finish real "$STOP_UNKNOWN"
+expect "…avisa al hub, no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
+expect "…y el panel pasa a ✅" "$ICON" '^✅$'
+
+# Los demás tipos que sí despiertan a Claude (subagent ya tiene su caso arriba).
+for kind in workflow monitor teammate "cloud session" "MCP task"; do
+    echo "Claude cierra el turno con una tarea «${kind}» en segundo plano"
+    web_terminal
+    WAIT=20 finish real "{\"last_assistant_message\":\"Espero\",\"background_tasks\":[{\"id\":\"w1\",\"type\":\"$kind\",\"status\":\"running\",\"description\":\"tarea\"}],\"session_crons\":[]}"
+    expect "…no avisa al hub" "$VIEWED" '^sin aviso$'
+    expect "…y el panel sigue con 🔨" "$ICON" '^🔨$'
+done
+
 echo "Claude espera a un subagente y, cuando acaba, termina de verdad"
 web_terminal
 avisos_antes="$(wc -l < "$T/hub.log")"
@@ -226,6 +295,30 @@ finish real "$STOP_EMPTY"
 expect "…el hub recibe un solo aviso" "$(( $(wc -l < "$T/hub.log") - avisos_antes ))" '^1$'
 expect "…no como visto" "$VIEWED" "^prueba $PANE viewed=false\$"
 expect "…y el panel pasa a ✅" "$ICON" '^✅$'
+
+# Lo que retuvo cada pausa queda en <pane>.pause, junto al estado del panel: solo lo que
+# despierta a Claude, sin el texto de su respuesta.
+STOP_MIXED='{"last_assistant_message":"Texto de la respuesta","background_tasks":[{"id":"a1","type":"subagent","status":"running","description":"Revisar","agent_type":"Explore"},{"id":"b1","type":"shell","status":"running","description":"pnpm dev","command":"pnpm dev"}],"session_crons":[{"id":"c1","schedule":"*/20 * * * *","recurring":true,"prompt":"/loop"}]}'
+pause_file() { printf '%s' "/tmp/tmux-window-state-$(id -u)-$SERVER_PID/$PANE.pause"; }
+
+echo "Claude cierra el turno con un subagente, un shell y un /loop"
+web_terminal
+WAIT=20 finish real "$STOP_MIXED"
+expect "…el registro de la pausa lista el subagente y el /loop, no el shell" \
+    "$(jq -r '[.background_tasks[].id, .session_crons[].id] | join(",")' "$(pause_file)" 2>/dev/null || echo 'sin registro')" '^a1,c1$'
+expect "…y no guarda el texto de la respuesta" \
+    "$(grep -c 'Texto de la respuesta' "$(pause_file)" 2>/dev/null || true)" '^0$'
+finish real "$STOP_EMPTY"
+expect "…cuando termina de verdad, el registro desaparece" \
+    "$([ -e "$(pause_file)" ] && echo 'sigue' || echo 'no está')" '^no está$'
+
+echo "Claude cierra el turno con un subagente y luego se cierra su sesión"
+web_terminal
+WAIT=20 finish real "$STOP_SUBAGENT"
+expect "…la pausa deja registro" "$([ -e "$(pause_file)" ] && echo 'está' || echo 'no está')" '^está$'
+env TMUX="$TMUX_VALUE" TMUX_PANE="$PANE" "$KIT_SCRIPT" clear </dev/null
+expect "…al cerrarse la sesión, el registro desaparece" \
+    "$([ -e "$(pause_file)" ] && echo 'sigue' || echo 'no está')" '^no está$'
 
 echo "El tmux del socket por defecto"
 expect "…sigue con su sesión y sin iconos del kit" \

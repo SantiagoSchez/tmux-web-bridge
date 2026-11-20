@@ -17,7 +17,9 @@ TSX="$REPO/server/node_modules/.bin/tsx"
 [ -x "$TSX" ] || { echo "Falta $TSX: ejecuta pnpm install" >&2; exit 1; }
 
 # En /tmp y no en $TMPDIR: la ruta del socket de tmux tiene un límite de ~100 caracteres.
-T="$(mktemp -d /tmp/twb-kit-test.XXXXXX)"
+# Con su ruta física: en macOS /tmp es un enlace a /private/tmp, y el kit no toca en la
+# desinstalación lo que está bajo una carpeta enlazada (la toma por compartida).
+T="$(cd "$(mktemp -d /tmp/twb-kit-test.XXXXXX)" && pwd -P)"
 
 # ------------------------------------------------------------ aislamiento
 export HOME="$T/home" TMUX_TMPDIR="$T/tmux" GIT_CONFIG_GLOBAL="$T/gitconfig" GIT_CONFIG_NOSYSTEM=1
@@ -41,7 +43,9 @@ OLD="$(git -C "$REPO" describe --tags --abbrev=0)"
 IFS=. read -r MA MI PA <<<"${OLD#v}"
 NEW="$MA.$MI.$((PA + 1))"
 ORIGIN="$T/github/SantiagoSchez/tmux-web-bridge.git"
-git clone -q --bare "$REPO" "$ORIGIN"
+# --no-local: los objetos pasan por git y no se copian los ficheros del repositorio, que
+# está en una carpeta de Dropbox (el clon local fallaba a veces con objetos que no existían).
+git clone -q --no-local --bare "$REPO" "$ORIGIN"
 git clone -q "$ORIGIN" "$T/work"
 (cd "$REPO" && git ls-files -m -o --exclude-standard) | while read -r f; do
     [ -f "$REPO/$f" ] || continue

@@ -33,7 +33,9 @@
 # tmux-web-bridge, que decide a qué dispositivos manda la notificación push. El
 # kit no lanza notificaciones propias: solo le dice si ya lo estás viendo.
 # Un fin de turno (state done, hook Stop) con trabajo en segundo plano que volverá a
-# despertar a Claude es una pausa: el panel sigue en 🔨 y no se avisa (waits_for_background).
+# despertar a Claude (un subagente, un workflow, un monitor, un /loop...) es una pausa: el
+# panel sigue en 🔨 y no se avisa (background_wakeups). Lo que la retuvo queda en
+# $STATE_DIR/<panel>.pause hasta la siguiente pausa o el final de verdad.
 #
 # Estados: question | attention | done | busy | claude | ssh
 #
@@ -329,14 +331,19 @@ lock() {
 }
 
 # ¿El fin de turno (JSON del hook Stop en $1) deja trabajo que volverá a despertar a Claude?
+# Si lo deja, escribe en stdout ese trabajo (el registro de la pausa); si no, falla.
 # Claude Code lo dice en background_tasks (lo que sigue en segundo plano) y session_crons
-# (/loop, ScheduleWakeup, CronCreate). Un comando shell no cuenta: un servidor de desarrollo
-# o un tail -f no terminan nunca y Claude sí está esperándote. Sin jq, sin JSON o sin esos
-# campos (Claude Code antiguo), no: es un final, como siempre.
-waits_for_background() {
+# (/loop, ScheduleWakeup, CronCreate). Solo cuentan los tipos de tarea que despiertan a
+# Claude al acabar. Un comando shell no: un servidor de desarrollo o un tail -f no terminan
+# nunca y Claude sí está esperándote. Tampoco el trabajo propio de Claude Code (dream,
+# auto-mode scan) ni un tipo que el kit no conozca: dejarían el panel en 🔨 para siempre.
+# Sin jq, sin JSON o sin esos campos (Claude Code antiguo), no: es un final, como siempre.
+background_wakeups() {
     [ -n "$1" ] && command -v jq >/dev/null 2>&1 || return 1
-    jq -e '([.background_tasks[]? | select(.type != "shell")] | length > 0)
-           or ((.session_crons // []) | length > 0)' <<< "$1" >/dev/null 2>&1
+    jq -ce '["subagent", "workflow", "monitor", "teammate", "cloud session", "MCP task"] as $wake
+            | {background_tasks: [.background_tasks[]? | select(.type as $t | $wake | any(. == $t))],
+               session_crons: (.session_crons // [])}
+            | select((.background_tasks | length > 0) or (.session_crons | length > 0))' <<< "$1" 2>/dev/null
 }
 
 write_state() {
@@ -346,7 +353,7 @@ write_state() {
 }
 
 cmd_state() {
-    local state="$1" name="${2:-}" old_state="" old_sid="" payload="" event
+    local state="$1" name="${2:-}" old_state="" old_sid="" payload="" event wakeups=""
     [ -n "${TMUX_PANE:-}" ] || return 0
     [ -f "$STATE_DIR/$TMUX_PANE" ] && IFS=$'\t' read -r old_state _ old_sid < "$STATE_DIR/$TMUX_PANE"
     # JSON del hook de Claude (para el texto de la notificación).
@@ -359,13 +366,20 @@ cmd_state() {
         state="question"; event=""
     fi
     # Fin de turno con trabajo que despertará a Claude: es una pausa, no un final.
-    if [ "$state" = "done" ] && waits_for_background "$payload"; then
+    if [ "$state" = "done" ] && wakeups="$(background_wakeups "$payload")"; then
         state="busy"; event=""
     fi
     # Terminado: si lo estás viendo no hay nada pendiente de ver.
     [ "$state" = "done" ] && pane_is_viewed "$TMUX_PANE" && state="claude"
 
     write_state "$TMUX_PANE" "$state" "$name" "${old_sid:-}"
+    # Lo que retuvo la pausa, para saber por qué el panel sigue en 🔨 sin aviso. Cada pausa
+    # lo sustituye y un final de verdad lo borra.
+    if [ -n "$wakeups" ]; then
+        printf '%s\n' "$wakeups" > "$STATE_DIR/$TMUX_PANE.pause"
+    elif [ "$event" = "done" ]; then
+        rm -f "$STATE_DIR/$TMUX_PANE.pause"
+    fi
     # Cuándo empezó a esperar el permiso (lo mira cmd_tool).
     [ "$state" = "attention" ] && [ "${old_state:-}" != "attention" ] && date +%s > "$STATE_DIR/$TMUX_PANE.since"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
@@ -433,7 +447,7 @@ cmd_focus() {
 
 cmd_clear() {
     [ -n "${TMUX_PANE:-}" ] || return 0
-    rm -f "$STATE_DIR/$TMUX_PANE" "$STATE_DIR/$TMUX_PANE.since"
+    rm -f "$STATE_DIR/$TMUX_PANE" "$STATE_DIR/$TMUX_PANE.since" "$STATE_DIR/$TMUX_PANE.pause"
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
 }
 
@@ -497,7 +511,7 @@ cmd_reload() {
     fi
 
     # El Claude nuevo vuelve a escribir su estado al arrancar (hook SessionStart).
-    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.since"
+    rm -f "$STATE_DIR/$pane" "$STATE_DIR/$pane.since" "$STATE_DIR/$pane.pause"
     if [ -n "$resume" ]; then
         tmux respawn-pane -k -t "$pane" -c "$dir" "$shell" -ic "$resume; exec $(printf '%q' "$shell")"
     else
