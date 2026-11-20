@@ -12,8 +12,8 @@ import { trelloInfo } from './Trello';
 const STATUS_LABEL = { open: 'Conectado', connecting: 'Conectando…', closed: 'Sin conexión' } as const;
 
 /**
- * Top bar of the list: app name, hub link status, windows grid (with the menu of the other
- * views beside it), the mute bell, Trello, live connections counter, settings.
+ * Top bar of the list: app name, hub link status, the menu of the views (highlighted while
+ * the windows view is open), the mute bell, Trello, live connections counter, settings.
  */
 export function Header() {
   const count = connections.value.length;
@@ -37,20 +37,16 @@ export function Header() {
         )}
       </div>
       <div class="topbar-actions">
-        <div class="views-group">
-          <button
-            class={`icon-btn ${route.value.name === 'grid' ? 'on' : ''}`}
-            aria-label="Vista de ventanas"
-            aria-pressed={route.value.name === 'grid'}
-            title="Todas las ventanas en miniatura"
-            onClick={toggleGrid}
-          >
-            <IconGrid />
-          </button>
-          <button class="icon-btn chevron-btn" aria-label="Más vistas" aria-haspopup="menu" title="Más vistas" onClick={viewsMenu}>
-            <IconChevronDown />
-          </button>
-        </div>
+        <button
+          class={`icon-btn chevron-btn ${route.value.name === 'grid' ? 'on' : ''}`}
+          aria-label="Más vistas"
+          aria-haspopup="menu"
+          aria-pressed={route.value.name === 'grid'}
+          title="Más vistas"
+          onClick={viewsMenu}
+        >
+          <IconChevronDown />
+        </button>
         <MuteButton />
         {trelloInfo.value?.configured && (
           <button class="icon-btn" aria-label="Trello" title="Lanzar una tarea desde una tarjeta de Trello" onClick={() => (sheet.value = 'trello')}>
@@ -66,12 +62,19 @@ export function Header() {
   );
 }
 
-/** The views that do not fit in the bar, beside the grid's button. */
+/**
+ * The views that do not fit in the bar: the windows view (its entry closes it while it is
+ * open) and «Actividad».
+ */
 function viewsMenu(): void {
+  const gridOpen = route.value.name === 'grid';
   dialog.value = {
     kind: 'menu',
     title: 'Más vistas',
-    items: [{ label: 'Actividad', icon: <IconActivity />, run: () => (sheet.value = 'activity') }],
+    items: [
+      { label: gridOpen ? 'Cerrar la vista de ventanas' : 'Vista de ventanas', icon: <IconGrid />, run: toggleGrid },
+      { label: 'Actividad', icon: <IconActivity />, run: () => (sheet.value = 'activity') },
+    ],
   };
 }
 

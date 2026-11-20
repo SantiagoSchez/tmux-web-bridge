@@ -25,6 +25,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Tareas desde tarjetas de Trello](#tareas-desde-tarjetas-de-trello): el nombre que el agente da a la ventana de una tarea lanzada sobre una tarjeta.
 - [Mensajes programados](#mensajes-programados): prompts que el servidor central lanza una sola vez, a la hora elegida, para gastar el límite que sobra.
 - [Cambio automático de cuenta](#cambio-automático-de-cuenta): cuándo y a qué cuenta pasa el servidor central una máquina que se acerca al límite de 5 horas o al semanal, y cómo lo avisa.
+- [Vistas de la barra](#vistas-de-la-barra): el menú «Más vistas» de la barra de la lista, con la vista de ventanas y «Actividad».
 
 ## Terminal
 
@@ -582,3 +583,15 @@ Si un cambio automático no se puede hacer (la máquina no está conectada, la s
 <!-- capability: account-auto-switch; requirement: a-failed-switch-is-tried-again-after-5-minutes -->
 
 Un cambio que ha fallado no se vuelve a intentar hasta 5 minutos después, por mucho que cambien entretanto el uso, las cuentas o las máquinas, y el nuevo intento no repite el aviso si falla por el mismo motivo. La excepción es que cambie la cuenta de la propia máquina, por ejemplo si se pasa a mano a otra y se devuelve: entonces se intenta en el acto.
+
+## Vistas de la barra
+
+### Las vistas, en el menú «Más vistas»
+<!-- capability: top-bar-views; requirement: the-views-are-in-the-mas-vistas-menu -->
+
+La barra de la lista tiene una sola entrada a las vistas: la flecha «Más vistas», igual en el móvil y en el ordenador. Al tocarla se abre un menú con «Vista de ventanas» primero y «Actividad» después, y cada entrada abre su vista. La vista de ventanas ya no tiene botón propio en la barra, así que queda sitio para la campana, Trello (si está configurado), las conexiones y los ajustes, que siguen donde estaban.
+
+### Se ve cuándo está abierta la vista de ventanas
+<!-- capability: top-bar-views; requirement: the-open-windows-view-shows-in-the-bar-and-in-the-menu -->
+
+En el ordenador, mientras la vista de ventanas está abierta junto a la lista, la flecha «Más vistas» sale resaltada y los lectores de pantalla la anuncian como pulsada. Su menú cambia la primera entrada por «Cerrar la vista de ventanas», que vuelve a donde estabas y quita el resaltado. En el móvil, la vista de ventanas ocupa toda la pantalla, encima de la barra, y se cierra con su propio botón «Volver a la lista».

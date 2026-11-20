@@ -628,14 +628,9 @@ h3 {
   align-items: center;
   gap: 4px;
 }
-/* The grid's button and, touching it, the narrow chevron with the other views. */
-.views-group {
-  display: flex;
-  align-items: center;
-}
+/* The narrow chevron with the menu of the views. */
 .topbar .icon-btn.chevron-btn {
   width: 22px;
-  margin-left: -2px;
 }
 .icon-btn {
   display: inline-flex;
