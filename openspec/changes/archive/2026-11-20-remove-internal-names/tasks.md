@@ -55,11 +55,13 @@ The list of the original names and their replacements lives outside the reposito
 
 ## 10. Human review (mandatory step 8)
 
-- [ ] 10.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
+- [x] 10.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
+  - The owner takes PR #67 as good without a manual review (2026-11-20), and leaves suggestion R1-01 (the kept values in the principle) and the two nitpicks as they are.
 
 ## 11. features-check before the archive (mandatory step 9)
 
-- [ ] 11.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0. After the archive, repeat the search of 3.4 with no exception left.
+- [x] 11.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0. After the archive, repeat the search of 3.4 with no exception left.
+  - Exit 0, 84 sections in sync. The archive syncs the three main specs (5 lines each, names only, each valid); the search of 3.4 then finds nothing in any tracked file.
 
 ## Workflow follow-up
 

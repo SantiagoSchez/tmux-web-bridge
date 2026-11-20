@@ -12,7 +12,7 @@ When the mouse rests 1 second on a window of the list of spaces and windows, the
 
 #### Scenario: The mouse rests on a window
 
-- **GIVEN** the panel on a computer, with window 1 «feat/481-permitir-reintentar-subidas» of «Local · universia» cut with «…» in the list
+- **GIVEN** the panel on a computer, with window 1 «feat/481-permitir-reintentar-subidas» of «Local · shop» cut with «…» in the list
 - **WHEN** the owner rests the mouse on that window for 1 second
 - **THEN** a tooltip shows next to it with the name «feat/481-permitir-reintentar-subidas» in full
 
@@ -34,7 +34,7 @@ A window's tooltip SHALL show its full name, its state with its icon and how lon
 
 #### Scenario: A window with one Claude pane in a worktree
 
-- **GIVEN** window 2 «feat/484-revisar» of «Local · universia», waiting on a question for 3 minutes, with one pane running `claude` in the worktree «feature-484-revisar-la-funcionalidad-de-busqueda», in the folder `~/Proyectos/universia/.claude/worktrees/feature-484-revisar-la-funcionalidad-de-busqueda`, with the Claude account `ana@example.com`
+- **GIVEN** window 2 «feat/484-revisar» of «Local · shop», waiting on a question for 3 minutes, with one pane running `claude` in the worktree «feature-484-revisar-la-funcionalidad-de-busqueda», in the folder `~/Proyectos/shop/.claude/worktrees/feature-484-revisar-la-funcionalidad-de-busqueda`, with the Claude account `ana@example.com`
 - **WHEN** its tooltip shows
 - **THEN** it shows the name «feat/484-revisar», 🙋 with the state's name and «hace 3 min», `claude`, the worktree «feature-484-revisar-la-funcionalidad-de-busqueda», that folder and `ana@example.com`, each in full
 
@@ -62,7 +62,7 @@ While a tooltip shows, it SHALL reflect the latest state the panel has of what i
 
 #### Scenario: The window closes while the tooltip shows
 
-- **GIVEN** the tooltip of window 4 «bug/464» of «Local · universia» showing
+- **GIVEN** the tooltip of window 4 «bug/464» of «Local · shop» showing
 - **WHEN** that window is closed from the machine
 - **THEN** the tooltip closes
 
@@ -78,9 +78,9 @@ The same delay SHALL show a tooltip on the other places of the list that cut tex
 
 #### Scenario: A space's header
 
-- **GIVEN** the space «Local · universia-course-platform» with 5 windows, its name cut with «…» in its header
+- **GIVEN** the space «Local · shop-platform» with 5 windows, its name cut with «…» in its header
 - **WHEN** the owner rests the mouse on the header for 1 second
-- **THEN** the tooltip shows «universia-course-platform» and that it has 5 windows
+- **THEN** the tooltip shows «shop-platform» and that it has 5 windows
 
 #### Scenario: A pane of the folded list
 
