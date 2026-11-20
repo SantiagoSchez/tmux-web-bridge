@@ -8,7 +8,7 @@ import { removeConfigHosts } from './config.js';
 import { parseCheck, removeKeyScript, unbindKitKeys, uninstallScript } from './kit.js';
 import { authorizedKeyLine, checkMachine, fromConfig, hostConfig, hubKeyPath, MachineStore, viaOptions } from './machines.js';
 
-const ADDR = { tailnet: '100.66.162.25', lan: '192.168.0.54', internal: '10.10.10.26' };
+const ADDR = { tailnet: '100.64.0.10', lan: '192.168.50.54', internal: '10.20.30.26' };
 
 function withDir(fn: (dir: string) => Promise<void> | void): () => Promise<void> {
   return async () => {
@@ -22,20 +22,20 @@ function withDir(fn: (dir: string) => Promise<void> | void): () => Promise<void>
 }
 
 test('a machine from the panel is checked: nothing ssh could take for an option or a second word', () => {
-  const ok = checkMachine({ id: 'air', name: 'MacBook Air', ssh: 'santiago@air', via: 'lan', lanAddress: '192.168.0.111', port: '22', tmux: '/opt/homebrew/bin/tmux' }, []);
-  assert.deepEqual(ok, { id: 'air', name: 'MacBook Air', ssh: 'santiago@air', via: 'lan', lanAddress: '192.168.0.111', tmux: '/opt/homebrew/bin/tmux' });
+  const ok = checkMachine({ id: 'air', name: 'MacBook Air', ssh: 'santiago@air', via: 'lan', lanAddress: '192.168.50.111', port: '22', tmux: '/opt/homebrew/bin/tmux' }, []);
+  assert.deepEqual(ok, { id: 'air', name: 'MacBook Air', ssh: 'santiago@air', via: 'lan', lanAddress: '192.168.50.111', tmux: '/opt/homebrew/bin/tmux' });
   const bad = (raw: object, msg: RegExp) => assert.throws(() => checkMachine({ id: 'x', ssh: 'u@h', ...raw }, ['dev']), msg);
   bad({ id: 'dev' }, /Ya hay una máquina/);
   bad({ id: 'no vale' }, /id solo admite/);
   bad({ ssh: '-oProxyCommand=evil' }, /destino SSH/);
   bad({ ssh: 'u@h otra' }, /destino SSH/);
   bad({ via: 'lan' }, /IP de LAN/);
-  bad({ via: 'lan', lanAddress: '192.168.0.300' }, /IP de LAN/);
+  bad({ via: 'lan', lanAddress: '192.168.50.300' }, /IP de LAN/);
   bad({ port: 70000 }, /Puerto/);
   bad({ tmux: 'tmux; rm -rf ~' }, /ruta de tmux/);
   bad({ sshOptions: ['ServerAliveInterval=5\nProxyCommand=x'] }, /Opción de SSH/);
   // Editing keeps its id and its key, whatever comes.
-  const edited = checkMachine({ id: 'otro', name: 'Dev', ssh: 'santiago@10.10.10.25', identityFile: '/tmp/x' }, ['dev'], { id: 'dev', name: 'dev', ssh: 'a@b', identityFile: '/k' });
+  const edited = checkMachine({ id: 'otro', name: 'Dev', ssh: 'santiago@10.20.30.25', identityFile: '/tmp/x' }, ['dev'], { id: 'dev', name: 'dev', ssh: 'a@b', identityFile: '/k' });
   assert.equal(edited.id, 'dev');
   assert.equal(edited.identityFile, '/k');
 });
@@ -43,8 +43,8 @@ test('a machine from the panel is checked: nothing ssh could take for an option 
 test('the ways to reach a machine become its ProxyCommand', () => {
   assert.deepEqual(viaOptions('direct'), []);
   assert.deepEqual(viaOptions('tailnet'), ['ProxyCommand=nc -X 5 -x 127.0.0.1:1055 %h %p']);
-  const [lan] = viaOptions('lan', '192.168.0.112');
-  assert.match(lan, /^ProxyCommand=sh -c 'nc -z -w 1 192\.168\.0\.112 %p .*&& exec nc 192\.168\.0\.112 %p \|\| exec nc -X 5 -x 127\.0\.0\.1:1055 %h %p'$/);
+  const [lan] = viaOptions('lan', '192.168.50.112');
+  assert.match(lan, /^ProxyCommand=sh -c 'nc -z -w 1 192\.168\.50\.112 %p .*&& exec nc 192\.168\.50\.112 %p \|\| exec nc -X 5 -x 127\.0\.0\.1:1055 %h %p'$/);
   const cfg = hostConfig({ id: 'mac', name: 'Mac', ssh: 'santiago@mac', via: 'tailnet', sshOptions: ['ConnectTimeout=3'], socketName: 'w' });
   assert.deepEqual(cfg.sshOptions, ['ProxyCommand=nc -X 5 -x 127.0.0.1:1055 %h %p', 'ConnectTimeout=3']);
   assert.deepEqual(cfg.socketArgs, ['-L', 'w']);
@@ -53,16 +53,16 @@ test('the ways to reach a machine become its ProxyCommand', () => {
 
 test('a machine of the config keeps how it was reached: through the tailnet, or its own options', () => {
   assert.deepEqual(fromConfig({ id: 'mac', name: 'Mac', ssh: 'u@mac', sshOptions: ['ProxyCommand=nc -X 5 -x 127.0.0.1:1055 %h %p'] }), { id: 'mac', name: 'Mac', ssh: 'u@mac', via: 'tailnet' });
-  const lan = "ProxyCommand=sh -c 'nc -w 1 192.168.0.112 %p || nc -X 5 -x 127.0.0.1:1055 %h %p'";
+  const lan = "ProxyCommand=sh -c 'nc -w 1 192.168.50.112 %p || nc -X 5 -x 127.0.0.1:1055 %h %p'";
   assert.deepEqual(fromConfig({ id: 'air', name: 'Air', ssh: 'u@air', sshOptions: [lan] }), { id: 'air', name: 'Air', ssh: 'u@air', via: 'direct', sshOptions: [lan] });
   assert.deepEqual(fromConfig({ id: 'hub', name: 'Hub', local: true }), { id: 'hub', name: 'Hub', local: true });
 });
 
 test('the hub\'s key goes to a machine only from the hub\'s addresses for that way', () => {
   const key = 'ssh-ed25519 AAAAC3Nza';
-  assert.equal(authorizedKeyLine(key, 'tailnet', ADDR), 'from="100.66.162.25" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
-  assert.equal(authorizedKeyLine(key, 'lan', ADDR), 'from="192.168.0.54,100.66.162.25" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
-  assert.equal(authorizedKeyLine(key, 'direct', ADDR), 'from="192.168.0.54,10.10.10.26" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
+  assert.equal(authorizedKeyLine(key, 'tailnet', ADDR), 'from="100.64.0.10" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
+  assert.equal(authorizedKeyLine(key, 'lan', ADDR), 'from="192.168.50.54,100.64.0.10" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
+  assert.equal(authorizedKeyLine(key, 'direct', ADDR), 'from="192.168.50.54,10.20.30.26" ssh-ed25519 AAAAC3Nza tmux-web-bridge');
   assert.equal(authorizedKeyLine(key, 'direct', { tailnet: '', lan: '', internal: '' }), 'ssh-ed25519 AAAAC3Nza tmux-web-bridge');
 });
 

@@ -61,5 +61,5 @@
 
 - `/opsx:archive`, `/koalarnes:commit` of the archive moves, check the pull request head and merge with `--squash`.
 - Follow the `deploy` run with `gh run watch` (the server change deploys the hub) and report it.
-- Propose a release: the kit fix reaches the machines only with it. After «Actualizar» on `drangleic-dev`, repeat the 60 s check with the web terminal: the ✅ must arrive.
+- Propose a release: the kit fix reaches the machines only with it. After «Actualizar» on `dev-box`, repeat the 60 s check with the web terminal: the ✅ must arrive.
 - Comment on Issue #43 with the pull request link (es-ES) and close it; remove the worktree with `/koalarnes:git-worktree remove`.

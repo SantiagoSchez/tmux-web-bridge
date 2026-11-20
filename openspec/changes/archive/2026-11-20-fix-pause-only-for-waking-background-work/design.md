@@ -45,7 +45,7 @@ The `.pause` file is written and removed by `cmd_state` only; `cmd_refresh`, `tm
 
 `scripts/test-window-title.sh` exits at once outside Linux, so this change could not be tested on the owner's Mac. Two things tie it to Linux: it attaches tmux clients with util-linux `script -qfc "<command>"`, and on macOS the kit decides «you are looking at it» by asking `lsappinfo` and `osascript` whether Ghostty is visible, which would make the result depend on the desktop of whoever runs the test. On macOS the test attaches clients with BSD `script -q /dev/null <command>`, and puts first on the script's `PATH` a fake `lsappinfo` that reports Ghostty in front or not (from a file of the test's folder) and a fake `osascript` that reports no floating Ghostty window. The case of an idle terminal (Linux: the clock 150 s ahead) becomes, on macOS, a terminal with Ghostty not visible; both expect a notice not seen. Every other case is the same on both systems.
 
-- Alternative: keep the test Linux-only and run it on drangleic-dev. Rejected by the owner on 2026-11-20: every run would need the branch's files copied to another machine.
+- Alternative: keep the test Linux-only and run it on dev-box. Rejected by the owner on 2026-11-20: every run would need the branch's files copied to another machine.
 
 ### D5. The kit-update test works from its folder's physical path
 

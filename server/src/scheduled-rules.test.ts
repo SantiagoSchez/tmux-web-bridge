@@ -13,7 +13,7 @@ const now = new Date(at(TUE, 11));
 
 const valid: ScheduledMessageInput = {
   name: 'Repasar tests',
-  host: 'drangleic',
+  host: 'linux-box',
   target: { folder: '~/Proyectos/twb' },
   prompt: 'Repasa los tests que fallan',
   worktree: false,

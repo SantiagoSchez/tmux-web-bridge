@@ -254,7 +254,7 @@ const CARD: TrelloCard = {
   shortLink: 'aB3dE6fG',
   idShort: 481,
   idList: 'todo',
-  board: { id: 'b1', name: 'Universia' },
+  board: { id: 'b1', name: 'Shop' },
   labels: [],
 };
 
@@ -288,7 +288,7 @@ test(
   withHome(async (home) => {
     const tmux: string[][] = [];
     const prompt = 'Haz la tarjeta https://trello.com/c/aB3dE6fG';
-    await launchTask(fakeHost(home, tmux, [{ id: '$3', name: 'universia' }]), { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt, name: 'feat/481-permitir' }, { card: Promise.resolve(CARD) });
+    await launchTask(fakeHost(home, tmux, [{ id: '$3', name: 'shop' }]), { folders: [], command: 'claude' }, { target: { session: '$3' }, prompt, name: 'feat/481-permitir' }, { card: Promise.resolve(CARD) });
     assert.deepEqual(tmux.find((a) => a[0] === 'new-window')?.slice(-2), ['-n', 'feat/481-permitir']);
     assert.ok(tmux.some((a) => a.join(' ') === 'set-option -w -t %21 @name_pinned 1'));
     const typed = keys(tmux)[0][1];

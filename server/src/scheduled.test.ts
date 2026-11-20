@@ -12,7 +12,7 @@ const DAY = 86_400_000;
 
 const base: ScheduledMessageInput = {
   name: 'Repasar tests',
-  host: 'drangleic',
+  host: 'linux-box',
   target: { folder: '~/Proyectos/twb' },
   prompt: 'Repasa los tests que fallan',
   worktree: false,
@@ -33,13 +33,13 @@ function setup(dir: string, clock: { now: Date }, opts: { fail?: string; hold?: 
   let n = 0;
   const deps: ScheduledDeps = {
     now: () => clock.now,
-    check: (host, target) => (host !== 'drangleic' ? `No existe la máquina «${host}»` : target.folder !== '~/Proyectos/twb' ? 'Esa carpeta no está entre las de drangleic' : null),
+    check: (host, target) => (host !== 'linux-box' ? `No existe la máquina «${host}»` : target.folder !== '~/Proyectos/twb' ? 'Esa carpeta no está entre las de linux-box' : null),
     launch: async (_m, req) => {
       launched.push(req);
       if (opts.hold) await opts.hold;
       if (opts.fail) throw new Error(opts.fail);
       n++;
-      return { host: 'drangleic', hostName: 'Drangleic', session: '$1', space: 'twb', window: `@${n}`, windowName: req.name ?? '', pane: `%${n}`, createdSpace: false } satisfies ExtLaunchResult;
+      return { host: 'linux-box', hostName: 'Linux-box', session: '$1', space: 'twb', window: `@${n}`, windowName: req.name ?? '', pane: `%${n}`, createdSpace: false } satisfies ExtLaunchResult;
     },
   };
   const store = new ScheduledMessages(dir, deps);
@@ -185,12 +185,12 @@ test(
   'a launch that fails leaves the error in the message and tells who listens',
   withDir(async (dir) => {
     const clock = { now: at('2026-11-20T09:00:00') };
-    const { store, runs } = setup(dir, clock, { fail: 'Drangleic no está conectada' });
+    const { store, runs } = setup(dir, clock, { fail: 'Linux-box no está conectada' });
     store.upsert(base);
     clock.now = at('2026-11-20T10:00:05');
     await store.tick();
-    assert.deepEqual([store.list[0].status, store.list[0].message], ['error', 'Drangleic no está conectada']);
-    assert.deepEqual(runs.map((r) => [r.status, r.message]), [['error', 'Drangleic no está conectada']]);
+    assert.deepEqual([store.list[0].status, store.list[0].message], ['error', 'Linux-box no está conectada']);
+    assert.deepEqual(runs.map((r) => [r.status, r.message]), [['error', 'Linux-box no está conectada']]);
   }),
 );
 
@@ -274,7 +274,7 @@ test(
     assert.throws(() => store.upsert({ ...base, id: 'nada' }), { message: 'Ese mensaje programado ya no existe', status: 404 });
     assert.throws(() => store.remove('nada'), { message: 'Ese mensaje programado ya no existe', status: 404 });
     assert.throws(() => store.upsert({ ...base, host: 'mac' }), { message: 'No existe la máquina «mac»', status: 400 });
-    assert.throws(() => store.upsert({ ...base, target: { folder: '~/otra' } }), { message: 'Esa carpeta no está entre las de drangleic', status: 400 });
+    assert.throws(() => store.upsert({ ...base, target: { folder: '~/otra' } }), { message: 'Esa carpeta no está entre las de linux-box', status: 400 });
     assert.throws(() => store.upsert({ ...base, at: ms('2026-11-20T08:00:00') }), { message: 'Esa hora ya ha pasado', status: 400 });
     for (let i = 0; i < 50; i++) store.upsert(base);
     assert.throws(() => store.upsert(base), { message: 'Como mucho 50 mensajes programados', status: 400 });

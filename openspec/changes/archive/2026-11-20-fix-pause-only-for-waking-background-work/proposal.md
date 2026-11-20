@@ -4,7 +4,7 @@
 
 Since the pause for background work ([Issue #55](https://github.com/SantiagoSchez/tmux-web-bridge/issues/55)), the kit holds back the «Terminado» notice and keeps 🔨 whenever Claude Code's `Stop` input lists any background task that is not a shell command. Claude Code 2.1.329 also lists there its own internal work, which never wakes Claude up: `dream` (memory consolidation) and `auto-mode scan`. When one of them is running at the end of a turn, the pane stays at 🔨 for good and the owner is never told that Claude is waiting ([Issue #65](https://github.com/SantiagoSchez/tmux-web-bridge/issues/65)).
 
-On 2026-11-20 two windows of the `universia-course-generator` session on the MacBook Pro ended their turns at 09:26 and 09:40; the `Stop` hook wrote 🔨 and sent nothing. Their transcripts show no subagent, workflow, monitor or cron in flight, only background shell commands. The kit does not keep the payload, so the exact task cannot be named.
+On 2026-11-20 two windows of the `shop-generator` session on the MacBook Pro ended their turns at 09:26 and 09:40; the `Stop` hook wrote 🔨 and sent nothing. Their transcripts show no subagent, workflow, monitor or cron in flight, only background shell commands. The kit does not keep the payload, so the exact task cannot be named.
 
 ## What Changes
 
