@@ -79,9 +79,12 @@
 
 - [x] 9.1 Run `/opsx:verify`, then `/ka:adversarial-review auto-switch-account-near-limit` (the change wires a new service and changes the settings and activity payloads), and fix its CRITICAL, HIGH and MEDIUM findings through the artifacts.
   - First run: one HIGH (rounds re-entered from the synchronous `'change'` of `switchHost`), three MEDIUM and LOW findings; fixed by tasks 3.7, 3.8, 5.7 to 5.9 and 8.3. Second run, after the fix: the eight fixes hold; two MEDIUM (warnings kept per machine instead of per limit; the retry requirement contradicted the change by hand) and three LOW, fixed by tasks 3.9, 3.10 and 5.10, with the spec and the design amended. The second fix touches no wiring, payload or migration, so the review does not run a third time. Server: 447 tests pass; typechecks, `ka docs-check`, `ka features-check` and the boot smoke test pass; 16 capped mutations each make a test fail.
-- [ ] 9.2 Commit with `/ka:commit --pr` and run the bounded review loop (`/ka:review-pr`, `ka review-rounds record`, `ka review-rounds gate`) until the gate passes.
-- [ ] 9.3 Run `/ka:update-features auto-switch-account-near-limit`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`.
-- [ ] 9.4 E2E: the project has no E2E suite; this step does not apply.
+- [x] 9.2 Commit with `/ka:commit --pr` and run the bounded review loop (`/ka:review-pr`, `ka review-rounds record`, `ka review-rounds gate`) until the gate passes.
+  - PR #69. Round 1 (full): two REQUIRED (conflicts with `master`, design D1 wording), one suggestion (machines still connecting), two nitpicks; fixed by tasks 5.11 and 5.12. Round 2 (incremental): no finding, all resolved; `ka review-rounds gate` passed on `e9581c5`. No suggestion left to score.
+- [x] 9.3 Run `/ka:update-features auto-switch-account-near-limit`, then `ka features-check --strict` (exit code 0), and commit with `/ka:commit`.
+  - New area «Cambio automático de cuenta» in `docs/FEATURES.md` (12 sections, lines 526 to 581) and its line in the index; `ka features-check --strict` exit 0.
+- [x] 9.4 E2E: the project has no E2E suite; this step does not apply.
+  - Not applicable: the project has no E2E suite.
 - [ ] 9.5 Human review: ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here.
 
 ## 10. Before the archive
