@@ -7,6 +7,7 @@ import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderL
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
 import { isMuteHours, muteUntil, sanitizeMute } from '../../shared/mute.js';
 import { DEFAULT_QUIET_HOURS, sanitizeQuietHours } from '../../shared/quiet-hours.js';
+import { DEFAULT_ACCOUNT_ROTATION, sanitizeAccountRotation } from '../../shared/rotation.js';
 import { DEFAULT_TEMPLATE } from '../../shared/trello.js';
 import type { HubAddresses, HubSettings } from '../../shared/types.js';
 
@@ -35,6 +36,7 @@ const DEFAULTS: HubSettings = {
   trelloExtension: {},
   trelloPromptTemplate: DEFAULT_TEMPLATE,
   quietHours: DEFAULT_QUIET_HOURS,
+  accountRotation: DEFAULT_ACCOUNT_ROTATION,
   mute: null,
 };
 
@@ -131,6 +133,7 @@ export class SettingsStore extends EventEmitter {
         hubAddresses: sanitizeAddresses(saved.hubAddresses) ?? DEFAULTS.hubAddresses,
         hubUrls: sanitizeUrls(saved.hubUrls) ?? DEFAULTS.hubUrls,
         quietHours: sanitizeQuietHours(saved.quietHours) ?? DEFAULTS.quietHours,
+        accountRotation: sanitizeAccountRotation(saved.accountRotation, DEFAULTS.accountRotation),
         mute: sanitizeMute(saved.mute),
       };
       // Settings from before the default glossary: an empty one gets it, once.
@@ -182,6 +185,7 @@ export class SettingsStore extends EventEmitter {
     if (urls) next.hubUrls = urls;
     const quietHours = sanitizeQuietHours(patch.quietHours);
     if (quietHours) next.quietHours = quietHours;
+    if (patch.accountRotation !== undefined) next.accountRotation = sanitizeAccountRotation(patch.accountRotation, next.accountRotation);
     this.state = next;
     this.save();
     this.emit('change', next);
@@ -208,10 +212,11 @@ export class SettingsStore extends EventEmitter {
     this.emit('change', this.state);
   }
 
-  /** A machine left the hub: its folders, command and Trello extension go with it. */
+  /** A machine left the hub: its folders, command, Trello extension and automatic account switch go with it. */
   forgetHost(hostId: string): void {
     const drop = <T>(rec: Record<string, T>) => Object.fromEntries(Object.entries(rec).filter(([id]) => id !== hostId));
-    this.state = { ...this.state, folders: drop(this.state.folders), commands: drop(this.state.commands), trelloExtension: drop(this.state.trelloExtension) };
+    const accountRotation = { ...this.state.accountRotation, hosts: this.state.accountRotation.hosts.filter((id) => id !== hostId) };
+    this.state = { ...this.state, folders: drop(this.state.folders), commands: drop(this.state.commands), trelloExtension: drop(this.state.trelloExtension), accountRotation };
     this.save();
     this.emit('change', this.state);
   }

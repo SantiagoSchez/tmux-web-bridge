@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import type { ActivityEvent } from '../../../shared/types';
+import type { ActivityAccount, ActivityEvent, UsageLimit } from '../../../shared/types';
 import { openWindow } from '../router';
 import { activity, findWindow, multiHost, sheet } from '../state';
 import { ago, clock, duration } from '../time';
@@ -8,7 +8,8 @@ import { Sheet } from './Sheet';
 // «Actividad»: what happened on every machine in the last days, newest first. A row
 // whose window is still open opens it.
 
-const ICON: Record<ActivityEvent['kind'], string> = { question: '🙋', attention: '💬', done: '✅', launch: '▶', skipped: '⏭', error: '⚠' };
+const ICON: Record<ActivityEvent['kind'], string> = { question: '🙋', attention: '💬', done: '✅', launch: '▶', skipped: '⏭', error: '⚠', account: '🔄' };
+const LIMIT: Record<UsageLimit, string> = { fiveHour: 'límite de 5 h', sevenDay: 'límite semanal' };
 const SOURCE: Record<NonNullable<ActivityEvent['source']>, string> = { trello: 'desde Trello', extension: 'desde la extensión de Trello', automation: 'por una automatización', scheduled: 'por un mensaje programado', panel: 'desde el panel' };
 
 type Filter = 'all' | 'claude' | 'tasks';
@@ -34,7 +35,23 @@ function what(e: ActivityEvent): string {
       return `Automatización saltada${e.text ? `: ${e.text.charAt(0).toLowerCase()}${e.text.slice(1)}` : ''}`;
     case 'error':
       return `${e.source === 'scheduled' ? 'Mensaje programado fallido' : 'Automatización fallida'}${e.text ? `: ${e.text}` : ''}`;
+    case 'account':
+      return e.account ? accountText(e.account) : 'Cambio automático de cuenta';
   }
+}
+
+/** What the automatic account switch did: switched, found no account with margin, or failed. */
+function accountText(a: ActivityAccount): string {
+  const why = `${LIMIT[a.limit]} al ${a.pct} %`;
+  if (a.error) return `No se pudo cambiar de ${a.from} a ${a.to}: ${a.error}`;
+  if (a.to) return `Cuenta cambiada de ${a.from} a ${a.to}: ${why}`;
+  return `Ninguna cuenta con margen: sigue con ${a.from} (${why})`;
+}
+
+/** The row's class: an automatic switch that failed reads like an error, one with no target like a skip. */
+function rowClass(e: ActivityEvent): string {
+  if (e.kind !== 'account') return `act-${e.kind}`;
+  return e.account?.error ? 'act-error' : e.account?.to ? 'act-account' : 'act-skipped';
 }
 
 /** «Hoy», «Ayer» or the date, for the headings. */
@@ -79,13 +96,13 @@ function ActivityList({ close }: { close: () => void }) {
           <ul class="menu">
             {g.events.map((e) => {
               const target = e.window ? findWindow(e.host, e.window) : null;
-              const title = e.windowName ?? e.text ?? '';
+              const title = e.kind === 'account' ? e.hostName : (e.windowName ?? e.text ?? '');
               return (
                 <li key={e.id}>
                   <button
-                    class={`menu-item activity-row act-${e.kind}`}
+                    class={`menu-item activity-row ${rowClass(e)}`}
                     disabled={!target}
-                    title={target ? 'Abrir la ventana' : 'Esa ventana ya no está abierta'}
+                    title={target ? 'Abrir la ventana' : e.kind === 'account' ? 'Cambio automático de cuenta' : 'Esa ventana ya no está abierta'}
                     onClick={() => {
                       if (!target || !e.window) return;
                       close();
@@ -100,7 +117,7 @@ function ActivityList({ close }: { close: () => void }) {
                       </span>
                       <span class="project-hint">
                         {what(e)}
-                        {multiHost.value ? ` · ${e.hostName}` : ''}
+                        {multiHost.value && e.kind !== 'account' ? ` · ${e.hostName}` : ''}
                       </span>
                     </span>
                     <span class="activity-time" title={new Date(e.at).toLocaleString('es-ES')}>

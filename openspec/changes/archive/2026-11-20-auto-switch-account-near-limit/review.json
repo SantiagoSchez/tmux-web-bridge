@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "pr": 69,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T16:20:06.429Z",
+      "counts": {
+        "critical": 0,
+        "required": 2,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 2
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "e9581c52d8fb6a56058c93a8534112aea75b3e41",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T16:25:43.222Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "server/src/settings.ts",
+      "symbol": "HubSettings",
+      "title": "Branch conflicts with master (PR #68) in shared/types.ts, server/src/settings.ts and server/src/settings.test.ts; rebase needed",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/auto-switch-account-near-limit/design.md",
+      "symbol": "D1",
+      "title": "D1 describes a `fallback` field and a machine 'switch on' input the code does not have",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "server/src/index.ts",
+      "symbol": "AccountRotation.machines",
+      "title": "A machine still connecting at hub start is reported as a failed switch (sin conexión) with a push",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "openspec/changes/auto-switch-account-near-limit/tasks.md",
+      "symbol": null,
+      "title": "Task 7.3 says 10 pending requirements (12 now); task 5.10 sits before 5.9",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-05",
+      "severity": "NITPICK",
+      "path": "changelogs/unreleased/20261120T152906692-feature-64-rotar-sola-la-cuenta-de-una-maquina-cuando-se-acerque.json",
+      "symbol": null,
+      "title": "Changelog description does not end with a full stop",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "5ccd618b6dcccfe84484df8f2f9128e33d86183e",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

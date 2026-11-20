@@ -10,7 +10,7 @@ import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import { quietReason } from '../../shared/mute.js';
 import { branchNameProblem } from '../../shared/worktree.js';
-import type { AccountsInfo, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -37,6 +37,7 @@ import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
 import { contextScript, parseContext } from './project-refs.js';
 import { PushService } from './push.js';
+import { AccountRotation, rotationNotice } from './rotation.js';
 import { originOf, ScratchpadError, ScratchpadStore } from './scratchpads.js';
 import { SettingsStore } from './settings.js';
 import { TempFolders } from './temp.js';
@@ -83,6 +84,16 @@ const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
 const activity = new ActivityLog(config.dataDir);
+// The automatic account switch (Ajustes › Máquinas): evaluated when an account's usage,
+// a statusline reading or the settings change (see the handlers below).
+const rotation = new AccountRotation({
+  settings: () => settings.value.accountRotation,
+  accounts: () => accounts.info,
+  readings: () => [...checkNow().kept.values()].flat(),
+  machines: () => hostOrder.list.map((id) => ({ id, status: hosts.get(id)?.snapshot.status ?? 'connecting' })),
+  switchHost: (host, account) => accounts.switchHost(host, account),
+  report: reportRotation,
+});
 const scratchpads = new ScratchpadStore(config.dataDir);
 const trello = new TrelloService(config.dataDir);
 // The folders of «Nuevo espacio» live in the hub now: a `projects` block becomes one, once.
@@ -271,6 +282,7 @@ function attachHost(saved: SavedHost): HostMonitor {
   const host = new HostMonitor(hostConfig(saved), config);
   host.limitsInStatusLine = settings.value.limitsInStatusLine;
   new TempFolders(host);
+  let wasOk = false;
   host.on('change', (info: HostInfo) => {
     const check = checkNow();
     broadcastHost(info, check);
@@ -278,6 +290,10 @@ function attachHost(saved: SavedHost): HostMonitor {
     let added = false;
     for (const l of check.kept.get(info.id) ?? []) added = usage.add(l) || added;
     if (added) broadcast({ t: 'usage', samples: usage.list });
+    // A new statusline reading, or a machine that just connected (it may be due a switch).
+    const connected = info.status === 'ok' && !wasOk;
+    wasOk = info.status === 'ok';
+    if (added || connected) void rotation.evaluate();
   });
   host.on('transition', (t) => {
     notifier.onTransition(t);
@@ -314,6 +330,7 @@ accounts.on('change', (info: AccountsInfo) => {
     added = usage.add({ fiveHour: u.fiveHour, sevenDay: u.sevenDay, updatedAt: u.t, account: a.email }) || added;
   }
   if (added) broadcast({ t: 'usage', samples: usage.list });
+  void rotation.evaluate();
 });
 conns.on('change', (list) => broadcast({ t: 'connections', list }));
 updates.on('change', (info) => broadcast({ t: 'updates', info }));
@@ -325,7 +342,15 @@ settings.on('change', (value) => {
   dictation.setGlossary(value.dictationGlossary);
   dictation.setEnabled(value.dictation);
   broadcast({ t: 'settings', settings: value });
+  void rotation.evaluate();
 });
+
+/** What the automatic account switch did on a machine: into «Actividad» and a push. */
+function reportRotation(hostId: string, event: ActivityAccount): void {
+  const hostName = hosts.get(hostId)?.name ?? hostId;
+  activity.add({ kind: 'account', host: hostId, hostName, account: event });
+  void push.send({ ...rotationNotice(hostName, event), tag: `account:${hostId}`, url: '/' });
+}
 dictation.on('change', (info) => broadcast({ t: 'dictation', info }));
 updates.start();
 

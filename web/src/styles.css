@@ -3044,13 +3044,15 @@ textarea.text-input {
   align-items: center;
   gap: 6px;
 }
-.quiet-window {
+.quiet-window,
+.rotation-thresholds {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   margin: 8px 0 12px;
 }
-.quiet-window label {
+.quiet-window label,
+.rotation-thresholds label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3058,7 +3060,11 @@ textarea.text-input {
 .quiet-window .text-input {
   width: 120px;
 }
-.quiet-problem {
+.rotation-thresholds .text-input {
+  width: 80px;
+}
+.quiet-problem,
+.rotation-problem {
   margin: 0 0 12px;
   color: var(--red);
 }

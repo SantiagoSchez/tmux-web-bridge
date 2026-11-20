@@ -24,6 +24,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Detalles al pasar el ratón](#detalles-al-pasar-el-ratón): los datos completos de una ventana o un espacio que la lista corta con «…».
 - [Tareas desde tarjetas de Trello](#tareas-desde-tarjetas-de-trello): el nombre que el agente da a la ventana de una tarea lanzada sobre una tarjeta.
 - [Mensajes programados](#mensajes-programados): prompts que el servidor central lanza una sola vez, a la hora elegida, para gastar el límite que sobra.
+- [Cambio automático de cuenta](#cambio-automático-de-cuenta): cuándo y a qué cuenta pasa el servidor central una máquina que se acerca al límite de 5 horas o al semanal, y cómo lo avisa.
 
 ## Terminal
 
@@ -519,3 +520,65 @@ Mientras no se ha lanzado, cualquier campo del mensaje se puede cambiar: se lanz
 <!-- capability: scheduled-messages; requirement: results-stay-for-7-days -->
 
 Un mensaje lanzado o fallido se queda en la lista con su resultado durante 7 días desde que se ejecutó y después desaparece solo. Con «Quitar» se puede retirar antes.
+
+## Cambio automático de cuenta
+
+### Un interruptor por máquina
+<!-- capability: account-auto-switch; requirement: the-owner-turns-the-automatic-switch-on-per-machine -->
+
+En Ajustes › Máquinas, la sección «Cambio automático de cuenta» tiene un interruptor por máquina. Todos empiezan apagados, y el servidor central nunca cambia por su cuenta la cuenta de Claude de una máquina con el interruptor apagado. El interruptor se guarda en el servidor central, así que se ve igual desde el móvil y desde el ordenador. Si se quita una máquina del panel, pierde su interruptor: una máquina nueva con el mismo nombre empieza apagada.
+
+### Dos umbrales para todas las máquinas
+<!-- capability: account-auto-switch; requirement: two-thresholds-the-same-for-every-machine -->
+
+La misma sección tiene dos umbrales, comunes a todas las máquinas y dispositivos: uno para el límite de 5 horas y otro para el semanal, el 90 % y el 95 % por defecto. Cada uno es un porcentaje entero del 1 al 100. Un valor fuera de ese rango o con decimales no se guarda: el panel avisa con «Tiene que ser un número entero del 1 al 100.» y deja el anterior. Los umbrales siguen igual después de reiniciar el servidor central.
+
+### El cambio a una cuenta con margen
+<!-- capability: account-auto-switch; requirement: a-machine-over-a-threshold-switches-to-an-account-with-margin -->
+
+Cuando la cuenta de una máquina con el interruptor encendido llega al umbral de su límite de 5 horas o del semanal, el servidor central la pasa a otra cuenta, igual que al cambiarla desde la franja de límites y sin reiniciar sus Claude Code. Solo puede pasarla a una cuenta de la que guarde una sesión libre y que esté por debajo de los dos umbrales. Entre esas, prefiere una que no use ninguna otra máquina y, después, la que menos lleve gastado.
+
+### De dónde sale el uso de cada cuenta
+<!-- capability: account-auto-switch; requirement: the-usage-the-decision-uses -->
+
+El servidor central toma el uso de cada cuenta de su lectura más reciente: la que hace él mismo cada pocos minutos o la que publica la línea de estado de un Claude Code con el correo de esa cuenta, siempre que no la considere de otra cuenta. Un límite que ya se ha reiniciado cuenta como 0 %. No es destino una cuenta sin ninguna lectura, ni una cuyo uso no se pudo leer la última vez, ni una que necesita volver a iniciar sesión. Una máquina cuya cuenta no tiene lectura no se cambia. Los límites semanales de un solo modelo no cuentan.
+
+### Sin cuentas por debajo de los umbrales
+<!-- capability: account-auto-switch; requirement: with-no-account-below-the-thresholds-only-a-clearly-less-used-one -->
+
+Si ninguna cuenta con sesión libre está por debajo de los dos umbrales, el servidor central solo cambia la máquina a la menos usada cuando esta lleva al menos 10 puntos menos que la actual, contando el mayor de sus dos porcentajes. Con una al 97 % y otra al 92 %, la máquina se queda donde está; con una al 100 % y otra al 90 %, cambia.
+
+### Sin aviso después de un cambio así
+<!-- capability: account-auto-switch; requirement: a-switch-to-an-account-over-a-threshold-is-not-followed-by-a-warning -->
+
+Si el servidor central acaba de pasar una máquina a una cuenta que también está por encima de un umbral, no avisa además de que la máquina no tiene destino mientras esa cuenta siga en la misma ventana del límite: el aviso del cambio ya dice adónde ha ido. Cuando esa ventana se reinicia y la cuenta vuelve a pasar el umbral sin destino, sí avisa.
+
+### Un solo aviso por ventana cuando no hay destino
+<!-- capability: account-auto-switch; requirement: no-target-leaves-one-warning-per-window -->
+
+Si una máquina pasa un umbral y ninguna cuenta sirve de destino, se queda en su cuenta y el servidor central avisa una vez, en «Actividad» y con una notificación push, diciendo la máquina, la cuenta y el límite. No vuelve a avisar de esa máquina, esa cuenta y ese límite hasta que la ventana del límite se reinicia, aunque el uso se lea muchas veces o venga a la vez de su propia lectura y de la línea de estado. Con los dos límites pasados, avisa como mucho una vez de cada uno.
+
+### Sin idas y vueltas
+<!-- capability: account-auto-switch; requirement: no-going-back-and-forth -->
+
+El servidor central no vuelve a elegir para una máquina la cuenta que acaba de dejar en un cambio automático mientras esa cuenta siga por encima de un umbral, aunque la nueva también lo pase. Tampoco devuelve la máquina sola a su cuenta de antes cuando esta se reinicia: se queda en la nueva mientras esté por debajo de los umbrales.
+
+### Varias máquinas en la misma cuenta
+<!-- capability: account-auto-switch; requirement: machines-on-the-same-account-are-decided-one-after-the-other -->
+
+Si varias máquinas en la misma cuenta pasan un umbral a la vez, el servidor central las decide y las cambia de una en una, y cada decisión ve las cuentas como las dejó el cambio anterior. Con una sola sesión libre de la cuenta destino, una máquina cambia y la otra se decide sabiendo que esa sesión ya no está libre.
+
+### Cada cambio se avisa
+<!-- capability: account-auto-switch; requirement: each-automatic-switch-is-reported -->
+
+Cada cambio automático deja una entrada en «Actividad», con el icono 🔄 y solo bajo el filtro «Todo», y manda una notificación push. Las dos dicen la máquina, la cuenta que deja, la que estrena y el límite que pasó con su porcentaje, por ejemplo «Cuenta cambiada de Personal a Trabajo: límite de 5 h al 91 %». La notificación respeta el horario de descanso y el silencio de la campana, como cualquier otra; la entrada de «Actividad» sale siempre.
+
+### Un cambio que falla se avisa una vez
+<!-- capability: account-auto-switch; requirement: a-failed-automatic-switch-is-reported-once -->
+
+Si un cambio automático no se puede hacer (la máquina no está conectada, la sesión guardada ya no vale o la máquina no deja escribirla), la máquina sigue como estaba y el servidor central lo avisa, con el motivo, en «Actividad» y con una notificación push. Un fallo con el mismo motivo no se vuelve a avisar en la misma ventana del límite; uno con otro motivo, sí. Si la cuenta de la máquina cambia por cualquier vía, por ejemplo a mano desde el panel, se olvida lo avisado. Una máquina que aún está conectando, como todas justo después de arrancar el servidor central, no se decide hasta que conecta, así que no recibe un aviso falso de «sin conexión».
+
+### Reintento a los 5 minutos
+<!-- capability: account-auto-switch; requirement: a-failed-switch-is-tried-again-after-5-minutes -->
+
+Un cambio que ha fallado no se vuelve a intentar hasta 5 minutos después, por mucho que cambien entretanto el uso, las cuentas o las máquinas, y el nuevo intento no repite el aviso si falla por el mismo motivo. La excepción es que cambie la cuenta de la propia máquina, por ejemplo si se pasa a mano a otra y se devuelve: entonces se intenta en el acto.
