@@ -22,6 +22,22 @@
         "question": 0,
         "nitpick": 1
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "de8094f3751242d9f31d7370957f618f0174f0da",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T22:09:22.379Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -55,8 +71,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "web-standards.md forbids redeclaring hub payload types in web/, and the loginStart and loginFinish results are declared inline on both sides with no shared type, so a renamed field would get past the typecheck; the fix is two small shared types, worth a mention in the final comment rather than a follow-up item.",
       "followUp": null
     },
     {
@@ -68,8 +84,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "a7147ae507076ade4b61a132b83ded9ca30f3419",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,

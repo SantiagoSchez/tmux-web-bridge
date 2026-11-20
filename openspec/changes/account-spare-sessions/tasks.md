@@ -1,6 +1,6 @@
 # Tasks
 
-The change touches only the `web` layer, which has no test runner (`docs/dev-standards/web-standards.md`, Testing). Each behaviour is checked with `pnpm --filter web typecheck` and by hand in a browser against an isolated hub, on a phone width and a wide one. The helper of D2 is display text and stays in `web/`, so no server test covers it.
+The change's code is in the `web` layer, which has no test runner; the only server file it touches is one new test (2.1) (`docs/dev-standards/web-standards.md`, Testing). Each behaviour is checked with `pnpm --filter web typecheck` and by hand in a browser against an isolated hub, on a phone width and a wide one. The helper of D2 is display text and stays in `web/`, so no server test covers it.
 
 ## 1. Branch (mandatory step 1)
 
@@ -47,11 +47,13 @@ The change touches only the `web` layer, which has no test runner (`docs/dev-sta
 
 ## 8. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 8.1 Run `/ka:update-features account-spare-sessions`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 8.1 Run `/ka:update-features account-spare-sessions`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - After round 2's gate passed on `de8094f`: three new sections in `docs/FEATURES.md` under «Cuentas de Claude» («Sesiones libres de cada cuenta», «Otra sesión de una cuenta», «Añadir una cuenta nueva») and its index line updated. `ka features-check --strict`: exit 0, 104 sections in sync.
 
 ## 9. E2E pipeline (mandatory step 7)
 
-- [ ] 9.1 The project has no E2E suite; this step does not apply. Record it here.
+- [x] 9.1 The project has no E2E suite; this step does not apply. Record it here.
+  - Not applicable: `ka scope` reports no E2E suite.
 
 ## 10. Human review (mandatory step 8)
 
