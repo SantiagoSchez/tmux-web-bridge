@@ -5,7 +5,7 @@ import type { Config } from './config.js';
 import { ConnectionRegistry } from './connections.js';
 import type { HostMonitor, PaneContext } from './host.js';
 import { Notifier } from './notifications.js';
-import type { PushService } from './push.js';
+import type { PushService, QuietReason } from './push.js';
 
 const MAC = 'https://push.example/mac';
 
@@ -27,9 +27,9 @@ function fakeHost(): HostMonitor {
 /**
  * The push service at its network boundary: records what would be sent and to whom.
  * Endpoints in `gone` are subscribed but the push service no longer takes them;
- * `quiet`: it is inside the quiet schedule.
+ * `quiet`: why pushes are held back right now (the mute or the quiet schedule), or null.
  */
-function fakePush(subscribed: string[], gone: string[] = [], quiet = false) {
+function fakePush(subscribed: string[], gone: string[] = [], quiet: QuietReason | null = null) {
   const sent: { payload: PushPayload; only?: readonly string[] }[] = [];
   const push = {
     quiet: () => quiet,
@@ -165,7 +165,7 @@ test('a notice from a machine the panel does not have is not pushed and says so 
 });
 
 test('a notice inside the quiet schedule is not pushed and says so in the log', async (t) => {
-  const { push, sent } = fakePush([MAC], [], true);
+  const { push, sent } = fakePush([MAC], [], 'quiet hours');
   const n = notifier(new ConnectionRegistry(), push);
 
   let result: unknown;
@@ -176,14 +176,14 @@ test('a notice inside the quiet schedule is not pushed and says so in the log', 
 });
 
 test('the same notice outside the quiet schedule is pushed', async () => {
-  const { push, sent } = fakePush([MAC], [], false);
+  const { push, sent } = fakePush([MAC], [], null);
 
   assert.deepEqual(await notifier(new ConnectionRegistry(), push).onScriptNotify(done), { pushed: true });
   assert.equal(sent.length, 1);
 });
 
 test('a pane icon turning ✅ inside the quiet schedule pushes nothing', async (t) => {
-  const { push, sent } = fakePush([MAC], [], true);
+  const { push, sent } = fakePush([MAC], [], 'quiet hours');
   const host = fakeHost();
   const n = new Notifier({ fallbackDelayMs: 0 } as Config, new Map([['mac', host]]), push, new ConnectionRegistry());
 
@@ -195,4 +195,15 @@ test('a pane icon turning ✅ inside the quiet schedule pushes nothing', async (
   });
   assert.equal(sent.length, 0);
   assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, es horario de descanso']);
+});
+
+test('a notice while muted is not pushed and says so in the log', async (t) => {
+  const { push, sent } = fakePush([MAC], [], 'muted');
+  const n = notifier(new ConnectionRegistry(), push);
+
+  let result: unknown;
+  const lines = await pushLog(t, async () => (result = await n.onScriptNotify(done)));
+  assert.deepEqual(result, { pushed: false, reason: 'muted' });
+  assert.equal(sent.length, 0);
+  assert.deepEqual(lines, ['[push] ✅ claude [twb]: no se envía, las notificaciones están silenciadas']);
 });

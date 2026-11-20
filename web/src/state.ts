@@ -130,7 +130,8 @@ export interface ClaudeResume {
 
 export interface MenuItem {
   label: string;
-  icon?: string;
+  /** A glyph, or an icon of icons.tsx. */
+  icon?: ComponentChildren;
   danger?: boolean;
   disabled?: boolean;
   run: () => void;

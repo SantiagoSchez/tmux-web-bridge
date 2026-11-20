@@ -63,11 +63,31 @@ export const IconPlus = () => (
     <path d="M12 5v14M5 12h14" />
   </Svg>
 );
-/** «Programar mensaje»: a clock with a plus. */
+/** «Programar mensaje»: an alarm clock (face and hands, two bells on top, two feet). */
 export const IconScheduled = () => (
   <Svg size={18}>
-    <circle cx="11" cy="13" r="7" />
-    <path d="M11 9.5V13l2.2 1.6M18 2.5v5M15.5 5h5" />
+    <circle cx="12" cy="13" r="7" />
+    <path d="M12 9.5V13l2.5 1.5M3.5 7.5a3.5 3.5 0 0 1 4-4M20.5 7.5a3.5 3.5 0 0 0-4-4M7.2 18.6 5.5 21M16.8 18.6l1.7 2.4" />
+  </Svg>
+);
+/** The top bar's bell: push notifications go out. */
+export const IconBell = () => (
+  <Svg>
+    <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+    <path d="M10 21a2 2 0 0 0 4 0" />
+  </Svg>
+);
+/** The bell crossed out: push notifications are muted. */
+export const IconBellOff = () => (
+  <Svg>
+    <path d="M6 16v-5a6 6 0 0 1 12 0v5l1.5 2h-15z" />
+    <path d="M10 21a2 2 0 0 0 4 0M3 3l18 18" />
+  </Svg>
+);
+/** A narrow chevron: more of what the button beside it does. */
+export const IconChevronDown = () => (
+  <Svg size={16}>
+    <path d="M6 9l6 6 6-6" />
   </Svg>
 );
 export const IconClose = () => (

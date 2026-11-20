@@ -1,0 +1,6 @@
+{
+  "type": "changed",
+  "scope": "web",
+  "description": "Cambiada la cabecera del panel para hacer sitio: Actividad pasa al menú de la flecha que hay junto al botón de la vista de ventanas. Los botones «+», «Programar mensaje» y «•••» de cada máquina ocupan menos ancho, y «Programar mensaje» tiene ahora un despertador como icono",
+  "breaking": false
+}

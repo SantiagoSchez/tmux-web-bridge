@@ -3,7 +3,7 @@ import type { NotifyRequest, PaneState, PushPayload } from '../../shared/types.j
 import type { Config } from './config.js';
 import type { ConnectionRegistry } from './connections.js';
 import type { HostMonitor, PaneContext, PaneTransition } from './host.js';
-import type { PushService } from './push.js';
+import { QUIET_LOG, type PushService, type QuietReason } from './push.js';
 
 type AlertState = 'question' | 'attention' | 'done';
 
@@ -132,7 +132,8 @@ export class Notifier {
       console.log(`[push] ${this.title(ctx, req.state)}: no se envía, lo tienes abierto en la web`);
       return { pushed: false, reason: 'watched in web' };
     }
-    if (this.quiet(host, ctx, req.state)) return { pushed: false, reason: 'quiet hours' };
+    const quiet = this.quiet(host, ctx, req.state);
+    if (quiet) return { pushed: false, reason: quiet };
     const route = this.route(ctx, req.state);
     if (!route) return { pushed: false, reason: 'present' };
 
@@ -147,13 +148,13 @@ export class Notifier {
   }
 
   /**
-   * Inside the quiet schedule: says so in the log and nothing is pushed. Checked before
-   * reading the pane, so no capture or wait for the choices menu is spent on it.
+   * Muted or inside the quiet schedule: says why in the log, and nothing is pushed. Checked
+   * before reading the pane, so no capture or wait for the choices menu is spent on it.
    */
-  private quiet(host: HostMonitor, ctx: PaneContext | null, state: AlertState): boolean {
-    if (!this.push.quiet()) return false;
-    console.log(`[push] ${this.what(host, ctx, state)}: no se envía, es horario de descanso`);
-    return true;
+  private quiet(host: HostMonitor, ctx: PaneContext | null, state: AlertState): QuietReason | null {
+    const reason = this.push.quiet();
+    if (reason) console.log(`[push] ${this.what(host, ctx, state)}: no se envía, ${QUIET_LOG[reason]}`);
+    return reason;
   }
 
   /** Pushes to `only` those endpoints, or to every device when none of them took it (a subscription gone). */
