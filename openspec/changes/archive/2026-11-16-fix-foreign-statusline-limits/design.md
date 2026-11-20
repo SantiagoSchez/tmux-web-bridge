@@ -63,7 +63,7 @@ Alternative considered: dropping foreign readings inside `HostMonitor`. It does 
 
 `AccountRow` adds the ⚠ the row already uses for a login problem when `acc.mislabelledOn` is not empty, and adds to the row's `title`:
 
-> Un Claude de drangleic-claude ha publicado con esta cuenta los límites de otra: seguramente sigue con la anterior. Si no se corrige con su próximo mensaje, reinícialo.
+> Un Claude de bot-box ha publicado con esta cuenta los límites de otra: seguramente sigue con la anterior. Si no se corrige con su próximo mensaje, reinícialo.
 
 With several machines, their names are joined with ` · `, as `hostNames()` already does. `accountMenu()` in `web/src/accounts.tsx` shows the same text in its `top` block, so it reaches a phone, where the tooltip does not. `rows()` keeps using `host.limits` as it is: what arrives is already filtered.
 

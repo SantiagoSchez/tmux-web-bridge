@@ -10,7 +10,7 @@ What Claude Code 2.1.329 does, read in its macOS binary (`darwin-arm64`, checksu
 - **Its store on macOS.** The Keychain, with the plaintext file as fallback: it reads the Keychain first and the file only when the Keychain has nothing. Keychain reads are cached for 30 s.
 - **When a running Claude Code re-reads its login.** Before a request, its token check stats the folder's `.credentials.json`. When the file's `mtimeMs` differs from the one it saw last, it drops its token cache and the Keychain cache and reads the store again. When the stat fails (no file), it reads the store again on every check, through the 30 s cache. When the time is unchanged, it keeps its in-memory token and re-reads only when that token is dead or about to expire, which can be hours away.
 
-On drangleic-claude, `~claudebot/.tmux.conf` sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb` with `set-environment -g`; every pane inherits it. The Telegram bot runs outside that tmux server with the default folder. The host kit already honours the variable (the statusline, `tmux-spaces.sh`, `install.sh --claude-dir`).
+On bot-box, `~claudebot/.tmux.conf` sets `CLAUDE_CONFIG_DIR` to `~/.claude-twb` with `set-environment -g`; every pane inherits it. The Telegram bot runs outside that tmux server with the default folder. The host kit already honours the variable (the statusline, `tmux-spaces.sh`, `install.sh --claude-dir`).
 
 ## Goals / Non-Goals
 
@@ -32,7 +32,7 @@ On drangleic-claude, `~claudebot/.tmux.conf` sets `CLAUDE_CONFIG_DIR` to `~/.cla
 
 **Decision.** At its start, before it takes any lock, the script runs `t show-environment -g CLAUDE_CONFIG_DIR`. When that prints `CLAUDE_CONFIG_DIR=<value>` with a non-empty value, the folder is that value; otherwise (no server, a variable not set or removed with `-`) it is `$HOME/.claude`. From the folder `F` it derives everything Claude Code derives: `CREDS="$F/.credentials.json"`, `CONF="$F/.claude.json"` (`$HOME/.claude.json` for the default folder), the locks `$F/.oauth_refresh.lock`, `$F.lock` and `$CONF.lock`, and on Darwin the service `Claude Code-credentials-<hash>` with `<hash>` the first 8 hex digits of `printf %s "$F" | shasum -a 256` when the variable is set. The value is used as tmux gives it, which is the string the panes' Claude Codes hash. Both modes use the same folder, so the snapshot the hub files and the switch it writes always agree.
 
-**Consequences.** On a machine without the variable, every path and name is the one the script uses today. On drangleic-claude, the hub stops reading and writing the bot's `~/.claude`. A Claude Code started outside tmux with the default folder (the bot) is no longer the hub's concern.
+**Consequences.** On a machine without the variable, every path and name is the one the script uses today. On bot-box, the hub stops reading and writing the bot's `~/.claude`. A Claude Code started outside tmux with the default folder (the bot) is no longer the hub's concern.
 
 Alternatives considered: the kit's `claude-dir` file (the owner chose the tmux environment: it is what the panes really get); a per-machine setting in the panel (one more thing to keep in step by hand).
 
@@ -52,7 +52,7 @@ Alternatives considered: deleting the file (Claude Code would re-read the Keycha
 
 **Decision.** `HOOK` takes the folder as D1 does: `t show-environment -g CLAUDE_CONFIG_DIR`, the value after `CLAUDE_CONFIG_DIR=` when it is not empty, `$HOME/.claude` otherwise. The script already defines `t` for the SSH agent search. The project's settings keep their places.
 
-**Consequences.** On a machine without the variable nothing changes. On drangleic-claude a hook declared in `~/.claude-twb` (directly or through an enabled plugin) creates the worktree, and one declared only in `~/.claude` (which the panes' Claude Code does not read) no longer does.
+**Consequences.** On a machine without the variable nothing changes. On bot-box a hook declared in `~/.claude-twb` (directly or through an enabled plugin) creates the worktree, and one declared only in `~/.claude` (which the panes' Claude Code does not read) no longer does.
 
 ## Risks / Trade-offs
 
@@ -65,4 +65,4 @@ Alternatives considered: deleting the file (Claude Code would re-read the Keycha
 
 Deploying the hub is enough: the script travels with each command. Rollback is the previous image.
 
-On drangleic-claude, the earlier switches wrote the hub's logins into the bot's `~/.claude`. After the deploy the hub reads `~/.claude-twb` and shows the panes' real account. The login it handed to the bot comes back to it as a spare, while the bot keeps a copy with the same refresh token, and a refresh token works once. The owner gives the bot its own login again (`/login` in the bot's Claude Code, outside the panel's tmux). If the bot renewed the shared login first, the hub's copy is dead, and the panel asks for a new login of that account, as it already does for a dead login.
+On bot-box, the earlier switches wrote the hub's logins into the bot's `~/.claude`. After the deploy the hub reads `~/.claude-twb` and shows the panes' real account. The login it handed to the bot comes back to it as a spare, while the bot keeps a copy with the same refresh token, and a refresh token works once. The owner gives the bot its own login again (`/login` in the bot's Claude Code, outside the panel's tmux). If the bot renewed the shared login first, the hub's copy is dead, and the panel asks for a new login of that account, as it already does for a dead login.

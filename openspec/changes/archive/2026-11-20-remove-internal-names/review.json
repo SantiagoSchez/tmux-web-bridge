@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "pr": 67,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "edaf5e01026a218536d30956cec40c41933aa8fa",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T14:50:29.884Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 2
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "docs/dev-standards/base-standards.md",
+      "symbol": null,
+      "title": "The public-repository principle does not record the values the owner chose to keep (user name in test paths and SSH targets, Mac models, bot user name)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "edaf5e01026a218536d30956cec40c41933aa8fa",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The reviewer is right that once the change is archived, the principle's ban on naming 'people' does not record the kept exceptions (owner user name, bot user name), so a later review could flag them, but the fix is a single sentence that belongs in this PR's final comment, not in a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "NITPICK",
+      "path": "openspec/changes/remove-internal-names/proposal.md",
+      "symbol": null,
+      "title": "Proposal describes linux-box as the hub while design D1 assigns hub-box to the hub's container, and hub-box is used nowhere",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "edaf5e01026a218536d30956cec40c41933aa8fa",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "NITPICK",
+      "path": "openspec/changes/remove-internal-names/proposal.md",
+      "symbol": null,
+      "title": "Proposal lists GitHub texts as edited that task 7.1 records as left unchanged",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "edaf5e01026a218536d30956cec40c41933aa8fa",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

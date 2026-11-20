@@ -37,7 +37,7 @@ The `web` layer has no test runner: its logic is covered by group 3, and the com
     - Changing `@win_state` to `done` with the tooltip open: it showed «✅ Terminado · ahora» by itself. Killing the window with its tooltip open closed it (the row moving up under the mouse then opened its own after 1 s, as expected).
     - Closes on leave, Escape, a click (the window opened: `#/h/local/w/2`) and a scroll of the list. The tool's `mouse wheel` did not scroll the list (its `scrollTop` stayed 0), so the scroll was made from the page.
     - At 520 px high, the tooltip of a low row moved up to stay inside the screen.
-    - The solo space shows its full name above its window's details; the header shows «universia-course-platform» and «4 ventanas»; the folded list's button shows its window's details with its pane highlighted and has no `title`.
+    - The solo space shows its full name above its window's details; the header shows «shop-platform» and «4 ventanas»; the folded list's button shows its window's details with its pane highlighted and has no `title`.
     - No `title` left in `.win-where` or on `.session-toggle`.
     - A `pointerenter` with `pointerType: 'touch'` opens nothing after 1.3 s; the same with `'mouse'` opens it. Headless Chrome reports no `any-hover`, which is why the check is on `pointerType` alone.
 

@@ -19,12 +19,12 @@ test('a Claude window in a worktree gives every detail in full, with no active m
     name: 'feat/484-revisar',
     icon: '🙋',
     state: 'question',
-    panes: [pane({ command: 'claude', state: 'question', since: 1_000, path: `${HOME}/Proyectos/universia/.claude/worktrees/${worktree}`, git: { worktree }, account: 'ana@example.com' })],
+    panes: [pane({ command: 'claude', state: 'question', since: 1_000, path: `${HOME}/Proyectos/shop/.claude/worktrees/${worktree}`, git: { worktree }, account: 'ana@example.com' })],
   });
   assert.deepEqual(windowDetails(w, { home: HOME }), {
     name: 'feat/484-revisar',
     state: { icon: '🙋', label: 'Pregunta', since: 1_000 },
-    panes: [{ index: 0, active: false, marked: false, command: 'claude', place: { kind: 'worktree', name: worktree }, path: `~/Proyectos/universia/.claude/worktrees/${worktree}`, account: 'ana@example.com' }],
+    panes: [{ index: 0, active: false, marked: false, command: 'claude', place: { kind: 'worktree', name: worktree }, path: `~/Proyectos/shop/.claude/worktrees/${worktree}`, account: 'ana@example.com' }],
   });
 });
 
@@ -71,6 +71,6 @@ test('a pane can be marked, as the rail does for the pane it shows', () => {
 });
 
 test('a space gives its full name and how many windows it has', () => {
-  const s: SessionInfo = { id: '$1', name: 'universia-course-platform', created: 0, num: 4, icon: '', attached: 0, windows: [windowOf({}), windowOf({ id: '@2' }), windowOf({ id: '@3' })] };
-  assert.deepEqual(spaceDetails(s), { name: 'universia-course-platform', windows: 3 });
+  const s: SessionInfo = { id: '$1', name: 'shop-platform', created: 0, num: 4, icon: '', attached: 0, windows: [windowOf({}), windowOf({ id: '@2' }), windowOf({ id: '@3' })] };
+  assert.deepEqual(spaceDetails(s), { name: 'shop-platform', windows: 3 });
 });

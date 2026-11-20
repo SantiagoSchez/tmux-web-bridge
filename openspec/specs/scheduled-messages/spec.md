@@ -12,9 +12,9 @@ When a scheduled message's date and time arrive, the hub SHALL launch its prompt
 
 #### Scenario: A message reaches its time
 
-- **GIVEN** a scheduled message «Repasar tests» for Friday at 10:00 on machine `drangleic` and folder `twb`, with no worktree
+- **GIVEN** a scheduled message «Repasar tests» for Friday at 10:00 on machine `linux-box` and folder `twb`, with no worktree
 - **WHEN** Friday 10:00 arrives
-- **THEN** the hub opens one new window named «Repasar tests» in the space of `twb` on `drangleic` and launches Claude Code there with the prompt
+- **THEN** the hub opens one new window named «Repasar tests» in the space of `twb` on `linux-box` and launches Claude Code there with the prompt
 - **AND** the message is recorded as launched, with that window
 - **AND** the activity list shows the launch as coming from a scheduled message
 
@@ -161,7 +161,7 @@ The right panel SHALL show a «Programados» section above the scratchpads while
 
 #### Scenario: A pending message in the panel
 
-- **GIVEN** a pending message «Repasar tests» for Friday 10:00 on `drangleic` › `twb`
+- **GIVEN** a pending message «Repasar tests» for Friday 10:00 on `linux-box` › `twb`
 - **WHEN** the owner looks at the right panel
 - **THEN** the «Programados» section shows it with its time, machine and folder, and ways to edit and cancel it
 
@@ -183,5 +183,5 @@ Each machine in the sidebar SHALL have a button, next to the one that opens a ne
 
 #### Scenario: The sidebar button
 
-- **WHEN** the owner presses the scheduling button next to machine `drangleic` in the sidebar
-- **THEN** the form opens with `drangleic` as its machine
+- **WHEN** the owner presses the scheduling button next to machine `linux-box` in the sidebar
+- **THEN** the form opens with `linux-box` as its machine

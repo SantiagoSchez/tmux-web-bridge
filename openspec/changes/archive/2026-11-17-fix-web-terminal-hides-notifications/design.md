@@ -68,4 +68,4 @@ Alternatives considered: extending `scripts/test-kit-update.sh` (mixes install a
 
 ## Migration Plan
 
-No data or contract migration. Merge deploys the hub (log lines). Cut a release so machines can update the kit; on `drangleic-dev`, update with «Actualizar» and repeat the 60 s check with the web terminal: the ✅ must arrive. Rollback: revert the merge and update the kit to the previous tag.
+No data or contract migration. Merge deploys the hub (log lines). Cut a release so machines can update the kit; on `dev-box`, update with «Actualizar» and repeat the 60 s check with the web terminal: the ✅ must arrive. Rollback: revert the merge and update the kit to the previous tag.

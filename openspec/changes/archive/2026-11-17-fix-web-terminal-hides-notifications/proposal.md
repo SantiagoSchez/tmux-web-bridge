@@ -2,7 +2,7 @@
 
 ## Why
 
-Push notifications from Linux machines are lost when the pane is open in the panel's web terminal and the owner stops looking shortly after typing (phone locked, tab in the background). The host kit counts the web terminal's tmux client as "you are in front of the pane", posts `viewed: true` to the hub, and the hub drops the notice without a trace. Confirmed on 2026-11-17 on `drangleic-dev`: 60 s after typing in the web terminal with the phone locked, no ✅ arrived; after 150 s it did. GitHub Issue #43: https://github.com/SantiagoSchez/tmux-web-bridge/issues/43
+Push notifications from Linux machines are lost when the pane is open in the panel's web terminal and the owner stops looking shortly after typing (phone locked, tab in the background). The host kit counts the web terminal's tmux client as "you are in front of the pane", posts `viewed: true` to the hub, and the hub drops the notice without a trace. Confirmed on 2026-11-17 on `dev-box`: 60 s after typing in the web terminal with the phone locked, no ✅ arrived; after 150 s it did. GitHub Issue #43: https://github.com/SantiagoSchez/tmux-web-bridge/issues/43
 
 ## What Changes
 

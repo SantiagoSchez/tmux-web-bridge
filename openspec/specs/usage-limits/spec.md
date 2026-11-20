@@ -104,20 +104,20 @@ While a machine holds a foreign reading under an account's email, the panel SHAL
 
 #### Scenario: Warning in the row and in the menu
 
-- **GIVEN** the statusline of `drangleic-claude` published a foreign reading under s2's email
+- **GIVEN** the statusline of `bot-box` published a foreign reading under s2's email
 - **WHEN** the user looks at s2's row
-- **THEN** the row shows ⚠, its tooltip names `drangleic-claude` and explains the problem
+- **THEN** the row shows ⚠, its tooltip names `bot-box` and explains the problem
 - **AND** s2's menu shows the same explanation
 
 #### Scenario: The warning goes away when the reading is corrected
 
-- **GIVEN** s2's row warns about a foreign reading from `drangleic-claude`
-- **WHEN** a Claude on `drangleic-claude` publishes, under s2's email, a reading that matches the hub's reading of s2
+- **GIVEN** s2's row warns about a foreign reading from `bot-box`
+- **WHEN** a Claude on `bot-box` publishes, under s2's email, a reading that matches the hub's reading of s2
 - **THEN** the warning disappears from s2's row and menu
 
 #### Scenario: The warning lasts as long as the reading
 
-- **GIVEN** s2's row warns about a foreign reading from `drangleic-claude`
+- **GIVEN** s2's row warns about a foreign reading from `bot-box`
 - **AND** no Claude on that machine publishes again under s2's email
 - **WHEN** hours pass while the reading's windows are still current
 - **THEN** the warning stays
