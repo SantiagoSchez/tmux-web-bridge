@@ -85,11 +85,13 @@
   - New area «Cambio automático de cuenta» in `docs/FEATURES.md` (12 sections, lines 526 to 581) and its line in the index; `ka features-check --strict` exit 0.
 - [x] 9.4 E2E: the project has no E2E suite; this step does not apply.
   - Not applicable: the project has no E2E suite.
-- [ ] 9.5 Human review: ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here.
+- [x] 9.5 Human review: ask the owner with `AskUserQuestion` who reviews the pull request, and record the answer here.
+  - The owner takes the pull request as good, without a manual review (answer of 2026-11-20).
 
 ## 10. Before the archive
 
-- [ ] 10.1 Run `ka features-check --strict` and verify the exit code is 0.
+- [x] 10.1 Run `ka features-check --strict` and verify the exit code is 0.
+  - `ka features-check --strict`: exit 0.
 
 ## Workflow follow-up
 
