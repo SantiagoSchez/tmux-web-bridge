@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "pr": 66,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "1a80ca7d44ae7f798d370627361e577caff0363d",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T14:08:45.309Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 3,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "host-kit/tmux-window-title.sh",
+      "symbol": "cmd_state",
+      "title": "The pause record is world-readable and holds cron prompts; design D2 misstates who can read it",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a80ca7d44ae7f798d370627361e577caff0363d",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The reviewer is right: the state folder is created with the default umask, so the .pause file, which now holds cron prompts and task descriptions, can be read by other users on the machine, and D2's claim about who can read it is wrong. These are the owner's own single-user machines and the fix is a one-line umask, so it belongs in the final comment rather than a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "docs/dev-standards/host-kit-standards.md",
+      "symbol": null,
+      "title": "The physical-path rule for /tmp test folders is not followed by scripts/test-window-title.sh",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a80ca7d44ae7f798d370627361e577caff0363d",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "The standard asks every /tmp test folder to use its physical path, but test-window-title.sh never goes through the shared-folder check that makes this matter, so nothing breaks; it is a one-line wording or pwd -P fix, to do now or drop.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "openspec/changes/fix-pause-only-for-waking-background-work/specs/push-notifications/spec.md",
+      "symbol": null,
+      "title": "No scenario for the session end removing the pause record",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a80ca7d44ae7f798d370627361e577caff0363d",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "Removing the record when the session ends is already in the requirement text and covered by scripts/test-window-title.sh; a missing scenario is a few lines of spec polish, not a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "NITPICK",
+      "path": "docs/dev-standards/host-kit-standards.md",
+      "symbol": null,
+      "title": "Only the fake lsappinfo reads the test's file; the fake osascript always answers false",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a80ca7d44ae7f798d370627361e577caff0363d",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

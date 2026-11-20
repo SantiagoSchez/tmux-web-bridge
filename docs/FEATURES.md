@@ -290,7 +290,12 @@ Cuando Claude Code termina en un panel, su ventana muestra ✅ hasta que lo ves.
 ### Una pausa a la espera de trabajo en segundo plano no avisa
 <!-- capability: push-notifications; requirement: an-end-of-turn-that-waits-for-background-work-sends-no-notice -->
 
-Claude Code a veces cierra el turno solo para esperar a algo que lo volverá a despertar: un subagente, un workflow, un monitor, un teammate, una sesión en la nube, una tarea MCP o la siguiente vuelta de un `/loop` o una espera programada. Eso no es terminar: no llega la notificación «Terminado» y la ventana sigue en 🔨. Cuando Claude acaba de verdad, sin nada pendiente, llega un único aviso y la ventana pasa a ✅. Un comando en segundo plano, como un servidor de desarrollo, no cuenta como espera: no termina nunca, y Claude sí puede estar esperándote. Con una versión de Claude Code que no dice qué sigue en marcha, todo fin de turno avisa, como antes.
+Claude Code a veces cierra el turno solo para esperar a algo que lo volverá a despertar: un subagente, un workflow, un monitor, un teammate, una sesión en la nube, una tarea MCP o la siguiente vuelta de un `/loop` o una espera programada. Eso no es terminar: no llega la notificación «Terminado» y la ventana sigue en 🔨. Cuando Claude acaba de verdad, sin nada pendiente, llega un único aviso y la ventana pasa a ✅. Solo cuentan como espera esos tipos de trabajo. Un comando en segundo plano, como un servidor de desarrollo, no cuenta: no termina nunca, y Claude sí puede estar esperándote. Tampoco cuentan el trabajo interno de Claude Code (como la consolidación de su memoria) ni un tipo de tarea que la máquina no conozca, porque nunca vuelven a despertar a Claude y la ventana se quedaría en 🔨 sin aviso. Con una versión de Claude Code que no dice qué sigue en marcha, todo fin de turno avisa, como antes.
+
+### Por qué una ventana sigue en 🔨 sin avisar
+<!-- capability: push-notifications; requirement: the-machine-records-what-held-back-a-finish-notice -->
+
+Cada vez que un fin de turno se trata como una pausa, la máquina guarda para ese panel qué la retuvo: las tareas en segundo plano y las esperas programadas que van a despertar a Claude. El registro está en la propia máquina, junto al estado del panel (un fichero `.pause`), y no lleva el texto de la respuesta de Claude. La siguiente pausa lo sustituye, y lo borran el final de verdad del turno y el cierre de la sesión de Claude Code. Así, si una ventana se queda en 🔨 sin que llegue «Terminado», se puede ver qué estaba esperando.
 
 ### Por qué no llegó una notificación
 <!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->

@@ -52,7 +52,8 @@
 
 ## 8. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 8.1 Run `/ka:update-features fix-pause-only-for-waking-background-work` for the modified and the added requirement of `push-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 8.1 Run `/ka:update-features fix-pause-only-for-waking-background-work` for the modified and the added requirement of `push-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - After round 1's gate passed on `1a80ca7` (3 suggestions, scored 5, 3 and 3; none offered as follow-up work). `docs/FEATURES.md`: «Una pausa a la espera de trabajo en segundo plano no avisa» rewritten (internal work and unknown types do not count) and «Por qué una ventana sigue en 🔨 sin avisar» added under «Notificaciones». `ka features-check --strict`: exit 0, 84 sections in sync.
 
 ## 9. E2E pipeline (mandatory step 7)
 
