@@ -45,7 +45,8 @@ The list of the original names and their replacements lives outside the reposito
 
 ## 8. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 8.1 Run `/ka:update-features remove-internal-names`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The catalogue holds none of the names, so the sections are expected to stay as they are.
+- [x] 8.1 Run `/ka:update-features remove-internal-names`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The catalogue holds none of the names, so the sections are expected to stay as they are.
+  - After round 1's gate passed on `edaf5e0`. The 8 modified requirements change only example names in their scenarios, which the catalogue does not quote, so their sections stay as they are; `docs/FEATURES.md` holds none of the names. `ka features-check --strict`: exit 0, 84 sections in sync.
 
 ## 9. E2E pipeline (mandatory step 7)
 
