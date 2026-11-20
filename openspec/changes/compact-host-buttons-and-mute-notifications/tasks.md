@@ -93,7 +93,7 @@
 
 ## 9. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 9.1 Run `/ka:update-features compact-host-buttons-and-mute-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The section «El botón del reloj de cada máquina» also describes the new icon, and the sections of «A message that cannot launch says so» and of the `[push]` log line name the mute.
+- [x] 9.1 Run `/ka:update-features compact-host-buttons-and-mute-notifications`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`. The section «El botón del reloj de cada máquina» also describes the new icon, and the sections of «A message that cannot launch says so» and of the `[push]` log line name the mute.
 
 ## 10. Human review (mandatory step 8)
 

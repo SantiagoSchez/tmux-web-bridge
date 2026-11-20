@@ -22,6 +22,22 @@
         "question": 0,
         "nitpick": 2
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "e9763335ace1deffa1afadad04b62351c35ef11c",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T16:03:05.879Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -51,8 +67,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "927be4d8cccf53dd16ea742004ea94ff7b7ff22e",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
