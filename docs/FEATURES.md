@@ -17,7 +17,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
-- [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo.
+- [Notificaciones](#notificaciones): cuándo te avisa el panel de una pregunta o de un turno terminado y cuándo se calla porque ya lo estás viendo o porque lo has silenciado.
 - [Foco del terminal](#foco-del-terminal): cuándo el terminal recibe el teclado sin que tengas que hacer clic en él.
 - [Cuentas de Claude](#cuentas-de-claude): dónde escribe el cambio de cuenta en cada máquina y cómo se guarda cada login en su cuenta.
 - [Pegar en el terminal](#pegar-en-el-terminal): qué hace la tecla de pegar del ordenador con un texto o una imagen.
@@ -300,7 +300,7 @@ Cada vez que un fin de turno se trata como una pausa, la máquina guarda para es
 ### Por qué no llegó una notificación
 <!-- capability: push-notifications; requirement: a-notice-the-hub-holds-back-leaves-a-log-line -->
 
-Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste) o es horario de descanso. Así se puede saber por qué no llegó una notificación concreta.
+Cada aviso que el servidor central recibe y no envía deja una línea `[push]` en su log con el motivo: ya lo has visto en la terminal, tienes el panel abierto en la web, tienes el panel a la vista en el dispositivo donde estás trabajando, la máquina que avisa no está en el panel (por ejemplo, porque la renombraste o la quitaste), las notificaciones están silenciadas con la campana o es horario de descanso. Si están silenciadas dentro del horario de descanso, la línea dice que están silenciadas. Así se puede saber por qué no llegó una notificación concreta.
 
 ### Horario de descanso: la franja
 <!-- capability: push-notifications; requirement: the-quiet-window-silences-push-notifications-on-its-days -->
@@ -326,6 +326,21 @@ El horario se activa y se desactiva con su interruptor. Desactivado, las notific
 <!-- capability: push-notifications; requirement: a-quiet-window-must-start-and-end-at-different-times -->
 
 Una franja que empieza y acaba a la misma hora (de 08:00 a 08:00) no se guarda: la pantalla explica que la franja no puede empezar y acabar a la misma hora, y el servidor central se queda con el horario que tenía. Lo mismo pasa con una hora o un día que no son válidos.
+
+### Silenciar las notificaciones un rato
+<!-- capability: push-notifications; requirement: the-owner-can-mute-push-notifications-for-a-while -->
+
+Para una reunión o una siesta, la campana de la barra superior silencia las notificaciones push sin tocar el horario de descanso. Al pulsarla sale un menú para elegir cuánto tiempo: 1, 2, 3 o 5 horas, o hasta nuevo aviso. El silencio lo guarda el servidor central y vale para todos los dispositivos: si silencias desde el móvil, el ordenador también lo muestra y ninguno recibe notificaciones. La hora de fin la calcula el servidor central con su propio reloj, y al llegar el silencio se acaba solo: si silencias 1 hora a las 15:00, una pregunta de Claude Code a las 16:00 ya avisa. Con «Hasta nuevo aviso» no acaba hasta que lo quitas.
+
+### La campana dice hasta cuándo y se quita con un toque
+<!-- capability: push-notifications; requirement: the-mute-button-says-until-when-and-unmutes-with-one-tap -->
+
+Mientras dura el silencio, la campana aparece tachada y dice hasta cuándo: «Silenciadas hasta las 18:00», «hasta mañana a las 02:00» o «hasta nuevo aviso». Un toque en ella quita el silencio al momento, en todos los dispositivos, y las notificaciones vuelven a llegar desde ese instante. Cuando el silencio acaba solo, la campana deja de estar tachada a esa hora, sin recargar el panel.
+
+### Qué silencia la campana
+<!-- capability: push-notifications; requirement: the-mute-covers-every-push-except-the-test -->
+
+El silencio calla lo mismo que el horario de descanso: las 🙋 preguntas, los 💬 permisos y los ✅ turnos terminados de Claude Code, y los avisos de que una automatización o un mensaje programado no se han podido lanzar. Los iconos de las ventanas, los pendientes y la Actividad siguen igual, así que el error de una automatización se ve en la Actividad aunque no llegue al móvil. La notificación de prueba de «Enviar prueba» llega siempre.
 
 ## Foco del terminal
 
@@ -453,7 +468,7 @@ Un lanzamiento sin tarjeta, como un worktree nuevo desde «Nuevo espacio» o «N
 ### El botón del reloj de cada máquina
 <!-- capability: scheduled-messages; requirement: each-machine-in-the-sidebar-opens-the-scheduling-form -->
 
-Cada máquina de la lista tiene, junto al «+» de «Nuevo espacio», un botón con un reloj: «Programar mensaje». Abre el formulario con esa máquina ya elegida. El formulario tiene los campos de una automatización: nombre, máquina, carpeta, prompt, worktree nuevo con su rama base y saltarse los permisos, y en lugar de un horario, una fecha y una hora.
+Cada máquina de la lista tiene, junto al «+» de «Nuevo espacio», un botón con un reloj despertador: «Programar mensaje». Abre el formulario con esa máquina ya elegida. El formulario tiene los campos de una automatización: nombre, máquina, carpeta, prompt, worktree nuevo con su rama base y saltarse los permisos, y en lugar de un horario, una fecha y una hora.
 
 ### Horas sugeridas por los límites de la cuenta
 <!-- capability: scheduled-messages; requirement: the-form-suggests-times-from-the-machine-s-account-limits -->
@@ -488,7 +503,7 @@ El servidor central apunta que está lanzando un mensaje antes de lanzarlo. Si s
 ### Cuando no se puede lanzar
 <!-- capability: scheduled-messages; requirement: a-message-that-cannot-launch-says-so -->
 
-Si el mensaje no se puede lanzar (la máquina no está conectada o ya no está en el panel, la carpeta ya no existe o el lanzamiento falla), el error queda en el resultado del mensaje y en la Actividad, y llega una notificación push diciendo que el mensaje programado no se ha podido lanzar. Dentro del horario de descanso esa notificación no llega, como cualquier otra.
+Si el mensaje no se puede lanzar (la máquina no está conectada o ya no está en el panel, la carpeta ya no existe o el lanzamiento falla), el error queda en el resultado del mensaje y en la Actividad, y llega una notificación push diciendo que el mensaje programado no se ha podido lanzar. Si las notificaciones están silenciadas con la campana, o es horario de descanso, esa notificación no llega, como cualquier otra, pero el error sigue en el resultado y en la Actividad.
 
 ### La sección «Programados»
 <!-- capability: scheduled-messages; requirement: the-panel-shows-the-scheduled-messages -->

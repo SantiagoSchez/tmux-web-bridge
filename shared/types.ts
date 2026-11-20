@@ -3,6 +3,7 @@
 
 import type { DictationButton } from './dictation.js';
 import type { KeybarButton } from './keybar.js';
+import type { MuteHours } from './mute.js';
 import type { Schedule } from './schedule.js';
 
 /** Claude/tmux pane states set by host-kit/tmux-window-title.sh (most urgent first). */
@@ -255,6 +256,15 @@ export interface QuietHours {
   allDay: number[];
 }
 
+/**
+ * The bell of the top bar: no push notification goes out while it lasts, on every device.
+ * Set by the hub on its own clock (ClientMessage `mute`). See shared/mute.ts.
+ */
+export interface NotificationMute {
+  /** Epoch ms when it stops applying (that instant is no longer muted); null: until further notice. */
+  until: number | null;
+}
+
 /** Settings of the whole hub (every device sees and changes the same ones). */
 export interface HubSettings {
   /**
@@ -309,6 +319,11 @@ export interface HubSettings {
   quietHours: QuietHours;
   /** The automatic account switch: its thresholds and the machines it is on for (Ajustes › Máquinas). */
   accountRotation: AccountRotationSettings;
+  /**
+   * The mute of the top bar's bell, or null when not muted. Only the hub sets it
+   * (ClientMessage `mute` and `unmute`): a settings patch cannot.
+   */
+  mute: NotificationMute | null;
 }
 
 /** A Claude account's general usage limit: the 5-hour one or the weekly one. */
@@ -694,6 +709,10 @@ export type ClientMessage =
   | { t: 'updateCheck'; enabled: boolean }
   | { t: 'updateDismiss'; version: string }
   | { t: 'settings'; settings: Partial<HubSettings> }
+  /** The top bar's bell: no push for that many hours (one of MUTE_HOURS), or until further notice (null). The hub sets the end. */
+  | { t: 'mute'; hours: MuteHours | null }
+  /** The bell again: pushes go out from now on. */
+  | { t: 'unmute' }
   | ({ t: 'action'; id: number; host: string } & ActionOp)
   | ({ t: 'account'; id: number } & AccountOp);
 

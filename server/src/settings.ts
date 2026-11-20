@@ -5,6 +5,7 @@ import { DEFAULT_DICTATION_SHORTCUT, DICTATION_TIMEOUTS } from '../../shared/dic
 import { parseShortcut, serializeShortcut } from '../../shared/shortcuts.js';
 import { baseName, DEFAULT_COMMAND, sameFolder, sanitizeCommand, sanitizeFolderList } from '../../shared/folders.js';
 import { DEFAULT_KEYBAR, KEYBAR_SCALE_DEFAULT, sanitizeKeybar, sanitizeKeybarScale } from '../../shared/keybar.js';
+import { isMuteHours, muteUntil, sanitizeMute } from '../../shared/mute.js';
 import { DEFAULT_QUIET_HOURS, sanitizeQuietHours } from '../../shared/quiet-hours.js';
 import { DEFAULT_ACCOUNT_ROTATION, sanitizeAccountRotation } from '../../shared/rotation.js';
 import { DEFAULT_TEMPLATE } from '../../shared/trello.js';
@@ -36,6 +37,7 @@ const DEFAULTS: HubSettings = {
   trelloPromptTemplate: DEFAULT_TEMPLATE,
   quietHours: DEFAULT_QUIET_HOURS,
   accountRotation: DEFAULT_ACCOUNT_ROTATION,
+  mute: null,
 };
 
 /** IP addresses (or ssh's from= patterns: CIDR, *), comma-separated; anything else is dropped. */
@@ -132,6 +134,7 @@ export class SettingsStore extends EventEmitter {
         hubUrls: sanitizeUrls(saved.hubUrls) ?? DEFAULTS.hubUrls,
         quietHours: sanitizeQuietHours(saved.quietHours) ?? DEFAULTS.quietHours,
         accountRotation: sanitizeAccountRotation(saved.accountRotation, DEFAULTS.accountRotation),
+        mute: sanitizeMute(saved.mute),
       };
       // Settings from before the default glossary: an empty one gets it, once.
       if (!seeded && !this.state.dictationGlossary.trim()) {
@@ -186,6 +189,27 @@ export class SettingsStore extends EventEmitter {
     this.state = next;
     this.save();
     this.emit('change', next);
+  }
+
+  /**
+   * The top bar's bell: no push for `hours` (one of MUTE_HOURS) from `now` on the hub's
+   * clock, or until further notice with null. Any other value, from a device, is ignored.
+   * Not in update(): a patch would carry an end computed on the device's clock.
+   */
+  mute(hours: unknown, now: number): void {
+    if (hours !== null && !isMuteHours(hours)) return;
+    this.set({ mute: muteUntil(hours, now) });
+  }
+
+  /** The bell again: pushes go out from now on. */
+  unmute(): void {
+    this.set({ mute: null });
+  }
+
+  private set(patch: Partial<HubSettings>): void {
+    this.state = { ...this.state, ...patch };
+    this.save();
+    this.emit('change', this.state);
   }
 
   /** A machine left the hub: its folders, command, Trello extension and automatic account switch go with it. */

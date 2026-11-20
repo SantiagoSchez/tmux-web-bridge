@@ -8,7 +8,7 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import type { WebSocket } from 'ws';
 import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
-import { isQuietAt } from '../../shared/quiet-hours.js';
+import { quietReason } from '../../shared/mute.js';
 import { branchNameProblem } from '../../shared/worktree.js';
 import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
@@ -78,7 +78,7 @@ const accounts = new AccountManager(new AccountStore(config.dataDir), hosts);
 const hostOrder = new HostOrder(config.dataDir, () => [...hosts.keys()]);
 const conns = new ConnectionRegistry();
 const settings = new SettingsStore(config.dataDir);
-const push = new PushService(config, () => isQuietAt(settings.value.quietHours, new Date()));
+const push = new PushService(config, () => quietReason(settings.value.mute, settings.value.quietHours, new Date()));
 const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
@@ -512,6 +512,12 @@ app.get('/ws', { websocket: true }, (ws, req) => {
           break;
         case 'settings':
           if (msg.settings && typeof msg.settings === 'object') settings.update(msg.settings);
+          break;
+        case 'mute':
+          settings.mute(msg.hours, Date.now());
+          break;
+        case 'unmute':
+          settings.unmute();
           break;
         case 'action': {
           if (!host) throw new Error('Máquina desconocida');

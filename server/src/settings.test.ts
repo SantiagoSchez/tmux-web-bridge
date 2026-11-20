@@ -272,3 +272,67 @@ test('a machine that leaves the hub loses its automatic switch', () =>
     store.forgetHost('linux-box');
     assert.deepEqual(new SettingsStore(dir).value.accountRotation.hosts, ['mac']);
   }));
+
+const NOW = new Date(2026, 10, 20, 15, 0).getTime();
+const HOUR = 3_600_000;
+
+test('a new hub is not muted, and a file from before the mute loads as not muted', () =>
+  withDir((dir) => {
+    assert.equal(new SettingsStore(dir).value.mute, null);
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ soloSpaces: false }));
+    assert.equal(new SettingsStore(dir).value.mute, null);
+  }));
+
+test('muting for some hours ends on the hub clock, tells its listeners and survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    const changes: unknown[] = [];
+    store.on('change', (v: { mute: unknown }) => changes.push(v.mute));
+    store.mute(2, NOW);
+    assert.deepEqual(store.value.mute, { until: NOW + 2 * HOUR });
+    assert.deepEqual(changes, [{ until: NOW + 2 * HOUR }]);
+    assert.deepEqual(new SettingsStore(dir).value.mute, { until: NOW + 2 * HOUR });
+  }));
+
+test('muting until further notice keeps no end', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.mute(null, NOW);
+    assert.deepEqual(new SettingsStore(dir).value.mute, { until: null });
+  }));
+
+test('a duration the bell does not offer changes nothing', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.mute(1, NOW);
+    for (const hours of [4, 0, '2', 24, undefined]) store.mute(hours, NOW);
+    assert.deepEqual(store.value.mute, { until: NOW + HOUR });
+  }));
+
+test('unmuting ends the mute, tells its listeners and survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.mute(null, NOW);
+    let told = false;
+    store.on('change', () => (told = true));
+    store.unmute();
+    assert.equal(store.value.mute, null);
+    assert.equal(told, true);
+    assert.equal(new SettingsStore(dir).value.mute, null);
+  }));
+
+test('a settings patch cannot mute or unmute', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({ mute: { until: null } });
+    assert.equal(store.value.mute, null);
+    store.mute(3, NOW);
+    store.update({ mute: null });
+    assert.deepEqual(store.value.mute, { until: NOW + 3 * HOUR });
+  }));
+
+test('a broken mute in the file loads as not muted', () =>
+  withDir((dir) => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ mute: { until: 'luego' } }));
+    assert.equal(new SettingsStore(dir).value.mute, null);
+  }));
