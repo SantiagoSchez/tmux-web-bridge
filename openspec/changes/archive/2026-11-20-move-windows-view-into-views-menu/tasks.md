@@ -56,11 +56,13 @@
 
 ## 8. Human review
 
-- [ ] 8.1 Ask the owner, with `AskUserQuestion`, who reviews the pull request, and record the answer here; never merge without the owner's yes.
+- [x] 8.1 Ask the owner, with `AskUserQuestion`, who reviews the pull request, and record the answer here; never merge without the owner's yes.
+  - The owner takes pull request 71 as good, without a manual review.
 
 ## 9. features-check before the archive
 
-- [ ] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0.
+- [x] 9.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; exit code 0.
+  - Exit 0, 101 sections verified.
 
 ## Workflow follow-up
 
