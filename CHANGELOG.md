@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.31.0 - 2026-11-20
+
+### Añadido
+
+- Añadido junto a cada cuenta de Claude, en la franja de límites, el número de sesiones libres que guarda el servidor central («·2»), las que permiten pasarle una máquina. El menú de la cuenta añade otra sesión suya con «Añadir una sesión de esta cuenta», y las cuentas nuevas se añaden en Ajustes › Máquinas con «Añadir una cuenta de Claude».
+
 ## 1.30.0 - 2026-11-20
 
 ### Añadido

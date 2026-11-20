@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "web",
-  "description": "Añadido junto al nombre de cada cuenta de Claude, en la franja de límites, el número de sesiones libres que guarda el servidor central («·2»). El menú de la cuenta añade otra sesión de esa misma cuenta con «Añadir una sesión de esta cuenta», y una cuenta nueva se añade desde Ajustes › Máquinas con «Añadir una cuenta de Claude»",
-  "issue": "72",
-  "breaking": false,
-  "pr": "73"
-}
