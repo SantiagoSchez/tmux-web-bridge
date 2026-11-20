@@ -13,6 +13,7 @@ import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
 import { Sheet } from './Sheet';
+import { AccountRotationSettings } from './AccountRotation';
 import { ExtTokenSettings, TrelloMachines } from './ExtToken';
 import { TrelloAccountSettings } from './Trello';
 import { AutomationSettings } from './Automations';
@@ -102,7 +103,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
   { id: 'shortcuts', label: 'Atajos', hint: 'Búsqueda, plegar, nota rápida y dictado' },
-  { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; lista de espacios, status line y actualizaciones' },
+  { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; cambio automático de cuenta, lista de espacios, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
   { id: 'notifications', label: 'Notificaciones', hint: 'Horario de descanso sin notificaciones push' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },
@@ -320,13 +321,14 @@ function DeviceSettings() {
   );
 }
 
-/** Ajustes › Máquinas: the hub's machines and, under them, what is the same for all of them. */
+/** Ajustes › Máquinas: the hub's machines, their automatic account switch and, under them, what is the same for all of them. */
 function MachineSettings() {
   // While a machine is added or edited, only its form (the same MachinesList: it stays mounted).
   const editing = !!machineEditing.value;
   return (
     <>
       <MachinesList />
+      {!editing && <AccountRotationSettings />}
       {!editing && <MachineWideSettings />}
     </>
   );

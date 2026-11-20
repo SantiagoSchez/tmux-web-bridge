@@ -307,6 +307,22 @@ export interface HubSettings {
   trelloPromptTemplate: string;
   /** When the hub sends no push notification, for every device. */
   quietHours: QuietHours;
+  /** The automatic account switch: its thresholds and the machines it is on for (Ajustes › Máquinas). */
+  accountRotation: AccountRotationSettings;
+}
+
+/** A Claude account's general usage limit: the 5-hour one or the weekly one. */
+export type UsageLimit = 'fiveHour' | 'sevenDay';
+
+/**
+ * When the hub switches a machine's Claude account on its own: once its account
+ * reaches `fiveHour` % of the 5-hour limit or `sevenDay` % of the weekly one (whole
+ * numbers, 1 to 100), on the machines listed in `hosts` (ids). See shared/rotation.ts.
+ */
+export interface AccountRotationSettings {
+  fiveHour: number;
+  sevenDay: number;
+  hosts: string[];
 }
 
 /** A folder of a machine added in the panel: «Nuevo espacio» opens a space there. */
@@ -908,13 +924,16 @@ export interface GitChanges {
 /**
  * What happened, for the panel's «Actividad»: a Claude asked, wanted permission or
  * finished (and how long it worked), a task was launched (from where), an automation
- * was skipped or failed, a scheduled message failed.
+ * was skipped or failed, a scheduled message failed, the hub switched a machine's
+ * Claude account on its own (or could not).
  */
 export interface ActivityEvent {
   id: number;
   /** Epoch milliseconds. */
   at: number;
-  kind: 'question' | 'attention' | 'done' | 'launch' | 'skipped' | 'error';
+  kind: 'question' | 'attention' | 'done' | 'launch' | 'skipped' | 'error' | 'account';
+  /** account: what the automatic account switch did on the machine. */
+  account?: ActivityAccount;
   host: string;
   hostName: string;
   /** The space's name. */
@@ -928,4 +947,18 @@ export interface ActivityEvent {
   source?: 'trello' | 'extension' | 'automation' | 'scheduled' | 'panel';
   /** launch: the worktree (or, from an automation or a scheduled message, its name); skipped and error: why (windowName is the automation's or the scheduled message's name). */
   text?: string;
+}
+
+/**
+ * An automatic account switch, with the accounts' aliases at the time: `to` without
+ * `error`, the machine went from `from` to `to`; no `to`, no account had margin and it
+ * stayed on `from`; `error`, the switch to `to` failed. `limit` is the limit of `from`
+ * that was passed and `pct` how far it was used.
+ */
+export interface ActivityAccount {
+  from: string;
+  to?: string;
+  limit: UsageLimit;
+  pct: number;
+  error?: string;
 }

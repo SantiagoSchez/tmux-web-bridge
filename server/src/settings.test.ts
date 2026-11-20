@@ -241,3 +241,34 @@ test('a broken quiet schedule in the file falls back to the default one', () =>
     writeFileSync(join(dir, 'settings.json'), JSON.stringify({ quietHours: { enabled: true, from: '25:00', to: '08:00', days: [5], allDay: [] } }));
     assert.deepEqual(new SettingsStore(dir).value.quietHours, DEFAULT_QUIET_HOURS);
   }));
+
+test('the automatic account switch starts at 90 % and 95 %, on no machine, and a change survives a restart', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    // The refinement's defaults: 90 % of the 5-hour limit, 95 % of the weekly one, on no machine.
+    assert.deepEqual(store.value.accountRotation, { fiveHour: 90, sevenDay: 95, hosts: [] });
+    store.update({ accountRotation: { fiveHour: 80, sevenDay: 90, hosts: ['linux-box'] } });
+    assert.deepEqual(new SettingsStore(dir).value.accountRotation, { fiveHour: 80, sevenDay: 90, hosts: ['linux-box'] });
+  }));
+
+test('an automatic switch threshold out of range keeps the previous one', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({ accountRotation: { fiveHour: 80, sevenDay: 90, hosts: [] } });
+    store.update({ accountRotation: { fiveHour: 150, sevenDay: 0, hosts: [] } });
+    assert.deepEqual(store.value.accountRotation, { fiveHour: 80, sevenDay: 90, hosts: [] });
+  }));
+
+test('a broken automatic switch in the file keeps only its valid fields', () =>
+  withDir((dir) => {
+    writeFileSync(join(dir, 'settings.json'), JSON.stringify({ accountRotation: { fiveHour: 'x', sevenDay: 70, hosts: 'mac' } }));
+    assert.deepEqual(new SettingsStore(dir).value.accountRotation, { fiveHour: 90, sevenDay: 70, hosts: [] });
+  }));
+
+test('a machine that leaves the hub loses its automatic switch', () =>
+  withDir((dir) => {
+    const store = new SettingsStore(dir);
+    store.update({ accountRotation: { fiveHour: 90, sevenDay: 95, hosts: ['linux-box', 'mac'] } });
+    store.forgetHost('linux-box');
+    assert.deepEqual(new SettingsStore(dir).value.accountRotation.hosts, ['mac']);
+  }));
