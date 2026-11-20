@@ -226,9 +226,10 @@ Los modelos más pequeños (Qwen3.5 0.8B y 2B) se probaron con dictados en espa�
 
 ## Cuentas de Claude
 
-El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con ellos lee el uso de todas, también de las que no tienen ningún Claude abierto, y puede pasar cualquier máquina de una cuenta a otra. Todo se gestiona desde la franja de límites:
+El servidor central guarda los inicios de sesión de tus cuentas de Claude. Con ellos lee el uso de todas, también de las que no tienen ningún Claude abierto, y puede pasar cualquier máquina de una cuenta a otra. Se gestionan desde la franja de límites y desde ⚙️ Ajustes › Máquinas:
 
-- **Las cuentas que ya usas aparecen solas.** El servidor central mira por SSH con qué cuenta está Claude Code en cada máquina (al arrancar y cada 10 minutos) y se queda con ella. Para añadir otra, pulsa el nombre de una cuenta › **Añadir otra cuenta**: se abre el login de Claude en otra pestaña y pegas el código que muestra, como con `/login`.
+- **Las cuentas que ya usas aparecen solas.** El servidor central mira por SSH con qué cuenta está Claude Code en cada máquina (al arrancar y cada 10 minutos) y se queda con ella. Para añadir otra, pulsa **Añadir una cuenta de Claude** en Ajustes › Máquinas: se abre el login de Claude en otra pestaña y pegas el código que muestra, como con `/login`.
+- **Sesiones libres**: el número junto al nombre de una cuenta (`·2`) dice cuántos inicios de sesión suyos guarda el servidor central sin que los use ninguna máquina. Para guardar otro, el menú de la cuenta tiene **Añadir una sesión de esta cuenta**.
 - **«Usar aquí»**, con una ventana abierta, pasa el Claude Code de esa máquina a esa cuenta (en pantalla ancha; **●** marca dónde está en uso). El nombre de cada cuenta abre su menú: las máquinas donde está en uso y «Usar en una máquina…», con la de la ventana abierta la primera; en el móvil, se cambia desde ahí.
 - **Sin reiniciar nada**: los Claude abiertos siguen con la cuenta nueva desde su siguiente mensaje (o en unos 30 segundos, en un Mac que guarde la sesión en el Llavero).
 

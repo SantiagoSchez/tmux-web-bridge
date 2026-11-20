@@ -103,7 +103,7 @@ function Toggle(props: { title: string; desc: ComponentChildren; on: boolean; di
 const SECTIONS: { id: SettingsTab; label: string; hint: string }[] = [
   { id: 'device', label: 'Dispositivo', hint: 'Tema, vista de la lista y notificaciones de este dispositivo' },
   { id: 'shortcuts', label: 'Atajos', hint: 'Búsqueda, plegar, nota rápida y dictado' },
-  { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; cambio automático de cuenta, lista de espacios, status line y actualizaciones' },
+  { id: 'machines', label: 'Máquinas', hint: 'Añadir, editar y quitar máquinas; cuentas de Claude y su cambio automático, lista de espacios, status line y actualizaciones' },
   { id: 'folders', label: 'Carpetas', hint: 'Las que ofrece «Nuevo espacio» en cada máquina' },
   { id: 'notifications', label: 'Notificaciones', hint: 'Horario de descanso sin notificaciones push' },
   { id: 'automations', label: 'Automatizaciones', hint: 'Prompts que se lanzan solos a su hora' },

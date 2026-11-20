@@ -73,8 +73,10 @@ function ClaudeLoginDialog({ d, close }: { d: Extract<Dialog, { kind: 'claudeLog
     if (!start || !code.trim() || busy) return;
     setBusy(true);
     setError(null);
+    // Read before the hub answers: its broadcast may list the new account by then.
+    const known = new Set((accountsInfo.value?.list ?? []).map((a) => a.id));
     try {
-      const r = await hub.account<{ alias: string; switched: boolean; other?: boolean }>({
+      const r = await hub.account<{ account: string; alias: string; switched: boolean; other?: boolean }>({
         op: 'loginFinish',
         state: start.state,
         code: code.trim(),
@@ -85,7 +87,7 @@ function ClaudeLoginDialog({ d, close }: { d: Extract<Dialog, { kind: 'claudeLog
       close();
       if (r.other) toast(`Has iniciado sesión con ${r.alias}, no con ${meant?.alias ?? 'la cuenta que tocaba'}: se queda guardada, sin cambiar nada`, 'error');
       else if (r.switched) toast(`${hostName} usa ahora ${r.alias}`);
-      else toast(meant ? `Sesión de ${r.alias} guardada` : `Cuenta ${r.alias} añadida`);
+      else toast(known.has(r.account) ? `Sesión de ${r.alias} guardada` : `Cuenta ${r.alias} añadida`);
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);

@@ -92,20 +92,29 @@ function pickHost(acc: ClaudeAccount, here?: string): void {
   };
 }
 
+/** The spare logins the hub keeps of an account, in words; undefined when it keeps none. */
+export function spareLabel(n: number): string | undefined {
+  if (n <= 0) return undefined;
+  return n === 1 ? '1 sesión libre' : `${n} sesiones libres`;
+}
+
 /**
  * An account's menu: where it is in use (as tags, however many machines there are),
- * switching a machine to it (picked in a second step), and rename, add, remove.
+ * switching a machine to it (picked in a second step), and rename, one more login of
+ * it (or a new one when every login stopped working), remove. A new account is added
+ * from Ajustes › Máquinas.
  */
 export function accountMenu(acc: ClaudeAccount, here?: string): void {
   const items: MenuItem[] = [];
   if (hosts.value.some((h) => !acc.activeOn.includes(h.id))) items.push({ label: 'Usar en una máquina…', icon: '○', run: () => pickHost(acc, here) });
-  if (acc.needsLogin) items.push({ label: 'Iniciar sesión otra vez', icon: '↻', run: () => (dialog.value = { kind: 'claudeLogin', account: acc.id }) });
+  const login = () => (dialog.value = { kind: 'claudeLogin', account: acc.id });
   items.push(
+    acc.needsLogin ? { label: 'Iniciar sesión otra vez', icon: '↻', run: login } : { label: 'Añadir una sesión de esta cuenta', icon: '＋', run: login },
     { label: 'Renombrar', icon: '✎', run: () => rename(acc) },
-    { label: 'Añadir otra cuenta', icon: '＋', run: addAccount },
     { label: 'Quitar del hub', icon: '✕', danger: true, disabled: acc.activeOn.length > 0, run: () => remove(acc) },
   );
-  const spare = acc.spare ? ` · ${acc.spare === 1 ? '1 sesión libre' : `${acc.spare} sesiones libres`}` : '';
+  const words = spareLabel(acc.spare);
+  const spare = words ? ` · ${words}` : '';
   const mislabelled = mislabelledWarning(acc);
   const top = (
     <>

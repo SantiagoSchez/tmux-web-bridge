@@ -129,6 +129,17 @@ test('a dead login is not handed out, and the account asks for a new one', withD
   assert.equal(store.info([]).list[0].needsLogin, true);
 }));
 
+test('a second login of a known account from the panel is one more spare of the same account', withDir((dir) => {
+  const store = new AccountStore(dir);
+  store.observe('mac', seen('max'));
+  store.addLogin(oauthAccount('max'), cred('max-2'), { alias: 'another-name' });
+  store.addLogin(oauthAccount('max'), cred('max-3'), {});
+  const list = store.info([]).list;
+  assert.equal(list.length, 1);
+  assert.equal(list[0].alias, 'max');
+  assert.equal(list[0].spare, 2);
+}));
+
 test('a login seen back on a machine is not also kept as spare', withDir((dir) => {
   const store = new AccountStore(dir);
   const acc = store.addLogin(oauthAccount('max'), cred('max'), {});
