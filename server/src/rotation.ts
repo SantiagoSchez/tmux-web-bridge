@@ -4,7 +4,7 @@
 // gathers what it needs, switches one machine at a time and reports what happened.
 
 import { decideRotation, failureKey, OFFLINE_REASON, RETRY_AFTER, type RotationMemory, rotationAccounts } from '../../shared/rotation.js';
-import type { AccountRotationSettings, AccountsInfo, ActivityAccount, RateLimits, UsageLimit } from '../../shared/types.js';
+import type { AccountRotationSettings, AccountsInfo, ActivityAccount, HostStatus, RateLimits, UsageLimit } from '../../shared/types.js';
 
 /** What the service reads and does, handed in by index.ts (and by the tests). */
 export interface RotationDeps {
@@ -12,8 +12,8 @@ export interface RotationDeps {
   accounts(): AccountsInfo;
   /** The statusline readings the hub kept (none foreign), of every machine. */
   readings(): RateLimits[];
-  /** The machines in the panel's order. */
-  machines(): { id: string; connected: boolean }[];
+  /** The machines in the panel's order, with their connection's status. */
+  machines(): { id: string; status: HostStatus }[];
   /** AccountManager.switchHost. */
   switchHost(host: string, account: string): Promise<void>;
   /** Into «Actividad» and a push notification. */
@@ -80,7 +80,11 @@ export class AccountRotation {
     for (;;) {
       const info = this.deps.accounts();
       const now = this.deps.now?.() ?? Math.floor(Date.now() / 1000);
-      const machines = this.deps.machines().map((m) => ({ id: m.id, account: info.hosts[m.id] ?? null, connected: m.connected, switching: info.switching.includes(m.id) }));
+      // A machine still connecting is not decided: every machine connects again when the hub starts, and its connection calls evaluate().
+      const machines = this.deps
+        .machines()
+        .filter((m) => m.status !== 'connecting')
+        .map((m) => ({ id: m.id, account: info.hosts[m.id] ?? null, connected: m.status === 'ok', switching: info.switching.includes(m.id) }));
       this.notice(machines);
       const action = decideRotation({
         settings: this.deps.settings(),

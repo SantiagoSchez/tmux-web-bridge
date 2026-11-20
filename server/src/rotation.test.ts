@@ -9,7 +9,7 @@ import {
   rotationAccounts,
   sanitizeAccountRotation,
 } from '../../shared/rotation.js';
-import type { AccountRotationSettings, AccountsInfo, AccountUsage, ActivityAccount, ClaudeAccount, RateLimits, UsageWindow } from '../../shared/types.js';
+import type { AccountRotationSettings, AccountsInfo, AccountUsage, ActivityAccount, ClaudeAccount, HostStatus, RateLimits, UsageWindow } from '../../shared/types.js';
 import { checkLimits } from './limits-check.js';
 import { AccountRotation, rotationNotice } from './rotation.js';
 
@@ -262,7 +262,7 @@ test('a machine already handled in this round, or being switched, is passed over
  * readings go through checkLimits, as index.ts does.
  */
 function fakeHub(accounts: ClaudeAccount[], hosts: Record<string, string | null>, settings: AccountRotationSettings) {
-  const state = { accounts, hosts, settings, connected: new Set(Object.keys(hosts)), now: NOW, limits: {} as Record<string, RateLimits[]> };
+  const state = { accounts, hosts, settings, status: Object.fromEntries(Object.keys(hosts).map((h) => [h, 'ok'])) as Record<string, HostStatus>, now: NOW, limits: {} as Record<string, RateLimits[]> };
   const switches: [string, string][] = [];
   const reports: { host: string; event: ActivityAccount }[] = [];
   let failWith: string | null = null;
@@ -278,7 +278,7 @@ function fakeHub(accounts: ClaudeAccount[], hosts: Record<string, string | null>
     settings: () => state.settings,
     accounts: info,
     readings: () => [...checkLimits(snapshots(), info().list, state.now).kept.values()].flat(),
-    machines: () => Object.keys(state.hosts).map((id) => ({ id, connected: state.connected.has(id) })),
+    machines: () => Object.keys(state.hosts).map((id) => ({ id, status: state.status[id] })),
     switchHost: (host, to) => {
       // Rounds that never end would switch without limit: past a few tries, fail without emitting the change that starts another round.
       if (switches.length >= 5) return Promise.reject(new Error('demasiados cambios'));
@@ -386,9 +386,9 @@ test('a switch that keeps failing is tried once per event and again after 5 minu
 
 test('a failure with another reason is reported too', async () => {
   const hub = fakeHub([account('s1', { usage: hubUsage(95, 10), spare: 0 }), account('s2', { usage: hubUsage(10, 10) })], { 'linux-box': 's1' }, ON(['linux-box']));
-  hub.state.connected.clear();
+  hub.state.status['linux-box'] = 'error';
   await hub.rotation.evaluate();
-  hub.state.connected.add('linux-box');
+  hub.state.status['linux-box'] = 'ok';
   hub.fail('El Llavero no deja escribir');
   await hub.rotation.evaluate();
   await settle();
@@ -469,11 +469,22 @@ test('a switch that leaves the machine on its account is not repeated in the sam
 
 test('a machine not connected is reported once and not switched', async () => {
   const hub = fakeHub([account('s1', { usage: hubUsage(95, 10), spare: 0 }), account('s2', { usage: hubUsage(10, 10) })], { 'linux-box': 's1' }, ON(['linux-box']));
-  hub.state.connected.clear();
+  hub.state.status['linux-box'] = 'error';
   await hub.rotation.evaluate();
   await hub.rotation.evaluate();
   assert.deepEqual(hub.switches, []);
   assert.deepEqual(hub.reports, [{ host: 'linux-box', event: { from: 's1', to: 's2', limit: 'fiveHour', pct: 95, error: 'sin conexión' } }]);
+});
+
+test('a machine still connecting is not decided until it connects', async () => {
+  const hub = fakeHub([account('s1', { usage: hubUsage(95, 10), spare: 0 }), account('s2', { usage: hubUsage(10, 10) })], { 'linux-box': 's1' }, ON(['linux-box']));
+  hub.state.status['linux-box'] = 'connecting';
+  await hub.rotation.evaluate();
+  assert.deepEqual(hub.reports, [], 'no false «sin conexión» while it connects');
+  assert.deepEqual(hub.switches, []);
+  hub.state.status['linux-box'] = 'ok';
+  await hub.rotation.evaluate();
+  assert.deepEqual(hub.switches, [['linux-box', 's2']]);
 });
 
 test('calls while a decision runs join it, and what changed meanwhile is decided in it', async () => {

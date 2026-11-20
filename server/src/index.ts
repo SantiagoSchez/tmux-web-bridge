@@ -90,7 +90,7 @@ const rotation = new AccountRotation({
   settings: () => settings.value.accountRotation,
   accounts: () => accounts.info,
   readings: () => [...checkNow().kept.values()].flat(),
-  machines: () => hostOrder.list.map((id) => ({ id, connected: hosts.get(id)?.snapshot.status === 'ok' })),
+  machines: () => hostOrder.list.map((id) => ({ id, status: hosts.get(id)?.snapshot.status ?? 'connecting' })),
   switchHost: (host, account) => accounts.switchHost(host, account),
   report: reportRotation,
 });

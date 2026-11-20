@@ -258,6 +258,12 @@ When an automatic switch fails (the machine is not connected, the spare login no
 - **WHEN** the hub decides several times
 - **THEN** `linux-box` keeps its account, and «Actividad» shows a single failure with the reason
 
+#### Scenario: A machine still connecting
+
+- **GIVEN** the hub has just started and `linux-box`, over a threshold with a target available, is still connecting
+- **WHEN** the hub decides
+- **THEN** it reports no failure for `linux-box`, and decides it once it connects
+
 #### Scenario: It works on a later try
 
 - **GIVEN** the hub reported a failed automatic switch of `linux-box`
