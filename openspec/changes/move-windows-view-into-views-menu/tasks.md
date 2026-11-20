@@ -38,15 +38,21 @@
   - `README.md`: «Actividad» and «Vista de ventanas» now say they are in the «Más vistas» menu; the old line placed «Actividad» beside the windows view's button.
 - [x] 5.2 Add a changelog entry in es-ES with `/ka:changelog` (`-t changed -s web --issue 70`), since a flow the user sees changes; verify the file under `changelogs/unreleased/`.
   - `changelogs/unreleased/20261120T181850556-feature-70-llevar-la-vista-de-ventanas-al-menu-mas-vistas.json`.
-- [ ] 5.3 Run `/opsx:verify`, commit with `/ka:commit --pr`, and go through the bounded review loop (`/ka:review-pr`, `ka review-rounds record`, `ka review-rounds gate`) until the gate passes; bring `master` in with a merge of `origin/master`, never a rebase with a forced push.
+- [x] 5.3 Run `/opsx:verify`, commit with `/ka:commit --pr`, and go through the bounded review loop (`/ka:review-pr`, `ka review-rounds record`, `ka review-rounds gate`) until the gate passes; bring `master` in with a merge of `origin/master`, never a rebase with a forced push.
+  - `/opsx:verify`: both requirements implemented, design followed; only the workflow tasks after it were open.
+  - Pull request 71 opened; round 1 (full review of `47bfbb2`): no blocker, three suggestions; `ka review-rounds gate` passed.
+  - `ka-evaluator` scores: R1-01 4, R1-02 5, R1-03 3; none reaches 8, R1-02 goes into the final review comment.
+  - `master` had no new commits since the branch started, so no merge was needed.
 
 ## 6. Feature catalogue
 
-- [ ] 6.1 Run `/ka:update-features move-windows-view-into-views-menu` to add the `top-bar-views` area to `docs/FEATURES.md`, then `ka features-check --strict` (exit 0), and commit with `/ka:commit`.
+- [x] 6.1 Run `/ka:update-features move-windows-view-into-views-menu` to add the `top-bar-views` area to `docs/FEATURES.md`, then `ka features-check --strict` (exit 0), and commit with `/ka:commit`.
+  - New area «Vistas de la barra», with its index line and one section per requirement; `ka features-check --strict`: exit 0, 101 sections verified.
 
 ## 7. E2E pipeline
 
-- [ ] 7.1 Record that the project has no E2E suite, so this step does not apply.
+- [x] 7.1 Record that the project has no E2E suite, so this step does not apply.
+  - `ka scope`: the project has no E2E suite.
 
 ## 8. Human review
 

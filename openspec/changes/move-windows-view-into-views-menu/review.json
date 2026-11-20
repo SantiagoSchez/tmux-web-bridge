@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "pr": 71,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "47bfbb243c45c0f72e1c93e1457153012e842d6a",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-20T18:22:37.153Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 3,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "SUGGESTION",
+      "path": "web/src/styles.css",
+      "symbol": null,
+      "title": "Comments still describe the removed grid button (styles.css:3125, 3141; icons.tsx:87)",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "47bfbb243c45c0f72e1c93e1457153012e842d6a",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 4,
+      "scoreReason": "The reviewer is right: styles.css:3125 and 3141 and the IconChevronDown docstring still describe the removed grid button, but rewording three comments is a quick edit to do now on this branch, not a separate work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Header.tsx",
+      "symbol": "Header",
+      "title": "aria-pressed on a menu button mixes toggle and menu-button semantics",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "47bfbb243c45c0f72e1c93e1457153012e842d6a",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The claim holds, since the chevron carries both aria-haspopup=\"menu\" and aria-pressed and is announced as a toggle, but the impact for screen-reader users is minor, the owner asked for aria-pressed in the Issue 70 refinement, and changing it means reopening the spec and D2, so it belongs in the final review comment rather than a work item.",
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "web/src/styles.css",
+      "symbol": null,
+      "title": "The chevron's 22/18 px width departs from the --tap touch-target rule without an exception in web-standards",
+      "origin": "pre-existing",
+      "round": 1,
+      "sha": "47bfbb243c45c0f72e1c93e1457153012e842d6a",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 3,
+      "scoreReason": "The narrow chevron width predates this PR and D2 records it as the owner's choice, so the only open action is a one-line exception in web-standards.md:35, which is too small to track as an item.",
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}
