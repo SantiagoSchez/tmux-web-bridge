@@ -1,6 +1,7 @@
 // What the panel tells about a window or a space when the mouse rests on it: every detail
 // the list cuts with «…», whole. Plain data, so the panel only lays it out.
 
+import { changeFacts } from './change-progress.js';
 import { homePath } from './folders.js';
 import type { PaneState, SessionInfo, WindowInfo } from './types.js';
 
@@ -27,6 +28,8 @@ export interface PaneDetails {
   path?: string;
   /** The Claude account of the Claude Code in it. */
   account?: string;
+  /** The active OpenSpec changes of its repository: each one's full name and what is known of it («7/23», «PR #74»…). */
+  changes?: { name: string; facts: string[] }[];
 }
 
 export interface WindowDetails {
@@ -55,6 +58,7 @@ export function windowDetails(window: WindowInfo, opts: { home: string; hostName
     if (p.git) d.place = p.git.worktree !== undefined ? { kind: 'worktree', name: p.git.worktree } : { kind: 'branch', name: p.git.branch };
     if (p.path) d.path = homePath(p.path, opts.home);
     if (p.account) d.account = p.account;
+    if (p.changes?.length) d.changes = p.changes.map((c) => ({ name: c.name, facts: changeFacts(c) }));
     out.panes.push(d);
   }
   return out;

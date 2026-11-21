@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadido en cada ventana el estado de los cambios de OpenSpec de su repositorio cuando usa el harness koalarnes: una línea por cambio con las tareas hechas, la PR, la ronda de revisión y los bloqueantes abiertos, en la lista, en Pendientes y en el recuadro de detalles; la cabecera de la ventana abre sus tareas y el menú ··· su propuesta",
+  "issue": "74",
+  "breaking": false
+}

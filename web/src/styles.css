@@ -1210,6 +1210,26 @@ body.dragging-host * {
   direction: rtl;
   text-align: left;
 }
+/* One line per active OpenSpec change of the window's repository, under its worktree line. */
+.change-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.change-line {
+  color: var(--subtext0);
+  font-size: 12px;
+}
+.tree.compact .card-body {
+  flex-wrap: wrap;
+}
+.tree.compact .card-body .change-lines {
+  flex-basis: 100%;
+}
+/* The window header's button of a change: its tasks, shaped like the ± one next to it. */
+.wv-change {
+  color: var(--subtext0);
+}
 .git-icon {
   display: inline-flex;
   vertical-align: -2px;

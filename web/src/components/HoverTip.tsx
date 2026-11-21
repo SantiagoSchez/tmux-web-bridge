@@ -23,7 +23,7 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 let waiting: string | null = null;
 
 /** How long the mouse rests on a row before its details show. */
-const TIP_DELAY = 1000;
+const TIP_DELAY = 200;
 
 function cancel(key: string): void {
   if (waiting === key) {
@@ -161,6 +161,13 @@ export function windowTip(hostId: string, windowId: string, opts: { space?: bool
                   {p.account}
                 </div>
               )}
+              {p.changes?.map((c) => (
+                <div key={c.name} class="tip-line">
+                  <span class="tip-label">Cambio</span>
+                  {c.name}
+                  {c.facts.length ? ` · ${c.facts.join(' · ')}` : ''}
+                </div>
+              ))}
             </li>
           ))}
         </ul>

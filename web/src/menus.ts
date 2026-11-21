@@ -5,7 +5,7 @@ import { goHome, openWindow, route } from './router';
 import { applyHostOrder, dialog, hosts, hubSettings, isSolo, multiHost, toast, wsStatus, type ClaudeResume, type MenuItem } from './state';
 import { kitBehind, kitUpdating, latestRelease } from './updates';
 import { hub } from './ws';
-import { openChanges } from './components/Files';
+import { openChanges, openFile } from './components/Files';
 
 // Tree actions shared by the list and the window view. Anything that destroys
 // something asks first.
@@ -262,8 +262,15 @@ export function windowMenu(
 ): void {
   const target = pane ?? window.panes.find((p) => p.active) ?? window.panes[0];
   const solo = isSolo(session);
+  // The proposal of each active OpenSpec change of the pane's repository (its tasks open from the header).
+  const proposals: MenuItem[] = target
+    ? (target.changes ?? [])
+        .filter((c) => c.proposal)
+        .map((c) => ({ label: `Propuesta de ${c.name}`, icon: '☑', run: () => openFile({ host: host.id, window: window.id, pane: target.id }, `${c.path}/proposal.md`) }))
+    : [];
   const items: MenuItem[] = [
     ...(inView ? [] : [{ label: 'Ficheros cambiados', icon: '±', run: () => openChanges({ host: host.id, window: window.id, pane: target?.id }) }]),
+    ...proposals,
     { label: 'Recargar ventana (.zshrc y Claude)', icon: '↻', run: () => reloadWindow(host, window) },
     ...(solo ? [{ label: 'Renombrar espacio', icon: '✎', run: () => renameSession(host, session) }] : []),
     { label: 'Renombrar ventana', icon: '✎', run: () => renameWindow(host, window) },
