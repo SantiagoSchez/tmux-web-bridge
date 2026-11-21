@@ -71,6 +71,10 @@
   - Ticking task 7 and setting the pane to ✅: the card showed 7/23 after 1.9 s.
   - 390×844: the card shows the whole line; the header fits «☑ 7/23» next to «+43 −0». Compact list: no change line in the rows; the card keeps them on their own lines.
   - Emoji show as boxes (no emoji font in the headless Chrome). Afterwards the processes were stopped by port and the test tmux through its wrapper; the last resurrect snapshot holds no test session.
+- [x] 7.6 (Review R1-01) In `web/src/styles.css`, let a compact card wrap only when it holds change lines (`.tree.compact .card-body:has(> .change-lines)`), so a card without changes keeps its title and its state on one line and cuts a long title with «…», as before this change.
+  - The rule now carries `:has(> .change-lines)`, with a comment saying why.
+- [x] 7.7 Check by hand, with the isolated hub of 7.5 in the compact list: a card with a long window name and no changes stays on one line with its title cut; a card with changes still shows each line on its own row. Record what was seen here.
+  - Same hub as 7.5, at 390×844 in the compact list, with two ✅ cards: «feature-484-revisar-la-funcionalidad-de-busqueda-avanzada-del-catalogo» (no changes) keeps title and state on one row (`nowrap`, title cut with «…»); «feat/74-estado» wraps and shows «☑ add-export» and «☑ 6/23 · PR #74 · ronda 2/3 · 1 bloqueante» on rows of their own. Processes stopped afterwards and both ports free.
 
 ## 8. Payload audit
 
@@ -96,24 +100,35 @@
 - [x] 10.3 After 5.4, update the convention of `docs/dev-standards/server-standards.md` that names `GitScanner.rescan()`: the scanner reads again on its own when it sees a pane change state. Run `ka docs-check`, the server tests and both typechecks again.
   - The convention now says `GitScanner.apply()` reads again when a pane it saw changes state, and that a new reason to read goes there with its test. Server 485 of 485, both typechecks pass, `ka docs-check` finds no dead reference; no `rescan` is left in code or docs.
 
-## 11. Feature catalogue (mandatory step 6, after the review loop's gate passes)
+## 11. Verification and the bounded review loop (between mandatory steps 5 and 6)
 
-- [ ] 11.1 Run `/ka:update-features openspec-change-status`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 11.1 Run `/opsx:verify openspec-change-status`.
+  - First run before the adversarial review: every requirement implemented. Second run after its fixes: 28 of 31 tasks, the three left come after the pull request; one warning (the requirement did not say that names with a tab or a line break are left out) fixed in the `change-progress` delta; `openspec validate --strict` valid.
+- [x] 11.2 Run `/ka:adversarial-review openspec-change-status`: the change adds a field to the tree payload.
+  - Its findings went back through the artifacts (design D2 and D5 revised, the `window-details` delta) and were fixed by tasks 3.3, 4.4, 4.5, 5.3, 5.4, 6.3 and 10.3; the LOW ones accepted are in the design's risks. Not run again: the fix touched no payload, wiring or migration.
+- [x] 11.3 Commit with `/ka:commit --pr` and open the pull request.
+  - PR #75; the changelog entries reference it.
+- [ ] 11.4 Run the bounded review loop: `/ka:review-pr`, `ka review-rounds record`, the QUESTION findings to the owner, and `ka review-rounds gate` until it passes; each blocker goes back through the artifacts, `/opsx:apply`, `/opsx:verify` and `/ka:commit`.
+  - Round 1 (full, `1a5fc8b`): R1-01 (compact cards wrap), R1-02 (this group was missing), R1-03 (the proposal's Impact) REQUIRED; R1-04 and R1-05 SUGGESTION; one NITPICK.
+- [ ] 11.5 Once the gate passes, send the pending suggestions to `ka-evaluator`, record the scores with `ka review-rounds score`, and offer those of 8 or more to the owner as follow-up issues.
 
-## 12. E2E pipeline (mandatory step 7)
+## 12. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [x] 12.1 The project has no E2E suite; this step does not apply. Record it here.
+- [ ] 12.1 Run `/ka:update-features openspec-change-status`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+
+## 13. E2E pipeline (mandatory step 7)
+
+- [x] 13.1 The project has no E2E suite; this step does not apply. Record it here.
   - Not applicable: `ka scope` reports no E2E suite.
 
-## 13. Human review (mandatory step 8)
+## 14. Human review (mandatory step 8)
 
-- [ ] 13.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
+- [ ] 14.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
 
-## 14. features-check before the archive (mandatory step 9)
+## 15. features-check before the archive (mandatory step 9)
 
-- [ ] 14.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [ ] 15.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
 
 ## Workflow follow-up
 
-- Between groups 10 and 11: `/opsx:verify`, `/ka:adversarial-review openspec-change-status` (the change adds a field to the tree payload), `/ka:commit` with the pull request, and the bounded review loop.
 - After the approval: `/opsx:archive`, `/ka:commit`, check the head, merge with `gh pr merge --squash --match-head-commit <sha>`, follow the `deploy` run, then offer the comment on Issue #74 and the removal of the worktree.

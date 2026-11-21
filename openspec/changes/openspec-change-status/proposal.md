@@ -32,7 +32,7 @@ Every end of a Claude Code turn marks its window ✅, so a window whose change i
 
 ## Impact
 
-- Layers: `server` (`server/src/git.ts`, `server/src/host.ts`, `shared/types.ts`, a pure parser in `shared/`) and `web` (`web/src/components/Tree.tsx`, `HoverTip.tsx`, `WindowView.tsx`, `web/src/menus.ts`, `web/src/styles.css`). Not `host-kit` nor `trello-extension`.
+- Layers: `server` (`server/src/git.ts`, the shell and the `review.json` parser in `server/src/change-progress.ts`, `shared/types.ts`, the shared line text in `shared/change-progress.ts`, `shared/window-details.ts`) and `web` (`web/src/components/Tree.tsx`, `HoverTip.tsx`, `WindowView.tsx`, `web/src/menus.ts`, `web/src/styles.css`). Not `host-kit` nor `trello-extension`.
 - Contract: `PaneInfo` in `shared/types.ts` gains an optional `changes` field, sent to the browsers in the tree (`ServerMessage` `tree`/`host` payloads). The only consumer is `web`; the Trello extension does not read panes.
 - External services: none. The hub reads files on each machine over the SSH connection it already uses for the scanner.
 - Dependency on the koalarnes harness's file formats: `tasks.md` checkboxes and `review.json` version 1. A new `review.json` version hides the review data until the panel learns it.

@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "pr": 75,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-21T11:06:54.284Z",
+      "counts": {
+        "critical": 0,
+        "required": 3,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "web/src/styles.css",
+      "symbol": null,
+      "title": "flex-wrap on every compact card splits long-titled cards into two lines",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/openspec-change-status/tasks.md",
+      "symbol": null,
+      "title": "Review loop missing as checkbox tasks; no evidence of /opsx:verify",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/openspec-change-status/proposal.md",
+      "symbol": null,
+      "title": "Impact lists host.ts and a shared parser that the diff does not have",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-04",
+      "severity": "SUGGESTION",
+      "path": "server/src/git.test.ts",
+      "symbol": "GitScanner.apply",
+      "title": "No test pins that apply() sets and deletes PaneInfo.changes",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-05",
+      "severity": "SUGGESTION",
+      "path": "server/src/change-progress.ts",
+      "symbol": "CHANGES_SCRIPT",
+      "title": "Review bytes capped per top folder, not per scan against the 4 MB maxBuffer",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-06",
+      "severity": "NITPICK",
+      "path": "web/src/components/WindowView.tsx",
+      "symbol": "WindowView",
+      "title": "Header button aria-label does not contain its visible text",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "outcome": null
+}

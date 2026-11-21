@@ -85,7 +85,7 @@ and `PaneInfo.changes?: ChangeProgress[]` (missing when there is none). Two pure
 
 ### D6. Where each place reads the changes
 
-**Decision.** The row uses the window's active pane (as its worktree line does), the card the pane it is about, the header and the ··· menu the pane the window works on (`paneOf` in the header; the menu's `target` pane), and the tooltip each pane. The row's lines go in a small `ChangeLines` component in `Tree.tsx`, under `WhereLine`, and follow its rule for the compact list; the card shows them always. The header's buttons sit before `ChangesButton` in `WindowView.tsx`; each calls `openFile({ host, window, pane }, `${change.path}/tasks.md`)`. The menu's entries call `openFile` with `${change.path}/proposal.md`.
+**Decision.** The row uses the window's active pane (as its worktree line does), the card the pane it is about, the header and the ··· menu the pane the window works on (`paneOf` in the header; the menu's `target` pane), and the tooltip each pane. The row's lines go in a small `ChangeLines` component in `Tree.tsx`, under `WhereLine`, and follow its rule for the compact list; the card shows them always. In the compact list a card keeps its title and state on one row; only a card holding change lines wraps (`:has(> .change-lines)`), so they take a row of their own and a card without changes still cuts a long title with «…». The header's buttons sit before `ChangesButton` in `WindowView.tsx`; each calls `openFile({ host, window, pane }, `${change.path}/tasks.md`)`. The menu's entries call `openFile` with `${change.path}/proposal.md`.
 
 ### D7. The tooltip waits 0.2 s
 

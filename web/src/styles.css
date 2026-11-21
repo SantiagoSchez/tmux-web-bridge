@@ -1220,7 +1220,9 @@ body.dragging-host * {
   color: var(--subtext0);
   font-size: 12px;
 }
-.tree.compact .card-body {
+/* Only a compact card with change lines wraps: they take a row of their own, and a card
+   without them keeps cutting a long title on one row. */
+.tree.compact .card-body:has(> .change-lines) {
   flex-wrap: wrap;
 }
 .tree.compact .card-body .change-lines {
