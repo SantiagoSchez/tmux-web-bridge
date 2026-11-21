@@ -4,6 +4,16 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.32.0 - 2026-11-21
+
+### Añadido
+
+- Añadido en cada ventana cómo va cada cambio de OpenSpec de su repositorio, si usa el harness de koalarnes: las tareas hechas, la PR, la ronda de revisión y los bloqueantes abiertos, en la lista, en Pendientes y en el recuadro de detalles. La cabecera de la ventana abre las tareas de cada cambio y el menú ··· su propuesta.
+
+### Cambiado
+
+- Cambiado el recuadro de detalles de la lista para que salga a los 0,2 s de dejar el ratón encima, en lugar de al segundo.
+
 ## 1.31.0 - 2026-11-20
 
 ### Añadido
