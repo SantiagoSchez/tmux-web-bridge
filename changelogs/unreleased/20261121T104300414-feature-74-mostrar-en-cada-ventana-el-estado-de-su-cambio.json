@@ -3,5 +3,6 @@
   "scope": "web",
   "description": "Cambiado el recuadro de detalles de la lista para que salga a los 0,2 s de dejar el ratón encima, en lugar de al segundo",
   "issue": "74",
-  "breaking": false
+  "breaking": false,
+  "pr": "75"
 }
