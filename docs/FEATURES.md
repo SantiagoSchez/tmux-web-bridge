@@ -26,6 +26,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Mensajes programados](#mensajes-programados): prompts que el servidor central lanza una sola vez, a la hora elegida, para gastar el límite que sobra.
 - [Cambio automático de cuenta](#cambio-automático-de-cuenta): cuándo y a qué cuenta pasa el servidor central una máquina que se acerca al límite de 5 horas o al semanal, y cómo lo avisa.
 - [Vistas de la barra](#vistas-de-la-barra): el menú «Más vistas» de la barra de la lista, con la vista de ventanas y «Actividad».
+- [Cambios de OpenSpec](#cambios-de-openspec): cómo va cada cambio activo del repositorio de una ventana (tareas hechas, PR, ronda de revisión y bloqueantes) y cómo abrir sus tareas y su propuesta.
 
 ## Terminal
 
@@ -417,10 +418,10 @@ En el ordenador, la tecla de pegar de cada sistema pega en el terminal lo que ha
 
 ## Detalles al pasar el ratón
 
-### Los detalles salen tras un segundo
+### Los detalles salen tras 0,2 segundos
 <!-- capability: window-details; requirement: a-window-s-details-show-after-the-mouse-rests-on-it -->
 
-La lista de espacios y ventanas corta con «…» los nombres, las ramas y las carpetas largas. Si dejas el ratón un segundo encima de una ventana, aparece a su lado un recuadro con sus detalles completos. Pasar el ratón por encima sin pararse no muestra nada. El recuadro siempre cabe en la pantalla, también en la última fila de la lista: si no cabe a la derecha de la ventana, sale a la izquierda, y nunca queda cortado por los bordes.
+La lista de espacios y ventanas corta con «…» los nombres, las ramas y las carpetas largas. Si dejas el ratón 0,2 segundos encima de una ventana, aparece a su lado un recuadro con sus detalles completos. Pasar el ratón por encima sin pararse no muestra nada. El recuadro siempre cabe en la pantalla, también en la última fila de la lista: si no cabe a la derecha de la ventana, sale a la izquierda, y nunca queda cortado por los bordes.
 
 ### Qué muestran los detalles de una ventana
 <!-- capability: window-details; requirement: a-window-s-details-list-the-window-and-each-of-its-panes -->
@@ -430,9 +431,10 @@ El recuadro muestra el nombre completo de la ventana, su estado con su icono y d
 - el comando que ejecuta;
 - el worktree de git o, si no está en uno, la rama;
 - la carpeta completa;
-- la cuenta de Claude que usa, si tiene una.
+- la cuenta de Claude que usa, si tiene una;
+- cada cambio de OpenSpec activo de su carpeta, con su nombre completo y lo que se sepa de él: las tareas hechas sobre el total, la PR, la ronda de revisión y los bloqueantes abiertos.
 
-Todo sale entero, sin cortar. En una ventana partida se marca el panel activo. Lo que el panel no sabe, como el estado de una ventana sin Claude o la rama de una carpeta fuera de git, simplemente no aparece.
+Todo sale entero, sin cortar. En una ventana partida se marca el panel activo. Lo que el panel no sabe, como el estado de una ventana sin Claude, la rama de una carpeta fuera de git o los cambios de un repositorio sin el harness, simplemente no aparece.
 
 ### Los detalles se actualizan solos
 <!-- capability: window-details; requirement: the-details-stay-current-while-they-show -->
@@ -442,7 +444,7 @@ Mientras el recuadro está abierto, refleja lo último que el panel sabe de esa 
 ### Espacios y barra plegada
 <!-- capability: window-details; requirement: a-space-s-and-a-pending-pane-s-details -->
 
-El mismo recuadro, con el mismo segundo de espera, sale en los demás sitios de la lista que cortan texto:
+El mismo recuadro, con la misma espera de 0,2 segundos, sale en los demás sitios de la lista que cortan texto:
 
 - En un espacio de una sola ventana, que ocupa una fila, muestra el nombre completo del espacio y los detalles de su ventana.
 - En la cabecera de un espacio, muestra su nombre completo y cuántas ventanas tiene.
@@ -610,3 +612,51 @@ La barra de la lista tiene una sola entrada a las vistas: la flecha «Más vista
 <!-- capability: top-bar-views; requirement: the-open-windows-view-shows-in-the-bar-and-in-the-menu -->
 
 En el ordenador, mientras la vista de ventanas está abierta junto a la lista, la flecha «Más vistas» sale resaltada y los lectores de pantalla la anuncian como pulsada. Su menú cambia la primera entrada por «Cerrar la vista de ventanas», que vuelve a donde estabas y quita el resaltado. En el móvil, la vista de ventanas ocupa toda la pantalla, encima de la barra, y se cierra con su propio botón «Volver a la lista».
+
+## Cambios de OpenSpec
+
+### Qué cambios se muestran
+<!-- capability: change-progress; requirement: the-active-changes-of-a-harness-repository-are-found -->
+
+En un repositorio que usa el harness de koalarnes (tiene `.claude/ka.json` o, si no, `.claude/koalarnes.json`), el panel conoce los cambios de OpenSpec activos de la carpeta de cada panel: cada carpeta de `openspec/changes/` salvo `archive/`, en orden alfabético y hasta 20. Un worktree con varios cambios los muestra todos. Una carpeta con un tabulador o un salto de línea en el nombre se deja fuera. Un repositorio sin la configuración del harness no muestra ningún cambio, aunque tenga carpeta `openspec/`.
+
+### Las tareas hechas sobre el total
+<!-- capability: change-progress; requirement: a-change-s-task-progress-comes-from-its-tasks-file -->
+
+El progreso de un cambio son las casillas marcadas de su `tasks.md` (`- [x]` o `- [X]`) sobre todas sus casillas, también las sangradas: con 7 marcadas y 16 sin marcar, el cambio va por 7/23. Un cambio sin `tasks.md`, o cuyo `tasks.md` aún no tiene casillas, como uno que solo tiene la propuesta, no muestra progreso.
+
+### La PR, la ronda y los bloqueantes
+<!-- capability: change-progress; requirement: a-change-s-review-state-comes-from-its-review-registry-version-1-only -->
+
+Cuando un cambio tiene `review.json`, el registro de revisiones del harness, el panel saca de él tres datos:
+
+- el número de la PR;
+- la ronda de revisión sobre el límite, contada como la cuenta el harness: las rondas que cuentan desde el último reinicio, sobre las rondas del presupuesto más las ampliaciones concedidas desde entonces;
+- los bloqueantes abiertos: los hallazgos CRITICAL o REQUIRED que siguen abiertos. Las sugerencias y los hallazgos ya corregidos no cuentan.
+
+Solo se lee la versión 1 del registro. Uno de otra versión, que no se puede leer o que pasa de 64 KB no aporta nada, y el cambio sigue mostrando sus tareas. Una PR sin ninguna ronda todavía muestra solo su número.
+
+### Cuándo se actualiza
+<!-- capability: change-progress; requirement: the-changes-are-read-apart-from-the-poll-and-after-each-state-change -->
+
+El panel lee los cambios junto con el worktree y la rama de cada carpeta, cada 15 segundos como mucho y, además, en cuanto un panel de la máquina cambia de estado. Así, cuando Claude marca una tarea y termina su turno, la ventana pasa de «☑ 6/23» a «☑ 7/23» en un segundo, sin esperar a la siguiente lectura. Leer los cambios no ejecuta en la máquina más órdenes de git que las que ya averiguan el repositorio de cada carpeta.
+
+### Una línea por cambio en la lista
+<!-- capability: change-progress; requirement: the-list-row-shows-one-line-per-active-change -->
+
+En la lista detallada, la fila de cada ventana muestra, debajo de la línea de su worktree o su rama, una línea por cada cambio activo de la carpeta de su panel activo. La línea empieza por «☑» y junta con « · » lo que se sepa del cambio: las tareas («7/23»), la PR («PR #74»), la ronda si ya se contó alguna («ronda 2/3») y los bloqueantes si los hay («1 bloqueante», «2 bloqueantes»). Por ejemplo: «☑ 7/23 · PR #74 · ronda 2/3 · 1 bloqueante». Un cambio del que no se sabe nada de eso, como uno con solo la propuesta, muestra su nombre: «☑ add-export». La lista compacta no muestra estas líneas.
+
+### Las mismas líneas en Pendientes
+<!-- capability: change-progress; requirement: a-pending-card-shows-the-same-lines -->
+
+Cada tarjeta de «Pendientes» muestra, debajo de su línea de estado, las mismas líneas que la fila de la lista para los cambios de la carpeta del panel del que trata. Así, una tarjeta ✅ dice de un vistazo si el turno terminó el cambio o lo dejó a medias: «Terminado hace 2 min» y, debajo, «☑ 7/23 · PR #74 · ronda 2/3». En la lista compacta las tarjetas también las muestran, cada una en su propia fila.
+
+### Las tareas, desde la cabecera de la ventana
+<!-- capability: change-progress; requirement: the-open-window-s-header-opens-each-change-s-tasks -->
+
+La cabecera de una ventana abierta tiene un botón por cada cambio con progreso de la carpeta del panel en el que trabaja, con «☑» y sus tareas, por ejemplo «☑ 7/23». Los lectores de pantalla lo anuncian con el nombre del cambio. Al pulsarlo, el visor de ficheros abre el `tasks.md` de ese cambio con el formato de Markdown. Un cambio sin `tasks.md` no tiene botón.
+
+### La propuesta, desde el menú de la ventana
+<!-- capability: change-progress; requirement: the-window-menu-opens-each-change-s-proposal -->
+
+El menú ··· de una ventana tiene una entrada «Propuesta de <cambio>» por cada cambio activo con `proposal.md` de la carpeta del panel sobre el que actúa. Al elegirla, el visor de ficheros abre esa propuesta con el formato de Markdown.

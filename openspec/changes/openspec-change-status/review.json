@@ -22,6 +22,22 @@
         "question": 0,
         "nitpick": 1
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "c393b97efc225b0c9b0b3994dd163b15610adc05",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-21T11:11:07.362Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 0
+      }
     }
   ],
   "findings": [
@@ -34,8 +50,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -51,8 +67,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -68,8 +84,8 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
-      "state": "open",
-      "fixedIn": null,
+      "state": "fixed",
+      "fixedIn": 2,
       "reopened": 0,
       "reason": null,
       "score": null,
@@ -89,8 +105,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "Real gap: no test checks p.changes in apply(); a few lines in the existing scanner test, so it fits the final review comment rather than a work item.",
       "followUp": null
     },
     {
@@ -102,12 +118,12 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 4,
+      "scoreReason": "The arithmetic holds, but it needs many repositories full of near-64 KB registries (real ones weigh 4 to 8 KB), and the scan failure is caught; at most the wording of design D2.",
       "followUp": null
     },
     {
@@ -119,7 +135,7 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1a5fc8b469c51e3414c9efb102d254c544fe79b8",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,

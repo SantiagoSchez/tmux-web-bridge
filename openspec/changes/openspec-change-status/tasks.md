@@ -108,13 +108,17 @@
   - Its findings went back through the artifacts (design D2 and D5 revised, the `window-details` delta) and were fixed by tasks 3.3, 4.4, 4.5, 5.3, 5.4, 6.3 and 10.3; the LOW ones accepted are in the design's risks. Not run again: the fix touched no payload, wiring or migration.
 - [x] 11.3 Commit with `/ka:commit --pr` and open the pull request.
   - PR #75; the changelog entries reference it.
-- [ ] 11.4 Run the bounded review loop: `/ka:review-pr`, `ka review-rounds record`, the QUESTION findings to the owner, and `ka review-rounds gate` until it passes; each blocker goes back through the artifacts, `/opsx:apply`, `/opsx:verify` and `/ka:commit`.
-  - Round 1 (full, `1a5fc8b`): R1-01 (compact cards wrap), R1-02 (this group was missing), R1-03 (the proposal's Impact) REQUIRED; R1-04 and R1-05 SUGGESTION; one NITPICK.
-- [ ] 11.5 Once the gate passes, send the pending suggestions to `ka-evaluator`, record the scores with `ka review-rounds score`, and offer those of 8 or more to the owner as follow-up issues.
+- [x] 11.4 Run the bounded review loop: `/ka:review-pr`, `ka review-rounds record`, the QUESTION findings to the owner, and `ka review-rounds gate` until it passes; each blocker goes back through the artifacts, `/opsx:apply`, `/opsx:verify` and `/ka:commit`.
+  - Round 1 (full, `1a5fc8b`): R1-01 (compact cards wrap), R1-02 (this group was missing), R1-03 (the proposal's Impact) REQUIRED; R1-04 and R1-05 SUGGESTION; one NITPICK. No QUESTION.
+  - Fixed through the artifacts (tasks 7.6, 7.7, this group, the proposal's Impact, design D6), re-verified and committed in `c393b97`.
+  - Round 2 (incremental, `c393b97`): no new finding, R1-01 to R1-03 resolved; `ka review-rounds gate` passed on `c393b97`.
+- [x] 11.5 Once the gate passes, send the pending suggestions to `ka-evaluator`, record the scores with `ka review-rounds score`, and offer those of 8 or more to the owner as follow-up issues.
+  - R1-04 scored 5 (listed in the final review comment), R1-05 scored 4 (dropped). None reached 8, so nothing was offered.
 
 ## 12. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 12.1 Run `/ka:update-features openspec-change-status`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 12.1 Run `/ka:update-features openspec-change-status`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - New area «Cambios de OpenSpec» with its index line and one section per `change-progress` requirement (8); in «Detalles al pasar el ratón», the 0,2 s delay (its heading too, which said «un segundo»), the change line of each pane, and the spaces' delay. `ka features-check --strict`: 112 sections in sync, exit 0.
 
 ## 13. E2E pipeline (mandatory step 7)
 
