@@ -1,6 +1,6 @@
 // Where a project keeps its harness configuration (the ka plugin's, formerly koalarnes):
 // .claude/ka.json, or .claude/koalarnes.json in a project not migrated yet. The panel reads
-// it on each machine from shell scripts (project-refs.ts, worktree-base.ts); this fragment
+// it on each machine from shell scripts (project-refs.ts, worktree-base.ts, change-progress.ts); this fragment
 // makes them pick the same file.
 
 /** A harness configuration is small; more than this is not one. */

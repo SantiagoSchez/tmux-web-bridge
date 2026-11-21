@@ -11,7 +11,7 @@ import { PendingStrip } from './Assist';
 import { IconBack, IconMore } from './icons';
 import { MicButton } from './Mic';
 import { EDGE } from './Drawer';
-import { ChangesButton } from './Files';
+import { ChangesButton, openFile } from './Files';
 import { TerminalView } from './TerminalView';
 
 interface Props {
@@ -139,6 +139,16 @@ export function WindowView({ host, session, window, paneId }: Props) {
             {window.state && <span class={`state-chip state-${window.state}`}>{STATE_LABEL[window.state]}</span>}
           </div>
         </div>
+        {/* Each active OpenSpec change with tasks of the pane's repository: its progress, opening its tasks.md. */}
+        {pane?.changes?.map(({ name, path, tasks }) => {
+          if (!tasks) return null;
+          const label = `Tareas de ${name}: ${tasks.done} de ${tasks.total}`;
+          return (
+            <button key={name} class="changes-btn wv-change" aria-label={label} title={label} onClick={() => openFile({ host: host.id, window: window.id, pane: pane.id }, `${path}/tasks.md`)}>
+              ☑ {tasks.done}/{tasks.total}
+            </button>
+          );
+        })}
         <ChangesButton host={host} window={window} paneId={pane?.id} />
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
           <IconMore />

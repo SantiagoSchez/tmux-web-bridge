@@ -31,12 +31,27 @@ export interface PaneInfo {
   claudeSession?: string;
   /** The git worktree or branch of its folder, when it is in a repo (read by the hub every few seconds). */
   git?: PaneGit;
+  /** The active OpenSpec changes of its repository, when it runs the koalarnes harness (read with `git`); missing when there is none. */
+  changes?: ChangeProgress[];
   /** When it got its current state (epoch ms), as the hub saw it; missing when it had it before the hub started. */
   since?: number;
 }
 
 /** A linked worktree (its folder's name) or, in the repo's own folder, the branch checked out. */
 export type PaneGit = { worktree: string; branch?: undefined } | { branch: string; worktree?: undefined };
+
+/** An active OpenSpec change of a pane's repository (a folder of openspec/changes/ other than archive/). */
+export interface ChangeProgress {
+  name: string;
+  /** Its folder on the machine, absolute. */
+  path: string;
+  /** Ticked checkboxes over all of them in its tasks.md; missing without tasks.md or without checkboxes. */
+  tasks?: { done: number; total: number };
+  /** Whether it has a proposal.md. */
+  proposal: boolean;
+  /** From its review.json, version 1 only: the pull request, the counted round over the budget limit, the open blockers. */
+  review?: { pr?: number; round?: { n: number; of: number }; blockers: number };
+}
 
 export interface WindowInfo {
   id: string; // @3

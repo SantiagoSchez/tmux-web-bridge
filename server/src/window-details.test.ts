@@ -46,6 +46,24 @@ test('a window with two panes lists both in order and marks the active one', () 
   );
 });
 
+test('a pane in a repository with active changes lists each one by its full name, with what is known of it', () => {
+  const name = 'show-progress-of-openspec-changes';
+  const w = windowOf({
+    panes: [
+      pane({
+        changes: [
+          { name: 'add-export', path: '/srv/shop/openspec/changes/add-export', proposal: true },
+          { name, path: `/srv/shop/openspec/changes/${name}`, proposal: true, tasks: { done: 7, total: 23 }, review: { pr: 74, round: { n: 2, of: 3 }, blockers: 1 } },
+        ],
+      }),
+    ],
+  });
+  assert.deepEqual(windowDetails(w, { home: HOME }).panes[0].changes, [
+    { name: 'add-export', facts: [] },
+    { name, facts: ['7/23', 'PR #74', 'ronda 2/3', '1 bloqueante'] },
+  ]);
+});
+
 test('a window with nothing to say leaves out the state, the place, the account and the machine', () => {
   const d = windowDetails(windowOf({ name: 'shell', panes: [pane({ path: '/srv/data' })] }), { home: HOME });
   assert.deepEqual(d, { name: 'shell', panes: [{ index: 0, active: false, marked: false, command: 'zsh', path: '/srv/data' }] });

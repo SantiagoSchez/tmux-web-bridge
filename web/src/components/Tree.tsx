@@ -1,5 +1,6 @@
 import { signal } from '@preact/signals';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { changeLine } from '../../../shared/change-progress';
 import { homePath } from '../../../shared/folders';
 import type { HostInfo, PaneInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { hostMenu, killSession, killWindow, moveHost, newSession, newWindow, sessionMenu, windowMenu } from '../menus';
@@ -112,6 +113,7 @@ function PendingCard({ item, fresh, cardRef }: { item: PaneRef; fresh: boolean; 
             {window.panes.length > 1 ? ` · panel ${pane.index}` : ''}
             {multiHost.value ? ` · ${host.name}` : ''}
           </span>
+          <ChangeLines pane={pane} always />
         </span>
       </button>
     </li>
@@ -334,6 +336,7 @@ function SoloSession({ host, session, window }: { host: HostInfo; session: Sessi
               <span class="win-meta">{meta.join(' · ')}</span>
             </span>
             <WhereLine host={host} pane={active} />
+            <ChangeLines pane={active} />
           </span>
           {session.attached > 0 && <span class="attached" title="Hay un cliente de tmux conectado" />}
           {window.bell && <span class="flag flag-bell" title="Campana" />}
@@ -381,6 +384,23 @@ function WhereLine({ host, pane }: { host: HostInfo; pane: PaneInfo | undefined 
   );
 }
 
+/**
+ * One line per active OpenSpec change of the pane's repository («☑ 7/23 · PR #74 · …»), under
+ * the worktree line. The compact list leaves them out, except where `always` (a pending card).
+ */
+function ChangeLines({ pane, always = false }: { pane: PaneInfo | undefined; always?: boolean }) {
+  if (!pane?.changes?.length || (!always && prefs.value.listView === 'compact')) return null;
+  return (
+    <span class="change-lines">
+      {pane.changes.map((c) => (
+        <span key={c.name} class="win-meta change-line">
+          {changeLine(c)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function WindowRow({ host, session, window }: { host: HostInfo; session: SessionInfo; window: WindowInfo }) {
   const r = route.value;
   const current = r.name === 'window' && r.host === host.id && r.window === window.id;
@@ -401,6 +421,7 @@ function WindowRow({ host, session, window }: { host: HostInfo; session: Session
             </span>
           </span>
           <WhereLine host={host} pane={active} />
+          <ChangeLines pane={active} />
         </span>
         {window.bell && <span class="flag flag-bell" title="Campana" />}
         {window.activity && <span class="flag flag-activity" title="Actividad" />}

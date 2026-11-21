@@ -1210,6 +1210,28 @@ body.dragging-host * {
   direction: rtl;
   text-align: left;
 }
+/* One line per active OpenSpec change of the window's repository, under its worktree line. */
+.change-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.change-line {
+  color: var(--subtext0);
+  font-size: 12px;
+}
+/* Only a compact card with change lines wraps: they take a row of their own, and a card
+   without them keeps cutting a long title on one row. */
+.tree.compact .card-body:has(> .change-lines) {
+  flex-wrap: wrap;
+}
+.tree.compact .card-body .change-lines {
+  flex-basis: 100%;
+}
+/* The window header's button of a change: its tasks, shaped like the ± one next to it. */
+.wv-change {
+  color: var(--subtext0);
+}
 .git-icon {
   display: inline-flex;
   vertical-align: -2px;
