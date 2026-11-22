@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { FilesError, GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
+import { fileType } from '../../../shared/file-types';
 import { dialog, toast } from '../state';
 import { fold } from '../text';
 import { Sheet } from './Sheet';
@@ -68,12 +69,6 @@ function push(screen: FileScreen): void {
 }
 const pop = fileViewerBack;
 
-const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
-const MARKDOWN = /\.(md|markdown|mdx)$/i;
-const PDF = /\.pdf$/i;
-const VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
-const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
-
 export const qs = (o: Record<string, string | undefined>) =>
   Object.entries(o)
     .filter(([, v]) => v !== undefined && v !== '')
@@ -122,8 +117,11 @@ export function fileSize(n: number): string {
   return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: n < 100 * 1024 * 1024 ? 1 : 0 })} MB`;
 }
 
-export const fileKind = (path: string) =>
-  IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : VIDEO.test(path) ? 'video' : AUDIO.test(path) ? 'audio' : MARKDOWN.test(path) ? 'markdown' : 'text';
+/** How the viewer shows a file: code, archives and any other file are read as text. */
+export function fileKind(path: string): 'image' | 'pdf' | 'video' | 'audio' | 'markdown' | 'text' {
+  const t = fileType(path);
+  return t === 'code' || t === 'archive' || t === 'file' ? 'text' : t;
+}
 /** Whether the browser shows it from its URL (an image, a PDF, a video, sound), instead of the viewer reading its text. */
 export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown' && kind !== 'text';
 /** Whether what was read as text is not: a NUL byte gives away a binary file (an archive, a program, a video named otherwise). */
