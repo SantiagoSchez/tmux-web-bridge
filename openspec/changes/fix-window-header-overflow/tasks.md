@@ -33,13 +33,14 @@
 
 ## 5. Run tests, typecheck and lint
 
-- [ ] 5.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+- [x] 5.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+  - `pnpm --filter server test`: 501 pass, 0 fail; `pnpm --filter server typecheck` and `pnpm --filter web typecheck`: clean. `ka scope`: features-check and docs-check apply; `ka features-check` exit 0 (one pending section, for group 8); `ka docs-check` exit 0, no dead reference.
 
 ## 6. Update the documentation and the changelog
 
-- [ ] 6.1 Run `/ka:update-docs` for the flow visible to the end user (the header's short label on a narrow header); add `taskPercent` to the list of shared logic of the web standards only if it names the module's functions.
-- [ ] 6.2 Add the changelog entry with `/ka:changelog --issue 81`: the window header fits on a phone and no longer widens the page or cuts the sheets opened over it.
-- [ ] 6.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
+- [x] 6.1 Run `/ka:update-docs` for the flow visible to the end user (the header's short label on a narrow header); add `taskPercent` to the list of shared logic of the web standards only if it names the module's functions.
+- [x] 6.2 Add the changelog entry with `/ka:changelog --issue 81`: the window header fits on a phone and no longer widens the page or cuts the sheets opened over it.
+- [x] 6.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
 
 ## 7. Review loop
 
