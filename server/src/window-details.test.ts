@@ -60,7 +60,7 @@ test('a pane in a repository with active changes lists each one by its full name
   });
   assert.deepEqual(windowDetails(w, { home: HOME }).panes[0].changes, [
     { name: 'add-export', facts: [] },
-    { name, facts: ['7/23', 'PR #74', 'ronda 2/3', '1 bloqueante'] },
+    { name, facts: ['7/23 (30 %)', 'PR #74', 'ronda 2/3', '1 bloqueante'] },
   ]);
 });
 

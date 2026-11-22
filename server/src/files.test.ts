@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findPaths, findPathsInRows } from '../../shared/paths.js';
+import { fileTarget, findPaths, findPathsInRows, hyperlinkTarget } from '../../shared/paths.js';
 import { execFile, execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { GitChanges } from '../../shared/types.js';
-import { findInReposScript, gitChanges, gitStat, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
+import { FileError, findInReposScript, gitChanges, gitStat, listHostDir, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import type { HostMonitor } from './host.js';
 
 const paths = (line: string) => findPaths(line).map((h) => (h.line ? `${h.path}:${h.line}` : h.path));
@@ -24,7 +24,58 @@ test('paths Claude Code prints become links, with their line', () => {
 test('URLs, versions, numbers and loose words are not paths', () => {
   assert.deepEqual(paths('https://github.com/x/y/blob/main/README.md'), []);
   assert.deepEqual(paths('Claude Code 2.1.322 y v1.17.1, el 12/11, y/o e.g.'), []);
-  assert.deepEqual(paths('server/src carpeta/ y //comentario'), []);
+  assert.deepEqual(paths('server/src y //comentario'), []);
+});
+
+const folders = (line: string) => findPaths(line).filter((h) => h.dir).map((h) => h.path);
+
+test('a path that ends with a slash is a folder, before a colon or a stop too', () => {
+  assert.deepEqual(folders('Están en ~/Downloads/tests/render-crf20/:'), ['~/Downloads/tests/render-crf20/']);
+  assert.deepEqual(folders('- fotogramas/: las parejas de fotogramas.'), ['fotogramas/']);
+  assert.deepEqual(folders('Mira docs/. y /var/log/, luego ./build/'), ['docs/', '/var/log/', './build/']);
+  // Files are not folders.
+  assert.deepEqual(findPaths('README.md y src/a.ts:3').map((h) => h.dir), [false, false]);
+});
+
+test('the root, the home folder alone, one letter and URLs are not folders', () => {
+  assert.deepEqual(paths('cd / y cd ~/ y a/ y https://example.com/docs/ y y/o/'), []);
+});
+
+test('a hyperlink to a file of the machine gives its path; a web one gives nothing', () => {
+  assert.equal(fileTarget('https://example.com/docs'), null);
+  assert.equal(fileTarget('mailto:me@example.com'), null);
+  assert.deepEqual(fileTarget('file:///home/me/a%20b.png'), { path: '/home/me/a b.png', dir: false });
+  assert.deepEqual(fileTarget('file://box/x/y.md'), { path: '/x/y.md', dir: false });
+  assert.deepEqual(fileTarget('/abs/f.md'), { path: '/abs/f.md', dir: false });
+  assert.deepEqual(fileTarget('~/f.md'), { path: '~/f.md', dir: false });
+  assert.deepEqual(fileTarget('docs/f.md'), { path: 'docs/f.md', dir: false });
+  assert.deepEqual(fileTarget('src/x.ts:42'), { path: 'src/x.ts', line: 42, dir: false });
+  assert.deepEqual(fileTarget('src/x.ts#L42'), { path: 'src/x.ts', line: 42, dir: false });
+  assert.deepEqual(fileTarget('/home/me/frames/'), { path: '/home/me/frames/', dir: true });
+  // Markdown writes spaces and accents percent-encoded; a stray % stays as it is.
+  assert.deepEqual(fileTarget('/home/me/V%C3%ADdeos/a%20b.md'), { path: '/home/me/Vídeos/a b.md', dir: false });
+  assert.deepEqual(fileTarget('/tmp/100%.txt'), { path: '/tmp/100%.txt', dir: false });
+  // A name with a line is not a scheme.
+  assert.deepEqual(fileTarget('notes.md:3'), { path: 'notes.md', line: 3, dir: false });
+  assert.equal(fileTarget(''), null);
+});
+
+test('a hyperlink to a heading of a file, or with a query, gives the file', () => {
+  assert.deepEqual(fileTarget('/abs/README.md#instalacion'), { path: '/abs/README.md', dir: false });
+  assert.deepEqual(fileTarget('docs/plan.md#2-setup'), { path: 'docs/plan.md', dir: false });
+  assert.deepEqual(fileTarget('file:///abs/a.md?x=1'), { path: '/abs/a.md', dir: false });
+  // A # that is part of the name stays.
+  assert.deepEqual(fileTarget('/abs/issue#12.md'), { path: '/abs/issue#12.md', dir: false });
+});
+
+test('a hyperlink opens a file, a folder or a web page, and nothing for any other scheme', () => {
+  assert.deepEqual(hyperlinkTarget('https://example.com/docs'), { kind: 'web', url: 'https://example.com/docs' });
+  assert.deepEqual(hyperlinkTarget('HTTP://example.com'), { kind: 'web', url: 'HTTP://example.com' });
+  assert.deepEqual(hyperlinkTarget('/abs/f.md:7'), { kind: 'file', path: '/abs/f.md', line: 7 });
+  assert.deepEqual(hyperlinkTarget('docs/f.md'), { kind: 'file', path: 'docs/f.md' });
+  assert.deepEqual(hyperlinkTarget('file:///home/me/frames/'), { kind: 'dir', path: '/home/me/frames/' });
+  for (const uri of ['javascript:alert(1)', ' JAVASCRIPT:x', 'data:text/html,<b>x</b>', 'vbscript:x', 'mailto:a@b', 'ssh://box', ''])
+    assert.equal(hyperlinkTarget(uri), null, uri);
 });
 
 test('the start and end of a link are those of the path in the line', () => {
@@ -115,6 +166,143 @@ test('a file is read whole, only its beginning, or only a piece of it', async ()
   }
 });
 
+// ---------------------------------------------------------------- a folder, for the explorer
+
+/** A host whose scripts run here under /bin/sh, with `home` as $HOME and `path` first on PATH. */
+function shHost(home: string, path = ''): HostMonitor {
+  const env = { PATH: path ? `${path}:${process.env.PATH}` : process.env.PATH, HOME: home };
+  return {
+    name: 'Prueba',
+    exec: {
+      shell: (script: string) =>
+        new Promise<string>((ok, ko) => execFile('/bin/sh', ['-c', script], { encoding: 'utf8', env }, (e, out, err) => (e ? ko(new Error(err)) : ok(out)))),
+    },
+  } as unknown as HostMonitor;
+}
+
+/** A temporary home with ~/videos: folders (a link to one, a hidden one) and files of known sizes. */
+function videosHome(): string {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-home-')));
+  const v = join(home, 'videos');
+  for (const d of ['frames', '.cache', 'Álbum']) mkdirSync(join(v, d), { recursive: true });
+  writeFileSync(join(v, 'actual.mp4'), '0123456789');
+  writeFileSync(join(v, 'INDICE.md'), 'abc');
+  writeFileSync(join(v, '.env'), 'x');
+  writeFileSync(join(v, 'con espacio.txt'), 'ab');
+  symlinkSync(join(v, 'frames'), join(v, 'enlace'));
+  symlinkSync(join(v, 'INDICE.md'), join(v, 'atajo.md'));
+  return home;
+}
+
+const VIDEOS = {
+  path: '~/videos',
+  parent: '~',
+  dirs: ['.cache', 'Álbum', 'enlace', 'frames'],
+  files: [
+    { name: '.env', size: 1 },
+    { name: 'actual.mp4', size: 10 },
+    { name: 'atajo.md', size: 3 },
+    { name: 'con espacio.txt', size: 2 },
+    { name: 'INDICE.md', size: 3 },
+  ],
+};
+
+test('a folder lists its folders, then its files with their size, in name order', async () => {
+  const home = videosHome();
+  try {
+    const host = shHost(home);
+    assert.deepEqual(await listHostDir(host, ['~/videos/'], '~/videos/'), VIDEOS);
+    const top = await listHostDir(host, ['~'], '~');
+    assert.equal(top.path, '~');
+    assert.equal(top.parent, home.replace(/\/[^/]*$/, '') || '/');
+    assert.deepEqual(top.dirs, ['videos']);
+    assert.equal((await listHostDir(host, ['/'], '/')).parent, null);
+    await assert.rejects(listHostDir(host, ['~/no-existe'], '~/no-existe'), /No existe la carpeta ~\/no-existe en Prueba/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('of the folders a relative path may be in, the first that is a folder is listed', async () => {
+  const home = videosHome();
+  try {
+    const host = shHost(home);
+    const l = await listHostDir(host, [join(home, 'nada'), join(home, 'videos', 'INDICE.md'), join(home, 'videos', 'frames'), join(home, 'videos')], 'frames');
+    assert.equal(l.path, '~/videos/frames');
+    await assert.rejects(listHostDir(host, [join(home, 'nada')], 'nada/'), /No existe la carpeta nada\/ en Prueba/);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('a folder of thousands of files is listed at once: the first 2000 by name, and how many are left out', async () => {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-home-')));
+  try {
+    const frames = join(home, 'frames');
+    mkdirSync(frames);
+    for (let i = 1; i <= 20_000; i++) writeFileSync(join(frames, `f${String(i).padStart(5, '0')}.png`), 'x'.repeat(i % 7));
+    const started = Date.now();
+    const l = await listHostDir(shHost(home), ['~/frames'], '~/frames');
+    const took = Date.now() - started;
+    assert.ok(took < 5000, `listed in ${took} ms`);
+    assert.equal(l.files.length, 2000);
+    assert.deepEqual(l.files[0], { name: 'f00001.png', size: 1 });
+    assert.deepEqual(l.files[1999], { name: 'f02000.png', size: 2000 % 7 });
+    assert.equal(l.left, 18_000);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('a folder with more than 2000 folders lists the first 2000 by name and counts the rest', async () => {
+  const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-home-')));
+  try {
+    for (let i = 1; i <= 2001; i++) mkdirSync(join(home, 'many', `d${String(i).padStart(4, '0')}`), { recursive: true });
+    writeFileSync(join(home, 'many', 'notes.md'), 'ab');
+    const l = await listHostDir(shHost(home), ['~/many'], '~/many');
+    assert.equal(l.dirs.length, 2000);
+    assert.equal(l.dirs[1999], 'd2000');
+    assert.deepEqual(l.files, [{ name: 'notes.md', size: 2 }]);
+    assert.equal(l.left, 1);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test('on a machine with BSD stat (macOS) the sizes come from its own options', async () => {
+  const home = videosHome();
+  const bin = mkdtempSync(join(tmpdir(), 'twb-bin-'));
+  try {
+    // A stat that refuses GNU's -c and answers BSD's -f '%z %N' (through the real one), noting it was asked so.
+    const real = execFileSync('/bin/sh', ['-c', 'command -v stat'], { encoding: 'utf8' }).trim();
+    writeFileSync(
+      join(bin, 'stat'),
+      `#!/bin/sh\nfor a; do [ "$a" = -c ] && exit 1; done\n[ "$1" = -L ] && [ "$2" = -f ] && [ "$3" = '%z %N' ] || exit 2\nshift 3\n: > "${bin}/bsd"\nexec "${real}" -L -c '%s %n' "$@"\n`,
+      { mode: 0o755 },
+    );
+    assert.deepEqual(await listHostDir(shHost(home, bin), ['~/videos'], '~/videos'), VIDEOS);
+    assert.ok(existsSync(join(bin, 'bsd')), 'the BSD form was used');
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
+  }
+});
+
+test('a folder asked for as a file is refused, saying where the folder is', async () => {
+  const home = videosHome();
+  try {
+    const err = await statHostFile(shHost(home), [join(home, 'nada'), '~/videos']).then(
+      () => assert.fail('a folder is not a file'),
+      (e: unknown) => e,
+    );
+    assert.ok(err instanceof FileError);
+    assert.equal(err.status, 409);
+    assert.equal(err.dir, join(home, 'videos'));
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
 test('a path broken where its row ends is one link, on every row it takes', () => {
   const cols = 30;
   const rows = (...texts: string[]) => texts.map((text) => ({ text, full: text.trimEnd().length >= cols - 1 }));
@@ -140,13 +328,24 @@ test('a path that ends at the edge, before an unrelated word, stays as it is', (
   ];
   assert.deepEqual(findPathsInRows(rows, 0).map((h) => h.text), ['README.md']);
   assert.deepEqual(findPathsInRows(rows, 1), []);
-  // A folder broken across rows is not a link, nor are its pieces that look like a path.
+  // A folder broken across rows is one folder link on every row, not its pieces that look like a path.
   const folder = [
-    { text: '  /tmp/claude-1000/-home-santiago-Dropbox-Documents', full: true },
-    { text: '  -Proyectos-agentic-ai-platform/9441b97c-6b99-48c6', full: true },
-    { text: '  -90bf-5a9d99b2397d/scratchpad/migration/.', full: false },
+    { text: '  /tmp/claude-1000/-home-me-Documents-Projects-my-a', full: true },
+    { text: '  pp/9441b97c-6b99-48c6-90bf-5a9d99b2397d/scratchpad', full: true },
+    { text: '  /migration/.', full: false },
   ];
-  for (const at of [0, 1, 2]) assert.deepEqual(findPathsInRows(folder, at), []);
+  for (const at of [0, 1, 2]) {
+    assert.deepEqual(
+      findPathsInRows(folder, at).map((h) => [h.path, h.dir]),
+      [['/tmp/claude-1000/-home-me-Documents-Projects-my-app/9441b97c-6b99-48c6-90bf-5a9d99b2397d/scratchpad/migration/', true]],
+    );
+  }
+  // Broken where the row ends, before a colon.
+  const render = [
+    { text: 'Ya están en ~/Downloads/tests/videos/render', full: true },
+    { text: '-crf20/:', full: false },
+  ];
+  for (const at of [0, 1]) assert.deepEqual(findPathsInRows(render, at).map((h) => [h.text, h.dir]), [['~/Downloads/tests/videos/render-crf20/', true]]);
   // A short row does not go on in the next one.
   assert.deepEqual(findPathsInRows([{ text: 'ver a.ts', full: false }, { text: 'b.md', full: false }], 1).map((h) => h.text), ['b.md']);
 });

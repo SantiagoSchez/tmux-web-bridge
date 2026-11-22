@@ -2285,12 +2285,6 @@ body.dragging-host * {
 .folder-picker .sheet-actions {
   margin-top: 4px;
 }
-.folder-dirs {
-  max-height: min(40vh, 320px);
-  overflow-y: auto;
-  border: 1px solid var(--surface0);
-  border-radius: 10px;
-}
 .folder-name {
   display: flex;
   flex-direction: column;
@@ -3540,6 +3534,115 @@ textarea.text-input {
 }
 .changes-found {
   padding: 4px 4px 8px;
+}
+
+/* ------------------------------------------------------------ file explorer */
+
+/* As a viewer screen it fills the sheet, and the list and the preview scroll apart;
+   in a folder picker it takes its own height. The preview goes to the right only when the
+   explorer itself has the room (the viewer on a computer), below the list elsewhere. */
+.sheet.explorer-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.explorer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  container-type: inline-size;
+}
+.explorer.fill {
+  flex: 1;
+  min-height: 0;
+}
+.explorer-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+}
+.explorer-tools .text-input {
+  flex: 1;
+  min-width: 160px;
+}
+.explorer > .settings-state {
+  margin: 0;
+}
+.explorer-main {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.explorer.fill .explorer-main {
+  flex: 1;
+}
+.explorer-list {
+  margin: 0;
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+  border: 1px solid var(--surface0);
+  border-radius: 10px;
+}
+.explorer.fill .explorer-list {
+  max-height: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.explorer.fill.has-preview .explorer-list {
+  flex: 0 1 40%;
+}
+.explorer-list .menu-item[aria-pressed='true'] {
+  background: var(--surface0);
+}
+.explorer-size {
+  flex: none;
+  margin-left: auto;
+  padding-left: 8px;
+}
+.explorer-preview {
+  min-height: 0;
+  max-height: min(45vh, 420px);
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  border: 1px solid var(--surface0);
+  border-radius: 10px;
+}
+.explorer.fill .explorer-preview {
+  max-height: none;
+  flex: 1 1 60%;
+}
+.explorer-preview-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  background: var(--mantle);
+}
+.explorer-preview-head .project-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.explorer-preview .file-pdf {
+  height: 50dvh;
+}
+@container (min-width: 720px) {
+  .explorer.fill .explorer-main {
+    flex-direction: row;
+  }
+  .explorer.fill.has-preview .explorer-list {
+    flex: 0 0 38%;
+  }
+  .explorer.fill .explorer-preview {
+    flex: 1 1 auto;
+  }
 }
 
 /* ------------------------------------------------------------ scratchpads */

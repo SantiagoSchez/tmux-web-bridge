@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
+import { taskProgress } from '../../../shared/change-progress';
 import { killPane, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
@@ -11,7 +12,7 @@ import { PendingStrip } from './Assist';
 import { IconBack, IconMore } from './icons';
 import { MicButton } from './Mic';
 import { EDGE } from './Drawer';
-import { ChangesButton, openFile } from './Files';
+import { ChangesButton, FolderButton, openFile } from './Files';
 import { TerminalView } from './TerminalView';
 
 interface Props {
@@ -142,13 +143,14 @@ export function WindowView({ host, session, window, paneId }: Props) {
         {/* Each active OpenSpec change with tasks of the pane's repository: its progress, opening its tasks.md. */}
         {pane?.changes?.map(({ name, path, tasks }) => {
           if (!tasks) return null;
-          const label = `Tareas de ${name}: ${tasks.done} de ${tasks.total}`;
+          const label = `Tareas de ${name}: ${taskProgress(tasks)}`;
           return (
             <button key={name} class="changes-btn wv-change" aria-label={label} title={label} onClick={() => openFile({ host: host.id, window: window.id, pane: pane.id }, `${path}/tasks.md`)}>
-              ☑ {tasks.done}/{tasks.total}
+              ☑ {taskProgress(tasks)}
             </button>
           );
         })}
+        <FolderButton host={host} window={window} paneId={pane?.id} />
         <ChangesButton host={host} window={window} paneId={pane?.id} />
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
           <IconMore />

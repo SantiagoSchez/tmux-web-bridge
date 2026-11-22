@@ -169,6 +169,7 @@ expect "…y los atajos que el kit anterior reescribió, también" "$(tmux -L tw
 before="$(cat "$HOME/.tmux.conf")"
 TWB_NO_TMUX_RELOAD=1 "$KIT/host-kit/install.sh" >/dev/null 2>&1
 expect "Reinstalar no cambia ~/.tmux.conf" "$([ "$before" = "$(cat "$HOME/.tmux.conf")" ] && echo igual)" "^igual\$"
+expect "El hook SessionStart que pide las rutas como enlaces está una sola vez" "$(jq '[.hooks.SessionStart[].hooks[].command | select(test("tmux-window-title\\.sh\" context$"))] | length' "$HOME/.claude/settings.json")" "^1\$"
 
 # ------------------------------------------------------------ extensión de Trello
 expect "Sin activarla, no se descarga" "[$(ls "$EXT" 2>/dev/null)]" '^\[\]$'

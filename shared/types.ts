@@ -594,14 +594,31 @@ export type BranchList =
       fetchError?: string;
     };
 
-/** A folder of a host, for the folder picker: where it is and the folders inside. */
+/** A folder of a host, for the file explorer (`GET /api/dir`): where it is and what it holds. */
 export interface DirListing {
   /** Absolute, or ~/… under the home folder. */
   path: string;
   /** null at the root. */
   parent: string | null;
-  /** Names of the folders inside, hidden ones (leading '.') included. */
+  /** Names of the folders inside (links to folders too), hidden ones (leading '.') included, in name order. */
   dirs: string[];
+  /** The files inside, hidden ones included, in name order. */
+  files: DirFile[];
+  /** Entries left out (beyond the first 2000 folders, or the first 2000 files, by name); absent when none. */
+  left?: number;
+}
+
+/** A file of a DirListing. */
+export interface DirFile {
+  name: string;
+  /** Bytes. */
+  size: number;
+}
+
+/** The error body of `GET /api/files`; `dir` when the path is a folder (absolute), which the viewer opens in the explorer. */
+export interface FilesError {
+  error: string;
+  dir?: string;
 }
 
 /** A pane's screen for the windows grid, as `capture-pane -e` prints it (text with SGR colours). */
@@ -670,8 +687,6 @@ export type ActionOp =
   | ({ op: 'launchTask' } & Omit<ExtLaunchRequest, 'host' | 'prompt'> & { prompt?: string })
   /** Whether the machine's kit downloads the Trello extension of its release (and keeps it up to date). */
   | { op: 'trelloExtension'; on: boolean }
-  /** The folders inside one, for the folder picker. */
-  | { op: 'listDirs'; path: string }
   /** The branches of `origin` of a launch target's repository, after a fetch: answers a BranchList. */
   | { op: 'listBranches'; target: ExtLaunchTarget }
   /** The git worktrees of an added folder's repo (or of `sub`, inside one): answers a WorktreeList. */

@@ -9,6 +9,7 @@ import { describeQuietHours, editQuietHours } from '../../../shared/quiet-hours'
 import type { QuietHours } from '../../../shared/types';
 import { shortcutText } from '../shortcuts';
 import { dictationShortcut, notReady } from '../dictation';
+import { fileViewer } from '../fileViewer';
 import { dialog, dictationInfo, hubSettings, settingsTab, sheet, toast, vapidKey, type SettingsTab } from '../state';
 import { newer, updateInfo } from '../updates';
 import { hub } from '../ws';
@@ -130,7 +131,7 @@ export function Settings() {
   if (!isDesktop.value) {
     if (!picked) {
       return (
-        <Sheet title="Ajustes" onClose={close}>
+        <Sheet title="Ajustes" inert={!!fileViewer.value} onClose={close}>
           <ul class="menu settings-list">
             {sections.map((s) => (
               <li key={s.id}>
@@ -150,7 +151,7 @@ export function Settings() {
       );
     }
     return (
-      <Sheet title={picked.label} back={{ label: 'Ajustes', onClick: () => go(null) }} onClose={close}>
+      <Sheet title={picked.label} back={{ label: 'Ajustes', onClick: () => go(null) }} inert={!!fileViewer.value} onClose={close}>
         <SettingsSection id={picked.id} />
       </Sheet>
     );
@@ -158,7 +159,7 @@ export function Settings() {
 
   const current = picked ?? sections[0];
   return (
-    <Sheet title="Ajustes" class="settings-sheet" onClose={close}>
+    <Sheet title="Ajustes" class="settings-sheet" inert={!!fileViewer.value} onClose={close}>
       <div class="settings-layout">
         <nav class="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Secciones de los ajustes">
           {sections.map((s) => (

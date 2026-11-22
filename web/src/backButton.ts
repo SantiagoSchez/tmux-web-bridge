@@ -39,9 +39,13 @@ let depth = depthOf(history.state);
 /** What to do once back on the page (replaceCurrent), run when that going back lands. */
 let afterLeaving: (() => void) | null = null;
 
-/** Closes the one on top; the settings on the phone go from a section back to their list first. */
+/**
+ * Closes the one on top; the settings on the phone go from a section back to their list
+ * first. The file viewer is above the dialogs only when opened from one (a folder picker).
+ */
 function closeTop(): void {
-  if (dialog.value) dialog.value = null;
+  if (fileViewer.value?.overDialog) fileViewerBack();
+  else if (dialog.value) dialog.value = null;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (fileViewer.value) fileViewerBack();
   else if (sheet.value === 'settings' && settingsTab.value && !isDesktop.value) settingsTab.value = null;

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import type { DirListing, ProjectList, SavedFolder } from '../../shared/types.js';
+import type { ProjectList, SavedFolder } from '../../shared/types.js';
 import { projectCommand, runAction } from './actions.js';
 import type { HostMonitor } from './host.js';
 
@@ -48,23 +48,6 @@ test('any other projects command is typed as is', () => {
   assert.equal(projectCommand('nvim .', true), 'nvim .');
   assert.equal(projectCommand('claudette', false), 'claudette');
 });
-
-test(
-  'listDirs: the folders inside, hidden ones too, with paths under ~',
-  withHome(async (home) => {
-    for (const d of ['Proyectos/b', 'Proyectos/A', 'Proyectos/.oculta', 'Proyectos/con espacio']) mkdirSync(join(home, d), { recursive: true });
-    const host = fakeHost(home);
-    const l = (await runAction(host, { op: 'listDirs', path: '~/Proyectos/' })) as DirListing;
-    assert.deepEqual(l, { path: '~/Proyectos', parent: '~', dirs: ['.oculta', 'A', 'b', 'con espacio'] });
-    const top = (await runAction(host, { op: 'listDirs', path: '~' })) as DirListing;
-    assert.equal(top.path, '~');
-    assert.equal(top.parent, home.replace(/\/[^/]*$/, '') || '/');
-    const root = (await runAction(host, { op: 'listDirs', path: '/' })) as DirListing;
-    assert.equal(root.parent, null);
-    await assert.rejects(runAction(host, { op: 'listDirs', path: '~/no-existe' }), /No existe la carpeta ~\/no-existe en Prueba/);
-    await assert.rejects(runAction(host, { op: 'listDirs', path: 'relativa' }), /tiene que empezar/);
-  }),
-);
 
 test(
   'listProjects: added folders as they are now, with the folders inside those with subfolders',

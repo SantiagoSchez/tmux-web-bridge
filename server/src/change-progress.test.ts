@@ -7,15 +7,21 @@ import { reviewState } from './change-progress.js';
 const change = (over: Partial<ChangeProgress>): ChangeProgress => ({ name: 'show-progress', path: '/srv/shop/openspec/changes/show-progress', proposal: true, ...over });
 
 test('the line of a change under review gives its tasks, pull request, round and blockers', () => {
-  assert.equal(changeLine(change({ tasks: { done: 7, total: 23 }, review: { pr: 74, round: { n: 2, of: 3 }, blockers: 1 } })), '☑ 7/23 · PR #74 · ronda 2/3 · 1 bloqueante');
-  assert.equal(changeLine(change({ tasks: { done: 7, total: 23 }, review: { pr: 74, round: { n: 3, of: 3 }, blockers: 2 } })), '☑ 7/23 · PR #74 · ronda 3/3 · 2 bloqueantes');
+  assert.equal(changeLine(change({ tasks: { done: 7, total: 23 }, review: { pr: 74, round: { n: 2, of: 3 }, blockers: 1 } })), '☑ 7/23 (30 %) · PR #74 · ronda 2/3 · 1 bloqueante');
+  assert.equal(changeLine(change({ tasks: { done: 7, total: 23 }, review: { pr: 74, round: { n: 3, of: 3 }, blockers: 2 } })), '☑ 7/23 (30 %) · PR #74 · ronda 3/3 · 2 bloqueantes');
 });
 
 test('the line leaves out what the change does not have', () => {
-  assert.equal(changeLine(change({ tasks: { done: 23, total: 23 }, review: { pr: 74, round: { n: 1, of: 3 }, blockers: 0 } })), '☑ 23/23 · PR #74 · ronda 1/3');
-  assert.equal(changeLine(change({ tasks: { done: 3, total: 10 }, review: { pr: 74, blockers: 0 } })), '☑ 3/10 · PR #74');
-  assert.equal(changeLine(change({ tasks: { done: 3, total: 10 } })), '☑ 3/10');
+  assert.equal(changeLine(change({ tasks: { done: 23, total: 23 }, review: { pr: 74, round: { n: 1, of: 3 }, blockers: 0 } })), '☑ 23/23 (100 %) · PR #74 · ronda 1/3');
+  assert.equal(changeLine(change({ tasks: { done: 3, total: 10 }, review: { pr: 74, blockers: 0 } })), '☑ 3/10 (30 %) · PR #74');
+  assert.equal(changeLine(change({ tasks: { done: 3, total: 10 } })), '☑ 3/10 (30 %)');
   assert.equal(changeLine(change({ review: { pr: 74, blockers: 0 } })), '☑ PR #74');
+});
+
+test('the percentage of tasks done is rounded down, so 100 % means every task is ticked', () => {
+  assert.equal(changeLine(change({ tasks: { done: 119, total: 120 } })), '☑ 119/120 (99 %)');
+  assert.equal(changeLine(change({ tasks: { done: 0, total: 5 } })), '☑ 0/5 (0 %)');
+  assert.equal(changeLine(change({ tasks: { done: 2, total: 3 } })), '☑ 2/3 (66 %)');
 });
 
 test('a change with neither progress nor review state goes by its name', () => {

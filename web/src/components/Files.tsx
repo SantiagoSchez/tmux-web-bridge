@@ -1,15 +1,18 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
-import { toast } from '../state';
+import type { FilesError, GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
+import { dialog, toast } from '../state';
+import { fold } from '../text';
 import { Sheet } from './Sheet';
-import { fileViewer, fileViewerBack, pushFileScreen, type FileOrigin, type FileScreen } from '../fileViewer';
+import { fileViewer, fileViewerBack, pushFileScreen, replaceFileScreen, type FileOrigin, type FileScreen } from '../fileViewer';
+import { ExplorerView } from './Explorer';
 
 export { fileViewer, type FileOrigin };
-import { IconFileDiff, IconReload } from './icons';
+import { IconFileDiff, IconFolder, IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
-// other text with its lines), the changed files of the window's repo, and their diff.
+// other text with its lines), the explorer of a machine's folders, the changed files of
+// the window's repo, and their diff.
 
 /** Opened from the terminal, which keeps the focus: Escape would reach Claude (and stop it) instead of closing the viewer. */
 function leaveTerminal(): void {
@@ -18,7 +21,14 @@ function leaveTerminal(): void {
 
 export function openFile(origin: FileOrigin, path: string, line?: number): void {
   leaveTerminal();
-  fileViewer.value = { origin, stack: [{ kind: 'file', path, line }] };
+  // From a folder picker in a dialog («Nueva carpeta»): above it.
+  fileViewer.value = { origin, stack: [{ kind: 'file', path, line }], overDialog: !!dialog.value };
+}
+
+/** The explorer at a folder: absolute, ~/…, or relative to the origin's panes (`.` is the pane's own). */
+export function openExplorer(origin: FileOrigin, path: string): void {
+  leaveTerminal();
+  fileViewer.value = { origin, stack: [{ kind: 'dir', path }] };
 }
 
 /** What «Ficheros cambiados» is filtered by: kept going into a diff and back, cleared when it opens again. */
@@ -32,13 +42,6 @@ const changesBase = signal('');
  * branch is gone or has no history in common, the choice stays to pick another one.
  */
 const changesChoice = signal<Pick<GitChanges, 'defaultBase' | 'branches'> | null>(null);
-
-/** Lower case and without accents, to search. */
-const fold = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
 
 export function openChanges(origin: FileOrigin, mode?: GitDiffMode): void {
   leaveTerminal();
@@ -71,7 +74,7 @@ const PDF = /\.pdf$/i;
 const VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
 const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
 
-const qs = (o: Record<string, string | undefined>) =>
+export const qs = (o: Record<string, string | undefined>) =>
   Object.entries(o)
     .filter(([, v]) => v !== undefined && v !== '')
     .map(([k, v]) => `${k}=${encodeURIComponent(v!)}`)
@@ -79,9 +82,24 @@ const qs = (o: Record<string, string | undefined>) =>
 
 const fileUrl = (o: FileOrigin, path: string) => `/api/files?${qs({ host: o.host, window: o.window, pane: o.pane, path })}`;
 
+/** The hub's refusal of a file: `dir` when the path is a folder (absolute), to show it in the explorer. */
+class FileFetchError extends Error {
+  constructor(
+    message: string,
+    readonly dir?: string,
+  ) {
+    super(message);
+  }
+}
+
+async function fileFetchError(res: Response): Promise<FileFetchError> {
+  const body = (await res.json().catch(() => ({}))) as Partial<FilesError>;
+  return new FileFetchError(typeof body.error === 'string' ? body.error : `Error ${res.status}`, typeof body.dir === 'string' ? body.dir : undefined);
+}
+
 async function fetchText(url: string, signal?: AbortSignal): Promise<{ text: string; path?: string; size?: number }> {
   const res = await fetch(url, { signal });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `Error ${res.status}`);
+  if (!res.ok) throw await fileFetchError(res);
   const path = res.headers.get('X-File-Path');
   const size = Number(res.headers.get('X-File-Size'));
   return { text: await res.text(), path: path ? decodeURIComponent(path) : undefined, size: Number.isFinite(size) ? size : undefined };
@@ -90,9 +108,8 @@ async function fetchText(url: string, signal?: AbortSignal): Promise<{ text: str
 /** Whether it is there, and its whole path and size (without reading it). */
 export async function probeFile(o: FileOrigin, path: string, signal?: AbortSignal): Promise<{ path: string; size: number }> {
   const res = await fetch(`${fileUrl(o, path)}&probe=1`, { signal });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`);
-  return data as { path: string; size: number };
+  if (!res.ok) throw await fileFetchError(res);
+  return (await res.json()) as { path: string; size: number };
 }
 
 /** The viewer reads this much of a text file; «Abrir aparte» gets all of it. */
@@ -136,14 +153,15 @@ export function FileViewerSheet() {
         const layer: Layer = { back: i > 0 ? { label: 'Atrás', onClick: pop } : undefined, stacked: i > 0, inert: i < top, onClose: pop };
         if (screen.kind === 'changes') return <ChangesView key={`${i}:changes`} origin={v.origin} layer={layer} />;
         if (screen.kind === 'diff') return <DiffView key={`${i}:diff:${screen.file.path}`} origin={v.origin} changes={screen.changes} file={screen.file} layer={layer} />;
-        return <FileView key={`${i}:file:${screen.path}`} origin={v.origin} path={screen.path} line={screen.line} layer={layer} />;
+        if (screen.kind === 'dir') return <ExplorerView key={`${i}:dir:${screen.path}`} origin={v.origin} path={screen.path} layer={layer} open={(path) => push({ kind: 'file', path })} />;
+        return <FileView key={`${i}:file:${screen.path}`} origin={v.origin} screen={screen} layer={layer} />;
       })}
     </>
   );
 }
 
 /** How a screen's sheet sits in the stack, passed on to its `Sheet` as is. */
-interface Layer {
+export interface Layer {
   back?: { label: string; onClick: () => void };
   stacked: boolean;
   inert: boolean;
@@ -152,63 +170,78 @@ interface Layer {
 
 // ---------------------------------------------------------------- a file
 
-function FileView({ origin, path, line, layer }: { origin: FileOrigin; path: string; line?: number; layer: Layer }) {
+/** What is known of a file shown: read once per path, at most `max` bytes of its text. */
+export interface LoadedFile {
+  url: string;
+  name: string;
+  kind: ReturnType<typeof fileKind>;
+  /** Its text (its first `max` bytes); null until read, and for media. */
+  text: string | null;
+  size: number | null;
+  /** Its whole path on the machine, once the hub said it; the path asked for until then. */
+  abs: string;
+  error: string | null;
+  /** A medium the hub confirmed is there (its URL can load). */
+  found: boolean;
+  binary: boolean;
+  max: number;
+}
+
+/**
+ * A file of the machine for the viewer and the explorer's preview: images, PDFs, videos
+ * and sound load from their URL (the hub is only asked whether it is there), text is read
+ * up to `max` bytes. `folder`: called when the path turns out to be a folder (its absolute
+ * path) instead of showing the error.
+ */
+export function useFile(origin: FileOrigin, path: string, max: number, folder?: (dir: string) => void): LoadedFile {
   const url = fileUrl(origin, path);
-  const name = path.split('/').pop() ?? path;
   const kind = fileKind(path);
   const [text, setText] = useState<string | null>(null);
   const [size, setSize] = useState<number | null>(null);
   const [abs, setAbs] = useState<string>(path);
   const [error, setError] = useState<string | null>(null);
-  const [raw, setRaw] = useState(false);
   const [found, setFound] = useState(false);
-  const binary = text !== null && isBinary(text);
 
   useEffect(() => {
-    // Images, PDFs, videos and sound load from the URL itself; asking first only says whether it is there.
+    setText(null);
+    setSize(null);
+    setAbs(path);
+    setError(null);
+    setFound(false);
+    const ctl = new AbortController();
+    const fail = (err: Error) => {
+      if (ctl.signal.aborted) return;
+      if (err instanceof FileFetchError && err.dir && folder) folder(err.dir);
+      else setError(err.message);
+    };
     if (isMedia(kind)) {
-      probeFile(origin, path).then(
-        (r) => {
-          setAbs(r.path);
-          setSize(r.size);
-          setFound(true);
-        },
-        (err: Error) => setError(err.message),
-      );
-      return;
-    }
-    // A big text file: its beginning (a cut line or character at the end does not matter).
-    fetchText(`${url}&max=${TEXT_MAX}`).then(
-      (r) => {
+      probeFile(origin, path, ctl.signal).then((r) => {
+        setAbs(r.path);
+        setSize(r.size);
+        setFound(true);
+      }, fail);
+    } else {
+      // A big text file: its beginning (a cut line or character at the end does not matter).
+      fetchText(`${url}&max=${max}`, ctl.signal).then((r) => {
         setText(r.text);
         if (r.path) setAbs(r.path);
         if (r.size !== undefined) setSize(r.size);
-      },
-      (err: Error) => setError(err.message),
-    );
-  }, [url]);
+      }, fail);
+    }
+    return () => ctl.abort();
+  }, [url, max]);
 
+  return { url, name: path.split('/').pop() ?? path, kind, text, size, abs, error, found, binary: text !== null && isBinary(text), max };
+}
+
+/** A file's content as the viewer shows it; `more` says how to see the rest of a cut text. */
+export function FileBody({ f, line, raw, more }: { f: LoadedFile; line?: number; raw?: boolean; more: string }) {
+  const { url, name, kind, text, size, error, found, binary } = f;
   return (
-    <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} {...layer} class="file-sheet">
-      <div class="file-actions">
-        {kind === 'markdown' && text !== null && !binary && (
-          <button class="btn" onClick={() => setRaw(!raw)}>
-            {raw ? 'Ver renderizado' : 'Ver el texto'}
-          </button>
-        )}
-        {binary ? (
-          <a class="btn" href={url} download={name}>
-            Descargar
-          </a>
-        ) : (
-          <a class="btn" href={url} target="_blank" rel="noreferrer">
-            Abrir aparte
-          </a>
-        )}
-      </div>
-      {text !== null && !binary && size !== null && size > TEXT_MAX && (
+    <>
+      {text !== null && !binary && size !== null && size > f.max && (
         <p class="settings-state small">
-          Solo los primeros {fileSize(TEXT_MAX)} de {fileSize(size)}: «Abrir aparte» lo trae entero.
+          Solo los primeros {fileSize(f.max)} de {fileSize(size)}: {more}
         </p>
       )}
       {error ? (
@@ -234,6 +267,34 @@ function FileView({ origin, path, line, layer }: { origin: FileOrigin; path: str
       ) : (
         <CodeLines text={text} line={line} />
       )}
+    </>
+  );
+}
+
+function FileView({ origin, screen, layer }: { origin: FileOrigin; screen: Extract<FileScreen, { kind: 'file' }>; layer: Layer }) {
+  // A folder asked for as a file (a path without its last /) shows in the explorer, in its place.
+  const f = useFile(origin, screen.path, TEXT_MAX, (dir) => replaceFileScreen(screen, { kind: 'dir', path: dir }));
+  const [raw, setRaw] = useState(false);
+  const { url, name, kind, text, size, abs, binary } = f;
+  return (
+    <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} {...layer} class="file-sheet">
+      <div class="file-actions">
+        {kind === 'markdown' && text !== null && !binary && (
+          <button class="btn" onClick={() => setRaw(!raw)}>
+            {raw ? 'Ver renderizado' : 'Ver el texto'}
+          </button>
+        )}
+        {binary ? (
+          <a class="btn" href={url} download={name}>
+            Descargar
+          </a>
+        ) : (
+          <a class="btn" href={url} target="_blank" rel="noreferrer">
+            Abrir aparte
+          </a>
+        )}
+      </div>
+      <FileBody f={f} line={screen.line} raw={raw} more="«Abrir aparte» lo trae entero." />
     </Sheet>
   );
 }
@@ -524,7 +585,17 @@ function DiffView({ origin, changes, file, layer }: { origin: FileOrigin; change
   );
 }
 
-// ---------------------------------------------------------------- the window's ± button
+// ---------------------------------------------------------------- the window's folder and ± buttons
+
+/** Next to the window's ± button: the explorer at the folder of the window's pane, in a repo or not. */
+export function FolderButton({ host, window, paneId }: { host: HostInfo; window: WindowInfo; paneId?: string }) {
+  const label = 'Explorar la carpeta de la ventana';
+  return (
+    <button class="changes-btn clean" aria-label={label} title={label} onClick={() => openExplorer({ host: host.id, window: window.id, pane: paneId }, '.')}>
+      <IconFolder />
+    </button>
+  );
+}
 
 /** «12», «1,2k». */
 function count(n: number): string {

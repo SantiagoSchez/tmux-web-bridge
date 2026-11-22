@@ -5,9 +5,12 @@ import type { ActionOp, ExtLaunchResult, ProjectList, WorktreeList } from '../..
 import { worktreeNameProblem } from '../../../shared/worktree';
 import { newSession, newWindow, openNewWindow, openSessionWhenReady, openWindowWhenReady } from '../menus';
 import { isDesktop, prefs, setPref } from '../prefs';
+import { fileViewer } from '../fileViewer';
 import { accountsInfo, dialog, dismissToast, hosts, hubSettings, openFolderSettings, toast, toasts, type Dialog } from '../state';
 import { BaseBranchSelect } from './BaseBranch';
-import { DirBrowser, nameProblem, SubfoldersCheck, useDirBrowser } from './Folders';
+import { nameProblem, SubfoldersCheck } from './Folders';
+import { Explorer, useExplorer } from './Explorer';
+import { openFile } from './Files';
 import { IconBranch, IconClose, IconWorktree } from './icons';
 import { hub } from '../ws';
 import { ScheduledDialog } from './Scheduled';
@@ -680,11 +683,11 @@ function NewFolderWhere(props: {
   back: () => void;
   create: (parent: string, name: string, subfolders: boolean) => void;
 }) {
-  const b = useDirBrowser(props.d.host.id);
+  const b = useExplorer({ host: props.d.host.id });
   return (
-    <Sheet title="Nueva carpeta" subtitle={`¿Dónde? · ${props.d.host.name}`} onClose={props.close}>
+    <Sheet title="Nueva carpeta" subtitle={`¿Dónde? · ${props.d.host.name}`} inert={!!fileViewer.value} onClose={props.close}>
       <div class="folder-picker">
-        <DirBrowser b={b} />
+        <Explorer x={b} open={(path) => openFile({ host: props.d.host.id }, path)} />
         <NewFolderForm
           hostId={props.d.host.id}
           space={props.d.session?.name}

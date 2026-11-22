@@ -18,6 +18,8 @@
 #   tmux-window-title.sh start [nombre]        inicio de Claude: estado claude + session_id (JSON por stdin);
 #                                              tras compactar conserva el estado que tenía
 #   tmux-window-title.sh tool <pre|post> [nombre]  Claude usa una herramienta (JSON por stdin): 🔨
+#   tmux-window-title.sh context               inicio de Claude: le pide las rutas como enlaces
+#                                              (imprime el JSON del hook SessionStart)
 #   tmux-window-title.sh focus <pane-id>       el panel recibe foco: ✅ pasa a 🤖
 #   tmux-window-title.sh clear                 borra el estado del panel actual
 #   tmux-window-title.sh rename <window-id> [nombre]   fija el nombre (vacío = automático)
@@ -405,6 +407,17 @@ cmd_start() {
     cmd_refresh "$(tmux display-message -p -t "$TMUX_PANE" '#{window_id}' 2>/dev/null)"
 }
 
+# Inicio de Claude en un panel (otro hook SessionStart, también al reanudar o compactar): le
+# pide escribir cada ruta de sus respuestas como enlace Markdown a la ruta absoluta; no lo que
+# publica (commits, PR, issues, tarjetas), que no debe llevar las rutas de la máquina. La
+# terminal del panel corta las líneas largas; un enlace (OSC 8) llega entero y se abre con un
+# toque. Ni candado ni tmux.
+CONTEXT_PATHS='In your replies in this terminal, whenever you name a file or a folder, write its path as a Markdown link whose target is the absolute path, with a trailing / for a folder: [notes.md](/home/me/project/docs/notes.md), [frames/](/home/me/project/frames/). Never use a file:// URL as the target. This is only for your replies in the terminal: what you write into files, commit messages, pull requests, issues, comments or tracker cards keeps its own conventions. The user reads you in a terminal whose long lines get broken, and only links stay whole and open with a tap.'
+cmd_context() {
+    [ -n "${TMUX_PANE:-}" ] || return 0
+    printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$CONTEXT_PATHS"
+}
+
 # Claude usa una herramienta (hooks PreToolUse y PostToolUse de todas): está trabajando.
 # Cubre lo que no empieza con un mensaje tuyo (sigue solo tras una tarea en segundo plano,
 # un subagente o un /loop, o tras compactar) y la vuelta al trabajo tras aprobar un permiso,
@@ -714,6 +727,7 @@ case "$action" in
     state)       cmd_state "${1:-}" "${2:-}" ;;
     start)       cmd_start "${1:-}" ;;
     tool)        cmd_tool "${1:-}" "${2:-}" ;;
+    context)     cmd_context ;;
     focus)       cmd_focus "${1:-}" ;;
     clear)       cmd_clear ;;
     rename)      cmd_rename "${1:-}" "${2:-}" ;;
@@ -721,5 +735,5 @@ case "$action" in
     close)       cmd_close "${1:-}" "${2:-}" "${3:-}" ;;
     close-popup) cmd_close_popup "${1:-}" "${2:-}" ;;
     wrap-kill-keys) cmd_wrap_kill_keys ;;
-    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|tool <pre|post> [nombre]|focus <pane-id>|clear|rename <window-id> [nombre]|reload <pane-id>|close <pane|window|session> <id> [cliente]|wrap-kill-keys}" >&2; exit 2 ;;
+    *)           echo "uso: $(basename "$0") {refresh [window-id]|refresh-all|state <estado> [nombre]|start [nombre]|tool <pre|post> [nombre]|context|focus <pane-id>|clear|rename <window-id> [nombre]|reload <pane-id>|close <pane|window|session> <id> [cliente]|wrap-kill-keys}" >&2; exit 2 ;;
 esac

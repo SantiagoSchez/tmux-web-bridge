@@ -1,0 +1,7 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadido un explorador de archivos en el panel: lista las carpetas y ficheros de la máquina con su tamaño, filtra por nombre, enseña los ocultos si se pide, sube con «..» hasta la raíz y muestra la vista previa del fichero elegido (a la derecha en el ordenador, debajo en el móvil), con «Abrir» para verlo entero. Lo abre el nuevo botón de carpeta de la cabecera de cada ventana, en la carpeta de su panel, y lo usan también Ajustes › Carpetas y «Nueva carpeta» para elegir carpeta",
+  "issue": "76",
+  "breaking": false
+}

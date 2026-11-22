@@ -1,7 +1,8 @@
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [{ "type": "command", "command": "\"@KIT@/tmux-window-title.sh\" start \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] }
+      { "hooks": [{ "type": "command", "command": "\"@KIT@/tmux-window-title.sh\" start \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] },
+      { "hooks": [{ "type": "command", "command": "\"@KIT@/tmux-window-title.sh\" context" }] }
     ],
     "UserPromptSubmit": [
       { "hooks": [{ "type": "command", "command": "\"@KIT@/tmux-window-title.sh\" state busy \"$(basename \"$CLAUDE_PROJECT_DIR\")\"" }] }
