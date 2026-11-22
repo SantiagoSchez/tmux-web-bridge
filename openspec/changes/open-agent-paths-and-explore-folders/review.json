@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "pr": 77,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-22T15:36:11.632Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "server/src/files.test.ts",
+      "symbol": null,
+      "line": 247,
+      "title": "The 20 000-file listing test asserts an absolute time budget (took < 5000), refused by the testing standards",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Explorer.tsx",
+      "symbol": "Explorer",
+      "line": 80,
+      "title": "A relative path typed in the explorer resolves against the panes' folders, not the folder shown; in the pickers it fails with a message about a window",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "escapes": [],
+  "outcome": null
+}

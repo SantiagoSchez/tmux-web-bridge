@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fileTarget, findPaths, findPathsInRows, hyperlinkTarget } from '../../shared/paths.js';
 import { execFile, execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { GitChanges } from '../../shared/types.js';
@@ -237,20 +237,43 @@ test('of the folders a relative path may be in, the first that is a folder is li
 
 test('a folder of thousands of files is listed at once: the first 2000 by name, and how many are left out', async () => {
   const home = realpathSync(mkdtempSync(join(tmpdir(), 'twb-home-')));
+  const bin = mkdtempSync(join(tmpdir(), 'twb-bin-'));
   try {
-    const frames = join(home, 'frames');
-    mkdirSync(frames);
-    for (let i = 1; i <= 20_000; i++) writeFileSync(join(frames, `f${String(i).padStart(5, '0')}.png`), 'x'.repeat(i % 7));
-    const started = Date.now();
-    const l = await listHostDir(shHost(home), ['~/frames'], '~/frames');
-    const took = Date.now() - started;
-    assert.ok(took < 5000, `listed in ${took} ms`);
+    for (const [name, count] of [['small', 2000], ['frames', 20_000]] as const) {
+      mkdirSync(join(home, name));
+      for (let i = 1; i <= count; i++) writeFileSync(join(home, name, `f${String(i).padStart(5, '0')}.png`), 'x'.repeat(i % 7));
+    }
+    // The real stat, noting on one line per call how many file names it was given.
+    const real = execFileSync('/bin/sh', ['-c', 'command -v stat'], { encoding: 'utf8' }).trim();
+    const log = join(bin, 'calls');
+    writeFileSync(
+      join(bin, 'stat'),
+      `#!/bin/sh\nn=0; for a; do case "$a" in *.png) n=$((n+1));; esac; done\necho "$n" >> "${log}"\nexec "${real}" "$@"\n`,
+      { mode: 0o755 },
+    );
+    const host = shHost(home, bin);
+    const timed = async (path: string) => {
+      const started = process.hrtime.bigint();
+      const l = await listHostDir(host, [path], path);
+      return { l, took: Number(process.hrtime.bigint() - started) };
+    };
+    const small = await timed('~/small');
+    writeFileSync(log, '');
+    const { l, took } = await timed('~/frames');
+
     assert.equal(l.files.length, 2000);
     assert.deepEqual(l.files[0], { name: 'f00001.png', size: 1 });
     assert.deepEqual(l.files[1999], { name: 'f02000.png', size: 2000 % 7 });
     assert.equal(l.left, 18_000);
+    // A few stat calls, naming only the files kept: never one per file, nor the 18 000 left out.
+    const calls = readFileSync(log, 'utf8').trim().split('\n').map(Number);
+    assert.ok(calls.length <= 5, `${calls.length} calls to stat`);
+    assert.equal(calls.reduce((a, b) => a + b, 0), 2000);
+    // Linear in the folder's size: ten times the files is far from a hundred times the cost.
+    assert.ok(took < 40 * small.took, `20 000 files cost ${(took / small.took).toFixed(1)} times 2000`);
   } finally {
     rmSync(home, { recursive: true, force: true });
+    rmSync(bin, { recursive: true, force: true });
   }
 });
 
