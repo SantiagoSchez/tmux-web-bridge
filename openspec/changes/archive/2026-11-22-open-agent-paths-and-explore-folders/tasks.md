@@ -131,11 +131,13 @@
 
 ## 17. Human review (mandatory step 8)
 
-- [ ] 17.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
+- [x] 17.1 Ask the owner with `AskUserQuestion` who reviews the pull request and record the answer here; do not archive before the approval or that answer.
+  - Done: the owner takes PR #77 as good, without a manual review (2026-11-22).
 
 ## 18. features-check before the archive (mandatory step 9)
 
-- [ ] 18.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+- [x] 18.1 Run `ka features-check --strict` as the last task before `/opsx:archive`; the exit code must be 0.
+  - Done: `ka features-check --strict`: 125 sections in sync, exit 0.
 
 ## Workflow follow-up
 
