@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "web",
-  "description": "Añadido un icono por tipo de fichero (imagen, vídeo, audio, PDF, Markdown, código, comprimido u otro) en el explorador de archivos y en «Ficheros cambiados», donde va entre la letra de su estado en git y el nombre",
-  "issue": "79",
-  "breaking": false,
-  "pr": "80"
-}

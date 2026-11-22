@@ -4,6 +4,13 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.34.0 - 2026-11-22
+
+### Añadido
+
+- Añadido el cierre de la vista previa del explorador de archivos: el botón ✕ junto a «Abrir», o volver a tocar el fichero, la cierra y la lista recupera todo el espacio. Con la vista previa abierta, el botón atrás del móvil y Esc la cierran antes que el explorador, también en Ajustes › Carpetas y «Nueva carpeta».
+- Añadido un icono por tipo de fichero (imagen, vídeo, audio, PDF, Markdown, código, comprimido u otro) en el explorador de archivos y en «Ficheros cambiados», donde va entre la letra de git y el nombre.
+
 ## 1.33.0 - 2026-11-22
 
 ### Añadido
