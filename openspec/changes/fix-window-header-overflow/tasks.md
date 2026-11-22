@@ -28,6 +28,7 @@
   - 360 px, one change: page 360 px; «☑ 95 %» whole, name 76 px, «⋯» 310–354.
   - 360 px, two changes: page 360 px; «☑ 25 %» whole, the second change left out, name at its 64 px minimum, «⋯» 310–354.
   - «Ficheros cambiados» over the window at 411 px: page 411 px, sheet 0–411, its controls and list 16–395.
+  - The window's icon (the owner saw it cut in the header before the fix): with `@pane_icon` 🤖 on the pane, at 411 px the name takes 58–177 with the icon at 58–68 and the name's text from 74; at 360 px with two changes the name keeps its 64 px minimum (58–114) and the icon shows whole (headless Chrome draws the emoji as a 10 px box; a real one is about 20 px).
   - 1280 px (window view about 600 px wide): «☑ 116/121 (95 %)» and «+18,9k −1,5k» on one line, as before.
 - [x] 4.4 Commit the group with `/ka:commit` once `pnpm --filter web typecheck` passes.
 
@@ -44,8 +45,8 @@
 
 ## 7. Review loop
 
-- [ ] 7.1 Run `/opsx:verify` and fix what it reports through the artifacts.
-- [ ] 7.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes one component's markup, its styles and a pure shared helper.
+- [x] 7.1 Run `/opsx:verify` and fix what it reports through the artifacts.
+- [x] 7.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes one component's markup, its styles and a pure shared helper.
 - [ ] 7.3 Open the pull request with `/ka:commit --pr`.
 - [ ] 7.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
