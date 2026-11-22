@@ -40,13 +40,13 @@
 
 ## 6. Run tests, typecheck and lint
 
-- [ ] 6.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+- [x] 6.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
 
 ## 7. Update the documentation and the changelog
 
-- [ ] 7.1 Run `/ka:update-docs`: the web standards say that an explorer's preview is a layer of the back button with its owner, closed by `closeTop()` before its screen or dialog, and that a file's type comes from `shared/file-types.ts`; the README's explorer paragraph mentions the ✕ and the icons. Check with a search that no line still says the preview closes only when changing folder.
-- [ ] 7.2 Add the changelog entry with `/ka:changelog --issue 79`: closing the explorer's preview and the file type icons in the explorer and «Ficheros cambiados».
-- [ ] 7.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
+- [x] 7.1 Run `/ka:update-docs`: the web standards say that an explorer's preview is a layer of the back button with its owner, closed by `closeTop()` before its screen or dialog, and that a file's type comes from `shared/file-types.ts`; the README's explorer paragraph mentions the ✕ and the icons. Check with a search that no line still says the preview closes only when changing folder.
+- [x] 7.2 Add the changelog entry with `/ka:changelog --issue 79`: closing the explorer's preview and the file type icons in the explorer and «Ficheros cambiados».
+- [x] 7.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
 
 ## 8. Review loop
 
