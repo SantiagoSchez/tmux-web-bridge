@@ -52,9 +52,9 @@
 
 ## 8. Update the feature catalogue
 
-- [ ] 8.1 Run `/ka:update-features fix-window-header-overflow` for the modified and added requirements of `change-progress`.
-- [ ] 8.2 Run `ka features-check --strict` with exit code 0.
-- [ ] 8.3 Commit the catalogue with `/ka:commit`.
+- [x] 8.1 Run `/ka:update-features fix-window-header-overflow` for the modified and added requirements of `change-progress`.
+- [x] 8.2 Run `ka features-check --strict` with exit code 0.
+- [x] 8.3 Commit the catalogue with `/ka:commit`.
 
 ## 9. E2E pipeline
 
