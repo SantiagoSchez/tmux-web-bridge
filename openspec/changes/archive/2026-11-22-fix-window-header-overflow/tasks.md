@@ -62,11 +62,11 @@
 
 ## 10. Human review
 
-- [ ] 10.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good.
+- [x] 10.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The owner took PR #82 as good without a manual review (2026-11-22).
 
 ## 11. Feature catalogue check before the archive
 
-- [ ] 11.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
+- [x] 11.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
 
 ## Workflow follow-up
 
