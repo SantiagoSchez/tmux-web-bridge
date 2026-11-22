@@ -22,7 +22,7 @@ None.
 
 ### Modified Capabilities
 
-- `change-progress`: the requirement «The open window's header opens each change's tasks» gains the short label of a narrow header, and a new requirement guarantees that the header fits its width (with the ± button on two lines when narrow).
+- `change-progress`: the requirement «The open window's header opens each change's tasks» gains the short label of a narrow header and shows as many change buttons as fit; two new requirements guarantee that the header fits its width and put the ± counts on two lines in a narrow header.
 
 ## Impact
 
