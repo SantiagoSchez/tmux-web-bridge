@@ -1,8 +1,0 @@
-{
-  "type": "fixed",
-  "scope": "web",
-  "description": "Corregida la cabecera de la ventana en el móvil: cuando el repositorio tenía un cambio de OpenSpec y ficheros cambiados, no cabía, tapaba el nombre de la ventana y el botón ···, y ensanchaba la página, de modo que «Ficheros cambiados» y las demás hojas salían cortadas por la derecha. Ahora, en una cabecera estrecha, el cambio enseña solo su porcentaje («☑ 95 %»), las líneas cambiadas van en dos filas y los botones de cambio que no caben se quedan fuera",
-  "issue": "81",
-  "breaking": false,
-  "pr": "82"
-}

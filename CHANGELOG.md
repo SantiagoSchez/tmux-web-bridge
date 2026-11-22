@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.34.1 - 2026-11-22
+
+### Corregido
+
+- Corregida la cabecera de la ventana en el móvil, que con un cambio de OpenSpec y ficheros cambiados no cabía: tapaba el nombre de la ventana y el botón ···, y «Ficheros cambiados» y las demás hojas salían cortadas por la derecha. Ahora, en una cabecera estrecha, el cambio enseña solo su porcentaje («☑ 95 %»), las líneas cambiadas van en dos filas y los botones de cambio que no caben se quedan fuera.
+
 ## 1.34.0 - 2026-11-22
 
 ### Añadido
