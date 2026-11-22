@@ -181,7 +181,7 @@ export function SubfoldersCheck({ checked, onChange }: { checked: boolean; onCha
 
 /** Browses the machine from ~ (or a path typed by hand) with the explorer and adds the folder shown. */
 function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: SavedFolder[]; onAdd: (f: SavedFolder) => void; onCancel: () => void }) {
-  const b = useExplorer({ host: host.id });
+  const b = useExplorer({ host: host.id }, 'settings');
   const { at, busy, typed } = b;
   const [name, setName] = useState<string | null>(null);
   const [subfolders, setSubfolders] = useState(false);

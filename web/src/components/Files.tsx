@@ -151,7 +151,7 @@ export function FileViewerSheet() {
         const layer: Layer = { back: i > 0 ? { label: 'Atrás', onClick: pop } : undefined, stacked: i > 0, inert: i < top, onClose: pop };
         if (screen.kind === 'changes') return <ChangesView key={`${i}:changes`} origin={v.origin} layer={layer} />;
         if (screen.kind === 'diff') return <DiffView key={`${i}:diff:${screen.file.path}`} origin={v.origin} changes={screen.changes} file={screen.file} layer={layer} />;
-        if (screen.kind === 'dir') return <ExplorerView key={`${i}:dir:${screen.path}`} origin={v.origin} path={screen.path} layer={layer} open={(path) => push({ kind: 'file', path })} />;
+        if (screen.kind === 'dir') return <ExplorerView key={`${i}:dir:${screen.path}`} origin={v.origin} screen={screen} layer={layer} open={(path) => push({ kind: 'file', path })} />;
         return <FileView key={`${i}:file:${screen.path}`} origin={v.origin} screen={screen} layer={layer} />;
       })}
     </>

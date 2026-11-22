@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { childPath } from '../../../shared/folders';
 import type { DirListing } from '../../../shared/types';
 import { api } from '../api';
-import type { FileOrigin } from '../fileViewer';
+import { explorerPreviews, type ExplorerPreview, type FileOrigin, type FileScreen } from '../fileViewer';
 import { fold } from '../text';
 import { FileBody, fileSize, qs, useFile, type Layer } from './Files';
-import { FileTypeIcon, IconFolder } from './icons';
+import { FileTypeIcon, IconClose, IconFolder } from './icons';
 import { Sheet } from './Sheet';
 
 // The file explorer: the folders and files of a machine, moving freely up to /, with a
@@ -20,8 +20,10 @@ const PREVIEW_MAX = 256 * 1024;
  * Where an explorer is and what it shows: the folder listed, the path typed, the filter,
  * the hidden entries, the selected file. Moving to another folder clears the filter and
  * the selection. `start` may be relative to the origin's panes (`.` is the pane's own).
+ * `owner` is the layer that holds the explorer (see ExplorerPreview): the back button
+ * closes the preview before it.
  */
-export function useExplorer(origin: FileOrigin, start = '~') {
+export function useExplorer(origin: FileOrigin, owner: unknown, start = '~') {
   const [at, setAt] = useState<DirListing | null>(null);
   const [path, setPath] = useState(start);
   const [busy, setBusy] = useState(false);
@@ -32,6 +34,26 @@ export function useExplorer(origin: FileOrigin, start = '~') {
   const listRef = useRef<HTMLUListElement>(null);
   /** The last folder asked for: an older answer that arrives later is dropped. */
   const last = useRef(0);
+  const selectedNow = useRef(selected);
+  selectedNow.current = selected;
+
+  /** No file selected, and the focus on the row of the one that was (the ✕ that had it is gone). */
+  const closePreview = () => {
+    const name = selectedNow.current;
+    setSelected(null);
+    if (name !== null) listRef.current?.querySelector<HTMLElement>(`[data-file="${CSS.escape(name)}"]`)?.focus();
+  };
+  /** Tapping a file previews it; tapping the one previewed closes the preview. */
+  const toggle = (name: string) => (name === selected ? closePreview() : setSelected(name));
+
+  // A layer of the back button while a file is selected; moving to another file keeps it.
+  const previewing = selected !== null;
+  useLayoutEffect(() => {
+    if (!previewing) return;
+    const mine: ExplorerPreview = { owner, close: closePreview };
+    explorerPreviews.value = [...explorerPreviews.value, mine];
+    return () => void (explorerPreviews.value = explorerPreviews.value.filter((p) => p !== mine));
+  }, [previewing, owner]);
 
   const go = async (to: string): Promise<DirListing | null> => {
     const mine = ++last.current;
@@ -59,7 +81,7 @@ export function useExplorer(origin: FileOrigin, start = '~') {
   const typed = path.trim() !== at?.path;
   /** Where it is, opening first a path typed by hand: so only folders that exist are used. */
   const here = () => (typed ? go(path) : Promise.resolve(at));
-  return { origin, at, path, setPath, busy, error, go, typed, here, query, setQuery, hidden, setHidden, selected, setSelected, listRef };
+  return { origin, at, path, setPath, busy, error, go, typed, here, query, setQuery, hidden, setHidden, selected, toggle, closePreview, listRef };
 }
 
 export type ExplorerState = ReturnType<typeof useExplorer>;
@@ -72,8 +94,25 @@ export function Explorer({ x, open, fill }: { x: ExplorerState; open: (path: str
   const dirs = at ? at.dirs.filter(shown) : [];
   const files = at ? at.files.filter((f) => shown(f.name)) : [];
   const empty = !at ? '' : query ? 'Nada coincide.' : at.dirs.length || at.files.length ? 'Solo hay carpetas y ficheros ocultos.' : 'La carpeta está vacía.';
+  const root = useRef<HTMLDivElement>(null);
+  const previewing = !!(at && selected);
+  useEffect(() => {
+    if (!previewing) return;
+    // Escape closes the preview, not the sheet: caught on its way down, before the
+    // sheet's own listener, and only in the sheet on top (the one Escape would close).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const mine = root.current?.closest<HTMLElement>('.sheet-backdrop');
+      if (!mine || mine.inert || [...document.querySelectorAll('.sheet-backdrop')].pop() !== mine) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      x.closePreview();
+    };
+    addEventListener('keydown', onKey, true);
+    return () => removeEventListener('keydown', onKey, true);
+  }, [previewing]);
   return (
-    <div class={`explorer ${fill ? 'fill' : ''} ${at && selected ? 'has-preview' : ''}`}>
+    <div class={`explorer ${fill ? 'fill' : ''} ${previewing ? 'has-preview' : ''}`} ref={root}>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -134,7 +173,7 @@ export function Explorer({ x, open, fill }: { x: ExplorerState; open: (path: str
           ))}
           {files.map((f) => (
             <li key={`f:${f.name}`}>
-              <button class="menu-item" aria-pressed={selected === f.name} onClick={() => x.setSelected(f.name)}>
+              <button class="menu-item" data-file={f.name} aria-pressed={selected === f.name} onClick={() => x.toggle(f.name)}>
                 <span class="menu-icon" aria-hidden="true">
                   <FileTypeIcon name={f.name} />
                 </span>
@@ -150,14 +189,14 @@ export function Explorer({ x, open, fill }: { x: ExplorerState; open: (path: str
             </li>
           )}
         </ul>
-        {at && selected && <Preview key={childPath(at.path, selected)} origin={x.origin} path={childPath(at.path, selected)} open={open} />}
+        {at && selected && <Preview key={childPath(at.path, selected)} origin={x.origin} path={childPath(at.path, selected)} open={open} close={x.closePreview} />}
       </div>
     </div>
   );
 }
 
-/** The selected file as the viewer would show it (its first 256 KB of text), with «Abrir». */
-function Preview({ origin, path, open }: { origin: FileOrigin; path: string; open: (path: string) => void }) {
+/** The selected file as the viewer would show it (its first 256 KB of text), with «Abrir» and ✕. */
+function Preview({ origin, path, open, close }: { origin: FileOrigin; path: string; open: (path: string) => void; close: () => void }) {
   const f = useFile(origin, path, PREVIEW_MAX);
   return (
     <section class="explorer-preview" aria-label={`Vista previa de ${f.name}`}>
@@ -166,15 +205,18 @@ function Preview({ origin, path, open }: { origin: FileOrigin; path: string; ope
         <button class="btn" onClick={() => open(path)}>
           Abrir
         </button>
+        <button class="icon-btn" aria-label="Cerrar la vista previa" title="Cerrar la vista previa" onClick={close}>
+          <IconClose />
+        </button>
       </div>
       <FileBody f={f} more="«Abrir» lo enseña entero." />
     </section>
   );
 }
 
-/** The explorer as a screen of the file viewer: its title is the folder shown. */
-export function ExplorerView({ origin, path, layer, open }: { origin: FileOrigin; path: string; layer: Layer; open: (path: string) => void }) {
-  const x = useExplorer(origin, path);
+/** The explorer as a screen of the file viewer (`screen`, which owns its preview): its title is the folder shown. */
+export function ExplorerView({ origin, screen, layer, open }: { origin: FileOrigin; screen: Extract<FileScreen, { kind: 'dir' }>; layer: Layer; open: (path: string) => void }) {
+  const x = useExplorer(origin, screen, screen.path);
   return (
     <Sheet title={x.at?.path ?? 'Explorador'} {...layer} class="file-sheet explorer-sheet">
       <Explorer x={x} open={open} fill />
