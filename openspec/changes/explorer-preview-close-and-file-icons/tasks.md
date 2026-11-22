@@ -53,17 +53,17 @@
 - [x] 8.1 Run `/opsx:verify` and fix what it reports through the artifacts.
 - [x] 8.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes UI components, the back button's layer count and a new pure module.
 - [x] 8.3 Open the pull request with `/ka:commit --pr`.
-- [ ] 8.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
+- [x] 8.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
 ## 9. Update the feature catalogue
 
-- [ ] 9.1 Run `/ka:update-features explorer-preview-close-and-file-icons` for the new and modified requirements of `file-explorer` and `file-viewer`.
-- [ ] 9.2 Run `ka features-check --strict` with exit code 0.
-- [ ] 9.3 Commit the catalogue with `/ka:commit`.
+- [x] 9.1 Run `/ka:update-features explorer-preview-close-and-file-icons` for the new and modified requirements of `file-explorer` and `file-viewer`.
+- [x] 9.2 Run `ka features-check --strict` with exit code 0.
+- [x] 9.3 Commit the catalogue with `/ka:commit`.
 
 ## 10. E2E pipeline
 
-- [ ] 10.1 The project has no E2E suite; this step does not apply.
+- [x] 10.1 The project has no E2E suite; this step does not apply.
 
 ## 11. Human review
 
