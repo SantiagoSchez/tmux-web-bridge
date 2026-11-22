@@ -9,7 +9,7 @@ import { fileViewer, fileViewerBack, pushFileScreen, replaceFileScreen, type Fil
 import { ExplorerView } from './Explorer';
 
 export { fileViewer, type FileOrigin };
-import { IconFileDiff, IconFolder, IconReload } from './icons';
+import { FileTypeIcon, IconFileDiff, IconFolder, IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
 // other text with its lines), the explorer of a machine's folders, the changed files of
@@ -473,6 +473,9 @@ function ChangesView({ origin, layer }: { origin: FileOrigin; layer: Layer }) {
                 <button class="menu-item" onClick={() => push({ kind: 'diff', changes, file: f })}>
                   <span class={`git-badge git-${f.status === '?' ? 'u' : f.status.toLowerCase()}`} title={STATUS[f.status]}>
                     {f.status === '?' ? 'N' : f.status}
+                  </span>
+                  <span class="menu-icon" aria-hidden="true">
+                    <FileTypeIcon name={f.path} />
                   </span>
                   <span class="project-text">
                     <span class="project-name">{f.path.slice(slash + 1)}</span>

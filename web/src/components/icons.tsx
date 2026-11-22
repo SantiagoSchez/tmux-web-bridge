@@ -1,5 +1,6 @@
 // Minimal stroke icons (24px grid, currentColor).
 import type { JSX } from 'preact';
+import { fileType, type FileType } from '../../../shared/file-types';
 
 function Svg({ children, size = 20 }: { children: JSX.Element | JSX.Element[]; size?: number }) {
   return (
@@ -187,3 +188,80 @@ export const IconTrash = () => (
     <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
   </Svg>
 );
+
+// A file's type (shared/file-types.ts): the page of IconFileDiff with a mark of its kind.
+const Page = () => (
+  <>
+    <path d="M14.5 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7.5z" />
+    <path d="M14 2.5v5.5h5.5" />
+  </>
+);
+export const IconFile = () => (
+  <Svg>
+    <Page />
+  </Svg>
+);
+export const IconFileImage = () => (
+  <Svg>
+    <Page />
+    <circle cx="9.5" cy="12" r="1.2" />
+    <path d="M7.5 18.5l3-3 2.5 2.5 1.5-1.5 2 2" />
+  </Svg>
+);
+export const IconFileVideo = () => (
+  <Svg>
+    <Page />
+    <path d="M10 11.5v6l5-3z" />
+  </Svg>
+);
+export const IconFileAudio = () => (
+  <Svg>
+    <Page />
+    <path d="M11 17v-5.5l4.5-1.5v5.5" />
+    <circle cx="9.75" cy="17" r="1.25" />
+    <circle cx="14.25" cy="15.5" r="1.25" />
+  </Svg>
+);
+export const IconFilePdf = () => (
+  <Svg>
+    <Page />
+    <rect x="7.5" y="12.5" width="9" height="4.5" rx="1" />
+  </Svg>
+);
+export const IconFileMarkdown = () => (
+  <Svg>
+    <Page />
+    <path d="M7.5 17.5v-5l2 2.5 2-2.5v5" />
+    <path d="M15 12.5v5M13.25 15.75L15 17.5l1.75-1.75" />
+  </Svg>
+);
+export const IconFileCode = () => (
+  <Svg>
+    <Page />
+    <path d="M10 12l-2.5 2.75L10 17.5M14 12l2.5 2.75L14 17.5" />
+  </Svg>
+);
+export const IconFileArchive = () => (
+  <Svg>
+    <Page />
+    <path d="M10 5h1.5M11.5 7.5H13M10 10h1.5" />
+    <rect x="10" y="12.5" width="3" height="4" rx="1" />
+  </Svg>
+);
+
+const BY_TYPE: Record<FileType, () => JSX.Element> = {
+  image: IconFileImage,
+  video: IconFileVideo,
+  audio: IconFileAudio,
+  pdf: IconFilePdf,
+  markdown: IconFileMarkdown,
+  code: IconFileCode,
+  archive: IconFileArchive,
+  file: IconFile,
+};
+
+/** The icon of a file's type, by its name or its path. */
+export function FileTypeIcon({ name }: { name: string }) {
+  const Icon = BY_TYPE[fileType(name)];
+  return <Icon />;
+}

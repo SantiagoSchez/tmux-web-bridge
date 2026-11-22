@@ -15,12 +15,12 @@
 - [x] 3.1 Write `server/src/file-types.test.ts` for `fileType(name)` of `shared/file-types.ts` (D4): one name per kind (`captura.PNG` image, `actual.mp4` video, `nota.m4a` audio, `factura.pdf` PDF, `INDICE.md` Markdown, `app.ts` code, `backup.tar.gz` archive, `notas.txt` file), the case ignored, `LICENSE` and `.env` generic, `Dockerfile` and `Makefile` code, and a name whose only dot is in a folder of its path. Run `pnpm --filter server test` and see it fail because the module does not exist.
 - [x] 3.2 Write `shared/file-types.ts` with the extension lists of D4 (the five lists moved unchanged from `Files.tsx`, plus code and archive) until `pnpm --filter server test` passes.
 - [x] 3.3 Rewrite `fileKind` in `web/src/components/Files.tsx` over `fileType` (code, archive and file map to `'text'`) and delete the regexes it no longer uses there; `pnpm --filter web typecheck` passes and a search for `IMAGE`, `MARKDOWN`, `PDF`, `VIDEO` and `AUDIO` in `web/src` finds no stale use.
-- [ ] 3.4 Commit the group with `/ka:commit` (with the change's OpenSpec artifacts) once `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck` pass.
+- [x] 3.4 Commit the group with `/ka:commit` (with the change's OpenSpec artifacts) once `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck` pass.
 
 ## 4. The file type icons
 
-- [ ] 4.1 Add the eight icons of D5 to `web/src/components/icons.tsx` (24-unit grid, `currentColor`, the same stroke as `IconFileDiff`) and `FileTypeIcon({ name })`, which picks one with `fileType`; `pnpm --filter web typecheck` passes.
-- [ ] 4.2 Put `FileTypeIcon` in the empty `menu-icon` slot of the explorer's file rows (`Explorer.tsx`) and in a new `menu-icon` span between the `git-badge` and the name in the rows of «Ficheros cambiados» (`Files.tsx`), with any style the row needs in `web/src/styles.css`; `pnpm --filter web typecheck` passes.
+- [x] 4.1 Add the eight icons of D5 to `web/src/components/icons.tsx` (24-unit grid, `currentColor`, the same stroke as `IconFileDiff`) and `FileTypeIcon({ name })`, which picks one with `fileType`; `pnpm --filter web typecheck` passes.
+- [x] 4.2 Put `FileTypeIcon` in the empty `menu-icon` slot of the explorer's file rows (`Explorer.tsx`) and in a new `menu-icon` span between the `git-badge` and the name in the rows of «Ficheros cambiados» (`Files.tsx`), with any style the row needs in `web/src/styles.css`; `pnpm --filter web typecheck` passes.
 - [ ] 4.3 Commit the group with `/ka:commit` once `pnpm --filter web typecheck` passes.
 
 ## 5. Close the preview

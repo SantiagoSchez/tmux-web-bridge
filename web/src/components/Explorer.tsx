@@ -5,7 +5,7 @@ import { api } from '../api';
 import type { FileOrigin } from '../fileViewer';
 import { fold } from '../text';
 import { FileBody, fileSize, qs, useFile, type Layer } from './Files';
-import { IconFolder } from './icons';
+import { FileTypeIcon, IconFolder } from './icons';
 import { Sheet } from './Sheet';
 
 // The file explorer: the folders and files of a machine, moving freely up to /, with a
@@ -135,7 +135,9 @@ export function Explorer({ x, open, fill }: { x: ExplorerState; open: (path: str
           {files.map((f) => (
             <li key={`f:${f.name}`}>
               <button class="menu-item" aria-pressed={selected === f.name} onClick={() => x.setSelected(f.name)}>
-                <span class="menu-icon" aria-hidden="true" />
+                <span class="menu-icon" aria-hidden="true">
+                  <FileTypeIcon name={f.name} />
+                </span>
                 <span class="project-name">{f.name}</span>
                 <span class="explorer-size dim small">{fileSize(f.size)}</span>
               </button>
