@@ -138,7 +138,7 @@ Al tocar un fichero en «Ficheros cambiados», su diff se abre en un panel nuevo
 ### Cerrar vuelve a la pantalla anterior
 <!-- capability: file-viewer; requirement: closing-the-sheet-on-top-goes-back-one-screen -->
 
-Cualquier forma de cerrar el panel de arriba cierra solo ese y deja ver el de debajo: «Atrás», Esc, un toque fuera del panel, arrastrarlo hacia abajo en el móvil o el botón atrás del móvil. Desde un fichero abierto desde un diff, el botón atrás enseña primero el diff, luego la lista y, a la tercera, cierra el visor. Cerrar el único panel que queda cierra el visor.
+Cualquier forma de cerrar el panel de arriba cierra solo ese y deja ver el de debajo: «Atrás», Esc, un toque fuera del panel, arrastrarlo hacia abajo en el móvil o el botón atrás del móvil. Desde un fichero abierto desde un diff, el botón atrás enseña primero el diff, luego la lista y, a la tercera, cierra el visor. Cerrar el único panel que queda cierra el visor. La excepción es el explorador con la vista previa de un fichero abierta: ahí el botón atrás y Esc cierran primero la vista previa, y el explorador sigue abierto.
 
 ### Solo se usa el panel de arriba
 <!-- capability: file-viewer; requirement: only-the-sheet-on-top-can-be-used -->
@@ -150,12 +150,22 @@ Con varios paneles abiertos, solo el de arriba oscurece la página y responde: l
 
 Al cerrar una pantalla del visor, el foco vuelve a lo que la abrió: al fichero de «Ficheros cambiados» al cerrar su diff, y a «Ver el fichero» al cerrar el fichero. Con el teclado o un lector de pantalla se sigue desde ahí, y la lista no se mueve. Si al abrir la pantalla nada tenía el foco, como pasa en Safari al hacer clic en un botón, al cerrarla tampoco se enfoca nada.
 
+### Cada fichero cambiado lleva el icono de su tipo
+<!-- capability: file-viewer; requirement: a-changed-file-shows-its-type-s-icon -->
+
+Cada fila de «Ficheros cambiados» enseña, entre la letra de su estado en git y el nombre, el mismo icono de tipo que le daría el explorador de archivos: `src/app.ts` modificado sale con «M», el icono de código y `app.ts`; `docs/captura.png` nuevo, con «N», el icono de imagen y `captura.png`.
+
 ## Explorador de archivos
 
 ### Qué muestra una carpeta
 <!-- capability: file-explorer; requirement: the-explorer-lists-a-folder-s-contents -->
 
 El explorador de archivos muestra la ruta completa de la carpeta, con `~` para la carpeta personal, y lista primero sus carpetas y después sus ficheros, cada grupo por nombre sin distinguir mayúsculas, con el tamaño de cada fichero («284 MB», «2 KB»). En una carpeta enorme, como una de 18 000 fotogramas, lista las 2000 primeras carpetas y los 2000 primeros ficheros y dice cuántas entradas deja fuera. Una carpeta vacía lo dice, y una que no existe da un error con la ruta y la máquina.
+
+### El icono de cada fichero
+<!-- capability: file-explorer; requirement: each-file-shows-its-type-s-icon -->
+
+Cada fichero de la lista lleva un icono de línea, del mismo estilo que los demás del panel, según la extensión de su nombre y sin distinguir mayúsculas: imagen (`captura.PNG`), vídeo (`actual.mp4`), audio (`nota.m4a`), PDF, Markdown (`INDICE.md`), código (`app.ts`), comprimido (`backup.tar.gz`) o, para cualquier otro, como `notas.txt` o `LICENSE`, el de un fichero genérico. Las carpetas siguen con su icono de carpeta.
 
 ### Moverse por la máquina
 <!-- capability: file-explorer; requirement: the-explorer-moves-freely-across-the-machine -->
@@ -171,6 +181,11 @@ Las carpetas y ficheros cuyo nombre empieza por `.`, como `.git` o `.env`, no se
 <!-- capability: file-explorer; requirement: the-selected-file-shows-its-preview -->
 
 Tocar un fichero lo selecciona y muestra su vista previa, la misma que daría el visor de ficheros para ese tipo de fichero (Markdown renderizado, la imagen, el vídeo…), con un botón «Abrir». En el ordenador sale a la derecha de la lista; en el móvil, debajo, con la lista arriba. En los selectores de carpeta de Ajustes y de «Nueva carpeta» sale siempre debajo. Al pasar a otra carpeta no queda ningún fichero elegido.
+
+### Cerrar la vista previa
+<!-- capability: file-explorer; requirement: the-preview-closes -->
+
+La vista previa tiene un botón ✕ junto a «Abrir» que la cierra; tocar otra vez el fichero elegido también la cierra. En los dos casos no queda ningún fichero elegido y la lista vuelve a ocupar todo el explorador, como antes de elegir uno. Tocar otro fichero no la cierra: pasa a enseñar ese.
 
 ### «Abrir» enseña el fichero entero
 <!-- capability: file-explorer; requirement: abrir-opens-the-whole-file-over-the-explorer -->
@@ -195,12 +210,12 @@ La cabecera de cada ventana tiene un botón de carpeta, junto al de los ficheros
 ### Volver atrás de pantalla en pantalla
 <!-- capability: file-explorer; requirement: the-explorer-goes-back-one-screen-at-a-time -->
 
-El explorador es una pantalla más del visor de ficheros: cualquier forma de cerrar el panel de arriba cierra solo esa pantalla. Desde un fichero abierto con «Abrir», el botón atrás del móvil vuelve primero al explorador y, a la segunda, cierra el visor.
+El explorador es una pantalla más del visor de ficheros: cualquier forma de cerrar el panel de arriba cierra solo esa pantalla. Con una vista previa abierta, el botón atrás del móvil y Esc la cierran primero, y la siguiente pulsación cierra el explorador; tocar fuera del panel, arrastrarlo hacia abajo o su «Atrás» cierran el explorador entero. Desde un fichero abierto con «Abrir», el botón atrás vuelve primero al explorador con la vista previa, la segunda pulsación la cierra y la tercera cierra el visor.
 
 ### Los selectores de carpeta usan el explorador
 <!-- capability: file-explorer; requirement: the-folder-pickers-browse-with-the-explorer -->
 
-Ajustes › Carpetas y «Nueva carpeta» recorren la máquina con el explorador, con los ficheros, sus tamaños y la vista previa. Su botón de confirmar usa siempre la carpeta que se está viendo, nunca el fichero elegido: con `README.md` elegido en `~/projects/shop`, se añade `~/projects/shop`. «Abrir» en su vista previa abre el fichero en el visor encima del selector, y al cerrarlo el selector sigue como estaba.
+Ajustes › Carpetas y «Nueva carpeta» recorren la máquina con el explorador, con los ficheros, sus tamaños y la vista previa. Su botón de confirmar usa siempre la carpeta que se está viendo, nunca el fichero elegido: con `README.md` elegido en `~/projects/shop`, se añade `~/projects/shop`. «Abrir» en su vista previa abre el fichero en el visor encima del selector, y al cerrarlo el selector sigue como estaba. Con una vista previa abierta, el botón atrás del móvil y Esc la cierran primero; la siguiente pulsación hace lo de siempre: cierra «Nueva carpeta» o sale de Ajustes › Carpetas.
 
 ## Límites de uso
 

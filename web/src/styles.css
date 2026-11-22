@@ -2291,6 +2291,7 @@ body.dragging-host * {
   gap: 4px;
 }
 .menu-icon {
+  flex: none;
   width: 24px;
   text-align: center;
   color: var(--overlay1);

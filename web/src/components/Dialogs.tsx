@@ -683,7 +683,7 @@ function NewFolderWhere(props: {
   back: () => void;
   create: (parent: string, name: string, subfolders: boolean) => void;
 }) {
-  const b = useExplorer({ host: props.d.host.id });
+  const b = useExplorer({ host: props.d.host.id }, props.d);
   return (
     <Sheet title="Nueva carpeta" subtitle={`¿Dónde? · ${props.d.host.name}`} inert={!!fileViewer.value} onClose={props.close}>
       <div class="folder-picker">

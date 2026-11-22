@@ -1,6 +1,6 @@
 import { effect } from '@preact/signals';
 import { isDesktop } from './prefs';
-import { fileViewer, fileViewerBack } from './fileViewer';
+import { closeExplorerPreview, explorerPreviews, fileViewer, fileViewerBack } from './fileViewer';
 import { dialog, drawerOpen, paletteOpen, scratchpadsOpen, settingsTab, sheet } from './state';
 
 // The phone's back button closes what is open on top (a dialog, a menu, a sheet, a
@@ -20,12 +20,14 @@ import { dialog, drawerOpen, paletteOpen, scratchpadsOpen, settingsTab, sheet } 
 
 /**
  * Open layers, each with its own entry: the settings on the phone count a section apart,
- * and the file viewer each of its screens (changed files › a diff › the file).
+ * the file viewer each of its screens (changed files › a diff › the file), and an
+ * explorer's preview one more over the screen, dialog or sheet that holds it.
  */
 function layers(): number {
   const settingsSection = sheet.value === 'settings' && !!settingsTab.value && !isDesktop.value;
   const files = fileViewer.value?.stack.length ?? 0;
-  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value) + Number(scratchpadsOpen.value) + files;
+  const previews = explorerPreviews.value.length;
+  return Number(!!dialog.value) + Number(!!sheet.value) + Number(settingsSection) + Number(paletteOpen.value) + Number(drawerOpen.value) + Number(scratchpadsOpen.value) + files + previews;
 }
 
 /** The depth of an entry of ours, 0 for a page (true: one from before depths were kept). */
@@ -40,11 +42,29 @@ let depth = depthOf(history.state);
 let afterLeaving: (() => void) | null = null;
 
 /**
- * Closes the one on top; the settings on the phone go from a section back to their list
- * first. The file viewer is above the dialogs only when opened from one (a folder picker).
+ * What is on top, as the owner of an explorer's preview (see ExplorerPreview): the viewer's
+ * top screen, the dialog or the sheet; null for the search, which holds no explorer.
+ */
+function topOwner(): unknown {
+  const v = fileViewer.value;
+  const screen = v?.stack[v.stack.length - 1];
+  if (v?.overDialog) return screen;
+  if (dialog.value) return dialog.value;
+  if (paletteOpen.value) return null;
+  if (v) return screen;
+  return sheet.value;
+}
+
+/**
+ * Closes the one on top; an explorer's preview before what holds it, and the settings on
+ * the phone go from a section back to their list first. The file viewer is above the
+ * dialogs only when opened from one (a folder picker).
  */
 function closeTop(): void {
-  if (fileViewer.value?.overDialog) fileViewerBack();
+  const owner = topOwner();
+  const preview = owner === null ? undefined : explorerPreviews.value.find((p) => p.owner === owner);
+  if (preview) closeExplorerPreview(preview);
+  else if (fileViewer.value?.overDialog) fileViewerBack();
   else if (dialog.value) dialog.value = null;
   else if (paletteOpen.value) paletteOpen.value = false;
   else if (fileViewer.value) fileViewerBack();

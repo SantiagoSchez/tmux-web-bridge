@@ -1,6 +1,7 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { FilesError, GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
+import { fileType } from '../../../shared/file-types';
 import { dialog, toast } from '../state';
 import { fold } from '../text';
 import { Sheet } from './Sheet';
@@ -8,7 +9,7 @@ import { fileViewer, fileViewerBack, pushFileScreen, replaceFileScreen, type Fil
 import { ExplorerView } from './Explorer';
 
 export { fileViewer, type FileOrigin };
-import { IconFileDiff, IconFolder, IconReload } from './icons';
+import { FileTypeIcon, IconFileDiff, IconFolder, IconReload } from './icons';
 
 // The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
 // other text with its lines), the explorer of a machine's folders, the changed files of
@@ -68,12 +69,6 @@ function push(screen: FileScreen): void {
 }
 const pop = fileViewerBack;
 
-const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i;
-const MARKDOWN = /\.(md|markdown|mdx)$/i;
-const PDF = /\.pdf$/i;
-const VIDEO = /\.(mp4|m4v|mov|webm|mkv|ogv)$/i;
-const AUDIO = /\.(mp3|m4a|aac|wav|ogg|oga|opus|flac)$/i;
-
 export const qs = (o: Record<string, string | undefined>) =>
   Object.entries(o)
     .filter(([, v]) => v !== undefined && v !== '')
@@ -122,8 +117,11 @@ export function fileSize(n: number): string {
   return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: n < 100 * 1024 * 1024 ? 1 : 0 })} MB`;
 }
 
-export const fileKind = (path: string) =>
-  IMAGE.test(path) ? 'image' : PDF.test(path) ? 'pdf' : VIDEO.test(path) ? 'video' : AUDIO.test(path) ? 'audio' : MARKDOWN.test(path) ? 'markdown' : 'text';
+/** How the viewer shows a file: code, archives and any other file are read as text. */
+export function fileKind(path: string): 'image' | 'pdf' | 'video' | 'audio' | 'markdown' | 'text' {
+  const t = fileType(path);
+  return t === 'code' || t === 'archive' || t === 'file' ? 'text' : t;
+}
 /** Whether the browser shows it from its URL (an image, a PDF, a video, sound), instead of the viewer reading its text. */
 export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown' && kind !== 'text';
 /** Whether what was read as text is not: a NUL byte gives away a binary file (an archive, a program, a video named otherwise). */
@@ -153,7 +151,7 @@ export function FileViewerSheet() {
         const layer: Layer = { back: i > 0 ? { label: 'Atrás', onClick: pop } : undefined, stacked: i > 0, inert: i < top, onClose: pop };
         if (screen.kind === 'changes') return <ChangesView key={`${i}:changes`} origin={v.origin} layer={layer} />;
         if (screen.kind === 'diff') return <DiffView key={`${i}:diff:${screen.file.path}`} origin={v.origin} changes={screen.changes} file={screen.file} layer={layer} />;
-        if (screen.kind === 'dir') return <ExplorerView key={`${i}:dir:${screen.path}`} origin={v.origin} path={screen.path} layer={layer} open={(path) => push({ kind: 'file', path })} />;
+        if (screen.kind === 'dir') return <ExplorerView key={`${i}:dir:${screen.path}`} origin={v.origin} screen={screen} layer={layer} open={(path) => push({ kind: 'file', path })} />;
         return <FileView key={`${i}:file:${screen.path}`} origin={v.origin} screen={screen} layer={layer} />;
       })}
     </>
@@ -475,6 +473,9 @@ function ChangesView({ origin, layer }: { origin: FileOrigin; layer: Layer }) {
                 <button class="menu-item" onClick={() => push({ kind: 'diff', changes, file: f })}>
                   <span class={`git-badge git-${f.status === '?' ? 'u' : f.status.toLowerCase()}`} title={STATUS[f.status]}>
                     {f.status === '?' ? 'N' : f.status}
+                  </span>
+                  <span class="menu-icon" aria-hidden="true">
+                    <FileTypeIcon name={f.path} />
                   </span>
                   <span class="project-text">
                     <span class="project-name">{f.path.slice(slash + 1)}</span>

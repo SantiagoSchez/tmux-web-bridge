@@ -46,3 +46,25 @@ export function fileViewerBack(): void {
   const v = fileViewer.value;
   if (v) fileViewer.value = v.stack.length > 1 ? { ...v, stack: v.stack.slice(0, -1) } : null;
 }
+
+/** An explorer's open preview, and the layer that holds the explorer (`owner`). */
+export interface ExplorerPreview {
+  /** The explorer's `FileScreen`, the dialog value of a picker in a dialog, or the sheet value of one in a sheet. */
+  owner: unknown;
+  close: () => void;
+}
+
+/**
+ * The explorers' open previews (Explorer.tsx). Each is a layer of the back button, which
+ * closes it before the screen, dialog or sheet that owns it.
+ */
+export const explorerPreviews = signal<ExplorerPreview[]>([]);
+
+/**
+ * Closes a preview, out of the list at once: the back button closes layers until it
+ * counts as many as there are entries, and the explorer drops its own only on its next render.
+ */
+export function closeExplorerPreview(p: ExplorerPreview): void {
+  explorerPreviews.value = explorerPreviews.value.filter((o) => o !== p);
+  p.close();
+}

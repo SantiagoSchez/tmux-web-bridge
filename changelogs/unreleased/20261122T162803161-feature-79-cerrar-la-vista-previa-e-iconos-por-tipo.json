@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadido el cierre de la vista previa del explorador de archivos: el botón ✕ junto a «Abrir» o un segundo toque en el fichero la cierran y la lista recupera todo el espacio. Con la vista previa abierta, el botón atrás del móvil y Esc la cierran antes que el explorador, también en Ajustes › Carpetas y «Nueva carpeta»",
+  "issue": "79",
+  "breaking": false,
+  "pr": "80"
+}
