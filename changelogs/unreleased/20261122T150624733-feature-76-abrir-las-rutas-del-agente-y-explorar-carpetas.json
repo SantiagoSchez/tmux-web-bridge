@@ -1,8 +1,0 @@
-{
-  "type": "added",
-  "scope": "web",
-  "description": "Añadida la apertura de más rutas de la terminal con un toque: los enlaces que Claude escribe como texto pulsable abren el fichero en el visor (o la carpeta en el explorador) en lugar de no hacer nada, y las rutas de carpeta (`~/videos/render/`, también seguidas de «:») abren el explorador en esa carpeta",
-  "issue": "76",
-  "breaking": false,
-  "pr": "77"
-}

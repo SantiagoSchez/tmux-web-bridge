@@ -4,6 +4,14 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.33.0 - 2026-11-22
+
+### Añadido
+
+- Añadido un explorador de archivos en el panel: recorre las carpetas de la máquina hasta la raíz, con el tamaño de cada fichero, un filtro por nombre y la vista previa del fichero elegido (a la derecha en el ordenador, debajo en el móvil), con «Abrir» para verlo entero. Se abre con el nuevo botón de carpeta de la cabecera de cada ventana, y Ajustes › Carpetas y «Nueva carpeta» lo usan para elegir carpeta.
+- Añadida la apertura con un toque de más rutas de la terminal: los enlaces que Claude escribe como texto pulsable abren el fichero en el visor o la carpeta en el explorador, y las rutas de carpeta (`~/videos/render/`) abren el explorador en ella. Al actualizar el kit de cada máquina, Claude escribe las rutas de sus respuestas como enlaces, para que lleguen enteras aunque la línea se corte.
+- Añadido el porcentaje de tareas hechas junto a las de cada cambio de OpenSpec («☑ 7/23 (30 %)»), en la cabecera de la ventana, la lista, Pendientes y el recuadro de detalles. Solo marca el 100 % cuando están todas hechas.
+
 ## 1.32.0 - 2026-11-21
 
 ### Añadido
