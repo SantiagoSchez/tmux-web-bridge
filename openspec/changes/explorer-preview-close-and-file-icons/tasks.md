@@ -50,8 +50,8 @@
 
 ## 8. Review loop
 
-- [ ] 8.1 Run `/opsx:verify` and fix what it reports through the artifacts.
-- [ ] 8.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes UI components, the back button's layer count and a new pure module.
+- [x] 8.1 Run `/opsx:verify` and fix what it reports through the artifacts.
+- [x] 8.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes UI components, the back button's layer count and a new pure module.
 - [ ] 8.3 Open the pull request with `/ka:commit --pr`.
 - [ ] 8.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
