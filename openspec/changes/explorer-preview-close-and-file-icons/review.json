@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "pr": 80,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "58ab68d9071b4984d504c163cd93cc2a6ce13dce",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-22T16:35:32.238Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 2,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "openspec/changes/explorer-preview-close-and-file-icons/design.md",
+      "symbol": null,
+      "line": 5,
+      "title": "Design context, its risk note and task 5.2 describe the Ajustes › Carpetas picker as a dialog owned by dialog.value; the code mounts it in the settings sheet with owner 'settings', and the dialog picker re-registers rather than remounts",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "58ab68d9071b4984d504c163cd93cc2a6ce13dce",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/backButton.ts",
+      "symbol": "closeTop",
+      "line": 65,
+      "title": "An untyped preview owner that never matches topOwner() makes popstate loop forever; type the owner or close leftover previews",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "58ab68d9071b4984d504c163cd93cc2a6ce13dce",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "id": "R1-03",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Explorer.tsx",
+      "symbol": "useExplorer",
+      "line": 44,
+      "title": "Closing the preview loses focus to body when the selected file's row is filtered out",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "58ab68d9071b4984d504c163cd93cc2a6ce13dce",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "escapes": [],
+  "outcome": null
+}
