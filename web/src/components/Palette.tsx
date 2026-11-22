@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
 import { openWindow, route } from '../router';
 import { ALERT_STATES, hosts, isSolo, multiHost, paletteOpen, PRIO } from '../state';
+import { fold } from '../text';
 import { Sheet } from './Sheet';
 
 interface Entry {
@@ -16,12 +17,6 @@ interface Entry {
   order: number;
 }
 
-/** Lower case and no accents: "camión" is found by "camion". */
-const norm = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
 
 /** "/Users/me/x" and "/home/me/x" as "~/x". */
 const shortPath = (p: string) => p.replace(/^\/(?:Users|home)\/[^/]+(?=\/|$)/, '~');
@@ -45,8 +40,8 @@ function entries(): Entry[] {
           window,
           title,
           meta,
-          names: norm(`${session.name} ${window.name}`),
-          rest: norm(`${pane?.command ?? ''} ${pane?.path ?? ''} ${host.name}`),
+          names: fold(`${session.name} ${window.name}`),
+          rest: fold(`${pane?.command ?? ''} ${pane?.path ?? ''} ${host.name}`),
           order: order++,
         });
       }
@@ -56,7 +51,7 @@ function entries(): Entry[] {
 
 /** What needs you first, then names starting with the query, then names containing it. */
 function search(all: Entry[], query: string): Entry[] {
-  const words = norm(query).split(/\s+/).filter(Boolean);
+  const words = fold(query).split(/\s+/).filter(Boolean);
   const alert = (e: Entry) => (e.window.state && ALERT_STATES.includes(e.window.state) ? PRIO[e.window.state] : 0);
   const rank = (e: Entry) => {
     if (!words.length) return 0;

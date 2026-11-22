@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "host-kit",
+  "description": "Añadida al kit la instrucción a cada Claude Code que arranca en tmux de escribir las rutas que da como enlaces a la ruta absoluta, para que lleguen enteras al panel aunque la línea se corte y se abran con un toque. Llega a cada máquina al actualizar su kit",
+  "issue": "76",
+  "breaking": false,
+  "pr": "77"
+}

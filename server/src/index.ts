@@ -10,7 +10,7 @@ import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import { quietReason } from '../../shared/mute.js';
 import { branchNameProblem } from '../../shared/worktree.js';
-import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, DirListing, FilesError, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
@@ -27,7 +27,7 @@ import { isCardRef, TrelloNotFoundError, TrelloService, TrelloSetupError } from 
 import { Automations } from './automations.js';
 import { ScheduledError, ScheduledMessages } from './scheduled.js';
 import { ActivityLog } from './activity.js';
-import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
+import { FileError, findInReposScript, gitChanges, gitDiff, gitStat, listHostDir, paneFolders, parseRange, resolvePath, statHostFile, streamHostFile } from './files.js';
 import { Heartbeat } from './heartbeat.js';
 import { HostMonitor } from './host.js';
 import { checkLimits, type LimitsCheck, SentLimits } from './limits-check.js';
@@ -1065,7 +1065,8 @@ const MIME: Record<string, string> = {
 };
 
 function fileError(reply: FastifyReply, err: unknown) {
-  return reply.code(err instanceof FileError ? err.status : 500).send({ error: (err as Error).message });
+  if (!(err instanceof FileError)) return reply.code(500).send({ error: (err as Error).message });
+  return reply.code(err.status).send((err.dir ? { error: err.message, dir: err.dir } : { error: err.message }) satisfies FilesError);
 }
 
 /**
@@ -1113,6 +1114,27 @@ app.get('/api/files', async (req, reply) => {
       .header('X-File-Path', encodeURIComponent(path))
       .header('X-File-Size', String(size))
       .send(child.stdout);
+  } catch (err) {
+    return fileError(reply, err);
+  }
+});
+
+/**
+ * A folder of a machine for the file explorer, with the folders and files inside: an
+ * absolute or ~ path, or one relative to the folders of the window's panes (the pane
+ * asked for first), like /api/files; `.` is the pane's own folder.
+ */
+app.get('/api/dir', async (req, reply) => {
+  const q = req.query as { host?: unknown; window?: unknown; pane?: unknown; path?: unknown };
+  const host = typeof q.host === 'string' ? hosts.get(q.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  const raw = typeof q.path === 'string' ? q.path : '';
+  if (!raw.trim()) return reply.code(400).send({ error: 'Falta la carpeta' });
+  try {
+    const isRel = !raw.startsWith('/') && !raw.startsWith('~');
+    const folders = isRel ? paneFolders(host, typeof q.window === 'string' ? q.window : undefined, typeof q.pane === 'string' ? q.pane : undefined) : [''];
+    if (!folders.length) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
+    return (await listHostDir(host, folders.map((f) => resolvePath(raw, f)), raw)) satisfies DirListing;
   } catch (err) {
     return fileError(reply, err);
   }

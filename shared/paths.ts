@@ -1,7 +1,8 @@
-// File paths in a line of the terminal, to open them in the panel's viewer with a tap:
-// what Claude Code prints (Update(server/src/x.ts), web/app.ts:42, /tmp/shot.png,
-// ~/notes/plan.md, README.md). Few false hits matter more than catching them all: a tap
-// on one opens the viewer instead of focusing the terminal. URLs are not paths.
+// File and folder paths in a line of the terminal, to open them in the panel's viewer with
+// a tap: what Claude Code prints (Update(server/src/x.ts), web/app.ts:42, /tmp/shot.png,
+// ~/notes/plan.md, README.md, ~/videos/render/). Few false hits matter more than catching
+// them all: a tap on one opens the viewer instead of focusing the terminal. URLs are not
+// paths. Also where a hyperlink (OSC 8) leads, when it is a file of the machine.
 
 /** The extensions a bare name (no folder) needs to count as a file. */
 const EXT = new Set(
@@ -20,6 +21,8 @@ export interface PathHit {
   /** The path as written, without :line(:col). */
   path: string;
   line?: number;
+  /** A folder (it ends with /): the explorer opens it. */
+  dir: boolean;
 }
 
 const TOKEN = /[\w.@+~/-]+(?::\d+(?::\d+)?)?/g;
@@ -34,6 +37,19 @@ function isPath(p: string): boolean {
   if (EXT.has(ext)) return true;
   // No known extension: only a full path (/… or ~/…) with a folder and a name.
   return /^(~|)\/[^/]+\/[^/]+/.test(p) && /^[\w.@+-]+$/.test(name) && /[A-Za-z]/.test(name);
+}
+
+/**
+ * Whether a token that ends with / is a folder worth a link: a name of two characters or
+ * more with a letter at its end (not `a/` nor `y/o/`), and nothing but path characters
+ * between its slashes. `/` and `~/` alone are not.
+ */
+function isFolder(p: string): boolean {
+  const body = p.slice(0, -1).replace(/^(~\/|\.{1,2}\/|\/)/, '');
+  if (!body || body.includes('//')) return false;
+  const parts = body.split('/');
+  const name = parts[parts.length - 1];
+  return name.length >= 2 && /[A-Za-z]/.test(name) && parts.every((s) => /^[\w.@+-]+$/.test(s));
 }
 
 export function findPaths(text: string): PathHit[] {
@@ -54,9 +70,10 @@ export function findPaths(text: string): PathHit[] {
       tok = tok.replace(/[.,-]+$/, '');
       const lm = /:(\d+)(?::\d+)?$/.exec(tok);
       const path = lm ? tok.slice(0, lm.index) : tok;
-      if (!isPath(path)) continue;
+      const dir = path.endsWith('/');
+      if (dir ? !isFolder(path) : !isPath(path)) continue;
       const start = w.index + m.index + lead;
-      out.push({ start, end: start + tok.length, path, line: lm ? Number(lm[1]) : undefined });
+      out.push({ start, end: start + tok.length, path, line: lm ? Number(lm[1]) : undefined, dir });
     }
   }
   return out;
@@ -72,6 +89,7 @@ export interface Row {
 export interface RowPathHit {
   path: string;
   line?: number;
+  dir: boolean;
   /** The path as written, :line included (a broken one, joined). */
   text: string;
   /** Where it starts and where its last character is: a row, and an index in its text. */
@@ -109,7 +127,7 @@ export function findPathsInRows(rows: Row[], at: number): RowPathHit[] {
     joined += text.slice(first, end);
   }
   const broken = findPaths(joined)
-    .map((h) => ({ path: h.path, line: h.line, text: joined.slice(h.start, h.end), start: from[h.start], last: from[h.end - 1] }))
+    .map((h) => ({ path: h.path, line: h.line, dir: h.dir, text: joined.slice(h.start, h.end), start: from[h.start], last: from[h.end - 1] }))
     .filter((h) => h.start.row !== h.last.row);
 
   const out = broken.filter((h) => h.start.row <= at && at <= h.last.row);
@@ -133,7 +151,64 @@ export function findPathsInRows(rows: Row[], at: number): RowPathHit[] {
       const e = b.last.row === at ? b.last.i : Infinity;
       return h.start <= e && s <= h.end - 1;
     });
-    if (!overlaps) out.push({ path: h.path, line: h.line, text: rows[at].text.slice(h.start, h.end), start: { row: at, i: h.start }, last: { row: at, i: h.end - 1 } });
+    if (!overlaps) out.push({ path: h.path, line: h.line, dir: h.dir, text: rows[at].text.slice(h.start, h.end), start: { row: at, i: h.start }, last: { row: at, i: h.end - 1 } });
   }
   return out;
+}
+
+/** Where a hyperlink to a file of the machine leads: the path as a link of the terminal would give it. */
+export interface FileTarget {
+  path: string;
+  line?: number;
+  /** It ends with /: the explorer opens it. */
+  dir: boolean;
+}
+
+/** Percent-decoded (Markdown writes spaces and accents that way); as it is when it is not valid encoding. */
+function decoded(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/**
+ * Where a hyperlink (OSC 8) leads when it is a file of the machine, or null when it goes
+ * elsewhere (a web page, a mail address). A file:// URL gives its path (its host, if any,
+ * is the pane's machine anyway); a path without a scheme (/…, ~/…, relative) is that path.
+ * A :N or #LN at its end is the line.
+ */
+export function fileTarget(uri: string): FileTarget | null {
+  let raw = uri.trim();
+  const file = /^file:(?:\/\/[^/]*)?(\/.*)$/i.exec(raw);
+  // A file URL's query means nothing for a file of the machine.
+  if (file) raw = file[1].replace(/\?[^#]*/, '');
+  // A scheme: letters, then a colon not followed by a line number (notes.md:3 is a file).
+  else if (/^[a-z][a-z0-9+.-]*:(?!\d)/i.test(raw)) return null;
+  // A Markdown heading (#instalacion), not a line (#L12) nor a # of the name (issue#12.md).
+  raw = raw.replace(/#(?!L\d+$)[^#./]*$/, '');
+  const lm = /(?::(\d+)(?::\d+)?|#L(\d+))$/.exec(raw);
+  const path = decoded(lm ? raw.slice(0, lm.index) : raw);
+  if (!path) return null;
+  const dir = path.endsWith('/');
+  return lm ? { path, line: Number(lm[1] ?? lm[2]), dir } : { path, dir };
+}
+
+
+/** What tapping a hyperlink (OSC 8) does: a web page in a new tab, a file in the viewer, a folder in the explorer. */
+export type HyperlinkTarget = { kind: 'web'; url: string } | { kind: 'file'; path: string; line?: number } | { kind: 'dir'; path: string };
+
+/**
+ * What a hyperlink a program wrote in the terminal opens; null for any other scheme
+ * (javascript:, data:, mailto:…), which the panel must never open: the terminal lets any
+ * program write one, and the panel's page controls every machine.
+ */
+export function hyperlinkTarget(uri: string): HyperlinkTarget | null {
+  const url = uri.trim();
+  if (/^https?:\/\//i.test(url)) return { kind: 'web', url };
+  const t = fileTarget(url);
+  if (!t) return null;
+  if (t.dir) return { kind: 'dir', path: t.path };
+  return t.line ? { kind: 'file', path: t.path, line: t.line } : { kind: 'file', path: t.path };
 }

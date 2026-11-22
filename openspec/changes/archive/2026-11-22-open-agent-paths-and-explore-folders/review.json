@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "pr": 77,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-22T15:36:11.632Z",
+      "counts": {
+        "critical": 0,
+        "required": 1,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "4b03388ab3a16113208ee4c5e631a4028d3b3a3f",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-22T15:42:11.483Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 1,
+        "question": 0,
+        "nitpick": 0
+      }
+    }
+  ],
+  "findings": [
+    {
+      "line": 247,
+      "id": "R1-01",
+      "severity": "REQUIRED",
+      "path": "server/src/files.test.ts",
+      "symbol": null,
+      "title": "The 20 000-file listing test asserts an absolute time budget (took < 5000), refused by the testing standards",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "state": "fixed",
+      "fixedIn": 2,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "line": 80,
+      "id": "R1-02",
+      "severity": "SUGGESTION",
+      "path": "web/src/components/Explorer.tsx",
+      "symbol": "Explorer",
+      "title": "A relative path typed in the explorer resolves against the panes' folders, not the folder shown; in the pickers it fails with a message about a window",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "661fb73afe32e68c3395cc05c985f2013aff92f8",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": 5,
+      "scoreReason": "The claim is correct: /api/dir resolves a relative typed path against the pane folders, and in the pickers, whose origin is only {host}, it returns the misleading 400 «No se sabe en qué carpeta está esa ventana». But the placeholder never invites relative paths, tapping folders and «..» is the main way to move around, and the fix is a few lines in the form's submit handler (leaving `go(start)` alone, since `.` and the relative folder links still need the panes). That is better done now or listed in the final comment than given a work item.",
+      "followUp": null
+    }
+  ],
+  "escapes": [],
+  "outcome": null
+}

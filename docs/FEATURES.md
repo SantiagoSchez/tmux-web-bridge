@@ -11,9 +11,10 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 
 ## Índice
 
-- [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code.
+- [Terminal](#terminal): enlaces en lo que escriben los agentes y Claude Code, también a ficheros y carpetas.
 - [Worktrees](#worktrees): la rama de la que parte cada worktree nuevo y con qué rama se comparan sus cambios.
 - [Visor de ficheros](#visor-de-ficheros): cómo se abren el diff y el fichero encima de «Ficheros cambiados» y cómo se vuelve atrás.
+- [Explorador de archivos](#explorador-de-archivos): recorrer las carpetas y los ficheros de una máquina con su vista previa, desde un enlace, la cabecera de una ventana o los selectores de carpeta.
 - [Límites de uso](#límites-de-uso): de dónde salen los límites de cada cuenta en la franja del panel.
 - [Scratchpads](#scratchpads): las notas para decirle después a Claude y cómo se pegan en un panel.
 - [Atajos](#atajos): los atajos de teclado del panel y la sección de Ajustes que los cambia.
@@ -54,6 +55,21 @@ Una ruta de fichero relativa del terminal se busca primero en la carpeta del pan
 <!-- capability: terminal-links; requirement: image-placeholders-open-the-pasted-image -->
 
 Claude Code muestra cada imagen adjunta como «[Image #1]». En el panel ese texto abre la imagen en el visor de ficheros, tanto si el mensaje ya se ha enviado como si aún se está escribiendo. Con ratón, basta con dejarlo encima para ver una vista previa, igual que con las rutas de fichero. Si Claude Code reutiliza un número en la misma sesión, se abre la imagen más reciente. En una ventana partida, abre la imagen de la sesión de Claude Code del panel donde aparece el texto. Cuando la imagen ya no está (por ejemplo, porque la máquina ha vaciado su carpeta temporal) o el panel no ejecuta Claude Code con el kit, el panel avisa de que no la encuentra.
+
+### Enlaces a ficheros y carpetas
+<!-- capability: terminal-links; requirement: hyperlinks-to-files-open-in-the-file-viewer -->
+
+Un programa puede escribir en el terminal un enlace cuyo texto no es su destino, como el `INDICE.md` que Claude Code escribe con un enlace Markdown a la ruta completa. Cuando el destino es un fichero de la máquina (`file://`, `/…`, `~/…` o una ruta relativa), tocarlo abre el visor de ficheros del panel en vez de una pestaña. Una ruta relativa se busca como las demás rutas de fichero: primero en la carpeta del panel donde está escrita. Si el destino es una carpeta, abre el explorador de archivos en ella. Un enlace que se parte en dos filas, como el de una celda de tabla, abre su destino desde cualquiera de las dos. Si el destino apunta a un apartado del fichero (`README.md#instalacion`), se abre el fichero. Los enlaces `http` y `https` siguen abriendo una pestaña nueva, y cualquier otro tipo de destino, como `javascript:`, no abre nada ni ejecuta nada.
+
+### Rutas de carpeta
+<!-- capability: terminal-links; requirement: folder-paths-are-links -->
+
+Una ruta que acaba en `/` se subraya como enlace a esa carpeta: absoluta (`/var/log/`), bajo la carpeta personal (`~/Downloads/tests/render-crf20/`) o relativa (`fotogramas/`). Puede ir seguida de `:` o de un signo de puntuación, que se quedan fuera del enlace. Una ruta cortada por el borde del terminal es un único enlace, y tocar cualquiera de los dos trozos abre la carpeta entera. `/` o `~/` solos, como en `cd /`, no se enlazan, y una dirección web que acaba en `/` se abre como web.
+
+### Claude Code escribe las rutas como enlaces
+<!-- capability: terminal-links; requirement: claude-code-is-asked-for-paths-as-links -->
+
+En una máquina con el kit, cada sesión de Claude Code que empieza, se reanuda o se compacta dentro de tmux recibe la instrucción de escribir cada ruta de fichero o de carpeta de sus respuestas en el terminal como enlace Markdown a la ruta absoluta. Así la ruta llega entera aunque el terminal corte la línea, y se abre con un toque. La instrucción aclara que no vale para lo que Claude escribe en ficheros, commits, pull requests, issues, comentarios o tarjetas, que siguen sus propias normas. Una sesión fuera de tmux no la recibe.
 
 ## Worktrees
 
@@ -133,6 +149,58 @@ Con varios paneles abiertos, solo el de arriba oscurece la página y responde: l
 <!-- capability: file-viewer; requirement: going-back-gives-the-focus-back-to-what-opened-the-screen -->
 
 Al cerrar una pantalla del visor, el foco vuelve a lo que la abrió: al fichero de «Ficheros cambiados» al cerrar su diff, y a «Ver el fichero» al cerrar el fichero. Con el teclado o un lector de pantalla se sigue desde ahí, y la lista no se mueve. Si al abrir la pantalla nada tenía el foco, como pasa en Safari al hacer clic en un botón, al cerrarla tampoco se enfoca nada.
+
+## Explorador de archivos
+
+### Qué muestra una carpeta
+<!-- capability: file-explorer; requirement: the-explorer-lists-a-folder-s-contents -->
+
+El explorador de archivos muestra la ruta completa de la carpeta, con `~` para la carpeta personal, y lista primero sus carpetas y después sus ficheros, cada grupo por nombre sin distinguir mayúsculas, con el tamaño de cada fichero («284 MB», «2 KB»). En una carpeta enorme, como una de 18 000 fotogramas, lista las 2000 primeras carpetas y los 2000 primeros ficheros y dice cuántas entradas deja fuera. Una carpeta vacía lo dice, y una que no existe da un error con la ruta y la máquina.
+
+### Moverse por la máquina
+<!-- capability: file-explorer; requirement: the-explorer-moves-freely-across-the-machine -->
+
+Tocar una carpeta entra en ella, y «..» sube a la que la contiene, también por encima de la carpeta personal, hasta `/`, que ya no tiene «..». También se puede escribir una ruta en el campo de arriba, como `/var/log`, y confirmarla para ir allí.
+
+### Filtro y ficheros ocultos
+<!-- capability: file-explorer; requirement: the-explorer-filters-and-hides-hidden-entries -->
+
+Las carpetas y ficheros cuyo nombre empieza por `.`, como `.git` o `.env`, no se listan hasta marcar «Mostrar ocultos». El filtro por nombre deja solo lo que contiene todas las palabras escritas, sin distinguir mayúsculas ni tildes: `camara` encuentra `Cámara.mp4` y `camara-2.mp4`. Al pasar a otra carpeta, el filtro se vacía.
+
+### La vista previa del fichero elegido
+<!-- capability: file-explorer; requirement: the-selected-file-shows-its-preview -->
+
+Tocar un fichero lo selecciona y muestra su vista previa, la misma que daría el visor de ficheros para ese tipo de fichero (Markdown renderizado, la imagen, el vídeo…), con un botón «Abrir». En el ordenador sale a la derecha de la lista; en el móvil, debajo, con la lista arriba. En los selectores de carpeta de Ajustes y de «Nueva carpeta» sale siempre debajo. Al pasar a otra carpeta no queda ningún fichero elegido.
+
+### «Abrir» enseña el fichero entero
+<!-- capability: file-explorer; requirement: abrir-opens-the-whole-file-over-the-explorer -->
+
+«Abrir» abre el fichero elegido en el visor, en un panel encima del explorador. Al volver, el explorador está como lo dejaste: en la misma carpeta, con el mismo filtro, el mismo fichero elegido con su vista previa y en el mismo punto de la lista.
+
+### Una ruta de carpeta abre el explorador
+<!-- capability: file-explorer; requirement: a-folder-link-opens-the-explorer-in-that-folder -->
+
+Tocar una ruta de carpeta del terminal abre el explorador en esa carpeta. Una ruta relativa, como `docs/`, se busca primero en la carpeta del panel donde está escrita y después en las de los demás paneles de la ventana, igual que una ruta de fichero. Si la carpeta no existe, el explorador lo dice.
+
+### Una carpeta abierta como fichero
+<!-- capability: file-explorer; requirement: a-folder-opened-as-a-file-shows-the-explorer -->
+
+Si una ruta del terminal sin `/` al final, como `~/Downloads/tests`, resulta ser una carpeta, al tocarla se abre el explorador en ella en vez de un error del visor.
+
+### El botón de carpeta de cada ventana
+<!-- capability: file-explorer; requirement: each-window-opens-the-explorer-in-its-folder -->
+
+La cabecera de cada ventana tiene un botón de carpeta, junto al de los ficheros cambiados, que abre el explorador en la carpeta de su panel; en una ventana partida, la del panel seleccionado. Está siempre, también cuando la carpeta no es un repositorio de git y no hay botón de ficheros cambiados.
+
+### Volver atrás de pantalla en pantalla
+<!-- capability: file-explorer; requirement: the-explorer-goes-back-one-screen-at-a-time -->
+
+El explorador es una pantalla más del visor de ficheros: cualquier forma de cerrar el panel de arriba cierra solo esa pantalla. Desde un fichero abierto con «Abrir», el botón atrás del móvil vuelve primero al explorador y, a la segunda, cierra el visor.
+
+### Los selectores de carpeta usan el explorador
+<!-- capability: file-explorer; requirement: the-folder-pickers-browse-with-the-explorer -->
+
+Ajustes › Carpetas y «Nueva carpeta» recorren la máquina con el explorador, con los ficheros, sus tamaños y la vista previa. Su botón de confirmar usa siempre la carpeta que se está viendo, nunca el fichero elegido: con `README.md` elegido en `~/projects/shop`, se añade `~/projects/shop`. «Abrir» en su vista previa abre el fichero en el visor encima del selector, y al cerrarlo el selector sigue como estaba.
 
 ## Límites de uso
 
@@ -432,7 +500,7 @@ El recuadro muestra el nombre completo de la ventana, su estado con su icono y d
 - el worktree de git o, si no está en uno, la rama;
 - la carpeta completa;
 - la cuenta de Claude que usa, si tiene una;
-- cada cambio de OpenSpec activo de su carpeta, con su nombre completo y lo que se sepa de él: las tareas hechas sobre el total, la PR, la ronda de revisión y los bloqueantes abiertos.
+- cada cambio de OpenSpec activo de su carpeta, con su nombre completo y lo que se sepa de él: las tareas hechas sobre el total con su porcentaje («7/23 (30 %)»), la PR, la ronda de revisión y los bloqueantes abiertos.
 
 Todo sale entero, sin cortar. En una ventana partida se marca el panel activo. Lo que el panel no sabe, como el estado de una ventana sin Claude, la rama de una carpeta fuera de git o los cambios de un repositorio sin el harness, simplemente no aparece.
 
@@ -623,7 +691,7 @@ En un repositorio que usa el harness de koalarnes (tiene `.claude/ka.json` o, si
 ### Las tareas hechas sobre el total
 <!-- capability: change-progress; requirement: a-change-s-task-progress-comes-from-its-tasks-file -->
 
-El progreso de un cambio son las casillas marcadas de su `tasks.md` (`- [x]` o `- [X]`) sobre todas sus casillas, también las sangradas: con 7 marcadas y 16 sin marcar, el cambio va por 7/23. Un cambio sin `tasks.md`, o cuyo `tasks.md` aún no tiene casillas, como uno que solo tiene la propuesta, no muestra progreso.
+El progreso de un cambio son las casillas marcadas de su `tasks.md` (`- [x]` o `- [X]`) sobre todas sus casillas, también las sangradas: con 7 marcadas y 16 sin marcar, el cambio va por «7/23 (30 %)». El porcentaje va redondeado hacia abajo, así que solo pone «100 %» cuando están todas marcadas: con una sola pendiente de 120, «119/120 (99 %)». Un cambio sin `tasks.md`, o cuyo `tasks.md` aún no tiene casillas, como uno que solo tiene la propuesta, no muestra progreso.
 
 ### La PR, la ronda y los bloqueantes
 <!-- capability: change-progress; requirement: a-change-s-review-state-comes-from-its-review-registry-version-1-only -->
@@ -639,22 +707,22 @@ Solo se lee la versión 1 del registro. Uno de otra versión, que no se puede le
 ### Cuándo se actualiza
 <!-- capability: change-progress; requirement: the-changes-are-read-apart-from-the-poll-and-after-each-state-change -->
 
-El panel lee los cambios junto con el worktree y la rama de cada carpeta, cada 15 segundos como mucho y, además, en cuanto un panel de la máquina cambia de estado. Así, cuando Claude marca una tarea y termina su turno, la ventana pasa de «☑ 6/23» a «☑ 7/23» en un segundo, sin esperar a la siguiente lectura. Leer los cambios no ejecuta en la máquina más órdenes de git que las que ya averiguan el repositorio de cada carpeta.
+El panel lee los cambios junto con el worktree y la rama de cada carpeta, cada 15 segundos como mucho y, además, en cuanto un panel de la máquina cambia de estado. Así, cuando Claude marca una tarea y termina su turno, la ventana pasa de «☑ 6/23 (26 %)» a «☑ 7/23 (30 %)» en un segundo, sin esperar a la siguiente lectura. Leer los cambios no ejecuta en la máquina más órdenes de git que las que ya averiguan el repositorio de cada carpeta.
 
 ### Una línea por cambio en la lista
 <!-- capability: change-progress; requirement: the-list-row-shows-one-line-per-active-change -->
 
-En la lista detallada, la fila de cada ventana muestra, debajo de la línea de su worktree o su rama, una línea por cada cambio activo de la carpeta de su panel activo. La línea empieza por «☑» y junta con « · » lo que se sepa del cambio: las tareas («7/23»), la PR («PR #74»), la ronda si ya se contó alguna («ronda 2/3») y los bloqueantes si los hay («1 bloqueante», «2 bloqueantes»). Por ejemplo: «☑ 7/23 · PR #74 · ronda 2/3 · 1 bloqueante». Un cambio del que no se sabe nada de eso, como uno con solo la propuesta, muestra su nombre: «☑ add-export». La lista compacta no muestra estas líneas.
+En la lista detallada, la fila de cada ventana muestra, debajo de la línea de su worktree o su rama, una línea por cada cambio activo de la carpeta de su panel activo. La línea empieza por «☑» y junta con « · » lo que se sepa del cambio: las tareas con su porcentaje («7/23 (30 %)»), la PR («PR #74»), la ronda si ya se contó alguna («ronda 2/3») y los bloqueantes si los hay («1 bloqueante», «2 bloqueantes»). Por ejemplo: «☑ 7/23 (30 %) · PR #74 · ronda 2/3 · 1 bloqueante». Un cambio del que no se sabe nada de eso, como uno con solo la propuesta, muestra su nombre: «☑ add-export». La lista compacta no muestra estas líneas.
 
 ### Las mismas líneas en Pendientes
 <!-- capability: change-progress; requirement: a-pending-card-shows-the-same-lines -->
 
-Cada tarjeta de «Pendientes» muestra, debajo de su línea de estado, las mismas líneas que la fila de la lista para los cambios de la carpeta del panel del que trata. Así, una tarjeta ✅ dice de un vistazo si el turno terminó el cambio o lo dejó a medias: «Terminado hace 2 min» y, debajo, «☑ 7/23 · PR #74 · ronda 2/3». En la lista compacta las tarjetas también las muestran, cada una en su propia fila.
+Cada tarjeta de «Pendientes» muestra, debajo de su línea de estado, las mismas líneas que la fila de la lista para los cambios de la carpeta del panel del que trata. Así, una tarjeta ✅ dice de un vistazo si el turno terminó el cambio o lo dejó a medias: «Terminado hace 2 min» y, debajo, «☑ 7/23 (30 %) · PR #74 · ronda 2/3». En la lista compacta las tarjetas también las muestran, cada una en su propia fila.
 
 ### Las tareas, desde la cabecera de la ventana
 <!-- capability: change-progress; requirement: the-open-window-s-header-opens-each-change-s-tasks -->
 
-La cabecera de una ventana abierta tiene un botón por cada cambio con progreso de la carpeta del panel en el que trabaja, con «☑» y sus tareas, por ejemplo «☑ 7/23». Los lectores de pantalla lo anuncian con el nombre del cambio. Al pulsarlo, el visor de ficheros abre el `tasks.md` de ese cambio con el formato de Markdown. Un cambio sin `tasks.md` no tiene botón.
+La cabecera de una ventana abierta tiene un botón por cada cambio con progreso de la carpeta del panel en el que trabaja, con «☑» y sus tareas con el porcentaje, por ejemplo «☑ 7/23 (30 %)». Los lectores de pantalla lo anuncian con el nombre del cambio. Al pulsarlo, el visor de ficheros abre el `tasks.md` de ese cambio con el formato de Markdown. Un cambio sin `tasks.md` no tiene botón.
 
 ### La propuesta, desde el menú de la ventana
 <!-- capability: change-progress; requirement: the-window-menu-opens-each-change-s-proposal -->

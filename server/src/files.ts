@@ -1,6 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
 import { posix } from 'node:path';
-import type { GitChange, GitChanges, GitDiffMode, GitStat } from '../../shared/types.js';
+import type { DirListing, GitChange, GitChanges, GitDiffMode, GitStat } from '../../shared/types.js';
 import { shPath, shQuote as quote } from './exec.js';
 import type { HostMonitor } from './host.js';
 
@@ -37,11 +37,60 @@ class FileError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** A path asked for as a file that is a folder: where it is (absolute), for the explorer. */
+    readonly dir?: string,
   ) {
     super(message);
   }
 }
 export { FileError };
+
+/** How many folders, and how many files, a listing holds at most. */
+const DIR_MAX = 2000;
+
+/**
+ * A folder of the host for the file explorer: the first of `paths` that is a folder (a
+ * relative path may be in any of the pane folders), with the folders and the files inside
+ * and each file's size. Linear in the folder's size and bounded on the machine: each kind
+ * is sorted and cut to DIR_MAX there, and only the files kept get a `stat`, in GNU's or
+ * BSD's (macOS) own options, through `xargs`; `left` counts what the cut left out. A name
+ * with a line break is left out. `asked` is the path as the panel sent it, for the error.
+ */
+export async function listHostDir(host: HostMonitor, paths: string[], asked: string): Promise<DirListing> {
+  const each = paths.map(shPath).join(' ');
+  const out = await host.exec.shell(
+    `found=; for d in ${each}; do [ -d "$d" ] && cd "$d" 2>/dev/null && { found=1; break; }; done; ` +
+      `[ -n "$found" ] || { echo NONE; exit 0; }; pwd; printf '%s\\n' "$HOME"; ` +
+      // Each kind's entries as ./name lines; the continuation of a name with a line break is dropped.
+      `kind() { find -L . -mindepth 1 -maxdepth 1 -type "$1" 2>/dev/null | grep '^\\./'; }; ` +
+      `first() { kind "$1" | LC_ALL=C sort -f | head -n ${DIR_MAX}; }; ` +
+      `nd=$(kind d | wc -l); nf=$(kind f | wc -l); ` +
+      `first d | awk '{ print "D\\t" substr($0, 3) }'; ` +
+      `if stat -c %s / >/dev/null 2>&1; then o=-c; f='%s %n'; else o=-f; f='%z %N'; fi; ` +
+      `first f | tr '\\n' '\\0' | xargs -0 stat -L "$o" "$f" -- 2>/dev/null | awk '{ print "F\\t" $0 }'; ` +
+      `echo "N $nd $nf"; true`,
+    15_000,
+  );
+  const lines = out.split('\n');
+  if (lines[0] === 'NONE') throw new FileError(`No existe la carpeta ${asked} en ${host.name}`, 404);
+  const [abs, home] = lines;
+  const tilde = (a: string) => (home && home !== '/' && a === home ? '~' : home && home !== '/' && a.startsWith(`${home}/`) ? `~${a.slice(home.length)}` : a);
+  const byName = (a: string, b: string) => a.localeCompare(b, 'es', { sensitivity: 'base' });
+  const dirs = lines
+    .filter((l) => l.startsWith('D\t'))
+    .map((l) => l.slice(2))
+    .sort(byName);
+  const files = lines
+    .flatMap((l) => {
+      const m = /^F\t(\d+) \.\/(.+)$/.exec(l);
+      return m ? [{ name: m[2], size: Number(m[1]) }] : [];
+    })
+    .sort((a, b) => byName(a.name, b.name));
+  const counts = /^N\s+(\d+)\s+(\d+)\s*$/m.exec(out);
+  const left = counts ? Math.max(0, Number(counts[1]) - DIR_MAX) + Math.max(0, Number(counts[2]) - DIR_MAX) : 0;
+  const parent = abs === '/' ? null : tilde(abs.replace(/\/[^/]*$/, '') || '/');
+  return { path: tilde(abs), parent, dirs, files, ...(left ? { left } : {}) };
+}
 
 /** Runs a script on the host, its stdout as bytes (up to `max`). */
 function runBytes(host: HostMonitor, script: string, max: number, timeoutMs = 30_000): Promise<{ code: number | null; out: Buffer; err: string }> {
@@ -91,16 +140,19 @@ export function findInReposScript(raw: string, folders: string[]): string | null
 /**
  * Which of `paths` is a file there (a relative path may be seen in any pane of the
  * window): the first one, as an absolute path, and its size. `orElse`: a script to
- * find it when none is (findInReposScript), printing the same. 404 when none is.
+ * find it when none is (findInReposScript), printing the same. 404 when none is; 409
+ * with the folder's absolute path (`dir`) when the first one there is a folder.
  */
 export async function statHostFile(host: HostMonitor, paths: string[], orElse?: string | null): Promise<{ path: string; size: number }> {
   const each = paths.map(shPath).join(' ');
   const script =
     `for f in ${each}; do if [ -f "$f" ]; then printf '%s\t%s\n' "$(wc -c < "$f" | tr -d ' ')" "$f"; exit 0; ` +
+    `elif [ -d "$f" ]; then printf 'DIR\t%s\n' "$(cd "$f" && pwd)"; exit 0; ` +
     `elif [ -e "$f" ]; then echo NOTFILE; exit 0; fi; done; ${orElse ?? 'echo MISSING'}`;
   const out = (await host.exec.shell(script, 15_000)).replace(/\n$/, '');
   if (out === 'MISSING') throw new FileError(`No existe en ${host.name}`, 404);
-  if (out === 'NOTFILE') throw new FileError('No es un fichero (¿una carpeta?)', 400);
+  if (out === 'NOTFILE') throw new FileError('No es un fichero', 400);
+  if (out.startsWith('DIR\t')) throw new FileError('Es una carpeta', 409, out.slice(4));
   const tab = out.indexOf('\t');
   const size = Number(out.slice(0, tab));
   if (tab < 0 || !Number.isFinite(size)) throw new FileError(out || 'No se pudo leer', 500);

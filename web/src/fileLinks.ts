@@ -13,9 +13,9 @@ export function screenCell(term: Terminal, y: number, col: number): ScreenCell {
 }
 
 export interface FileLinkHandlers {
-  /** Clicked or tapped: open it. */
-  open: (e: MouseEvent, path: string, line: number | undefined, cell: ScreenCell) => void;
-  /** The mouse went onto it (a preview), and off it. */
+  /** Clicked or tapped: open it (a folder, `dir`, in the explorer). */
+  open: (e: MouseEvent, path: string, line: number | undefined, cell: ScreenCell, dir: boolean) => void;
+  /** The mouse went onto a file (a preview), and off it. */
   hover?: (e: MouseEvent, path: string, line: number | undefined, cell: ScreenCell) => void;
   leave?: () => void;
 }
@@ -45,8 +45,8 @@ export function readRow(term: Terminal, y: number): { text: string; cols: number
 }
 
 /**
- * Links on the file paths of the terminal (see shared/paths.ts), opened in the panel's
- * viewer. A tap finds them like the URLs (linkAt asks every provider). A path too long
+ * Links on the file and folder paths of the terminal (see shared/paths.ts), opened in the
+ * panel's viewer and explorer. A tap finds them like the URLs (linkAt asks every provider). A path too long
  * for its row goes on in the next ones: its link takes all of them.
  */
 export function fileLinkProvider(term: Terminal, on: FileLinkHandlers): ILinkProvider {
@@ -63,8 +63,8 @@ export function fileLinkProvider(term: Terminal, on: FileLinkHandlers): ILinkPro
           range: { start: at(hit.start), end: at(hit.last) },
           text: hit.text,
           decorations: { underline: true, pointerCursor: true },
-          activate: (e) => on.open(e, hit.path, hit.line, cell),
-          hover: on.hover ? (e) => on.hover!(e, hit.path, hit.line, cell) : undefined,
+          activate: (e) => on.open(e, hit.path, hit.line, cell, hit.dir),
+          hover: on.hover && !hit.dir ? (e) => on.hover!(e, hit.path, hit.line, cell) : undefined,
           leave: on.leave ? () => on.leave!() : undefined,
         };
       });

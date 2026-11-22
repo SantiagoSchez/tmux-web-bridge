@@ -320,6 +320,22 @@ env TMUX="$TMUX_VALUE" TMUX_PANE="$PANE" "$KIT_SCRIPT" clear </dev/null
 expect "…al cerrarse la sesión, el registro desaparece" \
     "$([ -e "$(pause_file)" ] && echo 'sigue' || echo 'no está')" '^no está$'
 
+echo "Claude empieza una sesión en un panel (hook SessionStart, context)"
+new_server
+CONTEXT="$(env TMUX="$TMUX_VALUE" TMUX_PANE="$PANE" "$KIT_SCRIPT" context </dev/null)"
+expect "…le pasa el contexto del hook SessionStart" \
+    "$(printf '%s' "$CONTEXT" | jq -r '.hookSpecificOutput.hookEventName' 2>/dev/null || echo 'no es JSON')" '^SessionStart$'
+expect "…que pide las rutas como enlaces Markdown a la ruta absoluta" \
+    "$(printf '%s' "$CONTEXT" | jq -r '.hookSpecificOutput.additionalContext' 2>/dev/null)" 'Markdown link.*absolute path'
+expect "…solo en sus respuestas en la terminal" \
+    "$(printf '%s' "$CONTEXT" | jq -r '.hookSpecificOutput.additionalContext' 2>/dev/null)" 'only for your replies in the terminal'
+expect "…y no en lo que publica: commits, pull requests, issues, tarjetas" \
+    "$(printf '%s' "$CONTEXT" | jq -r '.hookSpecificOutput.additionalContext' 2>/dev/null)" 'commit messages, pull requests, issues, comments or tracker cards'
+expect "…y no toca el estado del panel" \
+    "$([ -e "/tmp/tmux-window-state-$(id -u)-$SERVER_PID/$PANE" ] && echo 'lo toca' || echo 'no')" '^no$'
+expect "…fuera de un panel no dice nada" \
+    "$(env TMUX="$TMUX_VALUE" "$KIT_SCRIPT" context </dev/null | wc -c | tr -d ' ')" '^0$'
+
 echo "El tmux del socket por defecto"
 expect "…sigue con su sesión y sin iconos del kit" \
     "$(tmux list-sessions -F '#{session_name}' 2>/dev/null)|$(tmux show-options -p -t centinela -qv @pane_icon 2>/dev/null)" '^centinela[|]$'

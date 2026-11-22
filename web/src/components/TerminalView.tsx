@@ -3,17 +3,18 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { api } from '../api';
-import { fileLinkProvider, type ScreenCell } from '../fileLinks';
+import { fileLinkProvider, screenCell, type ScreenCell } from '../fileLinks';
 import { imageLinkProvider, prefetchRefContext, refLinkProvider } from '../refLinks';
 import { canHover, hidePeek, PEEK_DELAY, peekFile } from './FilePeek';
-import { openFile } from './Files';
-import { type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
+import { openExplorer, openFile } from './Files';
+import { type IBufferRange, type ILink, type ILinkProvider, Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ClaudeImageResult, HostInfo, PaneInfo, SessionInfo, TrelloCardUrl, WindowInfo } from '../../../shared/types';
 import { cleanCopy } from '../../../shared/copy';
 import { paneAt } from '../../../shared/panes';
+import { hyperlinkTarget } from '../../../shared/paths';
 import { applyMods, DEFAULT_KEYBAR, defaultLabel, describe, KEYBAR_SCALE_DEFAULT, keySeq, type KeybarButton } from '../../../shared/keybar';
 import { SENTINEL, typedDiff } from '../../../shared/typing';
 import { isTouch, prefs } from '../prefs';
@@ -778,6 +779,18 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     box.current!.addEventListener('mousedown', onMouseDown, true);
     const dragged = (e: MouseEvent) => e.type === 'mouseup' && Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 3;
     const activate = (e: MouseEvent, uri: string) => !dragged(e) && openLink(uri);
+    // A hyperlink (OSC 8): what it opens is decided by hyperlinkTarget (tested in shared/),
+    // never here; a file or a folder opens from the pane it is written in.
+    const activateHyperlink = (e: MouseEvent, uri: string, range: IBufferRange) => {
+      if (dragged(e)) return;
+      const t = hyperlinkTarget(uri);
+      if (!t) return;
+      if (t.kind === 'web') return openLink(t.url);
+      hidePeek();
+      const at = origin(screenCell(term, range.start.y - 1, range.start.x - 1));
+      if (t.kind === 'dir') openExplorer(at, t.path);
+      else openFile(at, t.path, t.line);
+    };
     const term = new Terminal({
       fontFamily: FONT_FAMILY,
       fontSize,
@@ -790,8 +803,9 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
       macOptionIsMeta: false,
       // Option+drag selects text even while tmux has the mouse; Cmd+C copies it.
       macOptionClickForcesSelection: true,
-      // OSC 8 links open like the others, without xterm's confirm().
-      linkHandler: { activate },
+      // OSC 8 links open like the others, without xterm's confirm(); xterm drops the
+      // non-web ones (a file's path) unless allowNonHttpProtocols.
+      linkHandler: { activate: activateHyperlink, allowNonHttpProtocols: true },
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -807,10 +821,11 @@ export function TerminalView({ host, session, window, pane, above }: Props) {
     };
     term.registerLinkProvider(
       fileLinkProvider(term, {
-        open: (e, path, line, cell) => {
+        open: (e, path, line, cell, dir) => {
           hidePeek();
           if (dragged(e)) return;
-          openFile(origin(cell), path, line);
+          if (dir) openExplorer(origin(cell), path);
+          else openFile(origin(cell), path, line);
         },
         hover: (e, path, line, cell) => peekFile(origin(cell), path, line, e),
         leave: hidePeek,

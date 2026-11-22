@@ -1,5 +1,5 @@
 import { childPath, DEFAULT_COMMAND, folderNameProblem, folderPathOk, MAX_FOLDERS, sameFolder } from '../../shared/folders.js';
-import type { ActionOp, DirListing, ProjectList, SavedFolder, WorktreeList } from '../../shared/types.js';
+import type { ActionOp, ProjectList, SavedFolder, WorktreeList } from '../../shared/types.js';
 import { shPath, TmuxError } from './exec.js';
 import type { HostMonitor } from './host.js';
 import { setTrelloExtension, updateKit } from './kit.js';
@@ -70,25 +70,6 @@ export async function listProjects(host: HostMonitor, saved: SavedFolder[]): Pro
   return { folders, home };
 }
 
-/** Where a path of the host leads, and the folders inside, for the folder picker. */
-async function listDirs(host: HostMonitor, path: string): Promise<DirListing> {
-  const p = path.trim().replace(/(.)\/+$/, '$1');
-  if (!folderPathOk(p)) throw new Error('La ruta tiene que empezar por / o por ~');
-  const out = await host.exec.shell(
-    `cd ${shPath(p)} 2>/dev/null || { echo NONE; exit 0; }; pwd; printf '%s\n' "$HOME"; ` +
-      `for d in * .*; do [ "$d" != . ] && [ "$d" != .. ] && [ -d "$d" ] && printf 'D\t%s\n' "$d"; done; true`,
-  );
-  const lines = out.split('\n');
-  if (lines[0] === 'NONE') throw new Error(`No existe la carpeta ${p} en ${host.name}`);
-  const [abs, home] = lines;
-  const tilde = (a: string) => (home && home !== '/' && a === home ? '~' : home && home !== '/' && a.startsWith(`${home}/`) ? `~${a.slice(home.length)}` : a);
-  const dirs = lines
-    .filter((l) => l.startsWith('D\t'))
-    .map((l) => l.slice(2))
-    .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
-    .slice(0, 2000);
-  return { path: tilde(abs), parent: abs === '/' ? null : tilde(abs.replace(/\/[^/]*$/, '') || '/'), dirs };
-}
 
 /**
  * The command of a space opened from a folder, with the permission mode chosen in the panel: auto mode, or
@@ -378,7 +359,7 @@ async function reboot(host: HostMonitor): Promise<void> {
 }
 
 /** Actions that only read: the tree needs no refresh after them. */
-export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listDirs', 'listWorktrees', 'listBranches', 'trelloExtension']);
+export const READ_ONLY_OPS: ReadonlySet<ActionOp['op']> = new Set(['listProjects', 'listWorktrees', 'listBranches', 'trelloExtension']);
 
 /**
  * Runs one tree action on a host. Returns data for the client, if any. `latestRelease`
@@ -410,9 +391,6 @@ export async function runAction(
     case 'openWorktree':
       if (typeof action.path !== 'string') throw new Error('Falta el worktree');
       return openWorktree(host, machine, action);
-    case 'listDirs':
-      if (typeof action.path !== 'string') throw new Error('Falta la ruta');
-      return listDirs(host, action.path);
     case 'renameSession':
       await run(['rename-session', '-t', check(action.session, SESSION_ID, 'sesión'), '--', sessionName(action.name)]);
       return;

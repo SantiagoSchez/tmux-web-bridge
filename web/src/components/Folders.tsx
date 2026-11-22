@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
-import { baseName, childPath, DEFAULT_COMMAND, folderNameProblem, MAX_FOLDERS, sameFolder } from '../../../shared/folders';
-import type { DirListing, HostInfo, SavedFolder } from '../../../shared/types';
+import { useEffect, useState } from 'preact/hooks';
+import { baseName, DEFAULT_COMMAND, folderNameProblem, MAX_FOLDERS, sameFolder } from '../../../shared/folders';
+import type { HostInfo, SavedFolder } from '../../../shared/types';
 import { dialog, folderHost, hosts, hubSettings, toast } from '../state';
 import { hub } from '../ws';
+import { Explorer, useExplorer } from './Explorer';
+import { openFile } from './Files';
 
 function saveFolders(hostId: string, list: SavedFolder[]): void {
   hub.send({ t: 'settings', settings: { folders: { [hostId]: list } } });
@@ -177,91 +179,9 @@ export function SubfoldersCheck({ checked, onChange }: { checked: boolean; onCha
   );
 }
 
-/** Moving around a machine's folders, from `start` (or a path typed by hand). */
-export function useDirBrowser(hostId: string, start = '~') {
-  const [at, setAt] = useState<DirListing | null>(null);
-  const [path, setPath] = useState(start);
-  const [busy, setBusy] = useState(false);
-  const listRef = useRef<HTMLUListElement>(null);
-
-  const go = async (to: string): Promise<DirListing | null> => {
-    setBusy(true);
-    try {
-      const l = await hub.action<DirListing>(hostId, { op: 'listDirs', path: to.trim() });
-      setAt(l);
-      setPath(l.path);
-      listRef.current?.scrollTo(0, 0);
-      return l;
-    } catch {
-      return null; // the error is already a toast
-    } finally {
-      setBusy(false);
-    }
-  };
-  useEffect(() => void go(start), []);
-
-  /** A path typed but not opened yet. */
-  const typed = path.trim() !== at?.path;
-  /** Where it is, opening first a path typed by hand: so only folders that exist are used. */
-  const here = () => (typed ? go(path) : Promise.resolve(at));
-  return { at, path, setPath, busy, go, typed, here, listRef };
-}
-
-/** The path field, the folders inside the one shown (hidden ones if asked) and the way up. */
-export function DirBrowser({ b }: { b: ReturnType<typeof useDirBrowser> }) {
-  const [hidden, setHidden] = useState(false);
-  const { at, busy, go } = b;
-  const dirs = at ? at.dirs.filter((d) => hidden || !d.startsWith('.')) : [];
-  return (
-    <>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!busy) void go(b.path);
-        }}
-      >
-        <input
-          class="text-input"
-          value={b.path}
-          placeholder="~/carpeta o /ruta/absoluta"
-          aria-label="Ruta de la carpeta"
-          autocapitalize="off"
-          autocomplete="off"
-          spellcheck={false}
-          onInput={(e) => b.setPath(e.currentTarget.value)}
-        />
-      </form>
-      <label class="kb-check">
-        <input type="checkbox" checked={hidden} onChange={(e) => setHidden(e.currentTarget.checked)} />
-        Mostrar carpetas ocultas
-      </label>
-      <ul class="menu folder-dirs" ref={b.listRef} aria-busy={busy}>
-        {!at && <li class="dim pad">Cargando…</li>}
-        {at?.parent && (
-          <li>
-            <button class="menu-item" disabled={busy} onClick={() => void go(at.parent!)}>
-              <span class="menu-icon">↑</span>
-              <span class="project-name">..</span>
-            </button>
-          </li>
-        )}
-        {dirs.map((d) => (
-          <li key={d}>
-            <button class="menu-item" disabled={busy} onClick={() => void go(childPath(at!.path, d))}>
-              <span class="menu-icon">▸</span>
-              <span class="project-name">{d}</span>
-            </button>
-          </li>
-        ))}
-        {at && !dirs.length && <li class="dim pad">{at.dirs.length ? 'Solo hay carpetas ocultas.' : 'No hay carpetas dentro.'}</li>}
-      </ul>
-    </>
-  );
-}
-
-/** Browses the machine's folders from ~ (or a path typed by hand) and adds the one shown. */
+/** Browses the machine from ~ (or a path typed by hand) with the explorer and adds the folder shown. */
 function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: SavedFolder[]; onAdd: (f: SavedFolder) => void; onCancel: () => void }) {
-  const b = useDirBrowser(host.id);
+  const b = useExplorer({ host: host.id });
   const { at, busy, typed } = b;
   const [name, setName] = useState<string | null>(null);
   const [subfolders, setSubfolders] = useState(false);
@@ -284,7 +204,7 @@ function FolderPicker({ host, list, onAdd, onCancel }: { host: HostInfo; list: S
 
   return (
     <div class="folder-picker">
-      <DirBrowser b={b} />
+      <Explorer x={b} open={(path) => openFile({ host: host.id }, path)} />
       <SubfoldersCheck checked={subfolders} onChange={setSubfolders} />
       <label class="folder-name">
         <span class="dim small">{subfolders ? 'Nombre (para reconocerla en esta lista)' : 'Nombre del espacio'}</span>

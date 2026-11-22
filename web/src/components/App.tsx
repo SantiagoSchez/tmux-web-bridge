@@ -6,7 +6,7 @@ import { findWindow, hosts, wsStatus } from '../state';
 import { ActivitySheet } from './Activity';
 import { Connections } from './Connections';
 import { FilePeek } from './FilePeek';
-import { FileViewerSheet } from './Files';
+import { FileViewerSheet, fileViewer } from './Files';
 import { Dialogs, Toasts } from './Dialogs';
 import { Drawer, ScratchpadsDrawer } from './Drawer';
 import { Grid } from './Grid';
@@ -96,16 +96,19 @@ export function App() {
 }
 
 function Overlays() {
+  // Opened from a dialog («Abrir» in «Nueva carpeta»): the file viewer goes over it; else below the dialogs.
+  const overDialog = !!fileViewer.value?.overDialog;
   return (
     <>
       <Connections />
       <Settings />
       <TrelloSheet />
       <ActivitySheet />
-      <FileViewerSheet />
+      {!overDialog && <FileViewerSheet />}
       <FilePeek />
       <HoverTip />
       <Dialogs />
+      {overDialog && <FileViewerSheet />}
       <Palette />
       <Toasts />
     </>

@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadido el porcentaje de tareas hechas junto a las de cada cambio de OpenSpec («☑ 7/23 (30 %)»), en la cabecera de la ventana, la lista, Pendientes y el recuadro de detalles. Solo marca el 100 % cuando están todas hechas",
+  "issue": "76",
+  "breaking": false,
+  "pr": "77"
+}
