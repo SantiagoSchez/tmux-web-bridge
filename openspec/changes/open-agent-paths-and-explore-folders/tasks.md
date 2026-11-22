@@ -114,16 +114,20 @@
   - Done: First run: one HIGH (the listing script was quadratic and its cap applied only on the hub), MEDIUMs (the hyperlink decision untested in the component, the kit's instruction reaching commits and pull requests, the error body's type) and LOWs, fixed in group 10. Second run, after group 10 touched the `DirListing` payload: «Ship as is», six LOW findings, none blocking: the byte-order cut, a hidden relative folder (`.git/`) losing its dot, a folder name with a newline, `mailto:123` read as a name with a line, a typed relative path resolved against the pane's folder instead of the one shown, and the `as unknown as HostMonitor` of the test host. D2 and D7 now say what the code does for the first, third and fourth.
 - [x] 14.3 Commit with `/ka:commit --pr` and open the pull request.
   - Done: PR #77, with the changelog entries referencing it.
-- [ ] 14.4 Run the bounded review loop: `/ka:review-pr`, `ka review-rounds record`, the QUESTION findings to the owner, and `ka review-rounds gate` until it passes; each blocker goes back through the artifacts, `/opsx:apply`, `/opsx:verify` and `/ka:commit`.
-- [ ] 14.5 Once the gate passes, send the pending suggestions to `ka-evaluator`, record the scores with `ka review-rounds score`, and offer those of 8 or more to the owner as follow-up issues.
+- [x] 14.4 Run the bounded review loop: `/ka:review-pr`, `ka review-rounds record`, the QUESTION findings to the owner, and `ka review-rounds gate` until it passes; each blocker goes back through the artifacts, `/opsx:apply`, `/opsx:verify` and `/ka:commit`.
+  - Done: round 1 (full) found one REQUIRED (R1-01, the time budget of the 20 000-file test), fixed through D2 and task 10.6, and one SUGGESTION (R1-02); round 2 (incremental) resolved R1-01 with no new blocker. `ka review-rounds gate` passes on `4b03388` after 2 of 3 rounds; no QUESTION findings.
+- [x] 14.5 Once the gate passes, send the pending suggestions to `ka-evaluator`, record the scores with `ka review-rounds score`, and offer those of 8 or more to the owner as follow-up issues.
+  - Done: `ka-evaluator` scored R1-02 (a relative path typed in the explorer resolves against the panes' folders) 5 of 10; recorded with `ka review-rounds score` and listed in the final review comment of PR #77, with no follow-up issue.
 
 ## 15. Feature catalogue (mandatory step 6, after the review loop's gate passes)
 
-- [ ] 15.1 Run `/ka:update-features open-agent-paths-and-explore-folders`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+- [x] 15.1 Run `/ka:update-features open-agent-paths-and-explore-folders`, then `ka features-check --strict` with exit code 0, and commit with `/ka:commit`.
+  - Done: `/ka:update-features` wrote three sections in «Terminal» (links to files and folders, folder paths, Claude Code writing paths as links), the new area «Explorador de archivos» with its ten sections and its index line, and the percentage in the «Cambios de OpenSpec» sections and in «Qué muestran los detalles de una ventana». `ka features-check --strict`: 125 sections in sync, exit 0.
 
 ## 16. E2E pipeline (mandatory step 7)
 
-- [ ] 16.1 The project has no E2E suite; this step does not apply. Record it here.
+- [x] 16.1 The project has no E2E suite; this step does not apply. Record it here.
+  - Done: not applicable, the project has no E2E suite.
 
 ## 17. Human review (mandatory step 8)
 
