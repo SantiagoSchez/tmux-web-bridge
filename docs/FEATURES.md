@@ -737,7 +737,17 @@ Cada tarjeta de «Pendientes» muestra, debajo de su línea de estado, las misma
 ### Las tareas, desde la cabecera de la ventana
 <!-- capability: change-progress; requirement: the-open-window-s-header-opens-each-change-s-tasks -->
 
-La cabecera de una ventana abierta tiene un botón por cada cambio con progreso de la carpeta del panel en el que trabaja, con «☑» y sus tareas con el porcentaje, por ejemplo «☑ 7/23 (30 %)». Los lectores de pantalla lo anuncian con el nombre del cambio. Al pulsarlo, el visor de ficheros abre el `tasks.md` de ese cambio con el formato de Markdown. Un cambio sin `tasks.md` no tiene botón.
+La cabecera de una ventana abierta tiene un botón por cada cambio con progreso de la carpeta del panel en el que trabaja, tantos como quepan, con «☑» y sus tareas con el porcentaje, por ejemplo «☑ 7/23 (30 %)». Cuando la cabecera es estrecha, como en el móvil, el botón enseña solo el porcentaje: «☑ 30 %». Los lectores de pantalla lo anuncian siempre con el nombre del cambio y sus tareas completas. Al pulsarlo, el visor de ficheros abre el `tasks.md` de ese cambio con el formato de Markdown. Un cambio sin `tasks.md` no tiene botón.
+
+### La cabecera de la ventana cabe en la pantalla
+<!-- capability: change-progress; requirement: the-open-window-s-header-fits-its-width -->
+
+La cabecera de una ventana abierta nunca es más ancha que el sitio que tiene, así que la página no se ensancha y las hojas que se abren encima, como «Ficheros cambiados», salen enteras. De lo que lleve la cabecera (en el ordenador no hay botón de volver), siempre se ven volver, parte del nombre de la ventana, la carpeta, el recuento de líneas y «⋯». Los botones de cambio son los que ceden sitio: uno que no cabe entero corta su texto con «…», y uno sin sitio no se muestra. Por ejemplo, en un móvil de 360 px con dos cambios se ve el primero y el segundo queda fuera; su progreso sigue en la fila de la lista y en Pendientes.
+
+### Las líneas cambiadas en dos filas
+<!-- capability: change-progress; requirement: a-narrow-window-header-shows-the-changed-lines-on-two-lines -->
+
+Cuando la cabecera de una ventana es estrecha, el botón de las líneas cambiadas pone las añadidas encima de las quitadas, «+18,8k» sobre «−1,5k», y ocupa la mitad. En una cabecera ancha, como la del ordenador, siguen una al lado de la otra: «+18,8k −1,5k». Los lectores de pantalla lo anuncian igual en los dos casos.
 
 ### La propuesta, desde el menú de la ventana
 <!-- capability: change-progress; requirement: the-window-menu-opens-each-change-s-proposal -->

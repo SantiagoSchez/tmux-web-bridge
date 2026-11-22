@@ -1228,9 +1228,38 @@ body.dragging-host * {
 .tree.compact .card-body .change-lines {
   flex-basis: 100%;
 }
-/* The window header's button of a change: its tasks, shaped like the ± one next to it. */
-.wv-change {
+/* The window header's change buttons give up their room before anything else: a wrapping row one
+   button high, so a button that does not fit goes to a hidden line, whole, instead of showing in half. */
+.wv-changes {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  height: var(--tap);
+  overflow: hidden;
+}
+/* The window header's button of a change: its tasks, shaped like the ± one next to it. Alone in
+   too little room, it shrinks and cuts its text with «…». */
+.changes-btn.wv-change {
   color: var(--subtext0);
+  flex-shrink: 1;
+}
+.wv-change-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wv-change-short {
+  display: none;
+}
+@container (max-width: 560px) {
+  .wv-change-full {
+    display: none;
+  }
+  .wv-change-short {
+    display: inline;
+  }
 }
 .git-icon {
   display: inline-flex;
@@ -1446,6 +1475,8 @@ body.dragging-host * {
   flex-direction: column;
   background: var(--base);
 }
+/* A size container, so its buttons switch to their short forms by its own width (.wv-change-short,
+   .changes-lines). It cuts what overflows, so it can never widen the page. */
 .wv-head {
   display: flex;
   align-items: center;
@@ -1454,13 +1485,16 @@ body.dragging-host * {
   min-height: calc(58px + var(--safe-top));
   background: var(--mantle);
   flex-shrink: 0;
+  container-type: inline-size;
+  overflow: hidden;
 }
 .layout.desktop .wv-head {
   padding-left: 16px;
 }
+/* Some of the name always shows: the change buttons give up their room first. */
 .wv-title {
   flex: 1;
-  min-width: 0;
+  min-width: 64px;
   padding: 0 4px;
 }
 .wv-name {
@@ -3527,6 +3561,16 @@ textarea.text-input {
 }
 .changes-btn.clean {
   color: var(--overlay1);
+}
+/* In a narrow window header, the two counts one over the other: about half the width. */
+@container (max-width: 560px) {
+  .changes-btn.changes-lines {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0;
+    font-size: 11.5px;
+    line-height: 1.2;
+  }
 }
 
 .changes-search,

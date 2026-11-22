@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { changeLine } from '../../shared/change-progress.js';
+import { changeLine, taskPercent } from '../../shared/change-progress.js';
 import type { ChangeProgress } from '../../shared/types.js';
 import { reviewState } from './change-progress.js';
 
@@ -22,6 +22,12 @@ test('the percentage of tasks done is rounded down, so 100 % means every task is
   assert.equal(changeLine(change({ tasks: { done: 119, total: 120 } })), '☑ 119/120 (99 %)');
   assert.equal(changeLine(change({ tasks: { done: 0, total: 5 } })), '☑ 0/5 (0 %)');
   assert.equal(changeLine(change({ tasks: { done: 2, total: 3 } })), '☑ 2/3 (66 %)');
+});
+
+test('the percentage alone, for a narrow window header, is rounded down like the full count', () => {
+  assert.equal(taskPercent({ done: 7, total: 23 }), '30 %');
+  assert.equal(taskPercent({ done: 120, total: 121 }), '99 %');
+  assert.equal(taskPercent({ done: 121, total: 121 }), '100 %');
 });
 
 test('a change with neither progress nor review state goes by its name', () => {
