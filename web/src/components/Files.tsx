@@ -635,7 +635,7 @@ export function ChangesButton({ host, window, paneId }: { host: HostInfo; window
   const since = stat.mode === 'branch' ? `desde ${stat.base ?? 'su rama base'}` : 'sin commit';
   const label = clean ? `Ficheros cambiados (${since}): ninguno` : `Ficheros cambiados (${since}): ${stat.files}, +${stat.added} −${stat.removed} líneas`;
   return (
-    <button class={`changes-btn ${clean ? 'clean' : ''}`} aria-label={label} title={label} onClick={() => openChanges(origin, stat.mode)}>
+    <button class={`changes-btn ${clean ? 'clean' : 'changes-lines'}`} aria-label={label} title={label} onClick={() => openChanges(origin, stat.mode)}>
       {clean ? (
         <IconFileDiff />
       ) : (

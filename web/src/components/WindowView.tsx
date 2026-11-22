@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { HostInfo, SessionInfo, WindowInfo } from '../../../shared/types';
-import { taskProgress } from '../../../shared/change-progress';
+import { taskPercent, taskProgress } from '../../../shared/change-progress';
 import { killPane, windowMenu } from '../menus';
 import { dictationBlur, dictationKeyDown, dictationKeyUp } from '../dictation';
 import { isDesktop, isTouch, prefs, setPref } from '../prefs';
@@ -140,16 +140,25 @@ export function WindowView({ host, session, window, paneId }: Props) {
             {window.state && <span class={`state-chip state-${window.state}`}>{STATE_LABEL[window.state]}</span>}
           </div>
         </div>
-        {/* Each active OpenSpec change with tasks of the pane's repository: its progress, opening its tasks.md. */}
-        {pane?.changes?.map(({ name, path, tasks }) => {
-          if (!tasks) return null;
-          const label = `Tareas de ${name}: ${taskProgress(tasks)}`;
-          return (
-            <button key={name} class="changes-btn wv-change" aria-label={label} title={label} onClick={() => openFile({ host: host.id, window: window.id, pane: pane.id }, `${path}/tasks.md`)}>
-              ☑ {taskProgress(tasks)}
-            </button>
-          );
-        })}
+        {/* Each active OpenSpec change with tasks of the pane's repository: its progress, opening its tasks.md.
+            The group gives up its room first, leaving out the buttons that do not fit (styles.css). */}
+        {pane?.changes?.some((c) => c.tasks) && (
+          <div class="wv-changes">
+            {pane.changes.map(({ name, path, tasks }) => {
+              if (!tasks) return null;
+              const label = `Tareas de ${name}: ${taskProgress(tasks)}`;
+              return (
+                <button key={name} class="changes-btn wv-change" aria-label={label} title={label} onClick={() => openFile({ host: host.id, window: window.id, pane: pane.id }, `${path}/tasks.md`)}>
+                  {/* The whole count, or only the percentage when the header is narrow. */}
+                  <span class="wv-change-text">
+                    ☑ <span class="wv-change-full">{taskProgress(tasks)}</span>
+                    <span class="wv-change-short">{taskPercent(tasks)}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
         <FolderButton host={host} window={window} paneId={pane?.id} />
         <ChangesButton host={host} window={window} paneId={pane?.id} />
         <button class="icon-btn" aria-label="Acciones de la ventana" onClick={openMenu}>
