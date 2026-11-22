@@ -38,7 +38,8 @@
       "Bash(ka scope *)",
       "Bash(ka openspec-check *)",
       "Bash(ka features-check)",
-      "Bash(ka docs-check)"
+      "Bash(ka docs-check)",
+      "Bash(ka hotspots *)"
     ]
   }
 }
