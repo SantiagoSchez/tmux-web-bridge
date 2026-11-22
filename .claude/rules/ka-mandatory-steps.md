@@ -7,7 +7,7 @@ alwaysApply: true
 
 Every `tasks.md` under `openspec/changes/<change>/` must include the steps below. The agent executes them; the human does not. A task is marked `[x]` only after the agent has run what it requires and produced what it describes.
 
-The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 9 follow, in that order. The review loop (`/opsx:verify`, `/ka:adversarial-review` when the scope warrants it, `/ka:commit`, the pull request and `/ka:review-pr`, bounded as described at the end of this rule) runs between step 5 and step 6: the feature catalogue of step 6 is updated once `ka review-rounds gate` passes.
+The steps are numbered in the order they sit in a `tasks.md`: step 1 is the first task group; step 2 comes before the change's own task groups, which are step 3; steps 4 to 10 follow, in that order. Every step is written as checkboxes, the review loop of step 6 included: `/opsx:apply` executes only checkboxes, so a step written as bullets is skipped. OpenSpec's instruction for `tasks.md` offers an untracked `## Workflow follow-up` section for workflow steps; here it may hold only the closing after the approval (the archive, the merge and the cleanup).
 
 **The plugin's skills take precedence.** For the tasks the koalarnes plugin covers (refining work items, worktrees, commits, changelog entries, PR reviews, Playwright E2E, test-driven development, releases, the feature catalogue, the user manual), use its `/ka:<name>` skills, never a personal or other skill with the same purpose: they read this project's configuration. If the user names such a skill (`/commit`, `/git-worktree`, `/review-bitbucket-pr`, `/playwright-e2e`…), run the plugin's and say so in one line.
 
@@ -44,11 +44,15 @@ Before changing behaviour, read the tests of every module the change touches and
 
 Every new or rewritten test follows the project's testing standards (linked from `AGENTS.md`): written at the cheapest level that runs the behaviour for real, mocking only true boundaries, asserting outcomes, and seen failing before it is marked done. A test the change touches that matches one of their refused patterns (a copy of the code under test, a mock echo, a restated constant, a tautology) is fixed or moved in the same change.
 
+**A bug fix traces its bug.** In a bug fix or hotfix change (its branch starts with `bugfix/` or `hotfix/`), this step holds one more checkbox: run `ka review-rounds escape --path <file> --line <n> --reason "<the bug>"` on the line that holds the bug, before the fix changes it. When the fix has already changed the line (the task was added late), add `--at <commit>` with the commit `git merge-base origin/master HEAD` prints, where the branch started. The command blames the line, finds the earlier pull request that let the bug through and keeps it in the change's `review.json`, so what the review misses can be measured. When no line holds the bug (a missing check, a case nobody wrote), the task says that no line holds it and records nothing.
+
 Output: one line per inspected module saying "tests up to date" or "tests updated/added in this change".
 
 ## Step 3 — Implement the change's tasks
 
 The change's own task groups, written by `/opsx:propose` (or the last `/opsx:continue`) from the proposal, design and specs, and executed by `/opsx:apply`, each behaviour test-first (`/ka:tdd`).
+
+**Each group ends with its commit.** Every task group that changes files, the change's own and step 5 when it changes any, ends with a task «Commit the group with `/ka:commit`», ticked once the tests of the layers it touched pass: run their test command, and never commit a failing test. A group that changes no file has none, and neither has step 2: the tests it updates fail until the implementation lands, so they go with the group that makes them pass. The first of these commits also carries the change's OpenSpec artifacts. `/ka:commit` pushes the branch, so each group is saved before the next one starts; step 4 still runs every command at the end.
 
 **Wiring and payload changes carry their checks.** When the change touches dependency-injection wiring or application bootstrap, the task groups must include a boot smoke test: start the application, wait for its ready log line, stop it, because wiring errors do not surface in typecheck or unit tests. When it changes a message or job payload, they must include an audit that lists every producer and consumer of that payload and confirms each was updated. `/ka:review-pr` flags a missing one as a required change.
 
@@ -86,13 +90,28 @@ When any of these changed, update the relevant standards document (`/ka:update-d
 
 When the change introduces a pattern future contributors should follow, add it to the relevant standards document.
 
-## Step 6 — Update the feature catalogue (mandatory when a requirement changes)
+## Step 6 — Review loop (mandatory)
+
+The automated review, as tasks of their own, so that `/opsx:apply` does not report the change complete before it has run. Its tasks, in this order:
+
+1. Run `/opsx:verify` and fix what it reports through the artifacts.
+2. The adversarial review. Whoever writes `tasks.md` (`/opsx:propose` or the last `/opsx:continue`) decides from the proposal whether it applies, and writes the task in one of two forms:
+   - «Run `/ka:adversarial-review <change>`: it applies because …», when the change touches a message or job payload, dependency wiring or a migration on a large table;
+   - «The adversarial review does not apply: …», with the reason, otherwise.
+
+   `/opsx:verify` reads the decision against the diff and rewrites a «does not apply» when the implementation reached one of those. The review runs before the pull request. Its CRITICAL, HIGH and MEDIUM findings block like REQUIRED ones and go back through the artifacts; LOW ones do not. It is not part of the review budget, and after a fix round it runs again only when the fix touches a payload, the wiring or a migration.
+3. Open the pull request with `/ka:commit --pr`, which commits what the groups left, if anything.
+4. Run `/ka:review-pr` in rounds, as the bounded review loop below says. Tick this task only once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
+
+These tasks are checkboxes like every other step's, never bullets of `## Workflow follow-up`. The user trying the change and saying it works does not end the step: carry on until the gate passes.
+
+## Step 7 — Update the feature catalogue (mandatory when a requirement changes)
 
 If the change adds, renames or removes a requirement, whether its behaviour is visible to end users or internal, or modifies a feature the product team sees:
 
 1. Run `/ka:update-features <change-name>` to write the update of `docs/FEATURES.md` from the capability spec; it writes without asking and reports each section it wrote.
 2. Run `ka features-check --strict`. The exit code must be 0. Without `--strict` it lists as `pending:` a requirement your change adds and the catalogue lacks, and a section for a requirement your change removes or renames, and exits 0, so the checks of the review loop pass before this step.
-3. Commit it immediately with `/ka:commit`. The catalogue sync must land in the pull request before the human review (step 8).
+3. Commit it immediately with `/ka:commit`. The catalogue sync must land in the pull request before the human review (step 9).
 
 Each section of the catalogue carries the anchor of the requirement it describes, right after its heading:
 
@@ -103,13 +122,15 @@ Each section of the catalogue carries the anchor of the requirement it describes
 
 `<req-slug>` is the kebab-case of the Requirement name as it appears in the spec. `ka features-check` reports any drift between the two sides.
 
-## Step 7 — Green E2E pipeline run (mandatory before human review)
+## Step 8 — Green E2E pipeline run (mandatory before human review)
 
 The project has no E2E suite; this step does not apply. Record that in the task.
 
-## Step 8 — Human review (mandatory before archive)
+## Step 9 — Human review (mandatory before archive)
 
-After `ka review-rounds gate` passes, the catalogue sync of step 6 is committed and step 7 is green (or recorded as not applicable), only the human review is left. Ask the user, with `AskUserQuestion`, who reviews the pull request:
+The user's own manual testing of the change belongs to this step: it comes after the automated review, and trying the change earlier does not end step 6.
+
+After `ka review-rounds gate` passes, the catalogue sync of step 7 is committed and step 8 is green (or recorded as not applicable), only the human review is left. Ask the user, with `AskUserQuestion`, who reviews the pull request:
 
 - **A person reviews it.** Wait for the approval. Reviewer findings are handled exactly like the automated review's (see below); the cycle reopens until the reviewer approves.
 - **The user takes it as good** without a manual review. Record that in the step's task in `tasks.md`.
@@ -118,7 +139,7 @@ Never choose for the user, and never reuse the answer given for another pull req
 
 Once the pull request is approved, or taken as good, the agent closes it without asking again:
 
-1. Run step 9, then `/opsx:archive`, then `/ka:commit` to push the archive moves into the same pull request.
+1. Run step 10, then `/opsx:archive`, then `/ka:commit` to push the archive moves into the same pull request.
 2. Check that the platform shows the commit you pushed last: compare `git rev-parse HEAD` with the pull request's latest commit (`gh pr view <n> --json headRefOid`; merge with `--match-head-commit <that commit>` too, so GitHub refuses an older head). When they differ, the platform has not caught up with the push yet: wait a few seconds and read it again. Never merge an earlier head: the merge would leave the later commits out of `master`.
 3. Merge the pull request with the `squash` strategy (`gh pr merge`: `--squash` for `squash`, `--merge` for `merge_commit`, `--rebase` for `fast_forward`). When the platform refuses the merge (a pending or failing check, a conflict, a missing approval), report why and stop: never bypass a restriction.
 
@@ -133,9 +154,9 @@ Run these in order, without asking, once the platform shows the pull request mer
 Then propose what is left, each on the user's go-ahead, in one `AskUserQuestion` call:
 
 - Leave a comment on the GitHub issue with the link to the pull request, written in es-ES, and close the issue when the merge left it open.
-- Remove the branch's worktree and its local branch with `/ka:git-worktree remove`. The removal deletes the branch once its changes are in `origin/master`. Afterwards run `git branch --list <branch>`: when the branch is still there, it holds commits the pull request did not merge; say so and leave it.
+- Remove the branch's worktree and its local branch with `/ka:git-worktree remove`. The removal deletes the branch once its changes are in `origin/master`, and brings the main checkout's base branch up to date with `origin`; when it cannot, it says why: pass that on. Afterwards run `git branch --list <branch>`: when the branch is still there, it holds commits the pull request did not merge; say so and leave it.
 
-## Step 9 — features-check before the archive (mandatory)
+## Step 10 — features-check before the archive (mandatory)
 
 `/opsx:archive` does not run the catalogue linter. The agent must run it as the last task before archiving:
 
@@ -150,16 +171,15 @@ The exit code must be 0; fix any drift before archiving. It reads the change's s
 Not mandatory; add them when the scope warrants:
 
 - **Manual endpoint testing** with `curl` for new or changed HTTP endpoints: the main methods plus the obvious error cases (400, 401, 404, 422); restore the data after each mutating call.
-- **Adversarial review** (`/ka:adversarial-review <change>`) for changes with a broad blast radius: message or job payloads, dependency wiring, migrations on large tables. Its CRITICAL, HIGH and MEDIUM findings block like REQUIRED ones and go back through the artifacts; LOW ones do not. It is not part of the review budget below, and after a fix round it runs again only when the fix touches a payload, the wiring or a migration.
 
-## After `/opsx:apply` and before `/opsx:archive`: the bounded review loop
+## The bounded review loop of step 6
 
 The automated review runs in rounds recorded in `openspec/changes/<change>/review.json` with `ka review-rounds`, which enforces the rules below whatever the session decides. A budget holds 3 counted rounds: the first is a full review, the next ones review the commits since the last reviewed one, the open blockers and the callers of what the fix touched, and the round that spends the budget only verifies the open findings and accepts a new blocker only inside the last fix.
 
-1. Run `/ka:review-pr`. It reads `ka review-rounds status` and reviews in the mode it prints. Save the JSON block that ends its report to a temporary file and run `ka review-rounds record <file> --pr <number>`; the reviewer itself writes no project file.
+1. Run `/ka:review-pr`. It reads `ka review-rounds status` and reviews in the mode it prints. Save the JSON block that ends its report to a temporary file and run `ka review-rounds record <file> --pr <number>`; the reviewer itself writes no project file. `record` also pins the reviewed commit on `origin` as `refs/ka/reviews/<pr>/r<n>`, so it outlives the squash merge, and records an escape for each pre-existing blocker the report gives a line. A failed pin only warns: pass on the command it prints to retry it.
 2. Ask the round's QUESTION findings in one `AskUserQuestion`. An answer that reveals a problem makes the question a blocker (`ka review-rounds escalate <id> --reason "<answer>"`); an answer that reveals none closes it (`ka review-rounds withdraw <id> --reason "<answer>"`).
 3. Run `ka review-rounds gate`.
-   - **It passes**: go on to step 6. Suggestions and nitpicks never start a fix round by themselves.
+   - **It passes**: go on to step 7. Suggestions and nitpicks never start a fix round by themselves.
    - **`blockers open`**: fix every open CRITICAL and REQUIRED finding, process findings included, in one coordinated fix, and **do not patch the code directly**. Edit the affected artifacts (`proposal.md`, `design.md`, `tasks.md`, `specs/**`) so they describe the corrected behaviour (the user may hand-edit typos only), re-implement with `/opsx:apply`, re-verify with `/opsx:verify`, commit with `/ka:commit`, and go back to 1. Never lower a finding's severity and never mark one fixed yourself: only a later review or the user's withdrawal closes a blocker.
    - **`budget exhausted`**: never approve or merge. Ask the user, with `AskUserQuestion`, to grant one more recorded round (`ka review-rounds extend --reason …`), to hand the pull request to a person, or to withdraw findings with a reason (`ka review-rounds withdraw <id> --reason …`). Do nothing else until the answer.
    - **`head moved since the last review`**: a commit after the last round changed more than the feature catalogue, the change's `tasks.md` and `review.json`, or the pending changelog entries; a spec delta, the design or the proposal edited after the review counts too. Review it: go back to 1.

@@ -58,10 +58,11 @@ Two alternative routes lead to a change whose artifacts are ready:
 From there the path is shared:
 
 ```
-/opsx:apply                          implement the tasks in order, marking [x] as you go
+/opsx:apply                          implement the tasks in order, marking [x] as you go;
+                                     each task group ends with its commit (/ka:commit)
 /opsx:verify                         completeness, correctness, coherence
-/ka:adversarial-review   opt-in, when the scope is broad: red-team the change before pushing
-/ka:commit               commit and push; open the pull request when asked
+/ka:adversarial-review   when its task in tasks.md says it applies: red-team the change before the PR
+/ka:commit --pr          open the pull request
 /ka:review-pr            automated review of the pull request, in a fresh context; ka review-rounds record
   blockers open?                     the agent edits the artifacts, then apply → verify → commit → review-pr again
                                      (at most 3 rounds; then the user decides)

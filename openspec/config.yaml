@@ -37,8 +37,9 @@ context: |
   - host-kit (host-kit/**, server/src/kit.ts, scripts/test-kit-update.sh, scripts/test-window-title.sh): docs/dev-standards/host-kit-standards.md
 
   Workflow: Route A (refine, opsx:propose) or Route B (refine, opsx:explore,
-  opsx:new, opsx:continue per artifact), then opsx:apply, opsx:verify,
-  adversarial-review if the scope is broad, commit, pull request, review-pr
+  opsx:new, opsx:continue per artifact), then opsx:apply with a commit per
+  task group, opsx:verify, adversarial-review when tasks.md says it applies,
+  commit and pull request, review-pr
   in a fresh context, in rounds bounded by ka review-rounds (blocking findings:
   the agent edits the artifacts directly, never with opsx:continue, then
   re-applies),
@@ -51,8 +52,9 @@ context: |
     the standards of every layer the change touches.
   - Every tasks.md includes the mandatory steps of
     .claude/rules/ka-mandatory-steps.md (branch from master,
-    review and run the tests, update the docs and the changelog, the feature
-    catalogue, the human review, features-check before the archive).
+    review and run the tests, update the docs and the changelog, the review
+    loop, the feature catalogue, the human review, features-check before the
+    archive).
 
 # Per-artifact rules. The OpenSpec CLI only injects rules whose key is an
 # artifact id of the schema (proposal, design, specs, tasks); any other key is
@@ -80,4 +82,6 @@ rules:
     - For schema work, include the exact command that generates the migration.
     - For a dependency-wiring or bootstrap change, add a boot smoke test task (start the application, wait for its ready log line, stop it).
     - For a message or job payload change, add an audit task over every producer and consumer of it.
+    - End every task group that changes files with a task that commits it with /ka:commit once the tests of its layers pass.
+    - Write the review loop as checkboxes of its own task group (verify, the adversarial review with its decision and reason, the pull request, the review rounds), never as bullets of a Workflow follow-up section.
     - Unit and integration tests follow docs/dev-standards/testing-standards.md.
