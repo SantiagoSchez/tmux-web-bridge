@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "pr": null,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [],
+  "findings": [],
+  "escapes": [
+    {
+      "id": "E01",
+      "source": "manual",
+      "finding": null,
+      "path": "web/src/components/WindowView.tsx",
+      "line": 153,
+      "commit": "641f94c8f186186924129b438db94e40bb4f9cfe",
+      "pr": 77,
+      "reason": "The window header's buttons never shrink; the folder button left no room on a phone, so the header overflowed and widened the page",
+      "round": null,
+      "at": "2026-11-22T17:50:50.070Z"
+    }
+  ],
+  "outcome": null
+}

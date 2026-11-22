@@ -5,11 +5,16 @@
 import type { ChangeProgress } from './types.js';
 
 /**
- * A change's task count with the share of it done, «7/23 (30 %)». Rounded down, so «100 %»
- * only when every task is ticked.
+ * The share of a change's tasks done, «30 %», as a narrow window header shows it. Rounded down,
+ * so «100 %» only when every task is ticked.
  */
+export function taskPercent(tasks: NonNullable<ChangeProgress['tasks']>): string {
+  return `${Math.floor((tasks.done * 100) / tasks.total)} %`;
+}
+
+/** A change's task count with the share of it done, «7/23 (30 %)». */
 export function taskProgress(tasks: NonNullable<ChangeProgress['tasks']>): string {
-  return `${tasks.done}/${tasks.total} (${Math.floor((tasks.done * 100) / tasks.total)} %)`;
+  return `${tasks.done}/${tasks.total} (${taskPercent(tasks)})`;
 }
 
 /** What is known of a change, each part as the panel writes it: «7/23 (30 %)», «PR #74», «ronda 2/3», «1 bloqueante». */
