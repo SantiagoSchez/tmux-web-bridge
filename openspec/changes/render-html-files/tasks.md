@@ -95,7 +95,7 @@
 - [x] 8.1 Run `/ka:update-docs` for the new API contract (`POST /api/files/page`, `GET /api/page/<token>/…`), the hook's new open route and the user-visible flow; the server standards' line on authentication names the page route's token as one more credential.
 - [x] 8.2 Add the changelog entry with `/ka:changelog --issue 83`: HTML files open rendered in the viewer and with «Abrir aparte», with their folder's files, isolated from the panel and without internet access.
 - [x] 8.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
-- [ ] 8.4 From the adversarial review, run `/ka:update-docs` again: the server standards say that the hook refuses cross-site requests to `/api/` and that a page token is bound to its address, its session and 24 hours from its issue; the README says that a page in the home folder or in `/tmp` shows without its folder's files. Update the changelog entry if its description no longer holds. Commit with `/ka:commit`.
+- [x] 8.4 From the adversarial review, run `/ka:update-docs` again: the server standards say that the hook refuses cross-site requests to `/api/` and that a page token is bound to its address, its session and 24 hours from its issue; the README says that a page in the home folder or in `/tmp` shows without its folder's files. Update the changelog entry if its description no longer holds. Commit with `/ka:commit`.
 
 ## 9. Review loop
 
