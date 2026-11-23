@@ -20,7 +20,7 @@ import { loadConfig, removeConfigHosts } from './config.js';
 import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
 import { checkMachine, installKit, uninstallKit } from './kit.js';
 import { ConnectionRegistry } from './connections.js';
-import { filesContentType, pageContentType } from './content-types.js';
+import { filesContentType, filesSandboxed, pageContentType } from './content-types.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask, listBranches } from './tasks.js';
@@ -1119,8 +1119,8 @@ app.get('/api/files', async (req, reply) => {
         .header('Content-Length', String(range.length));
     }
     const type = filesContentType(path);
-    // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
-    if (type !== 'application/pdf') reply.header('Content-Security-Policy', 'sandbox');
+    // Never run by the browser: sandboxed, but for the players that ask for the file again (content-types.ts).
+    if (filesSandboxed(path)) reply.header('Content-Security-Policy', 'sandbox');
     return reply
       .header('Content-Type', type)
       .header('X-Content-Type-Options', 'nosniff')
@@ -1175,6 +1175,21 @@ function pageHeaders(reply: FastifyReply): FastifyReply {
 const PAGE_EXPIRED =
   '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Enlace caducado</title>' +
   '<p style="font: 16px system-ui, sans-serif; margin: 2rem">Este enlace ha caducado. Vuelve a abrir el fichero desde el panel.</p></html>';
+
+/**
+ * A page's script asking whether it may send a JSON content type or another header (a CORS
+ * preflight): yes, with nothing in the answer. It reads no file and checks no token.
+ */
+app.options(PAGE_ROUTE, async (req, reply) => {
+  const asked = req.headers['access-control-request-headers'];
+  return reply
+    .code(204)
+    .header('Access-Control-Allow-Origin', '*')
+    .header('Access-Control-Allow-Methods', 'GET, HEAD')
+    .header('Access-Control-Allow-Headers', typeof asked === 'string' ? asked : '')
+    .header('Access-Control-Max-Age', '600')
+    .send();
+});
 
 /**
  * A rendered page, or a file below its folder, for whoever holds its token from the address

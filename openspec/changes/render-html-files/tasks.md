@@ -71,9 +71,15 @@
 - [x] 5.9 Check in Chromium against the isolated hub that a page with a `<video>` of its folder plays and seeks (Safari goes to the human review, 12.1). Record it here.
   - No `ffmpeg` on this machine, so the page holds a 10-second WAV in an `<audio>`, which asks for parts of its file as a `<video>` does. Opened in headless Chromium at its page address: `duration` 10, `seekable` up to 10, after setting `currentTime = 8` and `seeked` it stays at 8, no media error. `play()` was not tried: Chromium's autoplay policy refuses it without a user gesture.
 - [x] 5.10 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
-- [ ] 5.11 From the second adversarial review, in `server/src/index.ts`: answer `OPTIONS` on the page route as D5 says, and send the sandbox in `/api/files` only when `filesSandboxed` says so (D9). `pnpm --filter server typecheck` passes.
-- [ ] 5.12 Boot smoke test and checks against the isolated hub, recorded here: `OPTIONS` of a page file with `Access-Control-Request-Headers: content-type` answers 204 with the four headers and no body; in Chromium, the page's `fetch('datos.json', { headers: { 'Content-Type': 'application/json' } })` gets the data; `/api/files` with `Sec-Fetch-Site: same-site` answers 403; `/api/files` of a `.wav` has no `Content-Security-Policy` and one of a `.svg` keeps `sandbox`; opened as «Abrir aparte» in a logged-in Chromium tab, the `.wav` loads its duration and seeks.
-- [ ] 5.13 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
+- [x] 5.11 From the second adversarial review, in `server/src/index.ts`: answer `OPTIONS` on the page route as D5 says, and send the sandbox in `/api/files` only when `filesSandboxed` says so (D9). `pnpm --filter server typecheck` passes.
+- [x] 5.12 Boot smoke test and checks against the isolated hub, recorded here: `OPTIONS` of a page file with `Access-Control-Request-Headers: content-type` answers 204 with the four headers and no body; in Chromium, the page's `fetch('datos.json', { headers: { 'Content-Type': 'application/json' } })` gets the data; `/api/files` with `Sec-Fetch-Site: same-site` answers 403; `/api/files` of a `.wav` has no `Content-Security-Policy` and one of a `.svg` keeps `sandbox`; opened as «Abrir aparte» in a logged-in Chromium tab, the `.wav` loads its duration and seeks.
+  - Boot smoke test: the hub logged only its ready line on 127.0.0.1:17691 and the logins.
+  - `OPTIONS` of `datos.json` under a page token, with `Origin: null`, `Sec-Fetch-Site: cross-site` and `Access-Control-Request-Headers: content-type`: 204, `access-control-allow-origin: *`, `access-control-allow-methods: GET, HEAD`, `access-control-allow-headers: content-type`, `access-control-max-age: 600`, 0 bytes.
+  - `/api/files` with the session: `Sec-Fetch-Site: same-site` 403, `same-origin` 200.
+  - `/api/files` of `tono.wav`: `content-type: audio/wav`, no `Content-Security-Policy`; of `img/logo.svg`: `sandbox` and `image/svg+xml`; of `datos.json`: `sandbox` and `text/plain; charset=utf-8`.
+  - Headless Chromium, the page `json.html` at its page address: its `fetch('datos.json', { headers: { 'Content-Type': 'application/json' } })` printed «datos cargados».
+  - Headless Chromium logged in (login through the panel's origin, 200), `/api/files?…tono.wav` in a tab as «Abrir aparte» opens it: the media document loads `duration` 10, `seekable` up to 10, and seeks to 8 with no media error.
+- [x] 5.13 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
 
 ## 6. The viewer
 
