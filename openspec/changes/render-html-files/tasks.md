@@ -65,13 +65,14 @@
 
 ## 7. Run tests, typecheck and lint
 
-- [ ] 7.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+- [x] 7.1 Run `pnpm --filter server test`, `pnpm --filter server typecheck` and `pnpm --filter web typecheck`, all green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+  - `pnpm --filter server test`: 516 pass, 0 fail; `pnpm --filter server typecheck` and `pnpm --filter web typecheck`: clean. `ka scope`: features-check and docs-check apply; `ka features-check` exit 0 (7 sections pending, for group 10); `ka docs-check` exit 0, no dead reference.
 
 ## 8. Update the documentation and the changelog
 
-- [ ] 8.1 Run `/ka:update-docs` for the new API contract (`POST /api/files/page`, `GET /api/page/<token>/…`), the hook's new open route and the user-visible flow; the server standards' line on authentication names the page route's token as one more credential.
-- [ ] 8.2 Add the changelog entry with `/ka:changelog --issue 83`: HTML files open rendered in the viewer and with «Abrir aparte», with their folder's files, isolated from the panel and without internet access.
-- [ ] 8.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
+- [x] 8.1 Run `/ka:update-docs` for the new API contract (`POST /api/files/page`, `GET /api/page/<token>/…`), the hook's new open route and the user-visible flow; the server standards' line on authentication names the page route's token as one more credential.
+- [x] 8.2 Add the changelog entry with `/ka:changelog --issue 83`: HTML files open rendered in the viewer and with «Abrir aparte», with their folder's files, isolated from the panel and without internet access.
+- [x] 8.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
 
 ## 9. Review loop
 
