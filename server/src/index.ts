@@ -15,7 +15,7 @@ import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
 import { shq, TmuxError } from './exec.js';
-import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
+import { clearSessionCookie, fromAnotherSite, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig, removeConfigHosts } from './config.js';
 import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
 import { checkMachine, installKit, uninstallKit } from './kit.js';
@@ -183,6 +183,12 @@ app.addHook('onRequest', async (req, reply) => {
   if ((req.routeOptions.url ?? '').startsWith('/api/ext/')) {
     if (!extTokens.check(req.headers.authorization)) return reply.code(401).send({ error: 'Token de la extensión inválido o revocado' });
     return;
+  }
+  // No other site's page, nor a rendered page's sandbox, reaches the API: tailscale serve
+  // adds the user's identity to their requests too. A page's own files have their route.
+  const matched = req.routeOptions.url ?? '';
+  if ((matched.startsWith('/api/') || req.url.startsWith('/api/')) && matched !== PAGE_ROUTE && fromAnotherSite(req.headers, config.allowedOrigins)) {
+    return reply.code(403).send({ error: 'origen no permitido' });
   }
   if (passwordAuth) {
     req.sessionId = sessions.check(readCookie(req));
@@ -1141,8 +1147,9 @@ app.post('/api/files/page', async (req, reply) => {
   try {
     const { path, size } = await locateFile(host, b.path, typeof b.window === 'string' ? b.window : undefined, typeof b.pane === 'string' ? b.pane : undefined);
     // A page opened through a link is the file it points to, next to its own resources.
-    const { dir, name } = await pageTarget(host, path);
-    const token = pages.issue({ host: host.id, dir, only: null, session: req.sessionId ?? null, ip: req.ip });
+    // In a folder too broad to hand to its scripts (the home, /tmp), the page gets only itself.
+    const { dir, name, broad } = await pageTarget(host, path);
+    const token = pages.issue({ host: host.id, dir, only: broad ? name : null, session: req.sessionId ?? null, ip: req.ip });
     return { url: `/api/page/${token}/${encodeURIComponent(name)}`, path, size } satisfies FilePage;
   } catch (err) {
     return fileError(reply, err);
@@ -1161,6 +1168,7 @@ function pageHeaders(reply: FastifyReply): FastifyReply {
     .header('X-Content-Type-Options', 'nosniff')
     .header('Referrer-Policy', 'no-referrer')
     .header('Access-Control-Allow-Origin', '*')
+    .header('Accept-Ranges', 'bytes')
     .header('Cache-Control', 'no-store');
 }
 
@@ -1169,9 +1177,11 @@ const PAGE_EXPIRED =
   '<p style="font: 16px system-ui, sans-serif; margin: 2rem">Este enlace ha caducado. Vuelve a abrir el fichero desde el panel.</p></html>';
 
 /**
- * A rendered page, or a file below its folder, for whoever holds its token (the hook lets
- * it in without the session). A hidden part, a path above, a link, a folder or a missing
- * file answers 404 with nothing; an unknown or expired token, a page saying so.
+ * A rendered page, or a file below its folder, for whoever holds its token from the address
+ * it was issued to (the hook lets it in without the session). A hidden part, a path above,
+ * a link, a folder, a missing file, or any file but the page when its folder is too broad,
+ * answers 404 with nothing; an unknown, expired or foreign token, a page saying so. A Range
+ * header gets that piece of the file (a video of the page seeking).
  */
 app.get(PAGE_ROUTE, async (req, reply) => {
   const params = req.params as { token: string; '*': string };
@@ -1179,12 +1189,20 @@ app.get(PAGE_ROUTE, async (req, reply) => {
   const host = grant ? hosts.get(grant.host) : undefined;
   if (!grant || !host) return pageHeaders(reply).code(404).header('Content-Type', 'text/html; charset=utf-8').send(PAGE_EXPIRED);
   const rel = pagePath(params['*']);
-  if (!rel) return pageHeaders(reply).code(404).send();
+  if (!rel || (grant.only !== null && rel !== grant.only)) return pageHeaders(reply).code(404).send();
   try {
-    const { path } = await statPageFile(host, grant.dir, rel);
-    const child = streamHostFile(host, path);
+    const { path, size } = await statPageFile(host, grant.dir, rel);
+    const range = parseRange(req.headers.range, size);
+    if (range === 'unsatisfiable') return pageHeaders(reply).code(416).header('Content-Range', `bytes */${size}`).send();
+    const child = streamHostFile(host, path, range ?? undefined);
     // The browser gave up (the viewer closed, the tab went away): stop reading.
     req.raw.on('close', () => child.exitCode === null && child.kill());
+    if (range) {
+      reply
+        .code(206)
+        .header('Content-Range', `bytes ${range.start}-${range.start + range.length - 1}/${size}`)
+        .header('Content-Length', String(range.length));
+    }
     return pageHeaders(reply).header('Content-Type', pageContentType(path)).send(child.stdout);
   } catch (err) {
     if (err instanceof FileError) return pageHeaders(reply).code(404).send();
