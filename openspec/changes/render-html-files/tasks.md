@@ -108,7 +108,7 @@
 - [x] 8.2 Add the changelog entry with `/ka:changelog --issue 83`: HTML files open rendered in the viewer and with «Abrir aparte», with their folder's files, isolated from the panel and without internet access.
 - [x] 8.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
 - [x] 8.4 From the adversarial review, run `/ka:update-docs` again: the server standards say that the hook refuses cross-site requests to `/api/` and that a page token is bound to its address, its session and 24 hours from its issue; the README says that a page in the home folder or in `/tmp` shows without its folder's files. Update the changelog entry if its description no longer holds. Commit with `/ka:commit`.
-- [ ] 8.5 From the second adversarial review, run `/ka:update-docs` again: the server standards say that `/api/files` sandboxes everything but PDF, video and sound, and that `same-site` counts as another site; the comment of `allowedOrigins` in `config.example.yaml` says that its origins are also let through the hook's cross-site check. Add a changelog entry (fixed) for «Abrir aparte» of a video or a sound. Commit with `/ka:commit`.
+- [x] 8.5 From the second adversarial review, run `/ka:update-docs` again: the server standards say that `/api/files` sandboxes everything but PDF, video and sound, and that `same-site` counts as another site; the comment of `allowedOrigins` in `config.example.yaml` says that its origins are also let through the hook's cross-site check. Add a changelog entry (fixed) for «Abrir aparte» of a video or a sound. Commit with `/ka:commit`.
 
 ## 9. Review loop
 

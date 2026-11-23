@@ -24,7 +24,8 @@ auth:
 # Con method: password, la IP de tu proxy inverso.
 # trustProxy: [10.0.0.20]
 
-# Orígenes extra aceptados en WebSocket/POST (el propio host siempre se acepta).
+# Orígenes extra aceptados en WebSocket/POST y en las peticiones a /api/ que llegan de otro
+# sitio o subdominio, que se rechazan si no (el propio host siempre se acepta).
 # Útil en desarrollo con Vite: http://localhost:5173
 allowedOrigins: []
 

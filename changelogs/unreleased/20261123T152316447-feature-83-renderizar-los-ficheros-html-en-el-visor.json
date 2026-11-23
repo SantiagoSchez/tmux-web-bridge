@@ -1,7 +1,7 @@
 {
   "type": "security",
   "scope": "server",
-  "description": "La API del hub rechaza las peticiones que llegan desde otra web o desde una página HTML abierta en el panel, también a través de tailscale serve: un enlace a una dirección /api/ puesto en otra web deja de abrirse",
+  "description": "La API del hub rechaza las peticiones que llegan desde otra web, desde otro subdominio del hub o desde una página HTML abierta en el panel, también a través de tailscale serve: un enlace a una dirección /api/ puesto en otra web deja de abrirse",
   "issue": "83",
   "breaking": false
 }
