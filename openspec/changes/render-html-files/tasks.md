@@ -28,7 +28,12 @@
 - [x] 4.3 Add tests for `pagePath` (D4): `informe.html`, `img/logo.png` and `a b/c.css` pass as they are; an empty path, `.env`, `.git/config`, `img/.hidden.png`, `..`, `../notas.txt`, `a/../b`, `./a`, `a//b`, `a/`, `a\\b` and a path with a NUL or a line break are refused. See them fail, then write `pagePath` until they pass.
 - [x] 4.4 Add tests that run `pageFileScript(dir, rel)` for real with `/bin/sh` against a temporary folder, through a fake host as in `temp.test.ts` (D4): a regular file gives its size; a missing file, a folder, a symbolic link to a file inside the folder, a symbolic link to a file outside it and a file below a linked folder are each refused with their tag; `dir` reached through a symbolic link still serves its files; a name with spaces and quotes works. See them fail, then write `pageFileScript` and its parser (`statPageFile(host, dir, rel)`, throwing `FileError` 404) until they pass.
 - [x] 4.5 Add a test for the folder a page is issued for: `pageFolderScript(path)` run with `/bin/sh` gives the physical path of the file's folder (`cd -P`), also when the folder is reached through a symbolic link. See it fail, then write it until it passes.
-- [ ] 4.6 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
+- [x] 4.6 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
+- [x] 4.7 From `/opsx:verify` (the owner chose to open the real file): replace the tests of `pageFolder` with tests of `pageTarget(host, path)` run with `/bin/sh` (D1): a regular file gives its physical folder and name; a symbolic link to a file in another folder gives that folder and that file's name; a chain of two links is followed; a relative link target resolves from the link's folder; a loop of links and a missing file are refused (404). See them fail.
+- [x] 4.8 Write `pageTarget` (replacing `pageFolder`) until the tests pass.
+- [x] 4.9 In `POST /api/files/page`, issue the token for `pageTarget`'s folder and answer the URL with its file name. `pnpm --filter server typecheck` passes; check with `curl` against the isolated hub that a link `ultimo.html` to `informes/informe.html` answers a URL ending in `/informe.html` whose sibling `estilo.css` loads. Record it here.
+  - `POST /api/files/page` for `~/ultimo.html`, a link to `informes/informe.html`: the URL ends in `/informe.html`; the page answers 200 with the real file's HTML and its sibling `estilo.css` 200 with `h1 { color: navy }`.
+- [x] 4.10 Commit the fix with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
 
 ## 5. The routes and the hook
 
@@ -76,7 +81,7 @@
 
 ## 9. Review loop
 
-- [ ] 9.1 Run `/opsx:verify` and fix what it reports through the artifacts.
+- [x] 9.1 Run `/opsx:verify` and fix what it reports through the artifacts.
 - [ ] 9.2 Run `/ka:adversarial-review render-html-files`: it applies because the change adds a service to the composition root and changes the authentication hook (dependency wiring), and opens a new route that serves files of a machine to a token instead of the session.
 - [ ] 9.3 Open the pull request with `/ka:commit --pr`.
 - [ ] 9.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
@@ -89,7 +94,7 @@
 
 ## 11. E2E pipeline
 
-- [ ] 11.1 The project has no E2E suite; this step does not apply.
+- [x] 11.1 The project has no E2E suite; this step does not apply.
 
 ## 12. Human review
 

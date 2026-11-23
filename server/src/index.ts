@@ -1,7 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { connect } from 'node:net';
 import { existsSync } from 'node:fs';
-import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fastifyStatic from '@fastify/static';
 import fastifyWebsocket from '@fastify/websocket';
@@ -35,7 +34,7 @@ import { HostMonitor } from './host.js';
 import { checkLimits, type LimitsCheck, SentLimits } from './limits-check.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
-import { pageFolder, pagePath, PageTokens, statPageFile } from './pages.js';
+import { pagePath, pageTarget, PageTokens, statPageFile } from './pages.js';
 import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
 import { contextScript, parseContext } from './project-refs.js';
@@ -1141,9 +1140,10 @@ app.post('/api/files/page', async (req, reply) => {
   if (typeof b.path !== 'string' || !b.path.trim()) return reply.code(400).send({ error: 'Falta el fichero' });
   try {
     const { path, size } = await locateFile(host, b.path, typeof b.window === 'string' ? b.window : undefined, typeof b.pane === 'string' ? b.pane : undefined);
-    const dir = await pageFolder(host, path);
+    // A page opened through a link is the file it points to, next to its own resources.
+    const { dir, name } = await pageTarget(host, path);
     const token = pages.issue({ host: host.id, dir, session: req.sessionId ?? null });
-    return { url: `/api/page/${token}/${encodeURIComponent(posix.basename(path))}`, path, size } satisfies FilePage;
+    return { url: `/api/page/${token}/${encodeURIComponent(name)}`, path, size } satisfies FilePage;
   } catch (err) {
     return fileError(reply, err);
   }

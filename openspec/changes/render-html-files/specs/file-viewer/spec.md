@@ -26,6 +26,12 @@ The file viewer SHALL show a file whose name ends in `.html` or `.htm`, in any l
 - **WHEN** the user opens it in the file viewer
 - **THEN** the viewer shows it rendered
 
+#### Scenario: A page opened through a symbolic link
+
+- **GIVEN** `~/ultimo.html`, a symbolic link to `~/informes/informe.html`, which uses `estilo.css` of its own folder
+- **WHEN** the user opens `~/ultimo.html` in the file viewer
+- **THEN** the viewer shows `informe.html` rendered with the styles of `~/informes/estilo.css`
+
 ### Requirement: «Abrir aparte» opens an HTML file rendered
 
 «Abrir aparte» on an HTML file SHALL open the rendered page, whole, in a new browser tab, with the same limits as the page inside the viewer.

@@ -1,5 +1,4 @@
 import { randomBytes } from 'node:crypto';
-import { posix } from 'node:path';
 import { shQuote as quote } from './exec.js';
 import { FileError } from './files.js';
 import type { HostMonitor } from './host.js';
@@ -91,10 +90,24 @@ export async function statPageFile(host: HostMonitor, dir: string, rel: string):
   return { size: Number(m[1]), path: m[2] };
 }
 
-/** The physical folder (links resolved) of the file at `path`, an absolute path; 404 when it is gone. */
-export async function pageFolder(host: HostMonitor, path: string): Promise<string> {
-  const out = await host.exec.shell(`cd -P ${quote(posix.dirname(path))} 2>/dev/null && pwd -P || echo MISSING`, 15_000);
-  const dir = out.replace(/\n$/, '');
-  if (!dir.startsWith('/')) throw new FileError('Esa carpeta ya no está', 404);
-  return dir;
+/** How many symbolic links pageTarget follows before giving up (a loop). */
+const MAX_LINKS = 40;
+
+/**
+ * The real file a page at `path` (an absolute path) is: links to it followed one at a time
+ * (`readlink` without -f, which older macOS lacks), and the physical path of its folder,
+ * which the page's token is issued for. 404 when it is gone, not a regular file, or a loop.
+ */
+export async function pageTarget(host: HostMonitor, path: string): Promise<{ dir: string; name: string }> {
+  const out = await host.exec.shell(
+    `f=${quote(path)}; n=0; ` +
+      `while [ -L "$f" ]; do n=$((n + 1)); [ "$n" -le ${MAX_LINKS} ] || { echo MISSING; exit 0; }; ` +
+      `l=$(readlink "$f"); case $l in /*) f=$l ;; *) f=\${f%/*}/$l ;; esac; done; ` +
+      `[ -f "$f" ] || { echo MISSING; exit 0; }; d=\${f%/*}; ` +
+      `cd -P "\${d:-/}" 2>/dev/null || { echo MISSING; exit 0; }; printf '%s\\t%s\\n' "$(pwd -P)" "\${f##*/}"`,
+    15_000,
+  );
+  const m = /^(\/[^\t\n]*)\t([^\n]+)\n?$/.exec(out);
+  if (!m) throw new FileError('No existe', 404);
+  return { dir: m[1], name: m[2] };
 }

@@ -32,7 +32,7 @@ Firefox and Safari were not tried.
 
 **Context.** An opaque-origin document never sends the session cookie, so a route under the session cannot serve a page's relative resources. Granting `allow-same-origin` would give the page the hub's origin, its cookies and its API.
 
-**Decision.** `POST /api/files/page` (under the session, same-origin like every POST) resolves the path as `/api/files` does (`paneFolders()`, `resolvePath()`, `statHostFile()` with `findInReposScript()`), takes the physical path of its folder on the machine (`cd -P … && pwd -P`), and returns `/api/page/<token>/<file name>`. The token is 32 random bytes in base64url, kept in memory by a new `PageTokens` class in `server/src/pages.ts`, mapped to `{ host, dir, session, lastUsed }`. `GET /api/page/:token/*` serves the files below `dir` on that machine to anyone holding the token. Its path keeps the file name last, so the page's relative URLs resolve to siblings and subfolders under the same token.
+**Decision.** `POST /api/files/page` (under the session, same-origin like every POST) resolves the path as `/api/files` does (`paneFolders()`, `resolvePath()`, `statHostFile()` with `findInReposScript()`), follows the file itself when it is a symbolic link (`readlink`, one level at a time, at most 40), takes the physical path of the real file's folder on the machine (`cd -P … && pwd -P`) with `pageTarget()`, and returns `/api/page/<token>/<real file name>`. A page opened through a link is the file it points to, rendered next to that file's own resources. The token is 32 random bytes in base64url, kept in memory by a new `PageTokens` class in `server/src/pages.ts`, mapped to `{ host, dir, session, lastUsed }`. `GET /api/page/:token/*` serves the files below `dir` on that machine to anyone holding the token. Its path keeps the file name last, so the page's relative URLs resolve to siblings and subfolders under the same token.
 
 **Consequences.** The URL is a bearer credential: anyone who gets it reads the folder (dotfiles excepted) until it expires. `Referrer-Policy: no-referrer` on every page response keeps it out of the `Referer` a link would send. Tokens die with the hub process; nothing is written to `dataDir`.
 
@@ -55,9 +55,9 @@ In the `onRequest` hook, the matched route `/api/page/:token/*` counts as open i
 **Decision.** Two layers:
 
 1. `pagePath(raw)`, pure, in `server/src/pages.ts`, takes the decoded wildcard parameter and refuses (404) an empty path, a NUL or line break, a backslash, an empty segment, and any segment that starts with a dot, which covers `.`, `..`, `.env` and `.git`. A path Fastify did not decode reaches the machine as a literal name (`%2e%2e`), which no file has.
-2. `pageFileScript(dir, rel)` runs on the machine: `cd -P` into `dir`, then refuses when any prefix of `rel` is a symbolic link (`[ -L … ]`), and prints the size of a regular file, or a tag for a folder or a missing file. Only then does the handler stream it with `streamHostFile()`.
+2. `statPageFile(host, dir, rel)` runs a script on the machine: `cd -P` into `dir`, then refuses when any prefix of `rel` is a symbolic link (`[ -L … ]`), and prints the size of a regular file, or a tag for a folder or a missing file. Only then does the handler stream it with `streamHostFile()`.
 
-**Consequences.** Refusing every symbolic link below the folder is stricter than the spec needs, and portable to macOS without `realpath`. The page's own folder may be hidden or reached through a link: `dir` is fixed when the token is issued. A file swapped for a link between the check and the read needs write access to the machine, which is outside the threat this addresses.
+**Consequences.** Refusing every symbolic link below the folder is stricter than the spec needs, and portable to macOS without `realpath`. The page's own folder may be hidden or reached through a link, and the page file itself may be a link: `dir` and the file name are resolved when the token is issued (D1), so its address names the real file. A page whose resolved name starts with a dot is refused like any hidden file. A file swapped for a link between the check and the read needs write access to the machine, which is outside the threat this addresses.
 
 Alternative considered: one script that checks and streams in a single SSH round trip. Two round trips over the ControlMaster connection cost a few milliseconds per resource and reuse `streamHostFile()` as it is.
 
@@ -118,6 +118,7 @@ FileView opens informe.html
 - [A page URL copied out of the panel (a shared link, browser history) gives read access to the folder for 24 hours] → Same exposure as any open tab; it dies with the session and the hub.
 - [Many resources per page mean many SSH round trips] → ControlMaster keeps them cheap; a page with dozens of files loads in parallel.
 - [Refusing symbolic links breaks a page whose assets are linked in] → Accepted; such a page still shows what it has.
+- [Escape does not close the viewer while the focus is inside the page: the keys go to the iframe's document, which has another origin, and the sheet listens on the panel's window] → Accepted by the owner, as with the PDF iframe: «Atrás», a tap outside, dragging the sheet down and the phone's back button still close it.
 
 ## Migration Plan
 

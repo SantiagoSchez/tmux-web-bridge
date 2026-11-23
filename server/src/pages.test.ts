@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { FileError } from './files.js';
 import type { HostMonitor } from './host.js';
-import { pageFolder, pagePath, PageTokens, statPageFile } from './pages.js';
+import { pagePath, pageTarget, PageTokens, statPageFile } from './pages.js';
 
 // ---------------------------------------------------------------- tokens
 
@@ -161,9 +161,39 @@ test('a page whose folder is reached through a link still gets its files', async
 test('a page is issued for the real folder of its file, not the link it was opened through', async () => {
   const root = pageTree();
   try {
-    assert.equal(await pageFolder(shHost(), join(root, 'enlace-web', 'informe.html')), join(root, 'web'));
-    assert.equal(await pageFolder(shHost(), join(root, 'web', 'informe.html')), join(root, 'web'));
-    await refused(pageFolder(shHost(), join(root, 'no-hay', 'informe.html')));
+    const web = { dir: join(root, 'web'), name: 'informe.html' };
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'informe.html')), web);
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'enlace-web', 'informe.html')), web);
+    await refused(pageTarget(shHost(), join(root, 'no-hay', 'informe.html')));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a page opened through a symbolic link is the file it points to, links of links and relative ones too', async () => {
+  const root = pageTree();
+  try {
+    mkdirSync(join(root, 'informes'));
+    writeFileSync(join(root, 'informes', 'informe.html'), '<h1>Real</h1>');
+    symlinkSync('informes/informe.html', join(root, 'ultimo.html'));
+    symlinkSync(join(root, 'ultimo.html'), join(root, 'web', 'cadena.html'));
+    const real = { dir: join(root, 'informes'), name: 'informe.html' };
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'ultimo.html')), real);
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'cadena.html')), real);
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'atajo.html')), { dir: join(root, 'web'), name: 'informe.html' });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a loop of links, or a link to nothing, gives no page', async () => {
+  const root = pageTree();
+  try {
+    symlinkSync('b.html', join(root, 'a.html'));
+    symlinkSync('a.html', join(root, 'b.html'));
+    symlinkSync('falta.html', join(root, 'roto.html'));
+    await refused(pageTarget(shHost(), join(root, 'a.html')));
+    await refused(pageTarget(shHost(), join(root, 'roto.html')));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
