@@ -32,7 +32,7 @@ None.
 ## Impact
 
 - Layers: `server` (a new authenticated endpoint that issues a page URL, a new token-authenticated route that serves the folder's files, the token store, the `onRequest` hook, and `shared/` for the file-type helper and the new types) and `web` (`Files.tsx`: the rendered view, the toggle and «Abrir aparte»). `trello-extension` and `host-kit` are not touched.
-- API contract: new `POST /api/files/page` (body and result as types in `shared/types.ts`) and new `GET /api/page/<token>/<path>`. `/api/files` does not change.
+- API contract: new `POST /api/files/page` (body and result as types in `shared/types.ts`) and new `GET /api/page/<token>/<path>`. `/api/files` stops sending `Content-Security-Policy: sandbox` with video and sound (D9); its other headers and types do not change.
 - The `onRequest` hook refuses (403) cross-site and same-site requests to `/api/` in both authentication modes. A link from another site to an `/api/` address (for instance a `/api/files` URL pasted in a chat and opened from the chat's web page) stops working; opening it from the panel, from the address bar or from an origin listed in `allowedOrigins` still works.
 - No data model change, no migration, no new environment variable: tokens live in the hub's memory and die with it.
 - No external service.

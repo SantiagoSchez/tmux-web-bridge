@@ -1095,7 +1095,8 @@ async function locateFile(host: HostMonitor, raw: string, window: string | undef
 /**
  * A file of a machine, for the viewer: a path seen in a window (relative to its panes'
  * folders), streamed whatever its size. Images, PDFs, videos and sound with their type,
- * anything else as text; never run by the browser (sandboxed), even opened on its own.
+ * anything else as text, never sniffed; sandboxed but for PDFs, videos and sound, whose
+ * players ask for the file again (filesSandboxed), so nothing runs, even opened on its own.
  * probe=1: only its whole path and size; max=N: only its first N bytes (X-File-Size says
  * how many it has). A Range header gets that piece of it (a player seeking in a video).
  */

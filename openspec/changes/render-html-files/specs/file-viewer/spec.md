@@ -201,3 +201,25 @@ The hub SHALL answer a rendered page's request for a part of one of its files (a
 - **GIVEN** `~/videos/demo.mp4` open in the file viewer
 - **WHEN** the user taps «Abrir aparte»
 - **THEN** a new tab shows the video with the browser's player, and it plays
+
+### Requirement: The hub's API answers only the panel
+
+The hub SHALL refuse a request to its API that comes from another website, from another subdomain of the hub's domain, or from a rendered page, with password login and through `tailscale serve` alike. It SHALL serve such a request when it carries an `Origin` listed in `allowedOrigins`. A file's address opened from the panel, or typed in the address bar, SHALL keep working.
+
+#### Scenario: A link from another website
+
+- **GIVEN** a page of another website with a link to the hub's `/api/files` address of `~/informe.md`
+- **WHEN** the user, logged in to the hub, follows the link
+- **THEN** the hub refuses the request and serves nothing of the file
+
+#### Scenario: A page of another subdomain
+
+- **GIVEN** the hub at `panel.example.com` and a page at `otra.example.com` that requests `/api/files` of the hub
+- **WHEN** a logged-in user opens that page
+- **THEN** the hub refuses the request
+
+#### Scenario: An allowed origin
+
+- **GIVEN** `allowedOrigins` holding `http://localhost:5173`
+- **WHEN** a script of that origin sends a `fetch` to the hub's API
+- **THEN** the hub serves it as it serves the panel

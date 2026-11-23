@@ -25,7 +25,9 @@ auth:
 # trustProxy: [10.0.0.20]
 
 # Orígenes extra aceptados en WebSocket/POST y en las peticiones a /api/ que llegan de otro
-# sitio o subdominio, que se rechazan si no (el propio host siempre se acepta).
+# sitio o subdominio, que se rechazan si no (el propio host siempre se acepta). Solo cuenta
+# en las peticiones que llevan Origin (fetch, POST, WebSocket): un enlace o una imagen de
+# /api/ puestos en esos orígenes se siguen rechazando.
 # Útil en desarrollo con Vite: http://localhost:5173
 allowedOrigins: []
 
