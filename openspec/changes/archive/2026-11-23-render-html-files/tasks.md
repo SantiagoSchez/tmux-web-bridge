@@ -134,11 +134,13 @@
 
 ## 12. Human review
 
-- [ ] 12.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The review includes opening a page in Safari on a Mac, the risk the design leaves open for `'self'`, through the public address with iCloud Private Relay if it is in use, and checking over SSH whether the Mac's `TMPDIR` is set.
+- [x] 12.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The review includes opening a page in Safari on a Mac, the risk the design leaves open for `'self'`, through the public address with iCloud Private Relay if it is in use, and checking over SSH whether the Mac's `TMPDIR` is set.
+  - The user took the pull request as good without a manual review (asked on 2026-11-23). Not tried: Safari on the Mac (CSP `'self'` in a sandboxed document, the public address with iCloud Private Relay), `TMPDIR` over SSH on the Mac, and a remote SSH machine; left to check after the deploy.
 
 ## 13. Feature catalogue check before the archive
 
-- [ ] 13.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
+- [x] 13.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
+  - `ka features-check --strict`: exit 0, 141 sections verified.
 
 ## Workflow follow-up
 
