@@ -204,7 +204,7 @@ The hub SHALL answer a rendered page's request for a part of one of its files (a
 
 ### Requirement: The hub's API answers only the panel
 
-The hub SHALL refuse a request to its API that comes from another website, from another subdomain of the hub's domain, or from a rendered page, with password login and through `tailscale serve` alike. It SHALL serve such a request when it carries an `Origin` listed in `allowedOrigins`. A file's address opened from the panel, or typed in the address bar, SHALL keep working.
+The hub SHALL refuse a request to its API that comes from another website, from another subdomain of the hub's domain, or from a rendered page, with password login and through `tailscale serve` alike. It SHALL serve such a request when it carries an `Origin` listed in `allowedOrigins`. A file's address opened from the panel, or typed in the address bar, SHALL keep working. This holds when the hub is served over HTTPS, as browsers tell where a request comes from only there.
 
 #### Scenario: A link from another website
 
