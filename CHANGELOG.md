@@ -4,6 +4,20 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.35.0 - 2026-11-23
+
+### Añadido
+
+- Los ficheros HTML se ven como página en el visor, en la vista previa del explorador y con «Abrir aparte»: cargan los estilos, las imágenes y los datos de su carpeta y sus scripts funcionan, aislados del panel, sin acceso a internet ni a los ficheros ocultos. «Ver el texto» enseña su código.
+
+### Corregido
+
+- Corregido «Abrir aparte» de un vídeo o un audio, que abría el reproductor vacío: ahora se reproduce y se puede saltar a cualquier punto.
+
+### Seguridad
+
+- Reforzada la protección de la API del hub: solo atiende las peticiones del propio panel, y rechaza las que llegan desde otra web, desde otro subdominio o desde una página HTML abierta en el panel, también a través de `tailscale serve`.
+
 ## 1.34.1 - 2026-11-22
 
 ### Corregido
