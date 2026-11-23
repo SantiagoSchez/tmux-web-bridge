@@ -85,8 +85,8 @@ const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
-/** The tokens of the HTML pages rendered from the panel (pages.ts). */
-const pages = new PageTokens();
+/** The tokens of the HTML pages rendered from the panel (pages.ts), each alive only with its password session. */
+const pages = new PageTokens({ sessionAlive: (id) => sessions.alive(id) });
 const activity = new ActivityLog(config.dataDir);
 // The automatic account switch (Ajustes › Máquinas): evaluated when an account's usage,
 // a statusline reading or the settings change (see the handlers below).
@@ -1142,7 +1142,7 @@ app.post('/api/files/page', async (req, reply) => {
     const { path, size } = await locateFile(host, b.path, typeof b.window === 'string' ? b.window : undefined, typeof b.pane === 'string' ? b.pane : undefined);
     // A page opened through a link is the file it points to, next to its own resources.
     const { dir, name } = await pageTarget(host, path);
-    const token = pages.issue({ host: host.id, dir, session: req.sessionId ?? null });
+    const token = pages.issue({ host: host.id, dir, only: null, session: req.sessionId ?? null, ip: req.ip });
     return { url: `/api/page/${token}/${encodeURIComponent(name)}`, path, size } satisfies FilePage;
   } catch (err) {
     return fileError(reply, err);
@@ -1175,7 +1175,7 @@ const PAGE_EXPIRED =
  */
 app.get(PAGE_ROUTE, async (req, reply) => {
   const params = req.params as { token: string; '*': string };
-  const grant = pages.get(params.token);
+  const grant = pages.get(params.token, req.ip);
   const host = grant ? hosts.get(grant.host) : undefined;
   if (!grant || !host) return pageHeaders(reply).code(404).header('Content-Type', 'text/html; charset=utf-8').send(PAGE_EXPIRED);
   const rel = pagePath(params['*']);

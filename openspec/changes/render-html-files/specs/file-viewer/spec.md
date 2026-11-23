@@ -55,8 +55,8 @@ A rendered HTML page SHALL run its JavaScript, and SHALL run it with an origin o
 #### Scenario: A script cannot use the hub's API
 
 - **GIVEN** `~/raro.html`, whose script calls the hub's `/api/` endpoints and reads `document.cookie`
-- **WHEN** the user opens it in the file viewer or with «Abrir aparte»
-- **THEN** the hub answers its API calls as for a browser without a session, and the script reads no cookie of the hub
+- **WHEN** the user opens it in the file viewer or with «Abrir aparte», with password login or through `tailscale serve`
+- **THEN** the hub refuses its API calls, and the script reads no cookie of the hub
 
 #### Scenario: A script cannot reach the panel
 
@@ -88,7 +88,7 @@ A rendered HTML page SHALL load the files its relative URLs name in its own fold
 
 ### Requirement: A rendered page reaches nothing outside its folder or hidden
 
-A rendered HTML page SHALL NOT get any file or folder outside the folder of the HTML file it was opened from, nor any whose path below that folder has a part starting with a dot, whatever path, encoding or symbolic link it asks through. Such a request SHALL be refused with no content.
+A rendered HTML page SHALL NOT get any file or folder outside the folder of the HTML file it was opened from, nor any whose path below that folder has a part starting with a dot, whatever path, encoding or symbolic link it asks through. When that folder is the root of the disk, the machine's home folder or a folder above it, or a temporary root (`/tmp`, `/var/tmp`, or the machine's `$TMPDIR`), the page SHALL get only its own HTML file. Such a request SHALL be refused with no content.
 
 #### Scenario: A hidden file next to the page
 
@@ -114,6 +114,13 @@ A rendered HTML page SHALL NOT get any file or folder outside the folder of the 
 - **WHEN** the page asks for `clave`
 - **THEN** the hub refuses it
 
+#### Scenario: A page in the home folder gets only itself
+
+- **GIVEN** `~/informe.html`, which uses `estilo.css` of its folder, and `~/notas.txt`
+- **WHEN** the user opens `~/informe.html` in the file viewer and its script asks for `notas.txt`
+- **THEN** the page shows without the styles of `estilo.css`
+- **AND** the hub refuses `notas.txt`
+
 #### Scenario: The page's own folder may be hidden
 
 - **GIVEN** `~/.cache/informes/informe.html` with `estilo.css` next to it
@@ -122,7 +129,7 @@ A rendered HTML page SHALL NOT get any file or folder outside the folder of the 
 
 ### Requirement: A rendered page loads nothing from outside the hub
 
-A rendered HTML page SHALL NOT load or send anything to another site: scripts, styles, images, fonts, frames and requests SHALL only reach its own folder through the hub, plus inline code, `data:` and `blob:` URLs. This limit does not cover navigation: a link the user taps can still leave the hub.
+A rendered HTML page SHALL NOT load or send anything to another site: scripts, styles, images, fonts, frames and requests SHALL only reach its own folder through the hub, plus inline code, `data:` and `blob:` URLs. This limit does not cover navigation (a link the user taps, or a script moving its own page, can leave the hub), nor the peer-to-peer connections (WebRTC) and the DNS lookups that some browsers let a script start.
 
 #### Scenario: A library from a CDN
 
@@ -136,18 +143,45 @@ A rendered HTML page SHALL NOT load or send anything to another site: scripts, s
 - **WHEN** the user opens it in the file viewer
 - **THEN** the browser blocks both and the other site receives no request
 
-### Requirement: A page's address stops working when unused
+### Requirement: A page's address works only for a while
 
-The address a rendered page is served from SHALL keep working while it is used, SHALL stop working 24 hours after its last request, when the hub restarts, and, with password login, when the session that opened it is closed. A stopped address SHALL answer with a page saying, in Spanish, to open the file again from the panel. Opening the file again in the viewer SHALL give a working address.
+The address a rendered page is served from SHALL stop working 24 hours after the panel obtained it, even if it was used in between, and when the hub restarts. With password login it SHALL also stop working when the session that opened it ends, closed from the panel or expired. A stopped address SHALL answer with a page saying, in Spanish, to open the file again from the panel. Opening the file again in the viewer SHALL give a working address.
 
 #### Scenario: A tab reloaded the next day
 
-- **GIVEN** `~/informe.html` opened with «Abrir aparte», and its tab left without requests for more than 24 hours
+- **GIVEN** `~/informe.html` opened with «Abrir aparte» more than 24 hours ago, and its tab reloaded several times since
 - **WHEN** the user reloads the tab
 - **THEN** the tab says the link has expired and to open the file again from the panel
+
+#### Scenario: An expired session
+
+- **GIVEN** the hub with password login, and `~/informe.html` opened with «Abrir aparte» from a session
+- **WHEN** that session expires for lack of use and the tab is reloaded
+- **THEN** the tab says the link has expired
+
 
 #### Scenario: A closed session
 
 - **GIVEN** the hub with password login, and `~/informe.html` opened with «Abrir aparte» from a session
 - **WHEN** that session is closed from Ajustes and the tab is reloaded
 - **THEN** the tab says the link has expired
+
+### Requirement: A page's address works only from where it was opened
+
+The address a rendered page is served from SHALL work only for requests from the network address that obtained it. A request from another address SHALL get the same page as a stopped address, and no file.
+
+#### Scenario: The address used from another network
+
+- **GIVEN** `~/informe.html` opened with «Abrir aparte» from one network address
+- **WHEN** its address is requested from another network address
+- **THEN** the hub answers the page saying the link has expired, and serves no file
+
+### Requirement: A rendered page plays its videos and sounds
+
+The hub SHALL answer a rendered page's request for a part of one of its files (an HTTP `Range` request) with that part, so that a video or a sound inside the page plays and seeks in every browser.
+
+#### Scenario: Seeking in a video of the page
+
+- **GIVEN** `~/web/index.html`, which shows `clip.mp4` of its folder in a `<video>`
+- **WHEN** the user opens it in the file viewer and moves the video to its middle
+- **THEN** the video plays from there

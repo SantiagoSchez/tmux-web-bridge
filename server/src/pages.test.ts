@@ -11,66 +11,100 @@ import { pagePath, pageTarget, PageTokens, statPageFile } from './pages.js';
 // ---------------------------------------------------------------- tokens
 
 const HOUR = 3600_000;
+const IP = '100.64.0.7';
 
-/** Tokens on a clock the test moves. */
+/** Tokens on a clock the test moves, with the sessions the test says are alive. */
 function tokens(max?: number) {
   let now = 1_000_000;
-  const store = new PageTokens(() => now, max);
-  return { store, wait: (ms: number) => (now += ms) };
+  const gone = new Set<string>();
+  const asked: string[] = [];
+  const store = new PageTokens({
+    now: () => now,
+    max,
+    sessionAlive: (id) => {
+      asked.push(id);
+      return !gone.has(id);
+    },
+  });
+  return { store, wait: (ms: number) => (now += ms), end: (id: string) => gone.add(id), asked };
 }
 
-test('an issued token gives back the machine, the folder and the session it was issued for', () => {
+const grant = (dir: string, session: string | null = null) => ({ host: 'h', dir, only: null, session, ip: IP });
+
+test('an issued token gives back the machine, the folder, the file it is limited to and the session it was issued for', () => {
   const { store } = tokens();
-  const t = store.issue({ host: 'dev-box', dir: '/home/u/web', session: 's1' });
+  const t = store.issue({ host: 'dev-box', dir: '/home/u/web', only: null, session: 's1', ip: IP });
   assert.match(t, /^[A-Za-z0-9_-]{43}$/);
-  assert.deepEqual(store.get(t), { host: 'dev-box', dir: '/home/u/web', session: 's1' });
-  assert.notEqual(store.issue({ host: 'dev-box', dir: '/home/u/web', session: 's1' }), t);
+  assert.deepEqual(store.get(t, IP), { host: 'dev-box', dir: '/home/u/web', only: null, session: 's1', ip: IP });
+  const only = store.issue({ host: 'dev-box', dir: '/home/u', only: 'informe.html', session: 's1', ip: IP });
+  assert.notEqual(only, t);
+  assert.equal(store.get(only, IP)?.only, 'informe.html');
 });
 
-test('a token unused for 24 hours stops working; one used within that keeps working', () => {
+test('a token stops working 24 hours after its issue, however often it is used', () => {
   const { store, wait } = tokens();
-  const used = store.issue({ host: 'h', dir: '/a', session: null });
-  const idle = store.issue({ host: 'h', dir: '/b', session: null });
-  for (let i = 0; i < 3; i++) {
-    wait(23 * HOUR);
-    assert.ok(store.get(used));
+  const t = store.issue(grant('/a'));
+  for (let i = 0; i < 23; i++) {
+    wait(HOUR);
+    assert.ok(store.get(t, IP), `hour ${i + 1}`);
   }
-  assert.equal(store.get(idle), null);
-  wait(24 * HOUR + 1);
-  assert.equal(store.get(used), null);
+  wait(HOUR - 1);
+  assert.ok(store.get(t, IP));
+  wait(2);
+  assert.equal(store.get(t, IP), null);
+});
+
+test('a token works only from the address it was issued for', () => {
+  const { store } = tokens();
+  const t = store.issue(grant('/a'));
+  assert.equal(store.get(t, '203.0.113.9'), null);
+  assert.equal(store.get(t, ''), null);
+  assert.ok(store.get(t, IP));
+});
+
+test('a token stops working when its session no longer exists; one without a session never asks', () => {
+  const { store, end, asked } = tokens();
+  const mine = store.issue(grant('/a', 's1'));
+  const other = store.issue(grant('/a', 's2'));
+  const none = store.issue(grant('/a'));
+  end('s1');
+  assert.equal(store.get(mine, IP), null);
+  assert.ok(store.get(other, IP));
+  assert.ok(store.get(none, IP));
+  assert.deepEqual(asked, ['s1', 's2']);
 });
 
 test('closing a session stops its tokens and keeps the others', () => {
   const { store } = tokens();
-  const mine = store.issue({ host: 'h', dir: '/a', session: 's1' });
-  const other = store.issue({ host: 'h', dir: '/a', session: 's2' });
-  const none = store.issue({ host: 'h', dir: '/a', session: null });
+  const mine = store.issue(grant('/a', 's1'));
+  const other = store.issue(grant('/a', 's2'));
+  const none = store.issue(grant('/a'));
   store.dropSessions(['s1']);
-  assert.equal(store.get(mine), null);
-  assert.ok(store.get(other));
-  assert.ok(store.get(none));
+  assert.equal(store.get(mine, IP), null);
+  assert.ok(store.get(other, IP));
+  assert.ok(store.get(none, IP));
 });
 
 test('past the most tokens kept, the least recently used one stops working', () => {
   const { store, wait } = tokens(3);
-  const a = store.issue({ host: 'h', dir: '/a', session: null });
+  const a = store.issue(grant('/a'));
   wait(1);
-  const b = store.issue({ host: 'h', dir: '/b', session: null });
+  const b = store.issue(grant('/b'));
   wait(1);
-  const c = store.issue({ host: 'h', dir: '/c', session: null });
+  const c = store.issue(grant('/c'));
   wait(1);
-  assert.ok(store.get(a));
-  store.issue({ host: 'h', dir: '/d', session: null });
-  assert.equal(store.get(b), null);
-  assert.ok(store.get(a));
-  assert.ok(store.get(c));
+  assert.ok(store.get(a, IP));
+  store.issue(grant('/d'));
+  assert.equal(store.get(b, IP), null);
+  assert.ok(store.get(a, IP));
+  assert.ok(store.get(c, IP));
 });
 
 test('an unknown token gives nothing', () => {
   const { store } = tokens();
-  store.issue({ host: 'h', dir: '/a', session: null });
-  assert.equal(store.get('x'.repeat(43)), null);
-  assert.equal(store.get(''), null);
+  store.issue(grant('/a'));
+  assert.equal(store.get('x'.repeat(43), IP), null);
+  assert.equal(store.get('', IP), null);
 });
 
 // ---------------------------------------------------------------- paths below a page
@@ -90,13 +124,15 @@ test('a page never gets a hidden file, a folder above, or an odd path', () => {
 
 // ---------------------------------------------------------------- the machine's side
 
-/** A host whose scripts run here under /bin/sh. */
-function shHost(): HostMonitor {
+/** A host whose scripts run here under /bin/sh, with a home folder that does not exist unless `env` gives one. */
+function shHost(env: Record<string, string> = {}): HostMonitor {
   return {
     name: 'Prueba',
     exec: {
       shell: (script: string) =>
-        new Promise<string>((ok, ko) => execFile('/bin/sh', ['-c', script], { encoding: 'utf8', env: { PATH: process.env.PATH } }, (e, out, err) => (e ? ko(new Error(err)) : ok(out)))),
+        new Promise<string>((ok, ko) =>
+          execFile('/bin/sh', ['-c', script], { encoding: 'utf8', env: { PATH: process.env.PATH, HOME: '/no-existe', ...env } }, (e, out, err) => (e ? ko(new Error(err)) : ok(out))),
+        ),
     },
   } as unknown as HostMonitor;
 }
@@ -161,7 +197,7 @@ test('a page whose folder is reached through a link still gets its files', async
 test('a page is issued for the real folder of its file, not the link it was opened through', async () => {
   const root = pageTree();
   try {
-    const web = { dir: join(root, 'web'), name: 'informe.html' };
+    const web = { dir: join(root, 'web'), name: 'informe.html', broad: false };
     assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'informe.html')), web);
     assert.deepEqual(await pageTarget(shHost(), join(root, 'enlace-web', 'informe.html')), web);
     await refused(pageTarget(shHost(), join(root, 'no-hay', 'informe.html')));
@@ -177,10 +213,10 @@ test('a page opened through a symbolic link is the file it points to, links of l
     writeFileSync(join(root, 'informes', 'informe.html'), '<h1>Real</h1>');
     symlinkSync('informes/informe.html', join(root, 'ultimo.html'));
     symlinkSync(join(root, 'ultimo.html'), join(root, 'web', 'cadena.html'));
-    const real = { dir: join(root, 'informes'), name: 'informe.html' };
+    const real = { dir: join(root, 'informes'), name: 'informe.html', broad: false };
     assert.deepEqual(await pageTarget(shHost(), join(root, 'ultimo.html')), real);
     assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'cadena.html')), real);
-    assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'atajo.html')), { dir: join(root, 'web'), name: 'informe.html' });
+    assert.deepEqual(await pageTarget(shHost(), join(root, 'web', 'atajo.html')), { dir: join(root, 'web'), name: 'informe.html', broad: false });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -194,6 +230,26 @@ test('a loop of links, or a link to nothing, gives no page', async () => {
     symlinkSync('falta.html', join(root, 'roto.html'));
     await refused(pageTarget(shHost(), join(root, 'a.html')));
     await refused(pageTarget(shHost(), join(root, 'roto.html')));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a page in the home folder, above it or in a temporary root is marked broad; one in a folder of its own is not', async () => {
+  const root = pageTree();
+  try {
+    const home = join(root, 'casa');
+    const temp = join(root, 'temporal');
+    for (const d of [join(home, 'web'), join(temp, 'sub')]) mkdirSync(d, { recursive: true });
+    for (const d of [root, home, temp, join(home, 'web'), join(temp, 'sub')]) writeFileSync(join(d, 'informe.html'), '<h1>x</h1>');
+    symlinkSync(home, join(root, 'enlace-casa'));
+    const host = shHost({ HOME: join(root, 'enlace-casa'), TMPDIR: `${temp}/` });
+    const broad = async (dir: string) => (await pageTarget(host, join(dir, 'informe.html'))).broad;
+    assert.equal(await broad(home), true, 'home');
+    assert.equal(await broad(root), true, 'above home');
+    assert.equal(await broad(temp), true, 'TMPDIR');
+    assert.equal(await broad(join(home, 'web')), false, 'a folder of the home');
+    assert.equal(await broad(join(temp, 'sub')), false, 'a folder of TMPDIR');
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
