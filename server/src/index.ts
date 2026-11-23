@@ -20,6 +20,7 @@ import { loadConfig, removeConfigHosts } from './config.js';
 import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
 import { checkMachine, installKit, uninstallKit } from './kit.js';
 import { ConnectionRegistry } from './connections.js';
+import { filesContentType } from './content-types.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask, listBranches } from './tasks.js';
@@ -1057,13 +1058,6 @@ app.post('/api/machines/:id/delete', async (req, reply) => {
 
 // ---------------------------------------------------------------- files and git of a pane
 
-const MIME: Record<string, string> = {
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp',
-  ico: 'image/x-icon', svg: 'image/svg+xml', pdf: 'application/pdf',
-  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', ogv: 'video/ogg',
-  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac',
-};
-
 function fileError(reply: FastifyReply, err: unknown) {
   if (!(err instanceof FileError)) return reply.code(500).send({ error: (err as Error).message });
   return reply.code(err.status).send((err.dir ? { error: err.message, dir: err.dir } : { error: err.message }) satisfies FilesError);
@@ -1103,11 +1097,11 @@ app.get('/api/files', async (req, reply) => {
         .header('Content-Range', `bytes ${range.start}-${range.start + range.length - 1}/${size}`)
         .header('Content-Length', String(range.length));
     }
-    const ext = path.split('.').pop()?.toLowerCase() ?? '';
+    const type = filesContentType(path);
     // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
-    if (ext !== 'pdf') reply.header('Content-Security-Policy', 'sandbox');
+    if (type !== 'application/pdf') reply.header('Content-Security-Policy', 'sandbox');
     return reply
-      .header('Content-Type', MIME[ext] ?? 'text/plain; charset=utf-8')
+      .header('Content-Type', type)
       .header('X-Content-Type-Options', 'nosniff')
       .header('Accept-Ranges', 'bytes')
       .header('Cache-Control', 'no-store')

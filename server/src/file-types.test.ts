@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { fileType } from '../../shared/file-types.js';
+import { fileType, isHtml } from '../../shared/file-types.js';
 
 test('each kind of file is told by its extension', () => {
   assert.equal(fileType('captura.png'), 'image');
@@ -34,4 +34,16 @@ test('only the last part of a path counts', () => {
   assert.equal(fileType('docs/captura.png'), 'image');
   assert.equal(fileType('src.d/LICENSE'), 'file');
   assert.equal(fileType('build.tmp/Makefile'), 'code');
+});
+
+test('an HTML page is told by its .html or .htm extension, in any case, and keeps the code icon', () => {
+  assert.equal(isHtml('informe.html'), true);
+  assert.equal(isHtml('PORTADA.HTM'), true);
+  assert.equal(isHtml('docs/a.htm'), true);
+  assert.equal(isHtml('a.html.txt'), false);
+  assert.equal(isHtml('html'), false);
+  assert.equal(isHtml('.html'), false);
+  assert.equal(isHtml('notas.md'), false);
+  assert.equal(isHtml('web.html/notas.md'), false);
+  assert.equal(fileType('informe.html'), 'code');
 });
