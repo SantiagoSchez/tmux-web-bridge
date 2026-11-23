@@ -39,6 +39,9 @@
 - [x] 4.13 Add `server/src/auth.test.ts` (D2, D3): `SessionStore.alive(id)` is true for a created session, false after `revoke` and false past its idle limit, and does not refresh the session; `fromAnotherSite(headers, allowed)` is true for `Origin: null` and for `Sec-Fetch-Site: cross-site` with a foreign or missing `Origin`, and false for `same-origin`, `same-site`, `none`, no header, and `cross-site` from an origin of `allowed`. See them fail, then write both until they pass.
 - [x] 4.14 Add tests for the broad folders of `pageTarget` (D4), with the test's own `HOME` and `TMPDIR`: a page in `HOME`, in a folder above it and in `TMPDIR` comes back marked broad; a page in a subfolder of `HOME` or of `TMPDIR` does not. See them fail, then make `pageTarget` report it until they pass.
 - [x] 4.15 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
+- [x] 4.16 From the second adversarial review (D3): in `server/src/auth.test.ts`, make `fromAnotherSite` true for `Sec-Fetch-Site: same-site` with a foreign or missing `Origin`, and false for `same-site` from an origin of `allowed`. See it fail, then change `fromAnotherSite` until it passes.
+- [x] 4.17 Add to `server/src/content-types.test.ts` a test of a new `filesSandboxed(name)` (D9): false for `a.pdf`, `a.mp4`, `a.webm`, `a.mp3`, `a.wav`; true for `a.png`, `a.svg`, `a.html`, `a.txt` and a name with no extension. See it fail, then write it until it passes.
+- [x] 4.18 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
 
 ## 5. The routes and the hook
 
@@ -68,6 +71,9 @@
 - [x] 5.9 Check in Chromium against the isolated hub that a page with a `<video>` of its folder plays and seeks (Safari goes to the human review, 12.1). Record it here.
   - No `ffmpeg` on this machine, so the page holds a 10-second WAV in an `<audio>`, which asks for parts of its file as a `<video>` does. Opened in headless Chromium at its page address: `duration` 10, `seekable` up to 10, after setting `currentTime = 8` and `seeked` it stays at 8, no media error. `play()` was not tried: Chromium's autoplay policy refuses it without a user gesture.
 - [x] 5.10 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
+- [ ] 5.11 From the second adversarial review, in `server/src/index.ts`: answer `OPTIONS` on the page route as D5 says, and send the sandbox in `/api/files` only when `filesSandboxed` says so (D9). `pnpm --filter server typecheck` passes.
+- [ ] 5.12 Boot smoke test and checks against the isolated hub, recorded here: `OPTIONS` of a page file with `Access-Control-Request-Headers: content-type` answers 204 with the four headers and no body; in Chromium, the page's `fetch('datos.json', { headers: { 'Content-Type': 'application/json' } })` gets the data; `/api/files` with `Sec-Fetch-Site: same-site` answers 403; `/api/files` of a `.wav` has no `Content-Security-Policy` and one of a `.svg` keeps `sandbox`; opened as «Abrir aparte» in a logged-in Chromium tab, the `.wav` loads its duration and seeks.
+- [ ] 5.13 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter server typecheck` pass.
 
 ## 6. The viewer
 
@@ -96,6 +102,7 @@
 - [x] 8.2 Add the changelog entry with `/ka:changelog --issue 83`: HTML files open rendered in the viewer and with «Abrir aparte», with their folder's files, isolated from the panel and without internet access.
 - [x] 8.3 Commit the group with `/ka:commit` once `pnpm --filter server test` and `pnpm --filter web typecheck` pass.
 - [x] 8.4 From the adversarial review, run `/ka:update-docs` again: the server standards say that the hook refuses cross-site requests to `/api/` and that a page token is bound to its address, its session and 24 hours from its issue; the README says that a page in the home folder or in `/tmp` shows without its folder's files. Update the changelog entry if its description no longer holds. Commit with `/ka:commit`.
+- [ ] 8.5 From the second adversarial review, run `/ka:update-docs` again: the server standards say that `/api/files` sandboxes everything but PDF, video and sound, and that `same-site` counts as another site; the comment of `allowedOrigins` in `config.example.yaml` says that its origins are also let through the hook's cross-site check. Add a changelog entry (fixed) for «Abrir aparte» of a video or a sound. Commit with `/ka:commit`.
 
 ## 9. Review loop
 
@@ -103,6 +110,7 @@
 - [ ] 9.2 Run `/ka:adversarial-review render-html-files`: it applies because the change adds a service to the composition root and changes the authentication hook (dependency wiring), and opens a new route that serves files of a machine to a token instead of the session.
   - First run: one HIGH (a page's script can send its own token out and keep it alive by renewal; an idle-expired session did not stop it), two MEDIUM (a page in `~`, `/tmp` or `/` exposes the whole folder; in tailscale mode the page's requests to `/api/` carry the user's identity) and five LOW. The owner chose: token bound to its address, its session and 24 hours from issue; only the page for a broad folder; refuse cross-site requests to `/api/`; add `Range`. Fixed through 4.11 to 4.15, 5.7 to 5.10 and 8.4; the LOW ones on WebRTC and DNS, the false «or a frame» claim and the stale script names were fixed in the design and these tasks.
   - The fix changes the authentication hook and the wiring of `PageTokens`, so the review runs again; tick this task when that run has no CRITICAL, HIGH or MEDIUM finding left.
+  - Second run: the three fixes hold; no finding above LOW. The LOW ones: D1 overstated what the address binding stops (reworded); the panel and the page may leave from different addresses (Private Relay, IPv6), and `TMPDIR` may be unset over SSH on macOS (both to the human review, 12.1, and the Risks); `same-site` was let through with a wrong reason; a page's CORS preflight got 403; the comment of `allowedOrigins` was stale; «Abrir aparte» of a video or a sound did not play, from before this change. The owner chose to answer the preflight, to refuse `same-site`, and to fix the media in this change: 4.16 to 4.18, 5.11 to 5.13 and 8.5. These touch the hook again, so the review runs a third time after them.
 - [ ] 9.3 Open the pull request with `/ka:commit --pr`.
 - [ ] 9.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
@@ -118,7 +126,7 @@
 
 ## 12. Human review
 
-- [ ] 12.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The review includes opening a page in Safari on a Mac, the risk the design leaves open for `'self'`.
+- [ ] 12.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The review includes opening a page in Safari on a Mac, the risk the design leaves open for `'self'`, through the public address with iCloud Private Relay if it is in use, and checking over SSH whether the Mac's `TMPDIR` is set.
 
 ## 13. Feature catalogue check before the archive
 

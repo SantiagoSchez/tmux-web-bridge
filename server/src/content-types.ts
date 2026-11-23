@@ -34,3 +34,13 @@ export function filesContentType(name: string): string {
   const media = kind === 'image' || kind === 'pdf' || kind === 'video' || kind === 'audio';
   return (media && TYPES[extension(name)]) || `text/plain${TEXT}`;
 }
+
+/**
+ * Whether the viewer sends a file sandboxed: everything but a PDF (Chrome's viewer does not
+ * run in a sandbox), a video and a sound (a sandboxed player asks for the file again from an
+ * opaque origin, without the session). Those keep their type and `nosniff`, so nothing in
+ * them runs; an image stays sandboxed, since an SVG can hold scripts.
+ */
+export function filesSandboxed(name: string): boolean {
+  return !/^(application\/pdf|video\/|audio\/)/.test(filesContentType(name));
+}

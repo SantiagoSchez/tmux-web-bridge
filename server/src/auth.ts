@@ -144,13 +144,15 @@ export class SessionStore {
 }
 
 /**
- * Whether a request comes from another site's page or from an opaque origin (a rendered
- * page's sandbox): `Origin: null`, or `Sec-Fetch-Site: cross-site` from an origin not in
- * `allowed`. The panel's own requests are same-origin, the address bar's are `none`.
+ * Whether a request comes from another site's page, another subdomain of the hub's, or an
+ * opaque origin (a rendered page's sandbox): `Origin: null`, or `Sec-Fetch-Site` `cross-site`
+ * or `same-site` from an origin not in `allowed`. The panel's own requests are same-origin,
+ * the address bar's are `none`.
  */
 export function fromAnotherSite(headers: { origin?: string; 'sec-fetch-site'?: string | string[] }, allowed: string[]): boolean {
   if (headers.origin === 'null') return true;
-  if (headers['sec-fetch-site'] !== 'cross-site') return false;
+  const site = headers['sec-fetch-site'];
+  if (site !== 'cross-site' && site !== 'same-site') return false;
   return !(headers.origin && allowed.includes(headers.origin));
 }
 

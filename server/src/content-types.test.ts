@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { filesContentType, pageContentType } from './content-types.js';
+import { filesContentType, filesSandboxed, pageContentType } from './content-types.js';
 
 test('a page and its files are served with the type of their extension, text in UTF-8', () => {
   assert.equal(pageContentType('a.HTML'), 'text/html; charset=utf-8');
@@ -25,4 +25,9 @@ test('the viewer gets images, PDFs, video and sound with their type, and everyth
   assert.equal(filesContentType('app.js'), 'text/plain; charset=utf-8');
   assert.equal(filesContentType('fuente.woff2'), 'text/plain; charset=utf-8');
   assert.equal(filesContentType('a.svgz'), 'text/plain; charset=utf-8');
+});
+
+test('the viewer sandboxes every file but a PDF, a video or a sound, whose players ask for the file again', () => {
+  for (const name of ['a.pdf', 'clip.mp4', 'clip.webm', 'tema.mp3', 'tono.WAV']) assert.equal(filesSandboxed(name), false, name);
+  for (const name of ['a.png', 'dibujo.svg', 'informe.html', 'notas.txt', 'LICENSE']) assert.equal(filesSandboxed(name), true, name);
 });

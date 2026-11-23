@@ -80,6 +80,12 @@ A rendered HTML page SHALL load the files its relative URLs name in its own fold
 - **WHEN** the user opens it in the file viewer
 - **THEN** the script gets the content of `datos.json`
 
+#### Scenario: Data read with a JSON request
+
+- **GIVEN** `~/web/index.html`, whose script reads `datos.json` with a `fetch` that sends `Content-Type: application/json`
+- **WHEN** the user opens it in the file viewer
+- **THEN** the script gets the content of `datos.json`
+
 #### Scenario: A link to another page of the folder
 
 - **GIVEN** `~/web/index.html` rendered in the viewer, with a link to `otra.html` of its folder
@@ -185,3 +191,13 @@ The hub SHALL answer a rendered page's request for a part of one of its files (a
 - **GIVEN** `~/web/index.html`, which shows `clip.mp4` of its folder in a `<video>`
 - **WHEN** the user opens it in the file viewer and moves the video to its middle
 - **THEN** the video plays from there
+
+### Requirement: «Abrir aparte» plays a video or a sound
+
+«Abrir aparte» on a video or a sound file SHALL open it in a new tab with the browser's player, ready to play and to seek, as the viewer plays it. Opening it SHALL NOT run anything the file holds.
+
+#### Scenario: A video in a tab of its own
+
+- **GIVEN** `~/videos/demo.mp4` open in the file viewer
+- **WHEN** the user taps «Abrir aparte»
+- **THEN** a new tab shows the video with the browser's player, and it plays

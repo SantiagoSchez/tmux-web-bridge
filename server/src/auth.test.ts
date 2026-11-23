@@ -43,16 +43,18 @@ test('a session unused past its days is no longer alive, and asking does not kee
 
 // ---------------------------------------------------------------- requests from another site
 
-test('a request from an opaque origin or from another site comes from another site', () => {
+test('a request from an opaque origin, another site or another subdomain comes from another site', () => {
   assert.equal(fromAnotherSite({ origin: 'null' }, []), true);
   assert.equal(fromAnotherSite({ origin: 'null', 'sec-fetch-site': 'same-origin' }, []), true);
   assert.equal(fromAnotherSite({ 'sec-fetch-site': 'cross-site' }, []), true);
   assert.equal(fromAnotherSite({ 'sec-fetch-site': 'cross-site', origin: 'https://otro.example' }, ['http://localhost:5173']), true);
+  assert.equal(fromAnotherSite({ 'sec-fetch-site': 'same-site' }, []), true);
+  assert.equal(fromAnotherSite({ 'sec-fetch-site': 'same-site', origin: 'https://otro.hub.example' }, []), true);
 });
 
-test('the panel, the address bar, the same site and an allowed origin do not', () => {
+test('the panel, the address bar and an allowed origin do not', () => {
   assert.equal(fromAnotherSite({ 'sec-fetch-site': 'same-origin', origin: 'https://hub.example' }, []), false);
-  assert.equal(fromAnotherSite({ 'sec-fetch-site': 'same-site' }, []), false);
+  assert.equal(fromAnotherSite({ 'sec-fetch-site': 'same-site', origin: 'https://dev.hub.example' }, ['https://dev.hub.example']), false);
   assert.equal(fromAnotherSite({ 'sec-fetch-site': 'none' }, []), false);
   assert.equal(fromAnotherSite({}, []), false);
   assert.equal(fromAnotherSite({ 'sec-fetch-site': 'cross-site', origin: 'http://localhost:5173' }, ['http://localhost:5173']), false);
