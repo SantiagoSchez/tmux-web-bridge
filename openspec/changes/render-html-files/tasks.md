@@ -120,13 +120,13 @@
   - Second run: the three fixes hold; no finding above LOW. The LOW ones: D1 overstated what the address binding stops (reworded); the panel and the page may leave from different addresses (Private Relay, IPv6), and `TMPDIR` may be unset over SSH on macOS (both to the human review, 12.1, and the Risks); `same-site` was let through with a wrong reason; a page's CORS preflight got 403; the comment of `allowedOrigins` was stale; «Abrir aparte» of a video or a sound did not play, from before this change. The owner chose to answer the preflight, to refuse `same-site`, and to fix the media in this change: 4.16 to 4.18, 5.11 to 5.13 and 8.5. These touch the hook again, so the review runs a third time after them.
   - Third run: the new fixes hold and keep the earlier ones; no finding above LOW. The LOW ones, all fixed in the artifacts and the docs: `allowedOrigins` lets through only requests that carry `Origin` (config comment, server standards, D3, and a risk for a login proxy on a sibling subdomain); the proposal and the docstring of `/api/files` still said it did not change or sandboxed everything; no requirement held the refusal of cross-site requests, now «The hub's API answers only the panel». These touch no payload, wiring or migration, so the review does not run again.
 - [x] 9.3 Open the pull request with `/ka:commit --pr`.
-- [ ] 9.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
+- [x] 9.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
 ## 10. Update the feature catalogue
 
-- [ ] 10.1 Run `/ka:update-features render-html-files` for the added requirements of `file-viewer`.
-- [ ] 10.2 Run `ka features-check --strict` with exit code 0.
-- [ ] 10.3 Commit the catalogue with `/ka:commit`.
+- [x] 10.1 Run `/ka:update-features render-html-files` for the added requirements of `file-viewer`.
+- [x] 10.2 Run `ka features-check --strict` with exit code 0.
+- [x] 10.3 Commit the catalogue with `/ka:commit`.
 
 ## 11. E2E pipeline
 

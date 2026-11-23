@@ -22,6 +22,22 @@
         "question": 1,
         "nitpick": 1
       }
+    },
+    {
+      "n": 2,
+      "budgetRound": 2,
+      "mode": "incremental",
+      "sha": "f91c1ea6dfdbc26cb2309361d239610a1d072059",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-23T15:54:47.749Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 1
+      }
     }
   ],
   "findings": [
@@ -57,8 +73,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "The claim holds: in «Ver el texto» the notice sends you to «Abrir aparte», which for HTML now opens the rendered page, so the full source of an HTML over 2 MB cannot be read in the panel; it only affects that rare case and changing the text or the raw-mode link is a small fix, so mention it rather than open an item.",
       "followUp": null
     },
     {
@@ -75,8 +91,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 6,
+      "scoreReason": "The `grant.only` check sits inline in the handler at index.ts:1208, which the server standards forbid (feature logic belongs in modules), and if it broke quietly a page could read its sibling files; but the core `fromAnotherSite` predicate already has tests in auth.test.ts and both rules were checked with curl, so mention it, no item needed.",
       "followUp": null
     },
     {
@@ -89,12 +105,12 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1baea3f5745465717479d53f8d69540b2608f5ff",
-      "state": "open",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 2,
+      "scoreReason": "A four-line helper whose behaviour differs on purpose (it strips the path and lowercases), so merging the two saves almost nothing and only touches style.",
       "followUp": null
     },
     {
@@ -111,8 +127,8 @@
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
-      "score": null,
-      "scoreReason": null,
+      "score": 5,
+      "scoreReason": "The claim holds: FileBody checks `text === null` before `rendersPage`, so the iframe waits for up to 2 MB of text that it then downloads again, but most HTML files are small, and the text also feeds the binary check and the «Ver el texto» toggle, so reworking it carries some risk for a modest gain.",
       "followUp": null
     },
     {
@@ -125,7 +141,25 @@
       "origin": "introduced",
       "round": 1,
       "sha": "1baea3f5745465717479d53f8d69540b2608f5ff",
-      "state": "open",
+      "state": "dropped",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    },
+    {
+      "line": 33,
+      "id": "R2-01",
+      "severity": "NITPICK",
+      "path": "docs/dev-standards/server-standards.md",
+      "symbol": null,
+      "title": "Says browsers send Sec-Fetch-Site only over HTTPS; they also send it to localhost, as D3 says",
+      "origin": "introduced",
+      "round": 2,
+      "sha": "f91c1ea6dfdbc26cb2309361d239610a1d072059",
+      "state": "dropped",
       "fixedIn": null,
       "reopened": 0,
       "reason": null,
