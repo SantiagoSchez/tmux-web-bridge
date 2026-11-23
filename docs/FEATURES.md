@@ -155,6 +155,61 @@ Al cerrar una pantalla del visor, el foco vuelve a lo que la abrió: al fichero 
 
 Cada fila de «Ficheros cambiados» enseña, entre la letra de su estado en git y el nombre, el mismo icono de tipo que le daría el explorador de archivos: `src/app.ts` modificado sale con «M», el icono de código y `app.ts`; `docs/captura.png` nuevo, con «N», el icono de imagen y `captura.png`.
 
+### Un HTML se ve como página
+<!-- capability: file-viewer; requirement: an-html-file-opens-rendered -->
+
+Un fichero `.html` o `.htm`, en mayúsculas o minúsculas, se abre en el visor ya renderizado: un informe con su título y su tabla se ve como página, no como etiquetas. «Ver el texto» enseña su código con los números de línea y se convierte en «Ver renderizado», que vuelve a la página. La vista previa del explorador lo enseña igual. Si lo que se abre es un enlace simbólico a un HTML, se ve el fichero al que apunta, con los estilos y las imágenes de su propia carpeta.
+
+### «Abrir aparte» abre la página
+<!-- capability: file-viewer; requirement: abrir-aparte-opens-an-html-file-rendered -->
+
+«Abrir aparte» en un HTML abre la página renderizada y entera en una pestaña nueva, con los mismos límites que tiene dentro del visor.
+
+### Los scripts de la página funcionan, sin la sesión del panel
+<!-- capability: file-viewer; requirement: a-rendered-page-runs-its-scripts-without-the-hub-s-session -->
+
+La página ejecuta su JavaScript: un gráfico que un script dibuja en un `<canvas>` aparece dibujado. Pero se ejecuta aislada, como si fuera de otro sitio que no es el panel: sus scripts no leen las cookies del hub, ni el almacenamiento ni la página del panel, y sus peticiones no llevan tu sesión, así que no pueden usar la API del hub. El panel sigue funcionando aunque la página lo intente.
+
+### La página carga los ficheros de su carpeta
+<!-- capability: file-viewer; requirement: a-rendered-page-loads-the-files-of-its-folder -->
+
+Lo que la página nombra con rutas relativas, en su carpeta o en las de debajo, se carga con el tipo que le toca: hojas de estilo, scripts, imágenes, fuentes y ficheros de datos que lean sus scripts, también con peticiones que envían JSON. Un enlace a otra página de la carpeta la abre renderizada en el mismo sitio y con los mismos límites.
+
+### Nada fuera de su carpeta ni oculto
+<!-- capability: file-viewer; requirement: a-rendered-page-reaches-nothing-outside-its-folder-or-hidden -->
+
+La página no consigue ningún fichero fuera de su carpeta ni ninguno oculto (`.env`, `.git/config`), lo pida con `..`, con la ruta codificada o a través de un enlace simbólico que apunte fuera: el hub lo rechaza sin enviar nada. Su propia carpeta sí puede estar oculta, como `~/.cache/informes`. Si el HTML está suelto en una carpeta demasiado amplia (la raíz del disco, tu carpeta personal o una superior, o una carpeta temporal como `/tmp`), la página solo consigue su propio fichero y se ve sin los estilos ni las imágenes de al lado.
+
+### Nada de fuera del hub
+<!-- capability: file-viewer; requirement: a-rendered-page-loads-nothing-from-outside-the-hub -->
+
+La página no carga ni envía nada a otros sitios: solo su carpeta a través del hub, el código que lleva dentro y las direcciones `data:` y `blob:`. Una librería de un CDN no se descarga y la página se ve sin ella, y una petición o una imagen de otra web se bloquean sin llegar a salir. Este límite no cubre la navegación: un enlace que toques, o un script que mueva su propia página, sí pueden salir del hub, igual que las conexiones WebRTC y las consultas DNS que algunos navegadores dejan hacer.
+
+### La dirección de la página caduca
+<!-- capability: file-viewer; requirement: a-page-s-address-works-only-for-a-while -->
+
+La dirección desde la que se sirve la página deja de funcionar 24 horas después de abrirla, aunque se haya usado entretanto, y también cuando el hub se reinicia. Con inicio de sesión por contraseña, deja de funcionar además cuando su sesión termina, porque se cierra desde el panel o porque caduca. Una pestaña con la dirección caducada dice «Este enlace ha caducado. Vuelve a abrir el fichero desde el panel.», y volver a abrir el fichero da una dirección nueva.
+
+### La dirección solo vale desde donde se abrió
+<!-- capability: file-viewer; requirement: a-page-s-address-works-only-from-where-it-was-opened -->
+
+La dirección de la página solo funciona desde la dirección de red que la pidió. Desde otra red se recibe la misma página de «enlace caducado» y ningún fichero.
+
+### Los vídeos y sonidos de la página se pueden saltar
+<!-- capability: file-viewer; requirement: a-rendered-page-plays-its-videos-and-sounds -->
+
+Un vídeo o un sonido de la carpeta que la página muestre se reproduce y se puede llevar a cualquier punto, en todos los navegadores.
+
+### «Abrir aparte» reproduce vídeos y sonidos
+<!-- capability: file-viewer; requirement: abrir-aparte-plays-a-video-or-a-sound -->
+
+«Abrir aparte» en un vídeo o un sonido lo abre en una pestaña nueva con el reproductor del navegador, listo para reproducirse y para saltar a cualquier punto, como en el visor. Abrirlo no ejecuta nada de lo que contenga el fichero.
+
+### La API del hub solo responde al panel
+<!-- capability: file-viewer; requirement: the-hub-s-api-answers-only-the-panel -->
+
+El hub rechaza las peticiones a su API que llegan desde otra web, desde otro subdominio de su dominio o desde una página HTML abierta en el panel, tanto con contraseña como a través de `tailscale serve`: un enlace a un fichero del hub puesto en otra web no lo abre, aunque tengas la sesión iniciada. Sí atiende a los orígenes que se añadan en `allowedOrigins`, y la dirección de un fichero abierta desde el panel o escrita en la barra de direcciones sigue funcionando. Cuenta con que el hub se sirva por HTTPS, que es donde los navegadores dicen de dónde viene cada petición.
+
 ## Explorador de archivos
 
 ### Qué muestra una carpeta

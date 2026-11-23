@@ -77,6 +77,8 @@
   --mono: 'TWB Mono', 'TWB Symbols', ui-monospace, Menlo, 'Roboto Mono', monospace;
   --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --radius: 12px;
+  /* Behind a rendered HTML page, in both themes: a page with no background of its own expects white. */
+  --page-bg: #fff;
   --tap: 44px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -3270,6 +3272,15 @@ textarea.text-input {
   border-radius: 10px;
   background: var(--base);
 }
+.file-page {
+  display: block;
+  width: 100%;
+  height: 70dvh;
+  border: 0;
+  border-radius: 10px;
+  background: var(--page-bg);
+  color-scheme: light;
+}
 .code-view {
   font: 12px/1.5 var(--mono);
   background: var(--crust);
@@ -3675,7 +3686,8 @@ textarea.text-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.explorer-preview .file-pdf {
+.explorer-preview .file-pdf,
+.explorer-preview .file-page {
   height: 50dvh;
 }
 @container (min-width: 720px) {

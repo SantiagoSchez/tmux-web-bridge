@@ -1,0 +1,8 @@
+{
+  "type": "added",
+  "scope": "web",
+  "description": "Añadida la vista de los ficheros HTML como página en el visor de ficheros, en la vista previa del explorador y con «Abrir aparte»: cargan los estilos, imágenes y datos de su carpeta y funcionan sus scripts, aislados del panel, sin acceso a internet ni a los ficheros ocultos de la carpeta. «Ver el texto» enseña su código",
+  "issue": "83",
+  "breaking": false,
+  "pr": "84"
+}

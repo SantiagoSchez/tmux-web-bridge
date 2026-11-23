@@ -105,6 +105,12 @@ export class SessionStore {
     return id;
   }
 
+  /** Whether the session `id` exists and has not passed its idle limit; does not refresh it. */
+  alive(id: string): boolean {
+    const s = this.sessions.get(id);
+    return !!s && Date.now() - s.lastSeen <= this.maxAgeSeconds * 1000;
+  }
+
   revoke(id: string): void {
     if (this.sessions.delete(id)) this.save();
   }
@@ -135,6 +141,19 @@ export class SessionStore {
       renameSync(tmp, this.file);
     }, 1000);
   }
+}
+
+/**
+ * Whether a request comes from another site's page, another subdomain of the hub's, or an
+ * opaque origin (a rendered page's sandbox): `Origin: null`, or `Sec-Fetch-Site` `cross-site`
+ * or `same-site` from an origin not in `allowed`. The panel's own requests are same-origin,
+ * the address bar's are `none`.
+ */
+export function fromAnotherSite(headers: { origin?: string; 'sec-fetch-site'?: string | string[] }, allowed: string[]): boolean {
+  if (headers.origin === 'null') return true;
+  const site = headers['sec-fetch-site'];
+  if (site !== 'cross-site' && site !== 'same-site') return false;
+  return !(headers.origin && allowed.includes(headers.origin));
 }
 
 export function readCookie(req: FastifyRequest, name = COOKIE): string | undefined {

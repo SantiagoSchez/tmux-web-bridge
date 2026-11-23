@@ -615,10 +615,28 @@ export interface DirFile {
   size: number;
 }
 
-/** The error body of `GET /api/files`; `dir` when the path is a folder (absolute), which the viewer opens in the explorer. */
+/** The error body of `GET /api/files` and `POST /api/files/page`; `dir` when the path is a folder (absolute), which the viewer opens in the explorer. */
 export interface FilesError {
   error: string;
   dir?: string;
+}
+
+/** `POST /api/files/page`: an HTML file to render, its path given as to `GET /api/files`. */
+export interface FilePageRequest {
+  host: string;
+  window?: string;
+  pane?: string;
+  path: string;
+}
+
+/** The answer of `POST /api/files/page`: where the page is served, with a token for its folder. */
+export interface FilePage {
+  /** `/api/page/<token>/<file name>`; the page's relative URLs resolve under it. */
+  url: string;
+  /** The file's whole path on the machine. */
+  path: string;
+  /** Bytes. */
+  size: number;
 }
 
 /** A pane's screen for the windows grid, as `capture-pane -e` prints it (text with SGR colours). */

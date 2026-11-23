@@ -10,16 +10,17 @@ import { parseChoices } from '../../shared/choices.js';
 import { DEFAULT_COMMAND } from '../../shared/folders.js';
 import { quietReason } from '../../shared/mute.js';
 import { branchNameProblem } from '../../shared/worktree.js';
-import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, DirListing, FilesError, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
+import type { AccountsInfo, ActivityAccount, ActivityEvent, HostInfo, ClaudeImageResult, DirListing, FilesError, GitDiffMode, ClientMessage, DictateResult, Automation, AutomationRun, ExtLaunchRequest, ExtLaunchResult, FilePage, FilePageRequest, KitReport, MachinesInfo, NotifyRequest, RefContext, RespondRequest, SavedFolder, SavedHost, ScratchpadAddRequest, ScratchpadEditRequest, ScratchpadPasteRequest, Scratchpads, ScheduledMessage, ServerMessage, TrelloCardContext, TrelloCardUrl } from '../../shared/types.js';
 import { AccountStore, NeedsLoginError } from './account-store.js';
 import { AccountManager } from './accounts.js';
 import { READ_ONLY_OPS, runAction, runTitleScript, type MachineFolders } from './actions.js';
 import { shq, TmuxError } from './exec.js';
-import { clearSessionCookie, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
+import { clearSessionCookie, fromAnotherSite, hashPasswordCli, LoginLimiter, readCookie, SessionStore, setSessionCookie, verifyPassword } from './auth.js';
 import { loadConfig, removeConfigHosts } from './config.js';
 import { checkMachine as checkMachineData, authorizedKeyLine, hostConfig, hubKeyPath, MachineStore, publicKey } from './machines.js';
 import { checkMachine, installKit, uninstallKit } from './kit.js';
 import { ConnectionRegistry } from './connections.js';
+import { filesContentType, filesSandboxed, pageContentType } from './content-types.js';
 import { Dictation, SAMPLE_RATE } from './dictation.js';
 import { ExtTokenStore } from './ext.js';
 import { hostTargets, launchTask, listBranches } from './tasks.js';
@@ -33,6 +34,7 @@ import { HostMonitor } from './host.js';
 import { checkLimits, type LimitsCheck, SentLimits } from './limits-check.js';
 import { Notifier } from './notifications.js';
 import { HostOrder } from './order.js';
+import { pagePath, pageTarget, PageTokens, statPageFile } from './pages.js';
 import { imageScript, isImageRef, parseImage } from './claude-image.js';
 import { PreviewCache } from './preview.js';
 import { contextScript, parseContext } from './project-refs.js';
@@ -83,6 +85,8 @@ const notifier = new Notifier(config, hosts, push, conns);
 const previews = new PreviewCache(hosts);
 const updates = new UpdateChecker(config.dataDir);
 const extTokens = new ExtTokenStore(config.dataDir);
+/** The tokens of the HTML pages rendered from the panel (pages.ts), each alive only with its password session. */
+const pages = new PageTokens({ sessionAlive: (id) => sessions.alive(id) });
 const activity = new ActivityLog(config.dataDir);
 // The automatic account switch (Ajustes › Máquinas): evaluated when an account's usage,
 // a statusline reading or the settings change (see the handlers below).
@@ -166,6 +170,8 @@ function tokenOk(req: FastifyRequest): boolean {
 
 /** Reachable without a session (method "password"). */
 const PUBLIC_API = new Set(['/api/session', '/api/login', '/api/logout', '/api/health']);
+/** A rendered HTML page and its folder's files, reached with the page's token instead of the session (pages.ts). */
+const PAGE_ROUTE = '/api/page/:token/*';
 
 app.addHook('onRequest', async (req, reply) => {
   if (req.url.startsWith('/api/notify')) {
@@ -178,12 +184,19 @@ app.addHook('onRequest', async (req, reply) => {
     if (!extTokens.check(req.headers.authorization)) return reply.code(401).send({ error: 'Token de la extensión inválido o revocado' });
     return;
   }
+  // No other site's page, nor a rendered page's sandbox, reaches the API: tailscale serve
+  // adds the user's identity to their requests too. A page's own files have their route.
+  const matched = req.routeOptions.url ?? '';
+  if ((matched.startsWith('/api/') || req.url.startsWith('/api/')) && matched !== PAGE_ROUTE && fromAnotherSite(req.headers, config.allowedOrigins)) {
+    return reply.code(403).send({ error: 'origen no permitido' });
+  }
   if (passwordAuth) {
     req.sessionId = sessions.check(readCookie(req));
     // Decided on the matched route, not the raw URL, so no spelling of a path slips past.
     // The app itself (static files: HTML, JS, icons) is public: it shows its own login screen.
+    // A rendered page's requests never carry the cookie: its route checks its own token.
     const route = req.routeOptions.url ?? '';
-    const open = PUBLIC_API.has(route) || route === '/*' || route === '/';
+    const open = PUBLIC_API.has(route) || route === '/*' || route === '/' || route === PAGE_ROUTE;
     if (!open && !req.sessionId) return reply.code(401).send({ error: 'Inicia sesión' });
   } else if (typeof req.headers['tailscale-user-login'] === 'string' && req.headers['tailscale-user-login']) {
     const login = req.headers['tailscale-user-login'];
@@ -218,7 +231,9 @@ function bindSession(req: FastifyRequest, ws: WebSocket): void {
   });
 }
 
+/** Ends what closed sessions left open: their sockets, and the pages they rendered. */
 function closeSessions(ids: string[]): void {
+  pages.dropSessions(ids);
   for (const id of ids) {
     for (const ws of sessionSockets.get(id) ?? []) ws.close(4401, 'Sesión cerrada');
     sessionSockets.delete(id);
@@ -1057,22 +1072,31 @@ app.post('/api/machines/:id/delete', async (req, reply) => {
 
 // ---------------------------------------------------------------- files and git of a pane
 
-const MIME: Record<string, string> = {
-  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', avif: 'image/avif', bmp: 'image/bmp',
-  ico: 'image/x-icon', svg: 'image/svg+xml', pdf: 'application/pdf',
-  mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', mkv: 'video/x-matroska', ogv: 'video/ogg',
-  mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', flac: 'audio/flac',
-};
-
 function fileError(reply: FastifyReply, err: unknown) {
   if (!(err instanceof FileError)) return reply.code(500).send({ error: (err as Error).message });
   return reply.code(err.status).send((err.dir ? { error: err.message, dir: err.dir } : { error: err.message }) satisfies FilesError);
 }
 
 /**
+ * The file a path seen in a window points to (relative to its panes' folders, the pane
+ * asked for first, else looked for in their repos): its whole path and size.
+ */
+async function locateFile(host: HostMonitor, raw: string, window: string | undefined, pane: string | undefined): Promise<{ path: string; size: number }> {
+  const isRel = !raw.startsWith('/') && !raw.startsWith('~');
+  const folders = isRel ? paneFolders(host, window, pane) : [''];
+  if (!folders.length) throw new FileError('No se sabe en qué carpeta está esa ventana', 400);
+  return statHostFile(
+    host,
+    folders.map((f) => resolvePath(raw, f)),
+    isRel ? findInReposScript(raw, folders) : null,
+  );
+}
+
+/**
  * A file of a machine, for the viewer: a path seen in a window (relative to its panes'
  * folders), streamed whatever its size. Images, PDFs, videos and sound with their type,
- * anything else as text; never run by the browser (sandboxed), even opened on its own.
+ * anything else as text, never sniffed; sandboxed but for PDFs, videos and sound, whose
+ * players ask for the file again (filesSandboxed), so nothing runs, even opened on its own.
  * probe=1: only its whole path and size; max=N: only its first N bytes (X-File-Size says
  * how many it has). A Range header gets that piece of it (a player seeking in a video).
  */
@@ -1081,15 +1105,7 @@ app.get('/api/files', async (req, reply) => {
   const host = q.host ? hosts.get(q.host) : undefined;
   if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
   try {
-    const raw = String(q.path ?? '');
-    const isRel = !raw.startsWith('/') && !raw.startsWith('~');
-    const folders = isRel ? paneFolders(host, q.window, q.pane) : [''];
-    if (!folders.length) return reply.code(400).send({ error: 'No se sabe en qué carpeta está esa ventana' });
-    const { path, size } = await statHostFile(
-      host,
-      folders.map((f) => resolvePath(raw, f)),
-      isRel ? findInReposScript(raw, folders) : null,
-    );
+    const { path, size } = await locateFile(host, String(q.path ?? ''), q.window, q.pane);
     if (q.probe === '1') return { path, size };
     const max = Number(q.max) > 0 ? Math.min(Number(q.max), size) : undefined;
     const range = max === undefined ? parseRange(req.headers.range, size) : null;
@@ -1103,11 +1119,11 @@ app.get('/api/files', async (req, reply) => {
         .header('Content-Range', `bytes ${range.start}-${range.start + range.length - 1}/${size}`)
         .header('Content-Length', String(range.length));
     }
-    const ext = path.split('.').pop()?.toLowerCase() ?? '';
-    // Chrome's PDF viewer does not run in a sandboxed document; anything else never runs scripts.
-    if (ext !== 'pdf') reply.header('Content-Security-Policy', 'sandbox');
+    const type = filesContentType(path);
+    // Never run by the browser: sandboxed, but for the players that ask for the file again (content-types.ts).
+    if (filesSandboxed(path)) reply.header('Content-Security-Policy', 'sandbox');
     return reply
-      .header('Content-Type', MIME[ext] ?? 'text/plain; charset=utf-8')
+      .header('Content-Type', type)
       .header('X-Content-Type-Options', 'nosniff')
       .header('Accept-Ranges', 'bytes')
       .header('Cache-Control', 'no-store')
@@ -1116,6 +1132,97 @@ app.get('/api/files', async (req, reply) => {
       .send(child.stdout);
   } catch (err) {
     return fileError(reply, err);
+  }
+});
+
+/**
+ * An HTML file to render (the viewer's iframe, «Abrir aparte»): found as /api/files finds
+ * it, then served under a token for its folder (pages.ts), since the page's own requests
+ * never carry the session.
+ */
+app.post('/api/files/page', async (req, reply) => {
+  const b = (req.body ?? {}) as Partial<Record<keyof FilePageRequest, unknown>>;
+  const host = typeof b.host === 'string' ? hosts.get(b.host) : undefined;
+  if (!host) return reply.code(400).send({ error: 'Máquina desconocida' });
+  if (typeof b.path !== 'string' || !b.path.trim()) return reply.code(400).send({ error: 'Falta el fichero' });
+  try {
+    const { path, size } = await locateFile(host, b.path, typeof b.window === 'string' ? b.window : undefined, typeof b.pane === 'string' ? b.pane : undefined);
+    // A page opened through a link is the file it points to, next to its own resources.
+    // In a folder too broad to hand to its scripts (the home, /tmp), the page gets only itself.
+    const { dir, name, broad } = await pageTarget(host, path);
+    const token = pages.issue({ host: host.id, dir, only: broad ? name : null, session: req.sessionId ?? null, ip: req.ip });
+    return { url: `/api/page/${token}/${encodeURIComponent(name)}`, path, size } satisfies FilePage;
+  } catch (err) {
+    return fileError(reply, err);
+  }
+});
+
+/**
+ * Isolates every response of a page's address: an opaque origin that runs scripts and
+ * loads or sends only to the hub (a script may still navigate away), framed only by the
+ * panel, never sniffed, never cached, and no Referer carrying the token out. Any origin
+ * may read it (a page's fetch of its own data comes from origin null): no credential rides on it.
+ */
+function pageHeaders(reply: FastifyReply): FastifyReply {
+  return reply
+    .header('Content-Security-Policy', "sandbox allow-scripts; default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; frame-ancestors 'self'")
+    .header('X-Content-Type-Options', 'nosniff')
+    .header('Referrer-Policy', 'no-referrer')
+    .header('Access-Control-Allow-Origin', '*')
+    .header('Accept-Ranges', 'bytes')
+    .header('Cache-Control', 'no-store');
+}
+
+const PAGE_EXPIRED =
+  '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Enlace caducado</title>' +
+  '<p style="font: 16px system-ui, sans-serif; margin: 2rem">Este enlace ha caducado. Vuelve a abrir el fichero desde el panel.</p></html>';
+
+/**
+ * A page's script asking whether it may send a JSON content type or another header (a CORS
+ * preflight): yes, with nothing in the answer. It reads no file and checks no token.
+ */
+app.options(PAGE_ROUTE, async (req, reply) => {
+  const asked = req.headers['access-control-request-headers'];
+  return reply
+    .code(204)
+    .header('Access-Control-Allow-Origin', '*')
+    .header('Access-Control-Allow-Methods', 'GET, HEAD')
+    .header('Access-Control-Allow-Headers', typeof asked === 'string' ? asked : '')
+    .header('Access-Control-Max-Age', '600')
+    .send();
+});
+
+/**
+ * A rendered page, or a file below its folder, for whoever holds its token from the address
+ * it was issued to (the hook lets it in without the session). A hidden part, a path above,
+ * a link, a folder, a missing file, or any file but the page when its folder is too broad,
+ * answers 404 with nothing; an unknown, expired or foreign token, a page saying so. A Range
+ * header gets that piece of the file (a video of the page seeking).
+ */
+app.get(PAGE_ROUTE, async (req, reply) => {
+  const params = req.params as { token: string; '*': string };
+  const grant = pages.get(params.token, req.ip);
+  const host = grant ? hosts.get(grant.host) : undefined;
+  if (!grant || !host) return pageHeaders(reply).code(404).header('Content-Type', 'text/html; charset=utf-8').send(PAGE_EXPIRED);
+  const rel = pagePath(params['*']);
+  if (!rel || (grant.only !== null && rel !== grant.only)) return pageHeaders(reply).code(404).send();
+  try {
+    const { path, size } = await statPageFile(host, grant.dir, rel);
+    const range = parseRange(req.headers.range, size);
+    if (range === 'unsatisfiable') return pageHeaders(reply).code(416).header('Content-Range', `bytes */${size}`).send();
+    const child = streamHostFile(host, path, range ?? undefined);
+    // The browser gave up (the viewer closed, the tab went away): stop reading.
+    req.raw.on('close', () => child.exitCode === null && child.kill());
+    if (range) {
+      reply
+        .code(206)
+        .header('Content-Range', `bytes ${range.start}-${range.start + range.length - 1}/${size}`)
+        .header('Content-Length', String(range.length));
+    }
+    return pageHeaders(reply).header('Content-Type', pageContentType(path)).send(child.stdout);
+  } catch (err) {
+    if (err instanceof FileError) return pageHeaders(reply).code(404).send();
+    return pageHeaders(reply).code(502).send();
   }
 });
 

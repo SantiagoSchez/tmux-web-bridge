@@ -1,7 +1,8 @@
 import { signal } from '@preact/signals';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { FilesError, GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
-import { fileType } from '../../../shared/file-types';
+import type { FilePage, FilePageRequest, FilesError, GitChange, GitChanges, GitDiffMode, GitStat, HostInfo, WindowInfo } from '../../../shared/types';
+import { fileType, isHtml } from '../../../shared/file-types';
+import { api } from '../api';
 import { dialog, toast } from '../state';
 import { fold } from '../text';
 import { Sheet } from './Sheet';
@@ -11,8 +12,8 @@ import { ExplorerView } from './Explorer';
 export { fileViewer, type FileOrigin };
 import { FileTypeIcon, IconFileDiff, IconFolder, IconReload } from './icons';
 
-// The file viewer: a path tapped in the terminal (an image, a PDF, Markdown rendered, any
-// other text with its lines), the explorer of a machine's folders, the changed files of
+// The file viewer: a path tapped in the terminal (an image, a PDF, Markdown and HTML
+// rendered, any other text with its lines), the explorer of a machine's folders, the changed files of
 // the window's repo, and their diff.
 
 /** Opened from the terminal, which keeps the focus: Escape would reach Claude (and stop it) instead of closing the viewer. */
@@ -117,13 +118,14 @@ export function fileSize(n: number): string {
   return `${(n / 1024 / 1024).toLocaleString('es-ES', { maximumFractionDigits: n < 100 * 1024 * 1024 ? 1 : 0 })} MB`;
 }
 
-/** How the viewer shows a file: code, archives and any other file are read as text. */
-export function fileKind(path: string): 'image' | 'pdf' | 'video' | 'audio' | 'markdown' | 'text' {
+/** How the viewer shows a file: an HTML page rendered; other code, archives and any other file read as text. */
+export function fileKind(path: string): 'image' | 'pdf' | 'video' | 'audio' | 'markdown' | 'html' | 'text' {
+  if (isHtml(path)) return 'html';
   const t = fileType(path);
   return t === 'code' || t === 'archive' || t === 'file' ? 'text' : t;
 }
 /** Whether the browser shows it from its URL (an image, a PDF, a video, sound), instead of the viewer reading its text. */
-export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown' && kind !== 'text';
+export const isMedia = (kind: ReturnType<typeof fileKind>) => kind !== 'markdown' && kind !== 'html' && kind !== 'text';
 /** Whether what was read as text is not: a NUL byte gives away a binary file (an archive, a program, a video named otherwise). */
 export const isBinary = (text: string) => text.includes('\0');
 export { fileUrl };
@@ -183,13 +185,15 @@ export interface LoadedFile {
   found: boolean;
   binary: boolean;
   max: number;
+  /** An HTML page's own address (a token for its folder), where it renders whole; null until the hub gives it, and for any other kind. */
+  page: string | null;
 }
 
 /**
  * A file of the machine for the viewer and the explorer's preview: images, PDFs, videos
  * and sound load from their URL (the hub is only asked whether it is there), text is read
- * up to `max` bytes. `folder`: called when the path turns out to be a folder (its absolute
- * path) instead of showing the error.
+ * up to `max` bytes, and an HTML page also gets the address it renders from. `folder`:
+ * called when the path turns out to be a folder (its absolute path) instead of showing the error.
  */
 export function useFile(origin: FileOrigin, path: string, max: number, folder?: (dir: string) => void): LoadedFile {
   const url = fileUrl(origin, path);
@@ -199,6 +203,7 @@ export function useFile(origin: FileOrigin, path: string, max: number, folder?: 
   const [abs, setAbs] = useState<string>(path);
   const [error, setError] = useState<string | null>(null);
   const [found, setFound] = useState(false);
+  const [page, setPage] = useState<string | null>(null);
 
   useEffect(() => {
     setText(null);
@@ -206,6 +211,7 @@ export function useFile(origin: FileOrigin, path: string, max: number, folder?: 
     setAbs(path);
     setError(null);
     setFound(false);
+    setPage(null);
     const ctl = new AbortController();
     const fail = (err: Error) => {
       if (ctl.signal.aborted) return;
@@ -226,18 +232,24 @@ export function useFile(origin: FileOrigin, path: string, max: number, folder?: 
         if (r.size !== undefined) setSize(r.size);
       }, fail);
     }
+    if (kind === 'html') {
+      const body: FilePageRequest = { host: origin.host, window: origin.window, pane: origin.pane, path };
+      api<FilePage>('/api/files/page', body).then((r) => !ctl.signal.aborted && setPage(r.url), fail);
+    }
     return () => ctl.abort();
   }, [url, max]);
 
-  return { url, name: path.split('/').pop() ?? path, kind, text, size, abs, error, found, binary: text !== null && isBinary(text), max };
+  return { url, name: path.split('/').pop() ?? path, kind, text, size, abs, error, found, binary: text !== null && isBinary(text), max, page };
 }
 
 /** A file's content as the viewer shows it; `more` says how to see the rest of a cut text. */
 export function FileBody({ f, line, raw, more }: { f: LoadedFile; line?: number; raw?: boolean; more: string }) {
-  const { url, name, kind, text, size, error, found, binary } = f;
+  const { url, name, kind, text, size, error, found, binary, page } = f;
+  // A rendered page loads whole from its own address: only its text is cut.
+  const rendersPage = kind === 'html' && !raw;
   return (
     <>
-      {text !== null && !binary && size !== null && size > f.max && (
+      {text !== null && !binary && size !== null && size > f.max && !rendersPage && (
         <p class="settings-state small">
           Solo los primeros {fileSize(f.max)} de {fileSize(size)}: {more}
         </p>
@@ -262,6 +274,13 @@ export function FileBody({ f, line, raw, more }: { f: LoadedFile; line?: number;
         <p class="settings-state">No es un fichero de texto{size !== null ? ` (${fileSize(size)})` : ''}: aquí no se puede ver.</p>
       ) : kind === 'markdown' && !raw ? (
         <Markdown text={text} />
+      ) : rendersPage ? (
+        page === null ? (
+          <p class="dim pad">Cargando…</p>
+        ) : (
+          // Scripts run, with an origin of their own: no popups, forms, top navigation or access to the panel.
+          <iframe class="file-page" src={page} title={name} sandbox="allow-scripts" referrerpolicy="no-referrer" />
+        )
       ) : (
         <CodeLines text={text} line={line} />
       )}
@@ -273,11 +292,11 @@ function FileView({ origin, screen, layer }: { origin: FileOrigin; screen: Extra
   // A folder asked for as a file (a path without its last /) shows in the explorer, in its place.
   const f = useFile(origin, screen.path, TEXT_MAX, (dir) => replaceFileScreen(screen, { kind: 'dir', path: dir }));
   const [raw, setRaw] = useState(false);
-  const { url, name, kind, text, size, abs, binary } = f;
+  const { url, name, kind, text, size, abs, binary, page } = f;
   return (
     <Sheet title={name} subtitle={size !== null ? `${abs} · ${fileSize(size)}` : abs} {...layer} class="file-sheet">
       <div class="file-actions">
-        {kind === 'markdown' && text !== null && !binary && (
+        {(kind === 'markdown' || kind === 'html') && text !== null && !binary && (
           <button class="btn" onClick={() => setRaw(!raw)}>
             {raw ? 'Ver renderizado' : 'Ver el texto'}
           </button>
@@ -286,6 +305,17 @@ function FileView({ origin, screen, layer }: { origin: FileOrigin; screen: Extra
           <a class="btn" href={url} download={name}>
             Descargar
           </a>
+        ) : kind === 'html' ? (
+          // The page rendered, isolated as in the viewer; until the hub gives its address, nothing to open.
+          page === null ? (
+            <button class="btn" disabled>
+              Abrir aparte
+            </button>
+          ) : (
+            <a class="btn" href={page} target="_blank" rel="noreferrer">
+              Abrir aparte
+            </a>
+          )
         ) : (
           <a class="btn" href={url} target="_blank" rel="noreferrer">
             Abrir aparte

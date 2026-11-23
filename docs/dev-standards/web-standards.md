@@ -60,6 +60,7 @@ The conventions of the `web` layer (web/**). The principles in [base-standards.m
 - Hard-coded colours outside `:root`: add or reuse a custom property so both themes follow (to confirm: a couple of hard-coded shadows and one `#fff` remain).
 - `className`, CSS-in-JS, or a stylesheet per component: use `class` and `styles.css`.
 - `dangerouslySetInnerHTML` with content that has not gone through DOMPurify.
+- Showing a machine's HTML file other than from its page address (`LoadedFile.page`) in an iframe with `sandbox="allow-scripts"`: never `allow-same-origin`, never its text in the panel's own document.
 - `window.alert`/`confirm`/`prompt`: use `toast()` and the `dialog` signal.
 - A second folder or file browser: use the explorer (`Explorer.tsx`).
 - English text in the UI, or Spanish in identifiers and comments.

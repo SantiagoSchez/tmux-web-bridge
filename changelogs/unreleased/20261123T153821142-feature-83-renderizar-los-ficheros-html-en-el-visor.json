@@ -1,0 +1,8 @@
+{
+  "type": "fixed",
+  "scope": "server",
+  "description": "Corregido «Abrir aparte» de un vídeo o un audio, que abría el reproductor vacío: ahora se reproduce y se puede saltar a cualquier punto",
+  "issue": "83",
+  "breaking": false,
+  "pr": "84"
+}

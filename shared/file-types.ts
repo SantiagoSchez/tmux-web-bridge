@@ -30,8 +30,22 @@ const CODE_NAMES = new Set(['dockerfile', 'makefile']);
 export function fileType(name: string): FileType {
   const base = name.slice(name.lastIndexOf('/') + 1).toLowerCase();
   if (CODE_NAMES.has(base)) return 'code';
+  const ext = extension(base);
+  return ext === null ? 'file' : (BY_EXTENSION.get(ext) ?? 'file');
+}
+
+/**
+ * Whether `name` is an HTML page (`.html` or `.htm`, ignoring case), which the file viewer
+ * shows rendered. Its type stays 'code', for its icon.
+ */
+export function isHtml(name: string): boolean {
+  const ext = extension(name.slice(name.lastIndexOf('/') + 1).toLowerCase());
+  return ext === 'html' || ext === 'htm';
+}
+
+/** The extension of a base name, without its dot; null without one. */
+function extension(base: string): string | null {
   const dot = base.lastIndexOf('.');
   // A leading dot only (`.env`) is a hidden name, not an extension.
-  if (dot <= 0) return 'file';
-  return BY_EXTENSION.get(base.slice(dot + 1)) ?? 'file';
+  return dot <= 0 ? null : base.slice(dot + 1);
 }
