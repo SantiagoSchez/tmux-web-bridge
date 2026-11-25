@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "pr": null,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [],
+  "findings": [],
+  "escapes": [
+    {
+      "id": "E01",
+      "source": "manual",
+      "finding": null,
+      "path": "web/src/components/Mic.tsx",
+      "line": 122,
+      "commit": "b91eadf86ce99bc46355ad6ad80256b90fd2e20c",
+      "pr": null,
+      "reason": "HoldMic renders the recording clock but the tick that redraws it lives in its parent MicButton; @preact/signals skips HoldMic when its props do not change, so the hold mode clock stays at 0:00",
+      "round": null,
+      "at": "2026-11-25T11:07:12.631Z"
+    }
+  ],
+  "outcome": null
+}

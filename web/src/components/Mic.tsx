@@ -17,6 +17,19 @@ const SLOP = 24;
 type Props = { hostId: string; paneId: string; class: string; label?: string; onPointerDown?: (e: Event) => void };
 
 /**
+ * The recording's ● m:ss. It redraws itself: @preact/signals skips a component that
+ * reads a signal when its props do not change, so a tick in a parent would not reach it.
+ */
+function RecClock({ since }: { since: number }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(t);
+  }, []);
+  return <>● {clock(Date.now() - since)}</>;
+}
+
+/**
  * 🎤: dictate to the pane (typed in without Enter). Hold mode: talk while pressing it,
  * let go to send, slide off it to throw the recording away. Tap mode: tap to start,
  * tap again to send, ✕ to throw it away. The mode and the shortcut are hub settings;
@@ -25,12 +38,6 @@ type Props = { hostId: string; paneId: string; class: string; label?: string; on
  */
 export function MicButton(props: Props) {
   const d = dictating.value;
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (d?.phase !== 'recording') return;
-    const t = setInterval(() => tick((n) => n + 1), 500);
-    return () => clearInterval(t);
-  }, [d?.phase]);
   const s = hubSettings.value;
   if (!s?.dictation) return null;
   const shortcut = shortcutText(dictationShortcut());
@@ -38,7 +45,7 @@ export function MicButton(props: Props) {
   if (d?.phase === 'sending') {
     return (
       <button type="button" class={`${props.class} mic busy`} disabled aria-label="Transcribiendo" title="Transcribiendo…">
-        …
+        <span class="mic-spinner" aria-hidden="true" />
       </button>
     );
   }
@@ -54,7 +61,7 @@ export function MicButton(props: Props) {
           onPointerDown={props.onPointerDown}
           onClick={() => toggleDictation(props.hostId, props.paneId)}
         >
-          ● {clock(Date.now() - d.since)}
+          <RecClock since={d.since} />
         </button>
         <button type="button" class={props.class} aria-label="Descartar el dictado" title="Descartar (Esc)" onPointerDown={props.onPointerDown} onClick={cancelDictation}>
           ✕
@@ -119,7 +126,7 @@ function HoldMic(props: Props & { shortcut: string }) {
   };
 
   const held = out !== null;
-  const label = out ? '✕ suelta' : recording ? `● ${clock(Date.now() - d.since)}` : props.label || '🎤';
+  const label = out ? '✕ suelta' : recording ? <RecClock since={d.since} /> : props.label || '🎤';
   return (
     <button
       type="button"
