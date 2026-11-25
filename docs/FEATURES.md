@@ -28,6 +28,7 @@ Las funcionalidades del producto tal y como las ven sus usuarios y el equipo de 
 - [Cambio automático de cuenta](#cambio-automático-de-cuenta): cuándo y a qué cuenta pasa el servidor central una máquina que se acerca al límite de 5 horas o al semanal, y cómo lo avisa.
 - [Vistas de la barra](#vistas-de-la-barra): el menú «Más vistas» de la barra de la lista, con la vista de ventanas y «Actividad».
 - [Cambios de OpenSpec](#cambios-de-openspec): cómo va cada cambio activo del repositorio de una ventana (tareas hechas, PR, ronda de revisión y bloqueantes) y cómo abrir sus tareas y su propuesta.
+- [Botón de dictado](#botón-de-dictado): qué muestra el botón 🎤 mientras grabas un dictado y mientras se transcribe.
 
 ## Terminal
 
@@ -808,3 +809,15 @@ Cuando la cabecera de una ventana es estrecha, el botón de las líneas cambiada
 <!-- capability: change-progress; requirement: the-window-menu-opens-each-change-s-proposal -->
 
 El menú ··· de una ventana tiene una entrada «Propuesta de <cambio>» por cada cambio activo con `proposal.md` de la carpeta del panel sobre el que actúa. Al elegirla, el visor de ficheros abre esa propuesta con el formato de Markdown.
+
+## Botón de dictado
+
+### El contador de la grabación
+<!-- capability: dictation-button; requirement: recording-clock -->
+
+Mientras grabas un dictado, el botón 🎤 se pone rojo y muestra un punto y el tiempo que llevas hablando, en minutos y segundos («● 0:07»), que avanza cada segundo hasta que paras. Pasa igual con los dos modos del botón, mantener pulsado para hablar o tocar para empezar, y también cuando empiezas el dictado con su atajo de teclado. Así sabes que te está escuchando y cuánto llevas.
+
+### Un anillo mientras se transcribe
+<!-- capability: dictation-button; requirement: transcribing-indicator -->
+
+Al soltar el botón, o al tocarlo para enviar, el 🎤 se cambia por un anillo que gira, sobre el fondo normal del botón, mientras el servidor central transcribe y limpia lo que has dicho. Mientras gira, el botón no responde a los toques. Cuando el texto llega al panel, o si el dictado falla y el panel lo avisa, el botón vuelve a mostrar 🎤, o la etiqueta que le hayas puesto en la barra de teclas. Si descartas la grabación (deslizando fuera del botón, con «✕» o con Escape), no aparece el anillo.

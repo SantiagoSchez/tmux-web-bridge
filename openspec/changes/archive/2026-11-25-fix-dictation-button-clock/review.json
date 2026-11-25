@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "pr": 86,
+  "budget": {
+    "maxRounds": 3,
+    "extensions": [],
+    "resets": []
+  },
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "b8e5b8458a0ba340d54216c18374ea0fc4b53470",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-25T11:17:50.701Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "NITPICK",
+      "path": "changelogs/unreleased/20261125T111357054-bugfix-85-el-contador-del-boton-de-dictar-se-queda-en-0-00.json",
+      "symbol": null,
+      "line": 4,
+      "title": "La descripción de la entrada del changelog termina sin punto",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "b8e5b8458a0ba340d54216c18374ea0fc4b53470",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
+  "escapes": [
+    {
+      "id": "E01",
+      "source": "manual",
+      "finding": null,
+      "path": "web/src/components/Mic.tsx",
+      "line": 122,
+      "commit": "b91eadf86ce99bc46355ad6ad80256b90fd2e20c",
+      "pr": null,
+      "reason": "HoldMic renders the recording clock but the tick that redraws it lives in its parent MicButton; @preact/signals skips HoldMic when its props do not change, so the hold mode clock stays at 0:00",
+      "round": null,
+      "at": "2026-11-25T11:07:12.631Z"
+    }
+  ],
+  "outcome": null
+}
