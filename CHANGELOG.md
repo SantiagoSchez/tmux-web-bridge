@@ -4,6 +4,12 @@ Todos los cambios relevantes del proyecto, del más reciente al más antiguo. La
 
 No edites este fichero a mano: cada cambio registra una entrada con `ka changelog add` (la skill `/ka:changelog`), y `/ka:release` compila las entradas pendientes en una sección nueva.
 
+## 1.35.1 - 2026-11-25
+
+### Corregido
+
+- Corregido el contador del botón 🎤 al mantenerlo pulsado, que se quedaba en 0:00 mientras hablabas: ahora avanza cada segundo. Al soltar, mientras se transcribe lo dicho, el botón muestra un anillo que gira en lugar de unos puntos suspensivos.
+
 ## 1.35.0 - 2026-11-23
 
 ### Añadido

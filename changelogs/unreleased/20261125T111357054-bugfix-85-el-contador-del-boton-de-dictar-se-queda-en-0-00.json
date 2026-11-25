@@ -1,8 +1,0 @@
-{
-  "type": "fixed",
-  "scope": "web",
-  "description": "Corregido el contador del botón 🎤 al mantenerlo pulsado, que se quedaba en 0:00 mientras hablabas: ahora avanza cada segundo. Al soltar, mientras se transcribe lo dicho, el botón muestra un anillo que gira en lugar de unos puntos suspensivos",
-  "issue": "85",
-  "breaking": false,
-  "pr": "86"
-}
