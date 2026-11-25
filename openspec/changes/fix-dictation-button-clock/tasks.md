@@ -45,13 +45,13 @@
 - [x] 6.1 Run `/opsx:verify` and fix what it reports through the artifacts.
 - [x] 6.2 The adversarial review does not apply: the change touches no message or job payload, no dependency-injection wiring or bootstrap, and no migration; it changes one component's rendering and its styles.
 - [x] 6.3 Open the pull request with `/ka:commit --pr`.
-- [ ] 6.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
+- [x] 6.4 Run `/ka:review-pr` in rounds as the bounded review loop says, recording each with `ka review-rounds record`; tick this task once `ka review-rounds gate` passes and the pending suggestions have gone through `ka-evaluator`.
 
 ## 7. Update the feature catalogue
 
-- [ ] 7.1 Run `/ka:update-features fix-dictation-button-clock` for the added requirements of `dictation-button`.
-- [ ] 7.2 Run `ka features-check --strict` with exit code 0.
-- [ ] 7.3 Commit the catalogue with `/ka:commit`.
+- [x] 7.1 Run `/ka:update-features fix-dictation-button-clock` for the added requirements of `dictation-button`.
+- [x] 7.2 Run `ka features-check --strict` with exit code 0.
+- [x] 7.3 Commit the catalogue with `/ka:commit`.
 
 ## 8. E2E pipeline
 

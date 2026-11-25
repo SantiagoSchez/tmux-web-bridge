@@ -1,13 +1,49 @@
 {
   "version": 1,
-  "pr": null,
+  "pr": 86,
   "budget": {
     "maxRounds": 3,
     "extensions": [],
     "resets": []
   },
-  "rounds": [],
-  "findings": [],
+  "rounds": [
+    {
+      "n": 1,
+      "budgetRound": 1,
+      "mode": "full",
+      "sha": "b8e5b8458a0ba340d54216c18374ea0fc4b53470",
+      "counted": true,
+      "source": "review-pr",
+      "at": "2026-11-25T11:17:50.701Z",
+      "counts": {
+        "critical": 0,
+        "required": 0,
+        "suggestion": 0,
+        "question": 0,
+        "nitpick": 1
+      }
+    }
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "NITPICK",
+      "path": "changelogs/unreleased/20261125T111357054-bugfix-85-el-contador-del-boton-de-dictar-se-queda-en-0-00.json",
+      "symbol": null,
+      "line": 4,
+      "title": "La descripción de la entrada del changelog termina sin punto",
+      "origin": "introduced",
+      "round": 1,
+      "sha": "b8e5b8458a0ba340d54216c18374ea0fc4b53470",
+      "state": "open",
+      "fixedIn": null,
+      "reopened": 0,
+      "reason": null,
+      "score": null,
+      "scoreReason": null,
+      "followUp": null
+    }
+  ],
   "escapes": [
     {
       "id": "E01",
