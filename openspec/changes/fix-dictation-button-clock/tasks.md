@@ -25,17 +25,20 @@
   - Hub failure, hold mode: `● 0:02` while held, the ring on release, the toast «Dictado: fallo simulado», then 🎤.
   - Discard, hold mode: «✕ suelta» when the pointer left the button, 🎤 on release; the ring never appeared (watched with a MutationObserver) and `/api/dictate` was not called.
   - Phone, 390×844 with touch emulation, key bar 🎤 held with a finger: `● 0:01`, `● 0:02`; on release the ring inside the 44×40 key; 🎤 at the end. The first screenshot showed the ring faint, because the global `button:disabled` rule fades a disabled button to 0.4; `.mic.busy` now sets `opacity: 1` (D2), and the second screenshot shows it clearly. On a phone the window header has no 🎤 (it is only in the key bar), so the header was checked at 1280 px, where the ring fits inside its 38×34 button.
-- [ ] 3.5 Commit the group with `/ka:commit` (with the change's OpenSpec artifacts) once `pnpm --filter web typecheck` passes.
+- [x] 3.5 Commit the group with `/ka:commit` (with the change's OpenSpec artifacts) once `pnpm --filter web typecheck` passes.
 
 ## 4. Run tests, typecheck and lint
 
-- [ ] 4.1 Run `pnpm --filter web typecheck`, green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+- [x] 4.1 Run `pnpm --filter web typecheck`, green; run `ka scope` and the checks it lists (`ka features-check`, `ka docs-check`), or record them as not applicable.
+  - `pnpm --filter web typecheck`: exit 0. `ka scope`: features-check and docs-check apply. `ka features-check`: exit 0, two pending sections (`recording-clock`, `transcribing-indicator`) for group 7. `ka docs-check`: exit 0, no dead reference.
 
 ## 5. Update the documentation and the changelog
 
-- [ ] 5.1 Run `/ka:update-docs` for the flow visible to the end user and for the pattern future contributors should follow: a component that redraws over time owns its own timer, because `@preact/signals` skips a child that reads a signal when its props do not change (web standards, «Conventions»).
-- [ ] 5.2 Add the changelog entry with `/ka:changelog --issue 85`: the dictation button's clock advances in hold mode, and a spinning ring shows while the dictation is transcribed.
-- [ ] 5.3 Commit the group with `/ka:commit` once `pnpm --filter web typecheck` passes.
+- [x] 5.1 Run `/ka:update-docs` for the flow visible to the end user and for the pattern future contributors should follow: a component that redraws over time owns its own timer, because `@preact/signals` skips a child that reads a signal when its props do not change (web standards, «Conventions»).
+  - `docs/dev-standards/web-standards.md`, «Conventions»: a line after the signals one, on a component that redraws over time owning its own timer (`RecClock`). No other standard or the README described the button's busy state, so nothing went stale.
+- [x] 5.2 Add the changelog entry with `/ka:changelog --issue 85`: the dictation button's clock advances in hold mode, and a spinning ring shows while the dictation is transcribed.
+  - `changelogs/unreleased/20261125T111357054-bugfix-85-el-contador-del-boton-de-dictar-se-queda-en-0-00.json`: `fixed`, scope `web`, Issue 85.
+- [x] 5.3 Commit the group with `/ka:commit` once `pnpm --filter web typecheck` passes.
 
 ## 6. Review loop
 
