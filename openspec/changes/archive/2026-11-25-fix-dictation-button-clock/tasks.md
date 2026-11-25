@@ -55,15 +55,15 @@
 
 ## 8. E2E pipeline
 
-- [ ] 8.1 The project has no E2E suite; this step does not apply.
+- [x] 8.1 The project has no E2E suite; this step does not apply.
 
 ## 9. Human review
 
-- [ ] 9.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good.
+- [x] 9.1 Ask the user with `AskUserQuestion` who reviews the pull request, and wait for the approval or record that the user takes it as good. The owner took PR #86 as good without a manual review (2026-11-25).
 
 ## 10. Feature catalogue check before the archive
 
-- [ ] 10.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
+- [x] 10.1 Run `ka features-check --strict` with exit code 0 as the last task before `/opsx:archive`.
 
 ## Workflow follow-up
 
